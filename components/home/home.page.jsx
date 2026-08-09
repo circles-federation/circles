@@ -9,7 +9,7 @@ import { ForwardLink } from "@/components/chrome/forward-link";
 import { OrgCard } from "@/components/orgs/org-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
-import { HOME_HOOD, MEMBERS, ORGS, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
+import { MEMBERS, ORGS, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
 import { isPastEvent, parseDay } from "@/lib/format.util";
 import { kindOf } from "@/lib/governance.util";
 import { useIsMobile } from "@/lib/hooks";
@@ -20,10 +20,10 @@ import { FAINT, INK, PAPER, SOFT, TEAL, TYPE, sans, serif } from "@/lib/theme";
    dial), and their events. Profile editing lives on a separate page. */
 export function Home({ profile, events, rsvpState, toggleRsvp, voteState, toggleVote, onOpenEvent, setView, onOpenNeighbors, onOpenLocalOrgs, onPlayGame, onOpenOrg, onEditProfile }) {
   const isMobile = useIsMobile();
-  const neighbors = MEMBERS.filter((m) => m.neighborhood === HOME_HOOD);
-  const localOrgs = ORGS.filter((o) => o.level === HOME_HOOD);
+  const neighbors = MEMBERS.filter((m) => m.neighborhood === profile.neighborhood);
+  const localOrgs = ORGS.filter((o) => o.level === profile.neighborhood);
   const upcoming = [...events].filter((e) => !isPastEvent(e)).sort((a, b) => parseDay(a.date) - parseDay(b.date));
-  const assemblies = upcoming.filter((e) => kindOf(e).governance && e.scope === HOME_HOOD);
+  const assemblies = upcoming.filter((e) => kindOf(e).governance && e.scope === profile.neighborhood);
 
   // the user's own organizations (speed dial)
   const myOrgs = ORGS_BY_MEMBER[profile.id] || [];

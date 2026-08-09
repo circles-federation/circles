@@ -2,7 +2,6 @@
 
 import { Home } from "@/components/home/home.page";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { HOME_HOOD } from "@/lib/data";
 import { useAppNav } from "@/lib/hooks";
 
 export default function Page() {
@@ -19,8 +18,8 @@ export default function Page() {
       toggleVote={toggleVote}
       onOpenEvent={(e) => nav.openEvent(e, "Home")}
       setView={nav.setView}
-      onOpenNeighbors={() => nav.openNeighbors(HOME_HOOD)}
-      onOpenLocalOrgs={() => nav.openLocalOrgs(HOME_HOOD)}
+      onOpenNeighbors={() => nav.openNeighbors(profile.neighborhood)}
+      onOpenLocalOrgs={() => nav.openLocalOrgs(profile.neighborhood)}
       onPlayGame={() => nav.setView("game")}
       onOpenOrg={(o) => nav.openOrg(o, "Home")}
       onEditProfile={() => nav.setView("editMyself")}

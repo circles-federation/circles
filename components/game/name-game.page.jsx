@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { BackButton } from "@/components/chrome/back-button";
 import { Eyebrow } from "@/components/chrome/eyebrow";
-import { HOME_HOOD, MEMBERS, avatarFor } from "@/lib/data";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { MEMBERS, avatarFor } from "@/lib/data";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 function shuffle(arr) {
@@ -15,9 +16,9 @@ function shuffle(arr) {
   return a;
 }
 
-function buildRounds() {
-  // the game is for learning your direct neighbors, so it draws only from the home node
-  const neighbors = MEMBERS.filter((m) => m.neighborhood === HOME_HOOD);
+function buildRounds(homeHood) {
+  // the game is for learning your direct neighbors, so it draws only from the player's own neighborhood
+  const neighbors = MEMBERS.filter((m) => m.neighborhood === homeHood);
   const pool = shuffle(neighbors);
   return pool.map((person) => {
     const distractors = shuffle(neighbors.filter((m) => m.id !== person.id)).slice(0, 3);
@@ -33,7 +34,8 @@ const primaryBtn = {
 };
 
 export function NameGame({ onExit }) {
-  const [rounds, setRounds] = useState(buildRounds);
+  const { profile } = useAppState();
+  const [rounds, setRounds] = useState(() => buildRounds(profile.neighborhood));
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState(null);
   const [score, setScore] = useState(0);
@@ -58,7 +60,7 @@ export function NameGame({ onExit }) {
   }
 
   function restart() {
-    setRounds(buildRounds());
+    setRounds(buildRounds(profile.neighborhood));
     setIdx(0);
     setPicked(null);
     setScore(0);
