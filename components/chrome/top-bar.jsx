@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { INK, PAPER, TYPE, sans } from "@/lib/theme";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
+import { logout } from "@/lib/auth";
+import { INK, PAPER, SOFT, TYPE, sans } from "@/lib/theme";
 
 const TABS = [
   ["/home", "Home"],
@@ -13,12 +15,21 @@ const TABS = [
 
 export function TopBar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   // a tab is "active" if the current route is it, a nested route beneath it,
   // or (for Home) one of the sibling pages reached only from Home
   function isActive(href) {
     if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");
     return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  // the action itself is pure (sets/clears a cookie, doesn't navigate) —
+  // matching this app's convention that mutators never navigate — so the
+  // caller does the redirect once it resolves.
+  async function handleLogout() {
+    await logout();
+    router.push("/");
   }
 
   return (
@@ -50,6 +61,15 @@ export function TopBar() {
               </Link>
             ))}
           </nav>
+          <button
+            onClick={handleLogout}
+            title="Log out"
+            aria-label="Log out"
+            className="ink-press inline-flex items-center"
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: SOFT }}
+          >
+            <ArrowRightOnRectangleIcon className="size-4.5" strokeWidth={2} />
+          </button>
         </div>
       </div>
     </div>

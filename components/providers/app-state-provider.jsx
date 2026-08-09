@@ -2,19 +2,29 @@
 
 import { createContext, useContext, useState } from "react";
 import { useToast } from "@/components/chrome/toast";
-import { COUNCIL_RATIFY_THRESHOLD, CURRENT_USER_ID, EVENTS, ORGS, memberById } from "@/lib/data";
+import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
+import {
+  createCouncilProposal as dbCreateCouncilProposal,
+  createEvent as dbCreateEvent,
+  updateCouncilProposal as dbUpdateCouncilProposal,
+  updateEvent as dbUpdateEvent,
+} from "@/lib/db/events";
+import { updateMember as dbUpdateMember } from "@/lib/db/members";
+import { updateOrg as dbUpdateOrg } from "@/lib/db/orgs";
 import { FEDERATION_COUNCIL_ENABLED } from "@/lib/feature-flags";
 import { kindOf } from "@/lib/governance.util";
 
 /* Holds the app's entire "database" — events, orgs, the current user's RSVPs/
    votes/profile, and pending council proposals — plus the mutations on it.
    There's no backend, so this is the single source of truth every route reads
-   from instead of a fetch. Mounted once in the root layout so it survives
-   navigation between routes.
+   from instead of a fetch. Mounted once in the (app) layout, seeded from data
+   the DAL (lib/db/) fetched server-side — see that layout for the fetch.
 
    Mutators here are pure state + toast — they never navigate. Where the
    original single-view app followed a mutation with a view change, that's now
-   the calling route's job (it has the router; this provider shouldn't). */
+   the calling route's job (it has the router; this provider shouldn't).
+   Each mutator also calls the matching lib/db/ write, fire-and-forget — no
+   rollback/error-handling yet, since the mock DAL can't actually fail. */
 const AppStateContext = createContext(null);
 
 export function useAppState() {
@@ -23,88 +33,88 @@ export function useAppState() {
   return ctx;
 }
 
-export function AppStateProvider({ children }) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialOrgs, initialProfile }) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
-  const [events, setEvents] = useState(() => EVENTS.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
-  // orgs live in state so member edits (bio, offers) persist; seeded from ORGS
-  const [orgs, setOrgs] = useState(() => ORGS.map((o) => ({ ...o, offers: [...o.offers], members: [...o.members] })));
+  const [events, setEvents] = useState(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
+  // orgs live in state so member edits (bio, offers) persist; seeded from the DAL fetch
+  const [orgs, setOrgs] = useState(() => initialOrgs.map((o) => ({ ...o, offers: [...o.offers], members: [...o.members] })));
   // council proposals drafted on an assembly page, awaiting that assembly's
   // ratification before they become federation-wide proposed councils. they do
   // not appear anywhere events are listed until ratified.
   const [councilProposals, setCouncilProposals] = useState([]);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
   const [rsvpState, setRsvpState] = useState(() =>
-    EVENTS.reduce((acc, e) => {
-      if (e.rsvps.includes(CURRENT_USER_ID)) acc[e.id] = true;
+    initialEvents.reduce((acc, e) => {
+      if (e.rsvps.includes(currentUserId)) acc[e.id] = true;
       return acc;
     }, {})
   );
   // voteState: { [eventId]: true } — the current user's votes on governance proposals
   const [voteState, setVoteState] = useState(() =>
-    EVENTS.reduce((acc, e) => {
-      if (e.votes && e.votes.includes(CURRENT_USER_ID)) acc[e.id] = true;
+    initialEvents.reduce((acc, e) => {
+      if (e.votes && e.votes.includes(currentUserId)) acc[e.id] = true;
       return acc;
     }, {})
   );
   // the current user's own editable profile (seeded from their member record)
-  const [profile, setProfile] = useState(() => {
-    const me = memberById(CURRENT_USER_ID);
-    return {
-      ...me,
-      skills: [...me.skills],
-      interests: [...me.interests],
-      emailPublic: !!me.email, // they have an email shared by default
-    };
-  });
+  const [profile, setProfile] = useState(() => ({
+    ...initialProfile,
+    skills: [...initialProfile.skills],
+    interests: [...initialProfile.interests],
+    emailPublic: !!initialProfile.email, // they have an email shared by default
+  }));
 
   function toggleRsvp(eventId) {
+    const willGo = !rsvpState[eventId];
     setRsvpState((prev) => {
-      const nextGoing = !prev[eventId];
-      const next = { ...prev, [eventId]: nextGoing };
-      if (!nextGoing) delete next[eventId];
+      const next = { ...prev, [eventId]: willGo };
+      if (!willGo) delete next[eventId];
       return next;
     });
     // keep the event's rsvp list in sync immutably so counts & rosters agree across views
+    let nextRsvps = null;
     setEvents((prev) =>
       prev.map((e) => {
         if (e.id !== eventId) return e;
-        const has = e.rsvps.includes(CURRENT_USER_ID);
-        const willGo = !rsvpState[eventId];
-        if (willGo && !has) return { ...e, rsvps: [...e.rsvps, CURRENT_USER_ID] };
-        if (!willGo && has) return { ...e, rsvps: e.rsvps.filter((id) => id !== CURRENT_USER_ID) };
-        return e;
+        const has = e.rsvps.includes(currentUserId);
+        if (willGo && !has) nextRsvps = [...e.rsvps, currentUserId];
+        else if (!willGo && has) nextRsvps = e.rsvps.filter((id) => id !== currentUserId);
+        else nextRsvps = e.rsvps;
+        return { ...e, rsvps: nextRsvps };
       })
     );
+    if (nextRsvps) dbUpdateEvent(eventId, { rsvps: nextRsvps });
   }
 
   // join or leave a specific role slot on a slotted event (e.g. shift lead).
   // the current user may hold at most one role per event.
   function toggleRoleSlot(eventId, roleKey) {
+    let nextRoles = null;
     setEvents((prev) =>
       prev.map((e) => {
         if (e.id !== eventId || !Array.isArray(e.roles)) return e;
-        return {
-          ...e,
-          roles: e.roles.map((r) => {
-            if (r.key === roleKey) {
-              const has = r.members.includes(CURRENT_USER_ID);
-              if (!has && r.max != null && r.members.length >= r.max) return r; // slot full — can't join
-              return { ...r, members: has ? r.members.filter((id) => id !== CURRENT_USER_ID) : [...r.members, CURRENT_USER_ID] };
-            }
-            // leaving any other role the user might hold, so they hold one slot at a time
-            return { ...r, members: r.members.filter((id) => id !== CURRENT_USER_ID) };
-          }),
-        };
+        nextRoles = e.roles.map((r) => {
+          if (r.key === roleKey) {
+            const has = r.members.includes(currentUserId);
+            if (!has && r.max != null && r.members.length >= r.max) return r; // slot full — can't join
+            return { ...r, members: has ? r.members.filter((id) => id !== currentUserId) : [...r.members, currentUserId] };
+          }
+          // leaving any other role the user might hold, so they hold one slot at a time
+          return { ...r, members: r.members.filter((id) => id !== currentUserId) };
+        });
+        return { ...e, roles: nextRoles };
       })
     );
+    if (nextRoles) dbUpdateEvent(eventId, { roles: nextRoles });
   }
 
   // returns the created event so the caller can navigate to it
   function createEvent(ev) {
     setEvents((prev) => [...prev, ev]);
+    dbCreateEvent(ev);
     setRsvpState((prev) => ({ ...prev, [ev.id]: true })); // creator is attending
-    if (ev.votes && ev.votes.includes(CURRENT_USER_ID)) {
+    if (ev.votes && ev.votes.includes(currentUserId)) {
       setVoteState((prev) => ({ ...prev, [ev.id]: true })); // proposer's first vote
     }
     if (ev.kind === "assembly") {
@@ -125,16 +135,17 @@ export function AppStateProvider({ children }) {
       assemblyId: assembly.id,
       sponsorHood: assembly.scope,
       sponsorName: assembly.title,
-      proposedBy: CURRENT_USER_ID,
+      proposedBy: currentUserId,
       title: details.title,
       date: details.date, start: details.start, end: details.end,
       location: details.location,
       agenda: details.agenda,
-      ratifyVotes: [CURRENT_USER_ID], // proposer's own vote
+      ratifyVotes: [currentUserId], // proposer's own vote
       ratified: false,
       councilId: null,
     };
     setCouncilProposals((prev) => [...prev, proposal]);
+    dbCreateCouncilProposal(proposal);
     showToast({
       tone: "success",
       title: "Meeting proposed",
@@ -147,10 +158,11 @@ export function AppStateProvider({ children }) {
   // status), endorsed by the sponsoring neighborhood.
   function ratifyCouncilProposal(proposalId) {
     let created = null;
+    let proposalPatch = null;
     setCouncilProposals((prev) => prev.map((p) => {
       if (p.id !== proposalId || p.ratified) return p;
-      const has = p.ratifyVotes.includes(CURRENT_USER_ID);
-      const votes = has ? p.ratifyVotes.filter((id) => id !== CURRENT_USER_ID) : [...p.ratifyVotes, CURRENT_USER_ID];
+      const has = p.ratifyVotes.includes(currentUserId);
+      const votes = has ? p.ratifyVotes.filter((id) => id !== currentUserId) : [...p.ratifyVotes, currentUserId];
       if (votes.length >= COUNCIL_RATIFY_THRESHOLD) {
         const councilId = "e" + Date.now();
         created = {
@@ -166,12 +178,16 @@ export function AppStateProvider({ children }) {
           endorsements: [p.sponsorHood], // sponsoring neighborhood endorses on ratification
           rsvps: [],
         };
-        return { ...p, ratifyVotes: votes, ratified: true, councilId };
+        proposalPatch = { ratifyVotes: votes, ratified: true, councilId };
+        return { ...p, ...proposalPatch };
       }
+      proposalPatch = { ratifyVotes: votes };
       return { ...p, ratifyVotes: votes };
     }));
+    if (proposalPatch) dbUpdateCouncilProposal(proposalId, proposalPatch);
     if (created) {
       setEvents((prev) => [...prev, created]);
+      dbCreateEvent(created);
       showToast({
         tone: "success",
         title: "Council confirmed by the assembly",
@@ -190,14 +206,15 @@ export function AppStateProvider({ children }) {
       kind: "assembly",
       scope: hood,
       endorsesCouncilId: council.id,
-      host: { type: "member", id: CURRENT_USER_ID },
+      host: { type: "member", id: currentUserId },
       date: details.date, start: details.start, end: details.end,
       location: details.location,
       description: details.agenda,
-      votes: [CURRENT_USER_ID],
-      rsvps: [CURRENT_USER_ID],
+      votes: [currentUserId],
+      rsvps: [currentUserId],
     };
     setEvents((prev) => [...prev, ev]);
+    dbCreateEvent(ev);
     setRsvpState((prev) => ({ ...prev, [ev.id]: true }));
     setVoteState((prev) => ({ ...prev, [ev.id]: true }));
     showToast({
@@ -211,40 +228,46 @@ export function AppStateProvider({ children }) {
   // an endorsing assembly votes; if it passes quorum, its neighborhood is added
   // to the council's endorsements (one neighborhood-vote for the council).
   function toggleVote(eventId) {
+    let votedPatch = null;
+    let endorsedPatch = null;
+    let endorseCouncilId = null;
     setEvents((prev) => {
-      let endorseCouncil = null;
       let endorseHood = null;
       const next = prev.map((ev) => {
         if (ev.id !== eventId) return ev;
-        const has = (ev.votes || []).includes(CURRENT_USER_ID);
-        const votes = has ? ev.votes.filter((id) => id !== CURRENT_USER_ID) : [...(ev.votes || []), CURRENT_USER_ID];
+        const has = (ev.votes || []).includes(currentUserId);
+        const votes = has ? ev.votes.filter((id) => id !== currentUserId) : [...(ev.votes || []), currentUserId];
+        votedPatch = { votes };
         // if this assembly exists to endorse a council and just reached quorum,
         // record its neighborhood's endorsement on that council.
         if (ev.endorsesCouncilId && votes.length >= (kindOf(ev).threshold || 5)) {
-          endorseCouncil = ev.endorsesCouncilId;
+          endorseCouncilId = ev.endorsesCouncilId;
           endorseHood = ev.scope;
         }
         return { ...ev, votes };
       });
-      if (endorseCouncil) {
-        return next.map((ev) =>
-          ev.id === endorseCouncil && !(ev.endorsements || []).includes(endorseHood)
-            ? { ...ev, endorsements: [...(ev.endorsements || []), endorseHood] }
-            : ev
-        );
+      if (endorseCouncilId) {
+        return next.map((ev) => {
+          if (ev.id === endorseCouncilId && !(ev.endorsements || []).includes(endorseHood)) {
+            const endorsements = [...(ev.endorsements || []), endorseHood];
+            endorsedPatch = { endorsements };
+            return { ...ev, endorsements };
+          }
+          return ev;
+        });
       }
       return next;
     });
+    if (votedPatch) dbUpdateEvent(eventId, votedPatch);
+    if (endorseCouncilId && endorsedPatch) dbUpdateEvent(endorseCouncilId, endorsedPatch);
     setVoteState((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
   }
 
   // save edits to an org and record who edited it and when
   function saveOrg(id, patch) {
-    setOrgs((prev) => prev.map((o) =>
-      o.id === id
-        ? { ...o, ...patch, lastEditedBy: CURRENT_USER_ID, lastEditedAt: new Date().toISOString() }
-        : o
-    ));
+    const fullPatch = { ...patch, lastEditedBy: currentUserId, lastEditedAt: new Date().toISOString() };
+    setOrgs((prev) => prev.map((o) => (o.id === id ? { ...o, ...fullPatch } : o)));
+    dbUpdateOrg(id, fullPatch);
     const org = orgs.find((o) => o.id === id);
     showToast({
       tone: "success",
@@ -256,6 +279,7 @@ export function AppStateProvider({ children }) {
   // save edits from the Edit Myself page back to the profile
   function saveProfile(next) {
     setProfile(next);
+    dbUpdateMember(currentUserId, next);
     showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
   }
 

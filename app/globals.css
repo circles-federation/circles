@@ -56,3 +56,22 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* ============================================================
+   Button press interaction styles. Global (not scoped to AppShell)
+   because the welcome page at "/" sits outside the (app) route
+   group's layout — where AppShell lives — and still needs these
+   classes on its own login form buttons.
+   ============================================================ */
+.ink-press { transition: background 0.08s, color 0.08s; }
+.ink-press:active { background: var(--color-ink) !important; color: var(--color-paper) !important; }
+.ink-press:active * { color: var(--color-paper) !important; border-color: var(--color-paper) !important; }
+.ink-press:active span[style*="background"] { background: transparent !important; }
+.ink-press:active img { filter: grayscale(100%) invert(1) !important; }
+.btn-invert { transition: background 0.08s, color 0.08s; }
+.btn-ink:active { background: var(--color-paper) !important; color: var(--color-ink) !important; }
+.btn-teal:active { background: var(--color-paper) !important; color: var(--color-teal) !important; }
+.btn-teal:active * { color: var(--color-teal) !important; }
+.btn-flame:active { background: var(--color-paper) !important; color: var(--color-flame) !important; }
+.btn-flame:active * { color: var(--color-flame) !important; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
