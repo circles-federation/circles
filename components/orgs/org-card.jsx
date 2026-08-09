@@ -1,12 +1,14 @@
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import { Chip } from "@/components/chrome/chip";
 import { Eyebrow } from "@/components/chrome/eyebrow";
-import { HOME_HOOD, avatarFor, memberById } from "@/lib/data";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { avatarFor, memberById } from "@/lib/data";
 import { INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 /* Reusable organization card — used in the Organizations directory and the
    Home dashboard's "my organizations" speed dial, so they look identical. */
 export function OrgCard({ o, onOpenOrg }) {
+  const { profile } = useAppState();
   return (
     <button
       className="ink-press"
@@ -20,7 +22,7 @@ export function OrgCard({ o, onOpenOrg }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
         <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{o.kind}</Eyebrow>
         <span style={{ marginRight: -6 }}>
-          <Chip title={o.level === HOME_HOOD ? "Local to this neighborhood" : "Across the federation"}>{o.level}</Chip>
+          <Chip title={o.level === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{o.level}</Chip>
         </span>
       </div>
       <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xl, letterSpacing: "-0.025em", lineHeight: 1.0, marginTop: 12 }}>{o.name}</div>

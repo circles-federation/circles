@@ -6,7 +6,8 @@ import { Eyebrow } from "@/components/chrome/eyebrow";
 import { Tag } from "@/components/chrome/tag";
 import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
-import { HOME_HOOD, avatarFor, memberById } from "@/lib/data";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { avatarFor, memberById } from "@/lib/data";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { kindOf } from "@/lib/governance.util";
 import { useIsMobile } from "@/lib/hooks";
@@ -14,6 +15,7 @@ import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenEvent, onManage }) {
   const isMobile = useIsMobile();
+  const { profile } = useAppState();
   const members = o.members.map(memberById).filter(Boolean);
   // events convened by this org, soonest first (location is irrelevant)
   const hostedEvents = [...events]
@@ -33,7 +35,7 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, rs
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Eyebrow style={{ color: SOFT }}>{o.kind}</Eyebrow>
-            <Chip title={o.level === HOME_HOOD ? "Local to this neighborhood" : "Across the federation"}>{o.level}</Chip>
+            <Chip title={o.level === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{o.level}</Chip>
           </div>
           <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.92, margin: "12px 0 0" }}>{o.name}</h1>
           <p style={{ fontFamily: serif, fontStyle: "italic", fontSize: TYPE.xl, color: "#222", margin: "14px 0 0" }}>{o.tagline}</p>

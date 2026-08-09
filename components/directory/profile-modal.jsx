@@ -5,10 +5,12 @@ import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import { Chip } from "@/components/chrome/chip";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { Tag } from "@/components/chrome/tag";
-import { HOME_HOOD, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 export function ProfileModal({ member: m, onClose, onOpenOrg }) {
+  const { profile } = useAppState();
   useEffect(() => {
     function onKey(e) { if (e.key === "Escape") onClose(); }
     window.addEventListener("keydown", onKey);
@@ -74,7 +76,7 @@ export function ProfileModal({ member: m, onClose, onOpenOrg }) {
 
           <Eyebrow style={{ color: SOFT }}>Neighborhood</Eyebrow>
           <div style={{ marginTop: 12, marginBottom: orgs.length ? 22 : 0, display: "flex", flexWrap: "wrap", gap: 0 }}>
-            <Chip title={m.neighborhood === HOME_HOOD ? "This neighborhood" : "Another neighborhood in the federation"}>{m.neighborhood}</Chip>
+            <Chip title={m.neighborhood === profile.neighborhood ? "This neighborhood" : "Another neighborhood in the federation"}>{m.neighborhood}</Chip>
           </div>
 
           {orgs.length > 0 && (
