@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Design tokens — mirrors lib/theme.js exactly. If you change a
+   value here, change it there too (and vice versa): lib/theme.js
+   is what existing inline styles still read from; this @theme block
+   is what Tailwind utility classes read from. Two representations
+   of the same design system, kept in sync by hand until components
+   finish migrating off inline styles.
+   ============================================================ */
+@theme {
+  --color-ink: #0a0a0a;
+  --color-paper: #ffffff;
+  --color-soft: #6b6b6b;
+  --color-faint: #e4e4e4;
+  --color-flame: #e1530b; /* accent for governance events still being proposed */
+  --color-leaf: #2e7d32; /* accent for confirmed governance events */
+  --color-teal: #0f7d77; /* the home neighborhood's chip color */
+  --color-plum: #6a3d9a; /* members-only (exclusive) events */
+
+  --font-sans: "Helvetica Neue", Arial, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+
+  /* type scale (major third, 1.25) — see lib/theme.js for the full rationale */
+  --text-hero: clamp(40px, 11vw, 64px);
+  --text-title: clamp(30px, 8vw, 44px);
+  --text-heading: clamp(24px, 6vw, 32px);
+  --text-xl: 20px;
+  --text-lg: 18px;
+  --text-base: 16px;
+  --text-sm: 14px;
+  --text-xs: 13px;
+  --text-eyebrow: 12px;
+  --text-label: 11px;
+  --text-micro: 9px;
+
+  /* display headings share tight negative tracking; eyebrows share wide tracking */
+  --tracking-tight: -0.03em;
+  --tracking-wide: 0.1em;
+}
+
+html,
+body {
+  max-width: 100vw;
+  /* clip, not hidden: overflow-x:hidden with overflow-y left implicit
+     promotes both axes to a scroll container (per spec, when only one
+     axis is non-visible the other computes to auto), which makes body
+     its own scrolling box and breaks position:sticky descendants like
+     TopBar/BottomNav, since their true scrolling ancestor is the
+     viewport, not body. overflow-x:clip blocks the same horizontal
+     scroll without creating a scroll container. */
+  overflow-x: clip;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
