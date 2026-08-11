@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CheckIcon, FunnelIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Eyebrow } from "./eyebrow";
 import { FAINT, FLAME, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
@@ -29,12 +30,15 @@ export function SearchWithFilter({ query, onQuery, placeholder, filters, filterL
   return (
     <div ref={wrapRef} style={{ position: "relative", marginTop: 20 }}>
       <div style={{ display: "flex", alignItems: "stretch", border: `1px solid ${INK}` }}>
+        <span style={{ display: "flex", alignItems: "center", paddingLeft: 14, color: SOFT }}>
+          <MagnifyingGlassIcon className="size-4" strokeWidth={2} />
+        </span>
         <input
           value={query}
           onChange={(e) => onQuery(e.target.value)}
           placeholder={placeholder}
           style={{
-            flex: 1, minWidth: 0, padding: "12px 14px", border: "none",
+            flex: 1, minWidth: 0, padding: "12px 14px 12px 8px", border: "none",
             fontFamily: serif, fontSize: TYPE.base, background: PAPER, outline: "none",
           }}
         />
@@ -63,10 +67,7 @@ export function SearchWithFilter({ query, onQuery, placeholder, filters, filterL
               padding: "0 14px", fontSize: TYPE.base,
             }}
           >
-            {/* funnel icon */}
-            <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" style={{ display: "block" }}>
-              <path d="M1 2h14l-5.5 6.5V14l-3 1V8.5L1 2z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-            </svg>
+            <FunnelIcon className="size-3.5" strokeWidth={2.5} />
             {activeCount > 0 && (
               <span style={{
                 position: "absolute", top: 6, right: 6, minWidth: 15, height: 15, padding: "0 3px",
@@ -109,7 +110,7 @@ export function SearchWithFilter({ query, onQuery, placeholder, filters, filterL
                       }}
                     >
                       {opt || "All"}
-                      {selected && <span style={{ fontFamily: serif, fontSize: TYPE.xs }}>✓</span>}
+                      {selected && <CheckIcon className="size-3" strokeWidth={3} />}
                     </button>
                   );
                 })}
