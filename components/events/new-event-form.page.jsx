@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton } from "@/components/chrome/back-button";
 import { Eyebrow } from "@/components/chrome/eyebrow";
@@ -141,11 +142,18 @@ export function NewEventForm({ onCreate, onCancel }) {
         {!gov && (
           <div>
             <label style={fieldLabel}>Hosted by</label>
-            <select value={hostKey} onChange={(e) => setHostKey(e.target.value)} style={{ ...fieldInput, cursor: "pointer", appearance: "none", borderRadius: 0 }}>
-              {hostOptions.map((h) => (
-                <option key={h.key} value={h.key}>{h.label}</option>
-              ))}
-            </select>
+            <div style={{ position: "relative" }}>
+              <select value={hostKey} onChange={(e) => setHostKey(e.target.value)} style={{ ...fieldInput, cursor: "pointer", appearance: "none", borderRadius: 0, paddingRight: 36 }}>
+                {hostOptions.map((h) => (
+                  <option key={h.key} value={h.key}>{h.label}</option>
+                ))}
+              </select>
+              <ChevronDownIcon
+                className="size-4"
+                strokeWidth={2}
+                style={{ position: "absolute", top: "50%", right: 12, transform: "translateY(-50%)", color: SOFT, pointerEvents: "none" }}
+              />
+            </div>
             {hostKey.startsWith("org:") && (
               <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 14, cursor: "pointer", padding: "12px 14px", border: `1px solid ${membersOnly ? PLUM : FAINT}`, background: membersOnly ? "rgba(106,61,154,0.06)" : PAPER }}>
                 <input
