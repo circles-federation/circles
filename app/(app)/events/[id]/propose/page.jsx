@@ -21,13 +21,17 @@ export default function Page() {
   const mode = event.kind === "assembly" ? "council" : "assembly";
   const hood = mode === "assembly" ? memberById(CURRENT_USER_ID).neighborhood : undefined;
 
+  // replace, not push: the form is done with, so its history entry should be
+  // too — otherwise the resulting event's back button (router.back()) lands
+  // back on the now-stale, already-submitted form instead of wherever this
+  // propose flow was actually opened from.
   function handleSubmit(details) {
     if (mode === "council") {
       proposeCouncilDraft(event, details);
-      router.push(`/events/${event.id}`);
+      router.replace(`/events/${event.id}`);
     } else {
       const created = proposeEndorsingAssembly(event, details, hood);
-      router.push(`/events/${created.id}`);
+      router.replace(`/events/${created.id}`);
     }
   }
 
