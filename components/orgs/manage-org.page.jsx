@@ -154,25 +154,25 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
             <label style={fieldLabel}>Open hours</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {hours.map((h, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <div key={i} style={{ display: "flex", alignItems: "stretch", border: `1px solid ${INK}` }}>
                   <input
                     value={h.day}
                     onChange={(e) => updateHour(i, "day", e.target.value)}
                     placeholder="Day (e.g. Tue or Mon–Fri)"
-                    style={{ ...fieldInput, flex: 1 }}
+                    style={{ flex: 1, minWidth: 0, padding: "11px 12px", border: "none", borderRight: `1px solid ${INK}`, fontFamily: serif, fontSize: TYPE.base, outline: "none" }}
                   />
                   <input
                     value={h.time}
                     onChange={(e) => updateHour(i, "time", e.target.value)}
                     placeholder="Hours (e.g. 4–8pm)"
-                    style={{ ...fieldInput, flex: 1 }}
+                    style={{ flex: 1, minWidth: 0, padding: "11px 12px", border: "none", borderRight: `1px solid ${INK}`, fontFamily: serif, fontSize: TYPE.base, outline: "none" }}
                   />
                   <button
                     onClick={() => removeHourRow(i)}
                     aria-label="Remove"
-                    style={{ background: "none", border: "none", cursor: "pointer", color: SOFT, display: "inline-flex", padding: 0, flexShrink: 0 }}
+                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "none", background: PAPER, color: SOFT, padding: "0 14px", flexShrink: 0 }}
                   >
-                    <XMarkIcon className="size-3" strokeWidth={3} />
+                    <XMarkIcon className="size-3.5" strokeWidth={2.5} />
                   </button>
                 </div>
               ))}
