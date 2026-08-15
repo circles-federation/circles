@@ -16,9 +16,10 @@ function shuffle(arr) {
   return a;
 }
 
-function buildRounds(homeHood) {
-  // the game is for learning your direct neighbors, so it draws only from the player's own neighborhood
-  const neighbors = MEMBERS.filter((m) => m.neighborhood === homeHood);
+function buildRounds(homeHood, excludeId) {
+  // the game is for learning your direct neighbors, so it draws only from the
+  // player's own neighborhood, minus the player themselves — you already know who you are
+  const neighbors = MEMBERS.filter((m) => m.neighborhood === homeHood && m.id !== excludeId);
   const pool = shuffle(neighbors);
   return pool.map((person) => {
     const distractors = shuffle(neighbors.filter((m) => m.id !== person.id)).slice(0, 3);
@@ -35,7 +36,7 @@ const primaryBtn = {
 
 export function NameGame({ onExit }) {
   const { profile } = useAppState();
-  const [rounds, setRounds] = useState(() => buildRounds(profile.neighborhood));
+  const [rounds, setRounds] = useState(() => buildRounds(profile.neighborhood, profile.id));
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState(null);
   const [score, setScore] = useState(0);
@@ -60,7 +61,7 @@ export function NameGame({ onExit }) {
   }
 
   function restart() {
-    setRounds(buildRounds(profile.neighborhood));
+    setRounds(buildRounds(profile.neighborhood, profile.id));
     setIdx(0);
     setPicked(null);
     setScore(0);
