@@ -3,6 +3,7 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { BackButton } from "@/components/chrome/back-button";
+import { ConfirmModal } from "@/components/chrome/confirm-modal";
 import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { EditableTags } from "@/components/profile/editable-tags";
@@ -28,6 +29,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
   // columns from facts.length rather than assuming 4).
   const factPairs = facts.map((f) => [f.label.trim(), f.value.trim()]).filter(([label, value]) => label || value);
   const dirty = about !== o.about || offers.join("\u0000") !== o.offers.join("\u0000") || JSON.stringify(factPairs) !== JSON.stringify(o.facts);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
   function updateFact(i, key, value) {
     setFacts((prev) => prev.map((f, j) => (j === i ? { ...f, [key]: value } : f)));
@@ -38,9 +40,16 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
     onBack();
   }
 
+  // shared by the top BackButton and the bottom Cancel button — both leave
+  // the form the same way, so both need the same unsaved-changes guard.
+  function handleLeave() {
+    if (dirty) setConfirmingDiscard(true);
+    else onBack();
+  }
+
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "28px 24px 80px" }}>
-      <BackButton onClick={onBack}>{o.name}</BackButton>
+      <BackButton onClick={handleLeave}>{o.name}</BackButton>
 
       <div style={{ borderTop: `3px solid ${INK}`, borderBottom: `1px solid ${INK}`, marginTop: 16, paddingTop: 16, paddingBottom: 20 }}>
         <Eyebrow style={{ color: SOFT }}>Manage organization</Eyebrow>
@@ -108,7 +117,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
           Save changes
         </button>
         <button
-          onClick={onBack}
+          onClick={handleLeave}
           className="ink-press"
           style={{
             fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700,
@@ -118,6 +127,17 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
           Cancel
         </button>
       </div>
+
+      {confirmingDiscard && (
+        <ConfirmModal
+          title="Discard changes?"
+          message="You have unsaved changes to this organization. If you leave now, they'll be lost."
+          confirmLabel="Discard"
+          cancelLabel="Cancel"
+          onConfirm={onBack}
+          onCancel={() => setConfirmingDiscard(false)}
+        />
+      )}
     </div>
   );
 }
