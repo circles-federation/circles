@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { Button } from "@/components/chrome/button";
 import { fieldInput } from "@/components/chrome/form-fields";
-import { INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
+import { INK, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 /* an editable list of tags: each removable, with an input to add new ones */
 export function EditableTags({ values, onChange, placeholder }) {
@@ -39,9 +40,9 @@ export function EditableTags({ values, onChange, placeholder }) {
           placeholder={placeholder}
           style={{ ...fieldInput, flex: 1 }}
         />
-        <button onClick={add} style={{ fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700, border: `1px solid ${INK}`, background: PAPER, color: INK, padding: "0 16px", cursor: "pointer" }}>
+        <Button variant="secondary" size="compact" disabled={!draft.trim()} onClick={add}>
           Add
-        </button>
+        </Button>
       </div>
     </div>
   );
