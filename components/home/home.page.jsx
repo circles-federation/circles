@@ -39,7 +39,7 @@ export function Home({ profile, events, rsvpState, toggleRsvp, voteState, toggle
       {/* identity masthead */}
       <div style={{ borderTop: `3px solid ${INK}`, borderBottom: `1px solid ${INK}`, paddingTop: 18, paddingBottom: 22, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 18 : 20, alignItems: isMobile ? "stretch" : "flex-start" }}>
         <div style={{ display: "flex", gap: 20, alignItems: "center", flex: 1, minWidth: 0 }}>
-          <img src={avatarFor(profile)} alt="" style={{ width: avatarSize, height: avatarSize, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}`, flexShrink: 0 }} />
+          <img src={avatarFor(profile)} alt="" style={{ width: avatarSize, height: avatarSize, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
             <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.95, margin: 0 }}>
               {profile.name}

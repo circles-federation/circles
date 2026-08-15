@@ -34,7 +34,7 @@ export function ProfileModal({ member: m, onClose, onOpenOrg }) {
         </div>
 
         <div style={{ display: "flex", gap: 20, padding: 22, borderBottom: `1px solid ${FAINT}` }}>
-          <img src={avatarFor(m)} alt="" style={{ width: 110, height: 110, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}`, flexShrink: 0 }} />
+          <img src={avatarFor(m)} alt="" style={{ width: 110, height: 110, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
           <div>
             <h2 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.heading, letterSpacing: "-0.03em", lineHeight: 0.95, margin: 0 }}>{m.name}</h2>
             <p style={{ fontFamily: sans, fontSize: TYPE.eyebrow, letterSpacing: "0.04em", color: SOFT, marginTop: 6 }}>{m.pronouns}</p>

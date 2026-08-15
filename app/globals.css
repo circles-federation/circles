@@ -67,7 +67,6 @@ a {
 .ink-press:active { background: var(--color-ink) !important; color: var(--color-paper) !important; }
 .ink-press:active * { color: var(--color-paper) !important; border-color: var(--color-paper) !important; }
 .ink-press:active span[style*="background"] { background: transparent !important; }
-.ink-press:active img { filter: grayscale(100%) invert(1) !important; }
 .btn-invert { transition: background 0.08s, color 0.08s; }
 .btn-ink:active { background: var(--color-paper) !important; color: var(--color-ink) !important; }
 .btn-teal:active { background: var(--color-paper) !important; color: var(--color-teal) !important; }

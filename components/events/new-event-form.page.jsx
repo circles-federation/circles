@@ -258,7 +258,7 @@ export function NewEventForm({ onCreate, onCancel }) {
           <div>
             <label style={fieldLabel}>Proposed by</label>
             <div style={{ ...fieldInput, display: "flex", alignItems: "center", gap: 10 }}>
-              <img src={avatarFor(me)} alt="" style={{ width: 26, height: 26, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}` }} />
+              <img src={avatarFor(me)} alt="" style={{ width: 26, height: 26, objectFit: "cover", border: `1px solid ${INK}` }} />
               <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{me.name} (you)</span>
             </div>
           </div>

@@ -50,7 +50,7 @@ export function Directory({ onOpenMember, initialHood = null }) {
               padding: 18, cursor: "pointer", display: "flex", gap: 14, alignItems: "center",
             }}
           >
-            <img src={avatarFor(m)} alt="" style={{ width: 56, height: 56, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}`, flexShrink: 0 }} />
+            <img src={avatarFor(m)} alt="" style={{ width: 56, height: 56, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.base, letterSpacing: "-0.01em" }}>
                 {m.name}

@@ -126,7 +126,7 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, rs
                   padding: 14, cursor: "pointer", display: "flex", gap: 12, alignItems: "center",
                 }}
               >
-                <img src={avatarFor(m)} alt="" style={{ width: 44, height: 44, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}`, flexShrink: 0 }} />
+                <img src={avatarFor(m)} alt="" style={{ width: 44, height: 44, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{m.name}</div>
                   <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{m.role}</Eyebrow>

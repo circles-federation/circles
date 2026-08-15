@@ -119,7 +119,7 @@ export function NameGame({ onExit }) {
             key={m.id}
             src={avatarFor(m)}
             alt="A neighbor in the federation"
-            style={{ width: 240, height: 240, objectFit: "cover", border: `1px solid ${INK}`, filter: "grayscale(100%)", display: "block" }}
+            style={{ width: 240, height: 240, objectFit: "cover", border: `1px solid ${INK}`, display: "block" }}
           />
           <div style={{
             position: "absolute", top: -16, left: -16, width: 40, height: 40, borderRadius: "50%",

@@ -30,7 +30,7 @@ export function OrgCard({ o, onOpenOrg }) {
       <div style={{ marginTop: "auto", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <span style={{ display: "flex" }}>
           {o.members.slice(0, 4).map((id, i) => (
-            <img key={id} src={avatarFor(memberById(id))} alt="" style={{ width: 26, height: 26, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}`, marginLeft: i === 0 ? 0 : -8, background: PAPER }} />
+            <img key={id} src={avatarFor(memberById(id))} alt="" style={{ width: 26, height: 26, objectFit: "cover", border: `1px solid ${INK}`, marginLeft: i === 0 ? 0 : -8, background: PAPER }} />
           ))}
         </span>
         <Eyebrow style={{ color: INK, fontSize: TYPE.micro }} className="inline-flex items-center gap-1">

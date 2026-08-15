@@ -296,7 +296,7 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
           style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 12 }}
         >
           {h.avatar
-            ? <img src={h.avatar} alt="" style={{ width: 40, height: 40, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}` }} />
+            ? <img src={h.avatar} alt="" style={{ width: 40, height: 40, objectFit: "cover", border: `1px solid ${INK}` }} />
             : <div style={{ width: 40, height: 40, border: `1px solid ${INK}`, background: INK, color: PAPER, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: sans, fontWeight: 800, fontSize: TYPE.lg }}>{h.label[0]}</div>}
           <div style={{ textAlign: "left" }}>
             <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{gov ? "Proposed by" : "Hosted by"}</Eyebrow>
@@ -408,7 +408,7 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
                           onClick={() => onOpenMember(m)}
                           style={{ display: "flex", alignItems: "center", gap: 8, background: m.id === CURRENT_USER_ID ? "#f4f4f4" : PAPER, border: `1px solid ${INK}`, padding: "6px 10px 6px 6px", cursor: "pointer" }}
                         >
-                          <img src={avatarFor(m)} alt="" style={{ width: 28, height: 28, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}` }} />
+                          <img src={avatarFor(m)} alt="" style={{ width: 28, height: 28, objectFit: "cover", border: `1px solid ${INK}` }} />
                           <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.xs }}>{m.name}{m.id === CURRENT_USER_ID ? " (you)" : ""}</span>
                         </button>
                       ))}
@@ -441,7 +441,7 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
                   padding: 14, cursor: "pointer", display: "flex", gap: 12, alignItems: "center",
                 }}
               >
-                <img src={avatarFor(m)} alt="" style={{ width: 44, height: 44, objectFit: "cover", filter: "grayscale(100%)", border: `1px solid ${INK}`, flexShrink: 0 }} />
+                <img src={avatarFor(m)} alt="" style={{ width: 44, height: 44, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
                 <div>
                   <div style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{m.name}{m.id === CURRENT_USER_ID ? " (you)" : ""}</div>
                   <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{m.role}</Eyebrow>
