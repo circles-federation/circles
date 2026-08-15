@@ -6,8 +6,9 @@ import clsx from "clsx";
 import { BackButton } from "@/components/chrome/back-button";
 import { Button } from "@/components/chrome/button";
 import { ConfirmModal } from "@/components/chrome/confirm-modal";
-import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
 import { Eyebrow } from "@/components/chrome/eyebrow";
+import { fieldInput } from "@/components/chrome/form-fields";
+import { Label } from "@/components/chrome/label";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
@@ -86,8 +87,8 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
       </div>
 
       <section className="border-b border-faint py-6.5">
-        <label style={fieldLabel}>Quick facts</label>
-        <div className="mt-2.5 grid grid-cols-1 min-[720px]:grid-cols-4 border border-ink">
+        <Label>Quick facts</Label>
+        <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border border-ink">
           {facts.map((f, i) => (
             <div
               key={i}
@@ -114,7 +115,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
       </section>
 
       <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <label style={fieldLabel}>About</label>
+        <Label>About</Label>
         <textarea
           value={about}
           onChange={(e) => setAbout(e.target.value)}
@@ -125,14 +126,14 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
       </section>
 
       <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <label style={fieldLabel}>What we offer</label>
+        <Label>What we offer</Label>
         <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
       </section>
 
       <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           <div>
-            <label style={fieldLabel}>Website</label>
+            <Label>Website</Label>
             <input
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
@@ -142,7 +143,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
           </div>
 
           <div>
-            <label style={fieldLabel}>Address</label>
+            <Label>Address</Label>
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -152,7 +153,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
           </div>
 
           <div>
-            <label style={fieldLabel}>Open hours</label>
+            <Label>Open hours</Label>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {hours.map((h, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "stretch", border: `1px solid ${INK}` }}>
