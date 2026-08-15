@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { DateTile } from "./date-tile";
 import { VoteButton } from "./vote-button";
 import { Eyebrow } from "@/components/chrome/eyebrow";
@@ -19,7 +20,6 @@ export function GovernanceRow({ e, voteState, toggleVote, onOpenEvent, hasCounci
   const past = isPastEvent(e);
   const accent = confirmed ? LEAF : (past ? SOFT : FLAME);
   const wash = past ? "transparent" : (confirmed ? "rgba(46,125,50,0.05)" : "rgba(225,83,11,0.035)");
-  const titleColor = past && !confirmed ? SOFT : INK;
   const metaColor = past ? SOFT : "#222";
   // status text differs: assemblies count resident votes; councils count endorsing neighborhoods
   const votes = voteCount(e);
@@ -50,7 +50,7 @@ export function GovernanceRow({ e, voteState, toggleVote, onOpenEvent, hasCounci
             </span>
           )}
         </div>
-        <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xl, letterSpacing: "-0.025em", lineHeight: 1.05, margin: "7px 0 6px", color: titleColor }}>
+        <div className={clsx("mt-1.75 mb-1.5 font-sans text-lg min-[720px]:text-xl font-extrabold tracking-[-0.025em] leading-[1.05]", past && !confirmed ? "text-soft" : "text-ink")}>
           {e.title}
         </div>
         <div style={{ fontFamily: serif, fontSize: TYPE.sm, color: metaColor }}>

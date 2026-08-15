@@ -77,7 +77,7 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
               ? <>{WEEKDAYS[d.getDay()]}, {MONTHS[d.getMonth()]} {d.getDate()} · {fmtTime(e.start)}–{fmtTime(e.end)}</>
               : <>Date to be set · {fmtTime(e.start)}–{fmtTime(e.end)}</>}
           </Eyebrow>
-          <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.95, margin: "12px 0 0" }}>{e.title}</h1>
+          <h1 className="mt-3 font-sans text-heading min-[720px]:text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{e.title}</h1>
           {isCouncil && e.sponsor && (
             <button
               onClick={() => { const a = (events || []).find((x) => x.id === e.sponsor.id); if (a) onOpenEvent(a); }}

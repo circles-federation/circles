@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { DateTile } from "./date-tile";
 import { RsvpButton } from "./rsvp-button";
 import { Eyebrow } from "@/components/chrome/eyebrow";
@@ -19,7 +20,6 @@ export function OrdinaryRow({ e, rsvpState, toggleRsvp, onOpenEvent }) {
   const past = isPastEvent(e);
   const exclusive = isExclusive(e);
   const isHostMember = isHostOrgMember(e, memberById(CURRENT_USER_ID));
-  const titleColor = past ? SOFT : INK;
   const metaColor = past ? SOFT : "#222";
   return (
     <div style={{ borderBottom: `1px solid ${INK}`, display: "flex", gap: 18, padding: "20px 22px 20px 16px", alignItems: "flex-start", borderLeft: `4px solid ${exclusive ? PLUM : "transparent"}`, ...(exclusive ? { background: "rgba(106,61,154,0.04)" } : {}) }}>
@@ -34,7 +34,7 @@ export function OrdinaryRow({ e, rsvpState, toggleRsvp, onOpenEvent }) {
           </Eyebrow>
           {exclusive && <Eyebrow style={{ color: PLUM, fontSize: TYPE.micro }}>· Members only</Eyebrow>}
         </div>
-        <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xl, letterSpacing: "-0.025em", lineHeight: 1.05, margin: "7px 0 6px", color: titleColor }}>
+        <div className={clsx("mt-1.75 mb-1.5 font-sans text-lg min-[720px]:text-xl font-extrabold tracking-[-0.025em] leading-[1.05]", past ? "text-soft" : "text-ink")}>
           {e.title}
         </div>
         <div style={{ fontFamily: serif, fontSize: TYPE.sm, color: metaColor }}>
