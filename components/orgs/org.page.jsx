@@ -1,4 +1,4 @@
-import { PencilIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton } from "@/components/chrome/back-button";
 import { Chip } from "@/components/chrome/chip";
@@ -154,7 +154,17 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, rs
             <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>Website</Eyebrow>
             <div style={{ marginTop: 8 }}>
               {o.website
-                ? <a href={`https://${o.website}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: sans, fontSize: TYPE.sm, fontWeight: 700, color: INK, textDecoration: "none", wordBreak: "break-all" }}>{o.website} ↗</a>
+                ? (
+                  <a
+                    href={`https://${o.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-sans text-sm font-bold text-ink underline underline-offset-2 break-all"
+                  >
+                    {o.website}
+                    <ArrowTopRightOnSquareIcon className="size-3.5" strokeWidth={2.5} />
+                  </a>
+                )
                 : <span style={{ fontFamily: serif, fontSize: TYPE.sm, color: SOFT }}>—</span>}
             </div>
           </div>
