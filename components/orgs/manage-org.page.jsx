@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton } from "@/components/chrome/back-button";
+import { Button } from "@/components/chrome/button";
 import { ConfirmModal } from "@/components/chrome/confirm-modal";
 import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
 import { Eyebrow } from "@/components/chrome/eyebrow";
@@ -176,47 +177,18 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
                   </button>
                 </div>
               ))}
-              <button
-                onClick={addHourRow}
-                className="ink-press"
-                style={{
-                  fontFamily: sans, fontSize: TYPE.eyebrow, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700,
-                  cursor: "pointer", padding: "10px 15px", alignSelf: "flex-start",
-                  border: `1px solid ${INK}`, background: PAPER, color: INK,
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                }}
-              >
+              <Button variant="secondary" size="compact" onClick={addHourRow} className="self-start">
                 <PlusIcon className="size-3.5" strokeWidth={2.5} />
                 Add hours
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </section>
 
       <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
-        <button
-          onClick={handleSave}
-          disabled={!dirty}
-          className={dirty ? "btn-invert btn-ink" : undefined}
-          style={{
-            fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700,
-            cursor: dirty ? "pointer" : "not-allowed", padding: "13px 24px",
-            border: `1px solid ${dirty ? INK : FAINT}`, background: dirty ? INK : PAPER, color: dirty ? PAPER : SOFT,
-          }}
-        >
-          Save changes
-        </button>
-        <button
-          onClick={handleLeave}
-          className="ink-press"
-          style={{
-            fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700,
-            cursor: "pointer", padding: "13px 24px", border: `1px solid ${INK}`, background: PAPER, color: INK,
-          }}
-        >
-          Cancel
-        </button>
+        <Button onClick={handleSave} disabled={!dirty}>Save changes</Button>
+        <Button variant="secondary" onClick={handleLeave}>Cancel</Button>
       </div>
 
       {confirmingDiscard && (
