@@ -7,8 +7,9 @@ import { BackButton } from "@/components/chrome/back-button";
 import { Button } from "@/components/chrome/button";
 import { ConfirmModal } from "@/components/chrome/confirm-modal";
 import { Eyebrow } from "@/components/chrome/eyebrow";
-import { fieldInput } from "@/components/chrome/form-fields";
+import { Input } from "@/components/chrome/input";
 import { Label } from "@/components/chrome/label";
+import { TextArea } from "@/components/chrome/text-area";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
@@ -116,12 +117,11 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
 
       <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
         <Label>About</Label>
-        <textarea
+        <TextArea
           value={about}
           onChange={(e) => setAbout(e.target.value)}
           placeholder="Write a short description of your organization, its purpose, and what it does."
           rows={5}
-          style={{ ...fieldInput, resize: "vertical", lineHeight: 1.5 }}
         />
       </section>
 
@@ -134,21 +134,19 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           <div>
             <Label>Website</Label>
-            <input
+            <Input
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="yourorg.coop"
-              style={fieldInput}
             />
           </div>
 
           <div>
             <Label>Address</Label>
-            <input
+            <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="123 Main St, Providence, RI"
-              style={fieldInput}
             />
           </div>
 
