@@ -4,12 +4,17 @@ import { useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton } from "@/components/chrome/back-button";
+import { ConfirmModal } from "@/components/chrome/confirm-modal";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
 import { TabbedPanel } from "@/components/chrome/tabbed-panel";
 import { CURRENT_USER_ID, EVENT_KINDS, ORGS_BY_MEMBER, avatarFor, memberById } from "@/lib/data";
 import { useIsMobile } from "@/lib/hooks";
 import { FAINT, FLAME, INK, PAPER, PLUM, SOFT, TYPE, sans, serif } from "@/lib/theme";
+
+const DEFAULT_START = "18:00";
+const DEFAULT_END = "20:00";
+const DEFAULT_SLOTS = [{ label: "", description: "", min: "1", max: "" }];
 
 export function NewEventForm({ onCreate, onCancel }) {
   const isMobile = useIsMobile();
@@ -25,15 +30,40 @@ export function NewEventForm({ onCreate, onCancel }) {
   const [title, setTitle] = useState("");
   const [hostKey, setHostKey] = useState(hostOptions[0].key);
   const [date, setDate] = useState("");
-  const [start, setStart] = useState("18:00");
-  const [end, setEnd] = useState("20:00");
+  const [start, setStart] = useState(DEFAULT_START);
+  const [end, setEnd] = useState(DEFAULT_END);
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [membersOnly, setMembersOnly] = useState(false);
   // slots (roles) for org-hosted events: each { label, description, min, max }
   const [useSlots, setUseSlots] = useState(false);
-  const [slots, setSlots] = useState([{ label: "", description: "", min: "1", max: "" }]);
+  const [slots, setSlots] = useState(DEFAULT_SLOTS);
   const [error, setError] = useState("");
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+
+  // true once the user has entered anything — guards Back/Cancel behind a
+  // confirmation rather than tracking a "dirty" diff against saved data,
+  // since a new-event form has no prior saved state to diff against.
+  // Switching the Event/Assembly tab alone doesn't count: it's a selection,
+  // not entered content, and it doesn't clear anything already typed.
+  const dirty =
+    title.trim() !== "" ||
+    hostKey !== hostOptions[0].key ||
+    date !== "" ||
+    start !== DEFAULT_START ||
+    end !== DEFAULT_END ||
+    location.trim() !== "" ||
+    description.trim() !== "" ||
+    membersOnly ||
+    useSlots ||
+    JSON.stringify(slots) !== JSON.stringify(DEFAULT_SLOTS);
+
+  // shared by the top BackButton and the bottom Cancel button — both leave
+  // the form the same way, so both need the same unsaved-changes guard.
+  function handleLeave() {
+    if (dirty) setConfirmingDiscard(true);
+    else onCancel();
+  }
 
   const meta = EVENT_KINDS[type];
   const gov = meta.governance;
@@ -110,7 +140,7 @@ export function NewEventForm({ onCreate, onCancel }) {
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "28px 24px 80px" }}>
-      <BackButton onClick={onCancel}>All events</BackButton>
+      <BackButton onClick={handleLeave}>All events</BackButton>
 
       <div style={{ borderTop: `3px solid ${accent}`, borderBottom: `1px solid ${INK}`, marginTop: 16, paddingTop: 16, paddingBottom: 20 }}>
         <Eyebrow style={{ color: gov ? FLAME : SOFT }}>{gov ? "Propose" : "Create"}</Eyebrow>
@@ -310,7 +340,7 @@ export function NewEventForm({ onCreate, onCancel }) {
             {gov ? "Propose meeting" : "Create event"}
           </button>
           <button
-            onClick={onCancel}
+            onClick={handleLeave}
             className="ink-press"
             style={{
               fontFamily: sans, fontSize: TYPE.eyebrow, letterSpacing: "0.14em", textTransform: "uppercase",
@@ -323,6 +353,17 @@ export function NewEventForm({ onCreate, onCancel }) {
         </div>
       </div>
       </TabbedPanel>
+
+      {confirmingDiscard && (
+        <ConfirmModal
+          title="Discard changes?"
+          message="You have unsaved changes to this event. If you leave now, they'll be lost."
+          confirmLabel="Discard"
+          cancelLabel="Cancel"
+          onConfirm={onCancel}
+          onCancel={() => setConfirmingDiscard(false)}
+        />
+      )}
     </div>
   );
 }
