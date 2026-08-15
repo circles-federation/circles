@@ -52,9 +52,15 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
 
       <section className="border-b border-faint py-6.5">
         <label style={fieldLabel}>Quick facts</label>
-        <div className="mt-2.5 grid grid-cols-4 border border-ink">
+        <div className="mt-2.5 grid grid-cols-1 min-[720px]:grid-cols-4 border border-ink">
           {facts.map((f, i) => (
-            <div key={i} className={clsx("p-3.5", i < facts.length - 1 && "border-r border-faint")}>
+            <div
+              key={i}
+              className={clsx(
+                "p-3.5",
+                i < facts.length - 1 && "border-b min-[720px]:border-b-0 min-[720px]:border-r border-faint",
+              )}
+            >
               <input
                 value={f.label}
                 onChange={(e) => updateFact(i, "label", e.target.value)}

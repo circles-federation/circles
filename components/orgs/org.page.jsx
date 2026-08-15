@@ -67,9 +67,9 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, rs
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${o.facts.length}, 1fr)`, borderBottom: `1px solid ${INK}` }}>
-        {o.facts.map(([k, v], i) => (
-          <div key={k} style={{ padding: "16px 14px", borderRight: i < o.facts.length - 1 ? `1px solid ${FAINT}` : "none" }}>
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 min-[720px]:grid-cols-4 gap-px bg-faint border-b border-ink">
+        {o.facts.map(([k, v]) => (
+          <div key={k} className="bg-paper py-4 px-3.5">
             <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{k}</Eyebrow>
             <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.lg, letterSpacing: "-0.01em", marginTop: 8 }}>{v}</div>
           </div>
