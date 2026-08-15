@@ -1,19 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import clsx from "clsx";
 import { BackButton } from "@/components/chrome/back-button";
 import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
+// matches org.page.jsx's read-only facts grid (label above a bold value,
+// evenly split columns) — kept fixed at 4 slots since that's what the
+// reference display grid assumes today.
+const FACT_SLOTS = 4;
+
 export function ManageOrgPage({ org: o, onSave, onBack }) {
   const [about, setAbout] = useState(o.about);
   const [offers, setOffers] = useState([...o.offers]);
-  const dirty = about !== o.about || offers.join("\u0000") !== o.offers.join("\u0000");
+  const [facts, setFacts] = useState(() =>
+    Array.from({ length: FACT_SLOTS }, (_, i) => {
+      const [label, value] = o.facts[i] || ["", ""];
+      return { label, value };
+    })
+  );
+  // blank slots (no label and no value) are dropped rather than saved as
+  // empty facts — this also lets an org end up with fewer than 4 facts,
+  // which org.page.jsx's display grid already handles (it sizes its
+  // columns from facts.length rather than assuming 4).
+  const factPairs = facts.map((f) => [f.label.trim(), f.value.trim()]).filter(([label, value]) => label || value);
+  const dirty = about !== o.about || offers.join("\u0000") !== o.offers.join("\u0000") || JSON.stringify(factPairs) !== JSON.stringify(o.facts);
+
+  function updateFact(i, key, value) {
+    setFacts((prev) => prev.map((f, j) => (j === i ? { ...f, [key]: value } : f)));
+  }
 
   function handleSave() {
-    onSave({ about: about.trim(), offers });
+    onSave({ about: about.trim(), offers, facts: factPairs });
     onBack();
   }
 
@@ -29,18 +50,41 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
         </p>
       </div>
 
+      <section className="border-b border-faint py-6.5">
+        <label style={fieldLabel}>Quick facts</label>
+        <div className="mt-2.5 grid grid-cols-4 border border-ink">
+          {facts.map((f, i) => (
+            <div key={i} className={clsx("p-3.5", i < facts.length - 1 && "border-r border-faint")}>
+              <input
+                value={f.label}
+                onChange={(e) => updateFact(i, "label", e.target.value)}
+                placeholder="Label"
+                className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink"
+              />
+              <input
+                value={f.value}
+                onChange={(e) => updateFact(i, "value", e.target.value)}
+                placeholder="Value"
+                className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <label style={fieldLabel}>Bio</label>
+        <label style={fieldLabel}>About</label>
         <textarea
           value={about}
           onChange={(e) => setAbout(e.target.value)}
+          placeholder="Write a short description of your organization, its purpose, and what it does."
           rows={5}
           style={{ ...fieldInput, resize: "vertical", lineHeight: 1.5 }}
         />
       </section>
 
       <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <label style={fieldLabel}>What they offer</label>
+        <label style={fieldLabel}>What we offer</label>
         <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
       </section>
 
