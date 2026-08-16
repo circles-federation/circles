@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
@@ -64,7 +65,10 @@ export function EventFeed({ events, councilProposals, rsvpState, toggleRsvp, vot
           }}
         >
           Load older events
-          <span style={{ color: SOFT }}>{remaining} more ↓</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: SOFT }}>
+            {remaining} more
+            <ChevronDownIcon className="size-3" strokeWidth={3} />
+          </span>
         </button>
       )}
     </>
