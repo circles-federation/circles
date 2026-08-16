@@ -10,6 +10,13 @@ import { canVote, endorsementCount, isConfirmed, kindOf, neighborhoodMajority, s
 import { useIsMobile } from "@/lib/hooks";
 import { FAINT, FLAME, INK, LEAF, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
+// this row only ever shows governance kinds, and EVENT_KINDS' canonical
+// labels ("Neighborhood Assembly", "Federation Council Meeting") read too
+// long for the chip here — the full label stays intact everywhere else
+// (e.g. event.page.jsx's masthead), this is purely a display choice for
+// this cramped context.
+const KIND_CHIP_LABEL = { assembly: "Assembly", council: "Council" };
+
 export function GovernanceRow({ e, voteState, toggleVote, onOpenEvent, hasCouncilProposal }) {
   const isMobile = useIsMobile();
   const k = kindOf(e);
@@ -38,7 +45,7 @@ export function GovernanceRow({ e, voteState, toggleVote, onOpenEvent, hasCounci
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
-          <Eyebrow style={{ color: accent, fontSize: TYPE.micro }}>· {k.label}</Eyebrow>
+          <Eyebrow style={{ color: accent, fontSize: TYPE.micro }}>· {KIND_CHIP_LABEL[e.kind] || k.label}</Eyebrow>
           {statusText && (
             <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.label, letterSpacing: "0.08em", textTransform: "uppercase", color: confirmed ? LEAF : SOFT }}>
               {statusText}
