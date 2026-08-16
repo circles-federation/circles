@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
+import { FloatingActionButton } from "@/components/chrome/floating-action-button";
 import { useToast } from "@/components/chrome/toast";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
 import { MEMBERS } from "@/lib/data";
@@ -146,19 +147,11 @@ export default function WelcomePage() {
         )}
       </div>
 
-      <button
+      <FloatingActionButton
         onClick={() => setDemoOpen(true)}
         title="Demo accounts"
-        aria-label="Demo accounts"
-        className="ink-press"
-        style={{
-          position: "fixed", bottom: 24, right: 24, zIndex: 40,
-          width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center",
-          background: PAPER, border: `1px solid ${INK}`, boxShadow: "4px 4px 0 rgba(10,10,10,1)", cursor: "pointer",
-        }}
-      >
-        <UsersIcon className="size-5" strokeWidth={2} style={{ color: INK }} />
-      </button>
+        icon={<UsersIcon className="size-5" strokeWidth={2} style={{ color: INK }} />}
+      />
 
       {demoOpen && (
         <div

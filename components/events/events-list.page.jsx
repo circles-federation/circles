@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
+import { FloatingActionButton } from "@/components/chrome/floating-action-button";
 import { PageHeader } from "@/components/chrome/page-header";
 import { SearchWithFilter } from "@/components/chrome/search-with-filter";
 import { EventFeed } from "./event-feed";
@@ -34,18 +35,28 @@ export function EventsList({ events, councilProposals, rsvpState, toggleRsvp, vo
       <PageHeader title="Events">
         <button
           onClick={onNewEvent}
-          className="btn-invert btn-ink"
+          className="btn-invert btn-ink hidden min-[720px]:inline-flex"
           style={{
             fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase",
             fontWeight: 700, cursor: "pointer", padding: "9px 16px",
             border: `1px solid ${INK}`, background: INK, color: PAPER,
-            display: "inline-flex", alignItems: "center", gap: 6,
+            alignItems: "center", gap: 6,
           }}
         >
           <PlusIcon className="size-3.5" strokeWidth={2.5} />
           New Event
         </button>
       </PageHeader>
+
+      {/* bottom clears BottomNav (app/(app) layout only), which the welcome
+          page's default offset doesn't need to account for */}
+      <FloatingActionButton
+        onClick={onNewEvent}
+        title="New event"
+        icon={<PlusIcon className="size-5" strokeWidth={2} style={{ color: INK }} />}
+        bottom={96}
+        className="min-[720px]:hidden"
+      />
 
       <SearchWithFilter
         query={query}
