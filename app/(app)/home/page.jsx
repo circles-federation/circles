@@ -5,7 +5,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useAppNav } from "@/lib/hooks";
 
 export default function Page() {
-  const { profile, events, rsvpState, toggleRsvp, voteState, toggleVote } = useAppState();
+  const { profile, events, rsvpState } = useAppState();
   const nav = useAppNav();
 
   return (
@@ -13,9 +13,6 @@ export default function Page() {
       profile={profile}
       events={events}
       rsvpState={rsvpState}
-      toggleRsvp={toggleRsvp}
-      voteState={voteState}
-      toggleVote={toggleVote}
       onOpenEvent={(e) => nav.openEvent(e, "Home")}
       setView={nav.setView}
       onOpenNeighbors={() => nav.openNeighbors(profile.neighborhood)}

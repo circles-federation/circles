@@ -18,7 +18,7 @@ import { FAINT, INK, PAPER, SOFT, TEAL, TYPE, sans, serif } from "@/lib/theme";
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their organizations (speed
    dial), and their events. Profile editing lives on a separate page. */
-export function Home({ profile, events, rsvpState, toggleRsvp, voteState, toggleVote, onOpenEvent, setView, onOpenNeighbors, onOpenLocalOrgs, onPlayGame, onOpenOrg, onEditProfile }) {
+export function Home({ profile, events, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalOrgs, onPlayGame, onOpenOrg, onEditProfile }) {
   const isMobile = useIsMobile();
   const neighbors = MEMBERS.filter((m) => m.neighborhood === profile.neighborhood);
   const localOrgs = ORGS.filter((o) => o.level === profile.neighborhood);
@@ -118,10 +118,6 @@ export function Home({ profile, events, rsvpState, toggleRsvp, voteState, toggle
         </div>
         <EventFeed
           events={myEvents}
-          rsvpState={rsvpState}
-          toggleRsvp={toggleRsvp}
-          voteState={voteState}
-          toggleVote={toggleVote}
           onOpenEvent={onOpenEvent}
           pageSize={5}
           topBorder

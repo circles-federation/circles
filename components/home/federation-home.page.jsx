@@ -10,7 +10,7 @@ import { INK, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 /* The Providence federation home / dashboard — same layout as the neighborhood
    home, but aggregated across the whole federation. */
-export function FederationHome({ events, rsvpState, toggleRsvp, voteState, toggleVote, onOpenEvent, setView }) {
+export function FederationHome({ events, onOpenEvent, setView }) {
   const neighborhoods = [...new Set(MEMBERS.map((m) => m.neighborhood))];
   const upcoming = [...events].filter((e) => !isPastEvent(e)).sort((a, b) => parseDay(a.date) - parseDay(b.date));
   const councils = upcoming.filter((e) => e.kind === "council"); // federation-level meetings
@@ -42,10 +42,6 @@ export function FederationHome({ events, rsvpState, toggleRsvp, voteState, toggl
         </div>
         <EventFeed
           events={events}
-          rsvpState={rsvpState}
-          toggleRsvp={toggleRsvp}
-          voteState={voteState}
-          toggleVote={toggleVote}
           onOpenEvent={onOpenEvent}
           pageSize={6}
           topBorder

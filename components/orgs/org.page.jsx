@@ -13,7 +13,7 @@ import { kindOf } from "@/lib/governance.util";
 import { useIsMobile } from "@/lib/hooks";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
-export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenEvent, onManage }) {
+export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, onBack, backLabel, onOpenMember, onOpenEvent, onManage }) {
   const isMobile = useIsMobile();
   const { profile } = useAppState();
   const members = o.members.map(memberById).filter(Boolean);
@@ -97,8 +97,8 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, rs
           <div style={{ marginTop: 4 }}>
             {hostedEvents.map((e) => (
               kindOf(e).governance
-                ? <GovernanceRow key={e.id} e={e} voteState={voteState} toggleVote={toggleVote} onOpenEvent={onOpenEvent} />
-                : <OrdinaryRow key={e.id} e={e} rsvpState={rsvpState} toggleRsvp={toggleRsvp} onOpenEvent={onOpenEvent} />
+                ? <GovernanceRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
+                : <OrdinaryRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
             ))}
           </div>
         ) : (

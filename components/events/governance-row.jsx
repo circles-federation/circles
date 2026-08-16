@@ -2,13 +2,11 @@
 
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
-import { VoteButton } from "./vote-button";
 import { Eyebrow } from "@/components/chrome/eyebrow";
-import { CURRENT_USER_ID, hostInfo, memberById } from "@/lib/data";
+import { hostInfo } from "@/lib/data";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
-import { canVote, endorsementCount, isConfirmed, kindOf, neighborhoodMajority, scopeLabel, voteCount } from "@/lib/governance.util";
-import { useIsMobile } from "@/lib/hooks";
-import { FAINT, FLAME, INK, LEAF, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
+import { endorsementCount, isConfirmed, kindOf, neighborhoodMajority, voteCount } from "@/lib/governance.util";
+import { FLAME, INK, LEAF, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 // this row only ever shows governance kinds, and EVENT_KINDS' canonical
 // labels ("Neighborhood Assembly", "Federation Council Meeting") read too
@@ -17,13 +15,13 @@ import { FAINT, FLAME, INK, LEAF, PAPER, SOFT, TYPE, sans, serif } from "@/lib/t
 // this cramped context.
 const KIND_CHIP_LABEL = { assembly: "Assembly", council: "Council" };
 
-export function GovernanceRow({ e, voteState, toggleVote, onOpenEvent, hasCouncilProposal }) {
-  const isMobile = useIsMobile();
+/* A single governance-event row. Read-only — voting/endorsing happens on
+   the event's own page; this just shows the vote/endorsement count. */
+export function GovernanceRow({ e, onOpenEvent, hasCouncilProposal }) {
   const k = kindOf(e);
   const h = hostInfo(e.host);
   const isCouncil = e.kind === "council";
   const confirmed = isConfirmed(e);
-  const voted = voteState[e.id];
   const past = isPastEvent(e);
   const accent = confirmed ? LEAF : (past ? SOFT : FLAME);
   const wash = past ? "transparent" : (confirmed ? "rgba(46,125,50,0.05)" : "rgba(225,83,11,0.035)");
@@ -31,6 +29,10 @@ export function GovernanceRow({ e, voteState, toggleVote, onOpenEvent, hasCounci
   // status text differs: assemblies count resident votes; councils count endorsing neighborhoods
   const votes = voteCount(e);
   const councilMaj = neighborhoodMajority();
+  // councils are "voted" on via neighborhood endorsements rather than individual
+  // votes, but the count/threshold display reads the same either way
+  const count = isCouncil ? endorsementCount(e) : votes;
+  const threshold = isCouncil ? councilMaj : k.threshold;
   const statusText = past
     ? (confirmed ? "· Held" : "· Lapsed")
     : isCouncil
@@ -64,34 +66,11 @@ export function GovernanceRow({ e, voteState, toggleVote, onOpenEvent, hasCounci
           Proposed by {h.label} · {e.location}
         </div>
       </button>
-      {!isMobile && (
-      <div style={{ flexShrink: 0, paddingTop: 4 }}>
-        {isCouncil ? (
-          <div
-            title={confirmed ? "Confirmed by a majority of neighborhoods" : "Awaiting neighborhood endorsements"}
-            style={{
-              fontFamily: sans, fontSize: TYPE.label, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700,
-              padding: "9px 13px", whiteSpace: "nowrap", cursor: "default",
-              border: `1px solid ${confirmed ? LEAF : (past ? FAINT : FLAME)}`, background: PAPER, color: confirmed ? LEAF : (past ? SOFT : FLAME),
-              display: "inline-flex", alignItems: "center", gap: 8,
-            }}
-          >
-            <span>{confirmed ? (past ? "✓ Held" : "✓ Confirmed") : (past ? "Lapsed" : "Endorsing")}</span>
-            <span style={{ fontWeight: 800, opacity: 0.85 }}>{endorsementCount(e)}/{councilMaj}</span>
-          </div>
-        ) : (
-          <VoteButton
-            voted={voted}
-            count={votes}
-            threshold={k.threshold}
-            onToggle={() => toggleVote(e.id)}
-            eligible={canVote(e, memberById(CURRENT_USER_ID))}
-            ineligibleNote={`Only people in ${scopeLabel(e)} can vote on this`}
-            past={past}
-          />
-        )}
+      <div style={{ flexShrink: 0, paddingTop: 4, textAlign: "right" }}>
+        <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.sm, color: confirmed ? LEAF : (past ? SOFT : INK), whiteSpace: "nowrap" }}>
+          {count}/{threshold} Votes
+        </div>
       </div>
-      )}
     </div>
   );
 }

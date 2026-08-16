@@ -12,7 +12,7 @@ function OrgDetail() {
   const { id } = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { orgs, events, rsvpState, toggleRsvp, voteState, toggleVote } = useAppState();
+  const { orgs, events } = useAppState();
   const { open } = useProfileModal();
   const nav = useAppNav();
 
@@ -26,10 +26,6 @@ function OrgDetail() {
       lastEditor={org.lastEditedBy ? memberById(org.lastEditedBy) : null}
       lastEditedAt={org.lastEditedAt}
       events={events}
-      rsvpState={rsvpState}
-      toggleRsvp={toggleRsvp}
-      voteState={voteState}
-      toggleVote={toggleVote}
       onBack={() => router.back()}
       backLabel={searchParams.get("from")}
       onOpenMember={open}

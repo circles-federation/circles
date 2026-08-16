@@ -13,7 +13,7 @@ import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
    then past events (most recent first), so reading downward moves backward
    through time across the present moment. Paginates with "Load more", which
    appends older events. Reused by the Events page and the Home dashboard. */
-export function EventFeed({ events, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote, onOpenEvent, pageSize = 12, emptyText = "No events yet.", topBorder = false }) {
+export function EventFeed({ events, councilProposals, onOpenEvent, pageSize = 12, emptyText = "No events yet.", topBorder = false }) {
   const { ordered, upcomingCount } = useMemo(() => {
     const up = [], pa = [];
     events.forEach((e) => (isPastEvent(e) ? pa : up).push(e));
@@ -48,8 +48,8 @@ export function EventFeed({ events, councilProposals, rsvpState, toggleRsvp, vot
               </div>
             )}
             {kindOf(e).governance
-              ? <GovernanceRow e={e} voteState={voteState} toggleVote={toggleVote} onOpenEvent={onOpenEvent} hasCouncilProposal={(councilProposals || []).some((p) => p.assemblyId === e.id)} />
-              : <OrdinaryRow e={e} rsvpState={rsvpState} toggleRsvp={toggleRsvp} onOpenEvent={onOpenEvent} />}
+              ? <GovernanceRow e={e} onOpenEvent={onOpenEvent} hasCouncilProposal={(councilProposals || []).some((p) => p.assemblyId === e.id)} />
+              : <OrdinaryRow e={e} onOpenEvent={onOpenEvent} />}
           </Fragment>
         ))}
       </div>

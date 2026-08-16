@@ -10,7 +10,7 @@ import { hostInfo } from "@/lib/data";
 import { isConfirmed, kindOf } from "@/lib/governance.util";
 import { INK, PAPER, TYPE, sans } from "@/lib/theme";
 
-export function EventsList({ events, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote, onOpenEvent, onNewEvent }) {
+export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState(null); // null | "Proposed" | "Confirmed"
 
@@ -71,10 +71,6 @@ export function EventsList({ events, councilProposals, rsvpState, toggleRsvp, vo
         <EventFeed
           events={filtered}
           councilProposals={councilProposals}
-          rsvpState={rsvpState}
-          toggleRsvp={toggleRsvp}
-          voteState={voteState}
-          toggleVote={toggleVote}
           onOpenEvent={onOpenEvent}
           emptyText={query || status ? "No events match your search." : "No events yet. Create one to get started."}
         />
