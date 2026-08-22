@@ -5,13 +5,14 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useAppNav } from "@/lib/hooks";
 
 export default function Page() {
-  const { profile, events, rsvpState } = useAppState();
+  const { profile, events, orgs, rsvpState } = useAppState();
   const nav = useAppNav();
 
   return (
     <Home
       profile={profile}
       events={events}
+      orgs={orgs}
       rsvpState={rsvpState}
       onOpenEvent={(e) => nav.openEvent(e, "Home")}
       setView={nav.setView}

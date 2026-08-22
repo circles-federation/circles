@@ -9,8 +9,10 @@ import { ConfirmModal } from "@/components/chrome/confirm-modal";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { Input } from "@/components/chrome/input";
 import { Label } from "@/components/chrome/label";
+import { Select } from "@/components/chrome/select";
 import { TextArea } from "@/components/chrome/text-area";
 import { EditableTags } from "@/components/profile/editable-tags";
+import { MEMBERS } from "@/lib/data";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 // matches org.page.jsx's read-only facts grid (label above a bold value,
@@ -18,7 +20,12 @@ import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 // reference display grid assumes today.
 const FACT_SLOTS = 4;
 
+// neighborhoods first (sorted), then Providence (the federation level) last
+// — same derivation/ordering as org-directory.page.jsx's "Level" filter.
+const SCOPE_OPTIONS = [...new Set(MEMBERS.map((m) => m.neighborhood))].sort().concat("Providence");
+
 export function ManageOrgPage({ org: o, onSave, onBack }) {
+  const [level, setLevel] = useState(o.level);
   const [about, setAbout] = useState(o.about);
   const [offers, setOffers] = useState([...o.offers]);
   const [facts, setFacts] = useState(() =>
@@ -39,6 +46,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
   // fewer (or zero) hours rows than it started with.
   const hoursPairs = hours.map((h) => [h.day.trim(), h.time.trim()]).filter(([day, time]) => day || time);
   const dirty =
+    level !== o.level ||
     about !== o.about ||
     offers.join("\u0000") !== o.offers.join("\u0000") ||
     JSON.stringify(factPairs) !== JSON.stringify(o.facts) ||
@@ -64,7 +72,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
   }
 
   function handleSave() {
-    onSave({ about: about.trim(), offers, facts: factPairs, website: website.trim(), address: address.trim(), hours: hoursPairs });
+    onSave({ level, about: about.trim(), offers, facts: factPairs, website: website.trim(), address: address.trim(), hours: hoursPairs });
     onBack();
   }
 
@@ -86,6 +94,18 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
           You’re editing this page as a member. Changes are visible to everyone, and your name will show as the last editor.
         </p>
       </div>
+
+      <section className="border-b border-faint py-6.5">
+        <Label htmlFor="org-scope">Scope</Label>
+        <Select id="org-scope" value={level} onChange={(e) => setLevel(e.target.value)} className="max-w-90">
+          {SCOPE_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </Select>
+        <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
+          Choosing a neighborhood limits visibility to existing members and residents of that neighborhood. Choosing Providence makes the organization visible federation-wide.
+        </p>
+      </section>
 
       <section className="border-b border-faint py-6.5">
         <Label>Quick facts</Label>
