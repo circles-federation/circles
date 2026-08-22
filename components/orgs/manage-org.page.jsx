@@ -9,11 +9,12 @@ import { ConfirmModal } from "@/components/chrome/confirm-modal";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { Input } from "@/components/chrome/input";
 import { Label } from "@/components/chrome/label";
+import { Section } from "@/components/chrome/section";
+import { SectionGroup } from "@/components/chrome/section-group";
 import { Select } from "@/components/chrome/select";
 import { TextArea } from "@/components/chrome/text-area";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { MEMBERS } from "@/lib/data";
-import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 // matches org.page.jsx's read-only facts grid (label above a bold value,
 // evenly split columns) — kept fixed at 4 slots since that's what the
@@ -84,128 +85,130 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
   }
 
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto", padding: "28px 24px 80px" }}>
+    <div className="mx-auto max-w-190 px-6 pt-7 pb-20">
       <BackButton onClick={handleLeave}>{o.name}</BackButton>
 
-      <div style={{ borderTop: `3px solid ${INK}`, borderBottom: `1px solid ${INK}`, marginTop: 16, paddingTop: 16, paddingBottom: 20 }}>
-        <Eyebrow style={{ color: SOFT }}>Manage organization</Eyebrow>
-        <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.95, margin: "12px 0 0" }}>{o.name}</h1>
-        <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: SOFT, margin: "12px 0 0", lineHeight: 1.5, maxWidth: "42em" }}>
+      <div className="mt-4 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5">
+        <Eyebrow className="text-soft">Manage organization</Eyebrow>
+        <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{o.name}</h1>
+        <p className="mt-3 max-w-[42em] font-serif text-sm leading-normal text-soft">
           You’re editing this page as a member. Changes are visible to everyone, and your name will show as the last editor.
         </p>
       </div>
 
-      <section className="border-b border-faint py-6.5">
-        <Label htmlFor="org-scope">Scope</Label>
-        <Select id="org-scope" value={level} onChange={(e) => setLevel(e.target.value)} className="max-w-90">
-          {SCOPE_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </Select>
-        <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-          Choosing a neighborhood limits visibility to existing members and residents of that neighborhood. Choosing Providence makes the organization visible federation-wide.
-        </p>
-      </section>
+      <SectionGroup>
+        <Section>
+          <Label htmlFor="org-scope">Scope</Label>
+          <Select id="org-scope" value={level} onChange={(e) => setLevel(e.target.value)} className="max-w-90">
+            {SCOPE_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </Select>
+          <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
+            Choosing a neighborhood limits visibility to existing members and residents of that neighborhood. Choosing Providence makes the organization visible federation-wide.
+          </p>
+        </Section>
 
-      <section className="border-b border-faint py-6.5">
-        <Label>Quick facts</Label>
-        <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border border-ink">
-          {facts.map((f, i) => (
-            <div
-              key={i}
-              className={clsx(
-                "p-3.5",
-                i < facts.length - 1 && "border-b min-[720px]:border-b-0 min-[720px]:border-r border-faint",
-              )}
-            >
-              <input
-                value={f.label}
-                onChange={(e) => updateFact(i, "label", e.target.value)}
-                placeholder="Label"
-                className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink"
-              />
-              <input
-                value={f.value}
-                onChange={(e) => updateFact(i, "value", e.target.value)}
-                placeholder="Value"
-                className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
+        <Section>
+          <Label>Quick facts</Label>
+          <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border border-ink">
+            {facts.map((f, i) => (
+              <div
+                key={i}
+                className={clsx(
+                  "p-3.5",
+                  i < facts.length - 1 && "border-b min-[720px]:border-b-0 min-[720px]:border-r border-faint",
+                )}
+              >
+                <input
+                  value={f.label}
+                  onChange={(e) => updateFact(i, "label", e.target.value)}
+                  placeholder="Label"
+                  className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink"
+                />
+                <input
+                  value={f.value}
+                  onChange={(e) => updateFact(i, "value", e.target.value)}
+                  placeholder="Value"
+                  className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
+                />
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <Section>
+          <Label>About</Label>
+          <TextArea
+            value={about}
+            onChange={(e) => setAbout(e.target.value)}
+            placeholder="Write a short description of your organization, its purpose, and what it does."
+            rows={5}
+          />
+        </Section>
+
+        <Section>
+          <Label>What we offer</Label>
+          <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
+        </Section>
+
+        <Section>
+          <div className="flex flex-col gap-5.5">
+            <div>
+              <Label>Website</Label>
+              <Input
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="yourorg.coop"
               />
             </div>
-          ))}
-        </div>
-      </section>
 
-      <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <Label>About</Label>
-        <TextArea
-          value={about}
-          onChange={(e) => setAbout(e.target.value)}
-          placeholder="Write a short description of your organization, its purpose, and what it does."
-          rows={5}
-        />
-      </section>
+            <div>
+              <Label>Address</Label>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="123 Main St, Providence, RI"
+              />
+            </div>
 
-      <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <Label>What we offer</Label>
-        <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
-      </section>
-
-      <section style={{ padding: "26px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          <div>
-            <Label>Website</Label>
-            <Input
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="yourorg.coop"
-            />
-          </div>
-
-          <div>
-            <Label>Address</Label>
-            <Input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="123 Main St, Providence, RI"
-            />
-          </div>
-
-          <div>
-            <Label>Open hours</Label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {hours.map((h, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "stretch", border: `1px solid ${INK}` }}>
-                  <input
-                    value={h.day}
-                    onChange={(e) => updateHour(i, "day", e.target.value)}
-                    placeholder="Day (e.g. Tue or Mon–Fri)"
-                    style={{ flex: 1, minWidth: 0, padding: "11px 12px", border: "none", borderRight: `1px solid ${INK}`, fontFamily: serif, fontSize: TYPE.base, outline: "none" }}
-                  />
-                  <input
-                    value={h.time}
-                    onChange={(e) => updateHour(i, "time", e.target.value)}
-                    placeholder="Hours (e.g. 4–8pm)"
-                    style={{ flex: 1, minWidth: 0, padding: "11px 12px", border: "none", borderRight: `1px solid ${INK}`, fontFamily: serif, fontSize: TYPE.base, outline: "none" }}
-                  />
-                  <button
-                    onClick={() => removeHourRow(i)}
-                    aria-label="Remove"
-                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "none", background: PAPER, color: SOFT, padding: "0 14px", flexShrink: 0 }}
-                  >
-                    <XMarkIcon className="size-3.5" strokeWidth={2.5} />
-                  </button>
-                </div>
-              ))}
-              <Button variant="secondary" size="compact" onClick={addHourRow} className="self-start">
-                <PlusIcon className="size-3.5" strokeWidth={2.5} />
-                Add hours
-              </Button>
+            <div>
+              <Label>Open hours</Label>
+              <div className="flex flex-col gap-2.5">
+                {hours.map((h, i) => (
+                  <div key={i} className="flex items-stretch border border-ink">
+                    <input
+                      value={h.day}
+                      onChange={(e) => updateHour(i, "day", e.target.value)}
+                      placeholder="Day (e.g. Tue or Mon–Fri)"
+                      className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
+                    />
+                    <input
+                      value={h.time}
+                      onChange={(e) => updateHour(i, "time", e.target.value)}
+                      placeholder="Hours (e.g. 4–8pm)"
+                      className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
+                    />
+                    <button
+                      onClick={() => removeHourRow(i)}
+                      aria-label="Remove"
+                      className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-paper px-3.5 text-soft"
+                    >
+                      <XMarkIcon className="size-3.5" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                ))}
+                <Button variant="secondary" size="compact" onClick={addHourRow} className="self-start">
+                  <PlusIcon className="size-3.5" strokeWidth={2.5} />
+                  Add hours
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </Section>
+      </SectionGroup>
 
-      <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
+      <div className="mt-7 flex flex-wrap gap-3">
         <Button onClick={handleSave} disabled={!dirty}>Save changes</Button>
         <Button variant="secondary" onClick={handleLeave}>Cancel</Button>
       </div>
