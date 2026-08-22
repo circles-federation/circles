@@ -1,13 +1,12 @@
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import { Chip, Eyebrow } from "@/components/shared";
-import { useAppState } from "@/components/providers/app-state-provider";
+import { Eyebrow } from "@/components/shared";
 import { avatarFor, memberById } from "@/lib/data";
 import { INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
+import { OrgScopeDot } from "./org-scope-dot";
 
 /* Reusable organization card — used in the Organizations directory and the
    Home dashboard's "my organizations" speed dial, so they look identical. */
 export function OrgCard({ o, onOpenOrg }) {
-  const { profile } = useAppState();
   return (
     <button
       className="ink-press"
@@ -18,11 +17,9 @@ export function OrgCard({ o, onOpenOrg }) {
         padding: 22, cursor: "pointer", display: "flex", flexDirection: "column", minHeight: 168,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+      <div className="flex min-h-6 items-center justify-between gap-2">
         <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{o.kind}</Eyebrow>
-        <span style={{ marginRight: -6 }}>
-          <Chip title={o.level === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{o.level}</Chip>
-        </span>
+        <OrgScopeDot org={o} />
       </div>
       <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xl, letterSpacing: "-0.025em", lineHeight: 1.0, marginTop: 12 }}>{o.name}</div>
       <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: "#222", margin: "10px 0 0", lineHeight: 1.4 }}>{o.tagline}</p>

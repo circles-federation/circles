@@ -311,10 +311,23 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return true;
   });
 
+  // an org outside the viewer's own neighborhood is invisible unless it's
+  // scoped to Providence (federation-wide) or the viewer is already one of
+  // its members — membership always wins so rescoping an org (see the Scope
+  // field on its manage page) can never lock its own members out of it,
+  // including the ability to change the scope back. Filtered here so it
+  // cascades everywhere orgs are read: the directory, Home's "Local
+  // organizations"/"My organizations" cards, and the /organizations/[id]
+  // and /organizations/[id]/manage routes, which 404 for an org filtered
+  // out here since they read from this same array.
+  const visibleOrgs = orgs.filter((o) => (
+    o.level === profile.neighborhood || o.level === "Providence" || o.members.includes(profile.id)
+  ));
+
   return (
     <AppStateContext.Provider
       value={{
-        events: visibleEvents, orgs, councilProposals, rsvpState, voteState, profile,
+        events: visibleEvents, orgs: visibleOrgs, councilProposals, rsvpState, voteState, profile,
         toggleRsvp, toggleRoleSlot, createEvent, proposeCouncilDraft,
         ratifyCouncilProposal, proposeEndorsingAssembly, toggleVote,
         saveOrg, saveProfile,

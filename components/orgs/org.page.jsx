@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { BackButton, Chip, Eyebrow, Tag } from "@/components/shared";
 import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
+import { OrgScopeBadge } from "./org-scope-badge";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { avatarFor, memberById } from "@/lib/data";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
@@ -32,7 +33,7 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Eyebrow style={{ color: SOFT }}>{o.kind}</Eyebrow>
-            <Chip title={o.level === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{o.level}</Chip>
+            <OrgScopeBadge org={o} />
           </div>
           <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.92, margin: "12px 0 0" }}>{o.name}</h1>
           <p style={{ fontFamily: serif, fontStyle: "italic", fontSize: TYPE.xl, color: "#222", margin: "14px 0 0" }}>{o.tagline}</p>
