@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton } from "@/components/chrome/back-button";
-import { ConfirmModal } from "@/components/chrome/confirm-modal";
-import { Eyebrow } from "@/components/chrome/eyebrow";
-import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
-import { TabbedPanel } from "@/components/chrome/tabbed-panel";
+import { BackButton } from "@/components/shared/back-button";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
+import { Eyebrow } from "@/components/shared/eyebrow";
+import { fieldInput, fieldLabel } from "@/components/shared/form-fields";
+import { TabbedPanel } from "@/components/shared/tabbed-panel";
 import { EVENT_KINDS, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
 import { useIsMobile } from "@/lib/hooks";
 import { FAINT, FLAME, INK, PAPER, PLUM, SOFT, TYPE, sans, serif } from "@/lib/theme";

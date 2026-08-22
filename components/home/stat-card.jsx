@@ -1,4 +1,4 @@
-import { Eyebrow } from "@/components/chrome/eyebrow";
+import { Eyebrow } from "@/components/shared/eyebrow";
 import { INK, PAPER, SOFT, TYPE, sans } from "@/lib/theme";
 
 /* A square statistic card: large Helvetica numeral over a label. */

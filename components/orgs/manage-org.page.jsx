@@ -3,16 +3,16 @@
 import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton } from "@/components/chrome/back-button";
-import { Button } from "@/components/chrome/button";
-import { ConfirmModal } from "@/components/chrome/confirm-modal";
-import { Eyebrow } from "@/components/chrome/eyebrow";
-import { Input } from "@/components/chrome/input";
-import { Label } from "@/components/chrome/label";
-import { Section } from "@/components/chrome/section";
-import { SectionGroup } from "@/components/chrome/section-group";
-import { Select } from "@/components/chrome/select";
-import { TextArea } from "@/components/chrome/text-area";
+import { BackButton } from "@/components/shared/back-button";
+import { Button } from "@/components/shared/button";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
+import { Eyebrow } from "@/components/shared/eyebrow";
+import { Input } from "@/components/shared/input";
+import { Label } from "@/components/shared/label";
+import { Section } from "@/components/shared/section";
+import { SectionGroup } from "@/components/shared/section-group";
+import { Select } from "@/components/shared/select";
+import { TextArea } from "@/components/shared/text-area";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { MEMBERS } from "@/lib/data";
 

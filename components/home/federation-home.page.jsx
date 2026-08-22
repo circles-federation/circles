@@ -1,7 +1,7 @@
 "use client";
 
-import { Eyebrow } from "@/components/chrome/eyebrow";
-import { ForwardLink } from "@/components/chrome/forward-link";
+import { Eyebrow } from "@/components/shared/eyebrow";
+import { ForwardLink } from "@/components/shared/forward-link";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
 import { MEMBERS, ORGS } from "@/lib/data";

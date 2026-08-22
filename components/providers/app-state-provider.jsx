@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import { useToast } from "@/components/chrome/toast";
+import { useToast } from "@/components/shared/toast";
 import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
 import {
   createCouncilProposal as dbCreateCouncilProposal,

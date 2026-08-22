@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PageHeader } from "@/components/chrome/page-header";
-import { SearchWithFilter } from "@/components/chrome/search-with-filter";
+import { PageHeader } from "@/components/shared/page-header";
+import { SearchWithFilter } from "@/components/shared/search-with-filter";
 import { OrgCard } from "./org-card";
 import { INK, TYPE, sans } from "@/lib/theme";
 

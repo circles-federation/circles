@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
-import { Eyebrow } from "@/components/chrome/eyebrow";
+import { Eyebrow } from "@/components/shared/eyebrow";
 import { hostInfo } from "@/lib/data";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
 import { endorsementCount, isConfirmed, kindOf, neighborhoodMajority, voteCount } from "@/lib/governance.util";

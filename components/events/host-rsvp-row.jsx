@@ -1,5 +1,5 @@
 import { RsvpButton } from "./rsvp-button";
-import { Eyebrow } from "@/components/chrome/eyebrow";
+import { Eyebrow } from "@/components/shared/eyebrow";
 import { hostInfo } from "@/lib/data";
 import { isPastEvent } from "@/lib/format.util";
 import { isExclusive, isHostOrgMember, kindOf } from "@/lib/governance.util";

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { Button } from "@/components/chrome/button";
-import { fieldInput } from "@/components/chrome/form-fields";
+import { Button } from "@/components/shared/button";
+import { fieldInput } from "@/components/shared/form-fields";
 import { INK, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 /* an editable list of tags: each removable, with an input to add new ones */

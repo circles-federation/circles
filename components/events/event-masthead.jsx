@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
-import { Eyebrow } from "@/components/chrome/eyebrow";
+import { Eyebrow } from "@/components/shared/eyebrow";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
 import { isConfirmed, isExclusive, kindOf } from "@/lib/governance.util";
 import { FLAME, LEAF, PLUM } from "@/lib/theme";

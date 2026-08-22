@@ -1,6 +1,6 @@
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import { Chip } from "@/components/chrome/chip";
-import { Eyebrow } from "@/components/chrome/eyebrow";
+import { Chip } from "@/components/shared/chip";
+import { Eyebrow } from "@/components/shared/eyebrow";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { avatarFor, memberById } from "@/lib/data";
 import { INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";

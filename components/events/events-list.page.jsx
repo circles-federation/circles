@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import { FloatingActionButton } from "@/components/chrome/floating-action-button";
-import { PageHeader } from "@/components/chrome/page-header";
-import { SearchWithFilter } from "@/components/chrome/search-with-filter";
+import { FloatingActionButton } from "@/components/shared/floating-action-button";
+import { PageHeader } from "@/components/shared/page-header";
+import { SearchWithFilter } from "@/components/shared/search-with-filter";
 import { EventFeed } from "./event-feed";
 import { hostInfo } from "@/lib/data";
 import { isConfirmed, kindOf } from "@/lib/governance.util";

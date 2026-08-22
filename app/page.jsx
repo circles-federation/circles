@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Eyebrow } from "@/components/chrome/eyebrow";
-import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
-import { FloatingActionButton } from "@/components/chrome/floating-action-button";
-import { useToast } from "@/components/chrome/toast";
+import { Eyebrow } from "@/components/shared/eyebrow";
+import { fieldInput, fieldLabel } from "@/components/shared/form-fields";
+import { FloatingActionButton } from "@/components/shared/floating-action-button";
+import { useToast } from "@/components/shared/toast";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
 import { MEMBERS } from "@/lib/data";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";

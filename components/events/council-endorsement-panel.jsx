@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Eyebrow } from "@/components/chrome/eyebrow";
+import { Eyebrow } from "@/components/shared/eyebrow";
 import { MEMBERS } from "@/lib/data";
 import { endorsementCount, isConfirmed, neighborhoodMajority } from "@/lib/governance.util";
 
