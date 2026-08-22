@@ -72,7 +72,7 @@ export function EventPage({ event: e, events, profile, councilProposals, rsvpSta
         onToggleRsvp={() => toggleRsvp(e.id)}
       />
 
-      <ExclusiveNotice event={e} profile={profile} />
+      <ExclusiveNotice event={e} />
 
       <EventDetailsSection event={e} profile={profile} />
 

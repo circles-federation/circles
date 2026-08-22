@@ -12,7 +12,7 @@ import {
 import { updateMember as dbUpdateMember } from "@/lib/db/members";
 import { updateOrg as dbUpdateOrg } from "@/lib/db/orgs";
 import { FEDERATION_COUNCIL_ENABLED } from "@/lib/feature-flags";
-import { kindOf } from "@/lib/governance.util";
+import { isExclusive, isHostOrgMember, kindOf } from "@/lib/governance.util";
 
 /* Holds the app's entire "database" — events, orgs, the current user's RSVPs/
    votes/profile, and pending council proposals — plus the mutations on it.
@@ -296,12 +296,20 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
   }
 
-  // federation council meetings are feature-flagged off by default (see
-  // lib/feature-flags.js) — filtered here, at the single source every route
-  // reads events from, so the flag applies everywhere at once: event lists,
-  // dashboards, and the /events/[id] and /events/[id]/propose routes (which
-  // 404 for a council event they can no longer find).
-  const visibleEvents = FEDERATION_COUNCIL_ENABLED ? events : events.filter((e) => e.kind !== "council");
+  // filtered here, at the single source every route reads events from, so
+  // both rules apply everywhere at once (event lists, dashboards, and the
+  // /events/[id] and /events/[id]/propose routes, which 404 for an event
+  // filtered out here since they read from this same array):
+  // - federation council meetings are feature-flagged off by default (see
+  //   lib/feature-flags.js)
+  // - a members-only event is invisible to anyone outside its hosting org,
+  //   not just un-RSVP-able — the org's privacy is the point, not just its
+  //   guest list
+  const visibleEvents = events.filter((e) => {
+    if (!FEDERATION_COUNCIL_ENABLED && e.kind === "council") return false;
+    if (isExclusive(e) && !isHostOrgMember(e, profile)) return false;
+    return true;
+  });
 
   return (
     <AppStateContext.Provider
