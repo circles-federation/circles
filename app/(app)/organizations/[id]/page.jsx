@@ -5,14 +5,14 @@ import { notFound, useParams, useRouter, useSearchParams } from "next/navigation
 import { OrgPage } from "@/components/orgs/org.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useProfileModal } from "@/components/providers/profile-modal-provider";
-import { CURRENT_USER_ID, memberById } from "@/lib/data";
+import { memberById } from "@/lib/data";
 import { useAppNav } from "@/lib/hooks";
 
 function OrgDetail() {
   const { id } = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { orgs, events } = useAppState();
+  const { orgs, events, profile } = useAppState();
   const { open } = useProfileModal();
   const nav = useAppNav();
 
@@ -22,7 +22,7 @@ function OrgDetail() {
   return (
     <OrgPage
       org={org}
-      isMember={org.members.includes(CURRENT_USER_ID)}
+      isMember={org.members.includes(profile.id)}
       lastEditor={org.lastEditedBy ? memberById(org.lastEditedBy) : null}
       lastEditedAt={org.lastEditedAt}
       events={events}
