@@ -225,26 +225,34 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return ev;
   }
 
-  // an endorsing assembly votes; if it passes quorum, its neighborhood is added
-  // to the council's endorsements (one neighborhood-vote for the council).
+  // voting on a neighborhood assembly and RSVPing to it are the same act —
+  // these meetings are confirmed by resident participation, so there's no
+  // "voted but not coming" state. Kept as one function (not a separate
+  // toggleRsvp call alongside this one) so both arrays update atomically.
+  // If this assembly exists to endorse a council and just reached quorum,
+  // its neighborhood's endorsement is recorded on that council too.
   function toggleVote(eventId) {
     let votedPatch = null;
     let endorsedPatch = null;
     let endorseCouncilId = null;
+    let willAttend = null;
     setEvents((prev) => {
       let endorseHood = null;
       const next = prev.map((ev) => {
         if (ev.id !== eventId) return ev;
         const has = (ev.votes || []).includes(currentUserId);
+        willAttend = !has;
         const votes = has ? ev.votes.filter((id) => id !== currentUserId) : [...(ev.votes || []), currentUserId];
-        votedPatch = { votes };
-        // if this assembly exists to endorse a council and just reached quorum,
-        // record its neighborhood's endorsement on that council.
+        const hasRsvp = ev.rsvps.includes(currentUserId);
+        const rsvps = willAttend
+          ? (hasRsvp ? ev.rsvps : [...ev.rsvps, currentUserId])
+          : ev.rsvps.filter((id) => id !== currentUserId);
+        votedPatch = { votes, rsvps };
         if (ev.endorsesCouncilId && votes.length >= (kindOf(ev).threshold || 5)) {
           endorseCouncilId = ev.endorsesCouncilId;
           endorseHood = ev.scope;
         }
-        return { ...ev, votes };
+        return { ...ev, votes, rsvps };
       });
       if (endorseCouncilId) {
         return next.map((ev) => {
@@ -261,6 +269,11 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     if (votedPatch) dbUpdateEvent(eventId, votedPatch);
     if (endorseCouncilId && endorsedPatch) dbUpdateEvent(endorseCouncilId, endorsedPatch);
     setVoteState((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
+    setRsvpState((prev) => {
+      const next = { ...prev, [eventId]: willAttend };
+      if (!willAttend) delete next[eventId];
+      return next;
+    });
   }
 
   // save edits to an org and record who edited it and when

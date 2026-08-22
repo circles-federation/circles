@@ -1,7 +1,11 @@
 import { FAINT, FLAME, LEAF, PAPER, SOFT, sans } from "@/lib/theme";
 
-/* Vote control for governance events. Shows progress toward quorum; once met,
-   the event is confirmed. Orange accent throughout. */
+/* Combined vote + attend control for a neighborhood assembly — voting for
+   the meeting is how you indicate you'll be there, so there's only one
+   action (see toggleVote in app-state-provider.jsx, which keeps votes and
+   RSVPs in lockstep). Stays open even after quorum is met, since people
+   can keep joining after confirmation — only closes once the event is
+   past. Orange accent while proposed, green once confirmed. */
 export function VoteButton({ voted, count, threshold, onToggle, big, eligible = true, ineligibleNote, past }) {
   const confirmed = count >= threshold;
   const accent = confirmed ? LEAF : FLAME;
@@ -36,26 +40,10 @@ export function VoteButton({ voted, count, threshold, onToggle, big, eligible = 
       </div>
     );
   }
-  if (confirmed) {
-    return (
-      <div
-        title="Quorum met — this meeting is confirmed"
-        style={{
-          fontFamily: sans, fontSize: big ? 12 : 11, letterSpacing: "0.12em", textTransform: "uppercase",
-          fontWeight: 700, padding: big ? "14px 20px" : "9px 13px",
-          border: `1px solid ${LEAF}`, background: PAPER, color: LEAF,
-          display: "inline-flex", alignItems: "center", gap: 9, whiteSpace: "nowrap", cursor: "default",
-        }}
-      >
-        <span>✓ Confirmed</span>
-        <span style={{ fontWeight: 800, opacity: 0.85 }}>{count}/{threshold}</span>
-      </div>
-    );
-  }
   return (
     <button
       onClick={onToggle}
-      title={`${threshold - count} more vote${threshold - count === 1 ? "" : "s"} to confirm`}
+      title={confirmed ? "Quorum met — you can still join" : `${threshold - count} more vote${threshold - count === 1 ? "" : "s"} to confirm`}
       style={{
         fontFamily: sans, fontSize: big ? 12 : 11, letterSpacing: "0.12em", textTransform: "uppercase",
         fontWeight: 700, cursor: "pointer", padding: big ? "14px 20px" : "9px 13px",
@@ -64,7 +52,7 @@ export function VoteButton({ voted, count, threshold, onToggle, big, eligible = 
         display: "inline-flex", alignItems: "center", gap: 9, whiteSpace: "nowrap",
       }}
     >
-      <span>{voted ? "✓ Voted" : "Vote to hold"}</span>
+      <span>{voted ? "✓ Going" : "RSVP"}</span>
       <span style={{ fontWeight: 800, opacity: 0.85 }}>{count}/{threshold}</span>
     </button>
   );

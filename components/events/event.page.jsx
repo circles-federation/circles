@@ -5,7 +5,7 @@ import { VoteButton } from "./vote-button";
 import { RsvpButton } from "./rsvp-button";
 import { BackButton } from "@/components/chrome/back-button";
 import { Eyebrow } from "@/components/chrome/eyebrow";
-import { CURRENT_USER_ID, MEMBERS, COUNCIL_RATIFY_THRESHOLD, avatarFor, hostInfo, memberById } from "@/lib/data";
+import { MEMBERS, COUNCIL_RATIFY_THRESHOLD, avatarFor, hostInfo, memberById } from "@/lib/data";
 import { FEDERATION_COUNCIL_ENABLED } from "@/lib/feature-flags";
 import { MONTHS, WEEKDAYS, fmtEditDate, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
 import {
@@ -23,7 +23,7 @@ import {
 import { hasRoles, roleFull, roleShort, roleUnmet, shiftCancelled, shiftNeedsSlots } from "@/lib/roles.util";
 import { FAINT, FLAME, INK, LEAF, PAPER, PLUM, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
-export function EventPage({ event: e, events, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenOrg, onOpenEvent, onToggleRoleSlot, onProposeCouncil, onRatifyProposal, onProposeEndorsingAssembly }) {
+export function EventPage({ event: e, events, profile, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenOrg, onOpenEvent, onToggleRoleSlot, onProposeCouncil, onRatifyProposal, onProposeEndorsingAssembly }) {
   const k = kindOf(e);
   const h = hostInfo(e.host);
   const going = rsvpState[e.id];
@@ -37,16 +37,16 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
   const govAccent = confirmed ? LEAF : FLAME; // green once confirmed, orange while proposed
   const past = isPastEvent(e);
   const exclusive = isExclusive(e);
-  const isHostMember = isHostOrgMember(e, memberById(CURRENT_USER_ID));
+  const isHostMember = isHostOrgMember(e, profile);
   const accentColor = gov ? (past && !confirmed ? SOFT : govAccent) : (past ? SOFT : (exclusive ? PLUM : INK));
-  const eligible = gov && canVote(e, memberById(CURRENT_USER_ID));
-  const canRead = canReadDetails(e, memberById(CURRENT_USER_ID));
+  const eligible = gov && canVote(e, profile);
+  const canRead = canReadDetails(e, profile);
   const isAssembly = e.kind === "assembly";
   const isCouncil = e.kind === "council";
-  const isResident = canVote(e, memberById(CURRENT_USER_ID));
+  const isResident = canVote(e, profile);
   // this assembly's own council proposals (drafts + ratified)
   const myProposals = (councilProposals || []).filter((p) => p.assemblyId === e.id);
-  const myHood = (memberById(CURRENT_USER_ID) || {}).neighborhood;
+  const myHood = profile.neighborhood;
   const councilMajority = neighborhoodMajority();
 
   return (
@@ -106,7 +106,7 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
             </div>
             {!eligible && (
               <p style={{ fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.02em", color: SOFT, margin: "10px 0 0", lineHeight: 1.4 }}>
-                Voting is open to people in {scopeLabel(e)}. You can still RSVP if it’s confirmed.
+                Voting and attending is limited to residents of {scopeLabel(e)}.
               </p>
             )}
           </div>
@@ -165,7 +165,7 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
               {myProposals.map((p) => {
                 const rv = p.ratifyVotes.length;
                 const ratified = p.ratified;
-                const mineVoted = p.ratifyVotes.includes(CURRENT_USER_ID);
+                const mineVoted = p.ratifyVotes.includes(profile.id);
                 return (
                   <div key={p.id} style={{ border: `1px solid ${ratified ? LEAF : FAINT}`, borderLeft: `4px solid ${ratified ? LEAF : FLAME}`, padding: "14px 16px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
@@ -303,7 +303,8 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
             <div style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.base }}>{h.label} →</div>
           </div>
         </button>
-        {!hasRoles(e) && <RsvpButton going={going} count={attendees.length} onToggle={() => toggleRsvp(e.id)} big disabled={past || (exclusive && !isHostMember)} reason={past ? "past" : ((exclusive && !isHostMember) ? "membersOnly" : undefined)} />}
+        {/* assemblies have no separate RSVP — voting above is how you attend */}
+        {!hasRoles(e) && !isAssembly && <RsvpButton going={going} count={attendees.length} onToggle={() => toggleRsvp(e.id)} big disabled={past || (exclusive && !isHostMember)} reason={past ? "past" : ((exclusive && !isHostMember) ? "membersOnly" : undefined)} />}
         {hasRoles(e) && (
           <div style={{ textAlign: "right" }}>
             <Eyebrow style={{ color: shiftCancelled(e) ? SOFT : (shiftNeedsSlots(e) ? FLAME : LEAF) }}>{shiftCancelled(e) ? "Not running" : (shiftNeedsSlots(e) ? "Needs slots" : "Shift on")}</Eyebrow>
@@ -355,7 +356,7 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 18 }}>
             {e.roles.map((role) => {
               const filled = role.members.map(memberById).filter(Boolean);
-              const mine = role.members.includes(CURRENT_USER_ID);
+              const mine = role.members.includes(profile.id);
               const unmet = roleUnmet(role);
               const full = roleFull(role) && !mine;
               return (
@@ -406,10 +407,10 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
                         <button
                           key={m.id}
                           onClick={() => onOpenMember(m)}
-                          style={{ display: "flex", alignItems: "center", gap: 8, background: m.id === CURRENT_USER_ID ? "#f4f4f4" : PAPER, border: `1px solid ${INK}`, padding: "6px 10px 6px 6px", cursor: "pointer" }}
+                          style={{ display: "flex", alignItems: "center", gap: 8, background: m.id === profile.id ? "#f4f4f4" : PAPER, border: `1px solid ${INK}`, padding: "6px 10px 6px 6px", cursor: "pointer" }}
                         >
                           <img src={avatarFor(m)} alt="" style={{ width: 28, height: 28, objectFit: "cover", border: `1px solid ${INK}` }} />
-                          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.xs }}>{m.name}{m.id === CURRENT_USER_ID ? " (you)" : ""}</span>
+                          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.xs }}>{m.name}{m.id === profile.id ? " (you)" : ""}</span>
                         </button>
                       ))}
                     </div>
@@ -436,14 +437,14 @@ export function EventPage({ event: e, events, councilProposals, rsvpState, toggl
                 className="ink-press"
                 onClick={() => onOpenMember(m)}
                 style={{
-                  textAlign: "left", background: m.id === CURRENT_USER_ID ? "#f4f4f4" : PAPER, border: "none",
+                  textAlign: "left", background: m.id === profile.id ? "#f4f4f4" : PAPER, border: "none",
                   borderRight: `1px solid ${INK}`, borderBottom: `1px solid ${INK}`,
                   padding: 14, cursor: "pointer", display: "flex", gap: 12, alignItems: "center",
                 }}
               >
                 <img src={avatarFor(m)} alt="" style={{ width: 44, height: 44, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{m.name}{m.id === CURRENT_USER_ID ? " (you)" : ""}</div>
+                  <div style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{m.name}{m.id === profile.id ? " (you)" : ""}</div>
                   <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{m.role}</Eyebrow>
                 </div>
               </button>

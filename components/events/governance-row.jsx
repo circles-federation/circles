@@ -68,7 +68,7 @@ export function GovernanceRow({ e, onOpenEvent, hasCouncilProposal }) {
       </button>
       <div style={{ flexShrink: 0, paddingTop: 4, textAlign: "right" }}>
         <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.sm, color: confirmed ? LEAF : (past ? SOFT : INK), whiteSpace: "nowrap" }}>
-          {count}/{threshold} Votes
+          {count}/{threshold} {past ? "Went" : "Going"}
         </div>
       </div>
     </div>

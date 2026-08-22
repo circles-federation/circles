@@ -13,7 +13,7 @@ function EventDetail() {
   const searchParams = useSearchParams();
   const {
     events, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote,
-    toggleRoleSlot, ratifyCouncilProposal,
+    toggleRoleSlot, ratifyCouncilProposal, profile,
   } = useAppState();
   const { open } = useProfileModal();
   const nav = useAppNav();
@@ -25,6 +25,7 @@ function EventDetail() {
     <EventPage
       event={event}
       events={events}
+      profile={profile}
       councilProposals={councilProposals}
       rsvpState={rsvpState}
       toggleRsvp={toggleRsvp}
