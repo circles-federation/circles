@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Eyebrow } from "@/components/shared/eyebrow";
+import { Eyebrow } from "@/components/shared";
 import { avatarFor, memberById } from "@/lib/data";
 import { isPastEvent } from "@/lib/format.util";
 import { roleFull, roleUnmet } from "@/lib/roles.util";

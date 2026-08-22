@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Eyebrow } from "@/components/shared/eyebrow";
+import { Eyebrow } from "@/components/shared";
 import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
 import { fmtEditDate } from "@/lib/format.util";
 import { canVote, scopeLabel } from "@/lib/governance.util";

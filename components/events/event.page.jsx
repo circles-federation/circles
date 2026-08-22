@@ -2,7 +2,7 @@
 
 import { AssemblyVoteBanner } from "./assembly-vote-banner";
 import { AttendeesSection } from "./attendees-section";
-import { BackButton } from "@/components/shared/back-button";
+import { BackButton } from "@/components/shared";
 import { CouncilEndorsementPanel } from "./council-endorsement-panel";
 import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";

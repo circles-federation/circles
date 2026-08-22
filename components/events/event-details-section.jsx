@@ -1,4 +1,4 @@
-import { Eyebrow } from "@/components/shared/eyebrow";
+import { Eyebrow } from "@/components/shared";
 import { canReadDetails, scopeLabel } from "@/lib/governance.util";
 
 /* The event's description — redacted with blacked-out placeholder bars for

@@ -1,9 +1,6 @@
 import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton } from "@/components/shared/back-button";
-import { Chip } from "@/components/shared/chip";
-import { Eyebrow } from "@/components/shared/eyebrow";
-import { Tag } from "@/components/shared/tag";
+import { BackButton, Chip, Eyebrow, Tag } from "@/components/shared";
 import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
 import { useAppState } from "@/components/providers/app-state-provider";

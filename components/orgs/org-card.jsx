@@ -1,6 +1,5 @@
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import { Chip } from "@/components/shared/chip";
-import { Eyebrow } from "@/components/shared/eyebrow";
+import { Chip, Eyebrow } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { avatarFor, memberById } from "@/lib/data";
 import { INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";

@@ -1,10 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Chip } from "@/components/shared/chip";
-import { Eyebrow } from "@/components/shared/eyebrow";
-import { PageHeader } from "@/components/shared/page-header";
-import { SearchWithFilter } from "@/components/shared/search-with-filter";
+import { Chip, Eyebrow, PageHeader, SearchWithFilter } from "@/components/shared";
 import { CURRENT_USER_ID, MEMBERS, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
 import { INK, PAPER, SOFT, TYPE, sans } from "@/lib/theme";
 

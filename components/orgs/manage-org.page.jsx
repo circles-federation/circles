@@ -3,16 +3,7 @@
 import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton } from "@/components/shared/back-button";
-import { Button } from "@/components/shared/button";
-import { ConfirmModal } from "@/components/shared/confirm-modal";
-import { Eyebrow } from "@/components/shared/eyebrow";
-import { Input } from "@/components/shared/input";
-import { Label } from "@/components/shared/label";
-import { Section } from "@/components/shared/section";
-import { SectionGroup } from "@/components/shared/section-group";
-import { Select } from "@/components/shared/select";
-import { TextArea } from "@/components/shared/text-area";
+import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, Section, SectionGroup, Select, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { MEMBERS } from "@/lib/data";
 

@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { Eyebrow } from "@/components/shared/eyebrow";
+import { Eyebrow } from "@/components/shared";
 import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
 import { isPastEvent, parseDay } from "@/lib/format.util";

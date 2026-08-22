@@ -1,4 +1,4 @@
-import { Eyebrow } from "@/components/shared/eyebrow";
+import { Eyebrow } from "@/components/shared";
 import { hostInfo } from "@/lib/data";
 import { isExclusive } from "@/lib/governance.util";
 

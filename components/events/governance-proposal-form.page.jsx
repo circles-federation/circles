@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BackButton } from "@/components/shared/back-button";
-import { Eyebrow } from "@/components/shared/eyebrow";
-import { fieldInput, fieldLabel } from "@/components/shared/form-fields";
+import { BackButton, Eyebrow, fieldInput, fieldLabel } from "@/components/shared";
 import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
 import { FLAME, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 

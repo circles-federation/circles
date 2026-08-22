@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Eyebrow } from "@/components/shared/eyebrow";
+import { Eyebrow } from "@/components/shared";
 import { avatarFor, memberById } from "@/lib/data";
 import { canReadDetails, scopeLabel } from "@/lib/governance.util";
 import { hasRoles } from "@/lib/roles.util";

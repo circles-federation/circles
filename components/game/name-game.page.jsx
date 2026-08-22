@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BackButton } from "@/components/shared/back-button";
-import { Eyebrow } from "@/components/shared/eyebrow";
+import { BackButton, Eyebrow } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { MEMBERS, avatarFor } from "@/lib/data";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";

@@ -3,9 +3,7 @@
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
-import { Chip } from "@/components/shared/chip";
-import { Eyebrow } from "@/components/shared/eyebrow";
-import { ForwardLink } from "@/components/shared/forward-link";
+import { Chip, Eyebrow, ForwardLink } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";

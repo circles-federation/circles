@@ -1,7 +1,6 @@
 "use client";
 
-import { Eyebrow } from "@/components/shared/eyebrow";
-import { ForwardLink } from "@/components/shared/forward-link";
+import { Eyebrow, ForwardLink } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
 import { MEMBERS, ORGS } from "@/lib/data";

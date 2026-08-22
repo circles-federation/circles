@@ -2,9 +2,7 @@
 
 import { useEffect } from "react";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import { Chip } from "@/components/shared/chip";
-import { Eyebrow } from "@/components/shared/eyebrow";
-import { Tag } from "@/components/shared/tag";
+import { Chip, Eyebrow, Tag } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";

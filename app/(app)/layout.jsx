@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AppShell } from "@/components/shared/app-shell";
+import { AppShell } from "@/components/shared";
 import { AppStateProvider } from "@/components/providers/app-state-provider";
 import { ProfileModalProvider } from "@/components/providers/profile-modal-provider";
 import { getEvents } from "@/lib/db/events";

@@ -1,5 +1,5 @@
 import "./globals.css";
-import { ToastProvider } from "@/components/shared/toast";
+import { ToastProvider } from "@/components/shared";
 
 export const metadata = {
   title: "Convene",
