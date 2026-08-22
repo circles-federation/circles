@@ -8,7 +8,7 @@ import { ConfirmModal } from "@/components/chrome/confirm-modal";
 import { Eyebrow } from "@/components/chrome/eyebrow";
 import { fieldInput, fieldLabel } from "@/components/chrome/form-fields";
 import { TabbedPanel } from "@/components/chrome/tabbed-panel";
-import { CURRENT_USER_ID, EVENT_KINDS, ORGS_BY_MEMBER, avatarFor, memberById } from "@/lib/data";
+import { EVENT_KINDS, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
 import { useIsMobile } from "@/lib/hooks";
 import { FAINT, FLAME, INK, PAPER, PLUM, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
@@ -16,13 +16,12 @@ const DEFAULT_START = "18:00";
 const DEFAULT_END = "20:00";
 const DEFAULT_SLOTS = [{ label: "", description: "", min: "1", max: "" }];
 
-export function NewEventForm({ onCreate, onCancel }) {
+export function NewEventForm({ profile, onCreate, onCancel }) {
   const isMobile = useIsMobile();
   // host options: the current user, plus every org they belong to
-  const me = memberById(CURRENT_USER_ID);
-  const myOrgs = ORGS_BY_MEMBER[CURRENT_USER_ID] || [];
+  const myOrgs = ORGS_BY_MEMBER[profile.id] || [];
   const hostOptions = [
-    { key: "member:" + me.id, label: `${me.name} (you)`, host: { type: "member", id: me.id } },
+    { key: "member:" + profile.id, label: `${profile.name} (you)`, host: { type: "member", id: profile.id } },
     ...myOrgs.map((o) => ({ key: "org:" + o.id, label: o.name, host: { type: "org", id: o.id } })),
   ];
 
@@ -76,18 +75,18 @@ export function NewEventForm({ onCreate, onCancel }) {
     if (gov) {
       // governance meetings are proposed by a person, not an org; the proposer is the first vote.
       // assemblies are scoped to the proposer's neighborhood; councils are federation-wide.
-      const scope = me.neighborhood; // assemblies are scoped to the proposer's neighborhood
+      const scope = profile.neighborhood; // assemblies are scoped to the proposer's neighborhood
       onCreate({
         id: "e" + Date.now(),
         title: title.trim(),
         kind: type,
         scope,
-        host: { type: "member", id: CURRENT_USER_ID },
+        host: { type: "member", id: profile.id },
         date, start, end,
         location: location.trim(),
         description: description.trim() || "No agenda yet.",
-        votes: [CURRENT_USER_ID],
-        rsvps: [CURRENT_USER_ID],
+        votes: [profile.id],
+        rsvps: [profile.id],
       });
       return;
     }
@@ -127,7 +126,7 @@ export function NewEventForm({ onCreate, onCancel }) {
       date, start, end,
       location: location.trim(),
       description: description.trim() || "No description yet.",
-      rsvps: roles ? [] : [CURRENT_USER_ID],
+      rsvps: roles ? [] : [profile.id],
       ...(roles ? { roles } : {}),
       ...(isOrgHost && membersOnly ? { membersOnly: true } : {}),
     });
@@ -158,7 +157,7 @@ export function NewEventForm({ onCreate, onCancel }) {
       {gov && (
         <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: "#222", lineHeight: 1.5, margin: "0 0 4px", borderLeft: `3px solid ${FLAME}`, paddingLeft: 12 }}>
           {type === "assembly"
-            ? <>This is a governance meeting for <strong>{me.neighborhood}</strong>. Once proposed it needs <strong>{meta.threshold} votes from {me.neighborhood} residents</strong> to be confirmed. Your proposal counts as the first vote.</>
+            ? <>This is a governance meeting for <strong>{profile.neighborhood}</strong>. Once proposed it needs <strong>{meta.threshold} votes from {profile.neighborhood} residents</strong> to be confirmed. Your proposal counts as the first vote.</>
             : <>This is a federation-wide governance meeting. Once proposed it needs <strong>{meta.threshold} votes</strong> from across the federation to be confirmed. Your proposal counts as the first vote.</>}
         </p>
       )}
@@ -288,8 +287,8 @@ export function NewEventForm({ onCreate, onCancel }) {
           <div>
             <label style={fieldLabel}>Proposed by</label>
             <div style={{ ...fieldInput, display: "flex", alignItems: "center", gap: 10 }}>
-              <img src={avatarFor(me)} alt="" style={{ width: 26, height: 26, objectFit: "cover", border: `1px solid ${INK}` }} />
-              <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{me.name} (you)</span>
+              <img src={avatarFor(profile)} alt="" style={{ width: 26, height: 26, objectFit: "cover", border: `1px solid ${INK}` }} />
+              <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{profile.name} (you)</span>
             </div>
           </div>
         )}

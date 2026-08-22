@@ -3,7 +3,6 @@
 import { notFound, useParams, useRouter } from "next/navigation";
 import { GovernanceProposalForm } from "@/components/events/governance-proposal-form.page";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { CURRENT_USER_ID, memberById } from "@/lib/data";
 
 /* One route serves both governance-proposal flows: a confirmed assembly
    proposes a federation council (mode "council"), and a federation council
@@ -13,13 +12,13 @@ import { CURRENT_USER_ID, memberById } from "@/lib/data";
 export default function Page() {
   const { id } = useParams();
   const router = useRouter();
-  const { events, proposeCouncilDraft, proposeEndorsingAssembly } = useAppState();
+  const { events, profile, proposeCouncilDraft, proposeEndorsingAssembly } = useAppState();
 
   const event = events.find((e) => e.id === id);
   if (!event || (event.kind !== "assembly" && event.kind !== "council")) notFound();
 
   const mode = event.kind === "assembly" ? "council" : "assembly";
-  const hood = mode === "assembly" ? memberById(CURRENT_USER_ID).neighborhood : undefined;
+  const hood = mode === "assembly" ? profile.neighborhood : undefined;
 
   // replace, not push: the form is done with, so its history entry should be
   // too — otherwise the resulting event's back button (router.back()) lands
