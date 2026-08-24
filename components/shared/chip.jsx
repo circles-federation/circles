@@ -23,7 +23,7 @@ export function Chip({ children, title }) {
       style={{
         display: "inline-flex", alignItems: "center", gap: 4,
         fontFamily: sans, fontSize: TYPE.label, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700,
-        padding: "4px 9px", marginRight: 6, whiteSpace: "nowrap",
+        padding: "4px 9px", whiteSpace: "nowrap",
         border: `1px solid ${bd}`,
         background: bg, color: fg,
       }}
