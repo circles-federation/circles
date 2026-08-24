@@ -1,7 +1,7 @@
 "use client";
 
+import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { INK, PAPER, TEAL, TYPE, sans } from "@/lib/theme";
 
 /* A small place badge. Solid ink = elsewhere/federation-level (the noteworthy
    case); hollow = local to this neighborhood (the quiet default).            */
@@ -14,21 +14,18 @@ export function Chip({ children, title }) {
   // see their own home highlighted, not always "The 903".
   const { profile } = useAppState();
   const place = typeof children === "string" ? children : "";
-  let bg = PAPER, fg = INK, bd = INK;
-  if (place === profile.neighborhood) { bg = TEAL; fg = PAPER; bd = TEAL; }
-  else if (place === FEDERATION_LABEL) { bg = INK; fg = PAPER; bd = INK; }
+  const local = place === profile.neighborhood;
+  const federation = place === FEDERATION_LABEL;
+
   return (
     <span
       title={title}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 4,
-        fontFamily: sans, fontSize: TYPE.label, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700,
-        padding: "4px 9px", whiteSpace: "nowrap",
-        border: `1px solid ${bd}`,
-        background: bg, color: fg,
-      }}
+      className={clsx(
+        "inline-flex items-center gap-1 whitespace-nowrap border px-2.25 py-1 font-sans text-label font-bold uppercase tracking-[0.08em]",
+        local ? "border-teal bg-teal text-paper" : federation ? "border-ink bg-ink text-paper" : "border-ink bg-paper text-ink",
+      )}
     >
-      <span style={{ fontSize: TYPE.micro, opacity: 0.85 }}>◆</span>
+      <span className="text-micro opacity-[0.85]">◆</span>
       {children}
     </span>
   );
