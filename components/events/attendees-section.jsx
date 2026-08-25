@@ -6,7 +6,7 @@ import { hasRoles } from "@/lib/roles.util";
 
 /* Flat attendee roster for a non-slotted event (role-slotted events show
    who's in each role instead, via RoleSlotsSection). Hidden for a viewer
-   who isn't a resident of an assembly's neighborhood. */
+   who isn't a resident of a meeting's neighborhood. */
 export function AttendeesSection({ event: e, profile, onOpenMember }) {
   if (hasRoles(e)) return null;
   const canRead = canReadDetails(e, profile);

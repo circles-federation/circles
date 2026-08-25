@@ -7,12 +7,12 @@ import { hasRoles, roleShort, shiftCancelled, shiftNeedsSlots } from "@/lib/role
 
 /* Who's hosting/proposing this event, plus the right-side action: an RSVP
    toggle for ordinary/council events, a signed-up count for role-slotted
-   ones, or nothing for an assembly — assemblies vote to attend instead (see
-   AssemblyVoteBanner), so they don't get a separate RSVP control here. */
+   ones, or nothing for a meeting — meetings vote to attend instead (see
+   MeetingVoteBanner), so they don't get a separate RSVP control here. */
 export function HostRsvpRow({ event: e, profile, going, attendeeCount, onOpenOrg, onOpenMember, onToggleRsvp }) {
   const h = hostInfo(e.host);
   const gov = kindOf(e).governance;
-  const isAssembly = e.kind === "assembly";
+  const isMeeting = e.kind === "meeting";
   const exclusive = isExclusive(e);
   const past = isPastEvent(e);
   const isHostMember = isHostOrgMember(e, profile);
@@ -35,8 +35,8 @@ export function HostRsvpRow({ event: e, profile, going, attendeeCount, onOpenOrg
           <div className="font-sans text-base font-bold">{h.label} →</div>
         </div>
       </button>
-      {/* assemblies have no separate RSVP — voting above is how you attend */}
-      {!hasRoles(e) && !isAssembly && <RsvpButton going={going} count={attendeeCount} onToggle={onToggleRsvp} big disabled={past || (exclusive && !isHostMember)} reason={past ? "past" : ((exclusive && !isHostMember) ? "membersOnly" : undefined)} />}
+      {/* meetings have no separate RSVP — voting above is how you attend */}
+      {!hasRoles(e) && !isMeeting && <RsvpButton going={going} count={attendeeCount} onToggle={onToggleRsvp} big disabled={past || (exclusive && !isHostMember)} reason={past ? "past" : ((exclusive && !isHostMember) ? "membersOnly" : undefined)} />}
       {hasRoles(e) && (
         <div className="text-right">
           <Eyebrow className={roleStatusClass}>{shiftCancelled(e) ? "Not running" : (shiftNeedsSlots(e) ? "Needs slots" : "Shift on")}</Eyebrow>

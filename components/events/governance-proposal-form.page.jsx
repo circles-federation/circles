@@ -5,12 +5,12 @@ import { BackButton, Eyebrow, fieldInput, fieldLabel } from "@/components/shared
 import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
 import { FLAME, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
-/* A focused form for proposing a federation council (from an assembly) or an
-   endorsing neighborhood assembly (from a council). Collects title, date, time,
-   location, and agenda — mirroring the assembly event form. */
-export function GovernanceProposalForm({ mode, context, hood, onSubmit, onCancel }) {
+/* A focused form for proposing a federation council (from a confirmed
+   meeting) or an endorsing meeting (from a council). Collects title, date,
+   time, location, and agenda — mirroring the meeting event form. */
+export function GovernanceProposalForm({ mode, context, hood, sponsorHood, onSubmit, onCancel }) {
   const isCouncil = mode === "council";
-  const [title, setTitle] = useState(isCouncil ? "Providence Federation Council" : `${hood} Neighborhood Assembly`);
+  const [title, setTitle] = useState(isCouncil ? "Providence Federation Council" : `${hood} Neighborhood Council Meeting`);
   const [date, setDate] = useState("");
   const [start, setStart] = useState(isCouncil ? "16:00" : "18:30");
   const [end, setEnd] = useState(isCouncil ? "19:00" : "20:30");
@@ -30,14 +30,14 @@ export function GovernanceProposalForm({ mode, context, hood, onSubmit, onCancel
       <BackButton onClick={onCancel}>Cancel</BackButton>
 
       <div style={{ borderTop: `3px solid ${FLAME}`, borderBottom: `1px solid ${INK}`, marginTop: 16, paddingTop: 16, paddingBottom: 20 }}>
-        <Eyebrow style={{ color: FLAME }}>{isCouncil ? "Propose a federation council meeting" : `Propose a ${hood} assembly`}</Eyebrow>
+        <Eyebrow style={{ color: FLAME }}>{isCouncil ? "Propose a federation council meeting" : `Propose a ${hood} meeting`}</Eyebrow>
         <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.heading, letterSpacing: "-0.03em", lineHeight: 1, margin: "12px 0 0" }}>
-          {isCouncil ? "New meeting proposal" : "New assembly"}
+          {isCouncil ? "New meeting proposal" : "New meeting"}
         </h1>
         <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: SOFT, margin: "12px 0 0", lineHeight: 1.5, maxWidth: "42em" }}>
           {isCouncil
-            ? `As a delegate of ${context.scope}, draft the federation council meeting for your assembly to ratify. Once ${COUNCIL_RATIFY_THRESHOLD} attendees vote to ratify, it becomes a proposed federation council meeting.`
-            : `Propose an assembly in ${hood} to decide whether to endorse "${context.title}". If your assembly passes its vote, ${hood} endorses the federation council meeting.`}
+            ? `As a delegate of ${sponsorHood}, draft the federation council meeting for your meeting to ratify. Once ${COUNCIL_RATIFY_THRESHOLD} attendees vote to ratify, it becomes a proposed federation council meeting.`
+            : `Propose a meeting in ${hood} to decide whether to endorse "${context.title}". If your meeting passes its vote, ${hood} endorses the federation council meeting.`}
         </p>
       </div>
 
@@ -80,7 +80,7 @@ export function GovernanceProposalForm({ mode, context, hood, onSubmit, onCancel
               cursor: "pointer", padding: "13px 24px", border: `1px solid ${FLAME}`, background: FLAME, color: PAPER,
             }}
           >
-            {isCouncil ? "Post proposal" : "Propose assembly"}
+            {isCouncil ? "Post proposal" : "Propose meeting"}
           </button>
           <button
             onClick={onCancel}

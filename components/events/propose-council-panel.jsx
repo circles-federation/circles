@@ -57,8 +57,8 @@ function CouncilProposalCard({ proposal: p, event: e, profile, events, onRatifyP
   );
 }
 
-/* On a confirmed assembly: lets a resident draft a federation council
-   meeting, and lists this assembly's own drafts with their ratification
+/* On a confirmed meeting: lets a resident draft a federation council
+   meeting, and lists this meeting's own drafts with their ratification
    progress. Feature-flagged off entirely when federation council isn't
    enabled — see event.page.jsx's FEDERATION_COUNCIL_ENABLED check. */
 export function ProposeCouncilPanel({ event: e, profile, proposals, events, onProposeCouncil, onRatifyProposal, onOpenEvent }) {
@@ -69,7 +69,7 @@ export function ProposeCouncilPanel({ event: e, profile, proposals, events, onPr
         <div className="min-w-55 flex-1">
           <Eyebrow className="text-flame">Federation council</Eyebrow>
           <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-[#222]">
-            As a confirmed assembly, {scopeLabel(e)} can put forward a federation council meeting. A delegate drafts the proposal; attendees then vote to ratify it.
+            As a confirmed meeting, {scopeLabel(e)} can put forward a federation council meeting. A delegate drafts the proposal; attendees then vote to ratify it.
           </p>
         </div>
         {isResident && (

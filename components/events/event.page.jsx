@@ -1,6 +1,5 @@
 "use client";
 
-import { AssemblyVoteBanner } from "./assembly-vote-banner";
 import { AttendeesSection } from "./attendees-section";
 import { BackButton } from "@/components/shared";
 import { CouncilEndorsementPanel } from "./council-endorsement-panel";
@@ -8,6 +7,7 @@ import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";
 import { ExclusiveNotice } from "./exclusive-notice";
 import { HostRsvpRow } from "./host-rsvp-row";
+import { MeetingVoteBanner } from "./meeting-vote-banner";
 import { PastCouncilSummary } from "./past-council-summary";
 import { ProposeCouncilPanel } from "./propose-council-panel";
 import { RoleSlotsSection } from "./role-slots-section";
@@ -21,15 +21,15 @@ import { isConfirmed, kindOf } from "@/lib/governance.util";
    their own eligibility/visibility rules from lib/governance.util and
    lib/roles.util rather than taking a dozen precomputed booleans as props).
    This shell only owns cross-cutting app state (rsvp/vote toggles, the
-   confirmed-assembly's council proposals) and the top-level "which panel
+   confirmed-meeting's council proposals) and the top-level "which panel
    applies to this event kind" decisions. */
 export function EventPage({ event: e, events, profile, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenOrg, onOpenEvent, onToggleRoleSlot, onProposeCouncil, onRatifyProposal, onProposeEndorsingAssembly }) {
   const gov = kindOf(e).governance;
-  const isAssembly = e.kind === "assembly";
+  const isMeeting = e.kind === "meeting";
   const isCouncil = e.kind === "council";
   const confirmed = isConfirmed(e);
   const past = isPastEvent(e);
-  // this assembly's own council proposals (drafts + ratified)
+  // this meeting's own council proposals (drafts + ratified)
   const myProposals = (councilProposals || []).filter((p) => p.assemblyId === e.id);
 
   return (
@@ -39,12 +39,12 @@ export function EventPage({ event: e, events, profile, councilProposals, rsvpSta
       <EventMasthead event={e} events={events} onOpenEvent={onOpenEvent} />
 
       {gov && !isCouncil && (
-        <AssemblyVoteBanner event={e} profile={profile} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
+        <MeetingVoteBanner event={e} profile={profile} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
       )}
 
       {isCouncil && past && <PastCouncilSummary event={e} />}
 
-      {isAssembly && confirmed && !past && FEDERATION_COUNCIL_ENABLED && (
+      {isMeeting && confirmed && !past && FEDERATION_COUNCIL_ENABLED && (
         <ProposeCouncilPanel
           event={e}
           profile={profile}

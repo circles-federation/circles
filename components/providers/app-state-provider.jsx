@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 import { useToast } from "@/components/shared";
-import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
+import { COUNCIL_RATIFY_THRESHOLD, MEMBERS } from "@/lib/data";
 import {
   createCouncilProposal as dbCreateCouncilProposal,
   createEvent as dbCreateEvent,
@@ -12,7 +12,8 @@ import {
 import { updateMember as dbUpdateMember } from "@/lib/db/members";
 import { updateOrg as dbUpdateOrg } from "@/lib/db/orgs";
 import { FEDERATION_COUNCIL_ENABLED } from "@/lib/feature-flags";
-import { isExclusive, isHostOrgMember, kindOf } from "@/lib/governance.util";
+import { isExclusive, isHostOrgMember, kindOf, meetingThreshold } from "@/lib/governance.util";
+import { orgMembers, orgScope } from "@/lib/orgs.util";
 
 /* Holds the app's entire "database" — events, orgs, the current user's RSVPs/
    votes/profile, and pending council proposals — plus the mutations on it.
@@ -117,23 +118,25 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     if (ev.votes && ev.votes.includes(currentUserId)) {
       setVoteState((prev) => ({ ...prev, [ev.id]: true })); // proposer's first vote
     }
-    if (ev.kind === "assembly") {
+    if (ev.kind === "meeting") {
+      const org = orgs.find((o) => o.id === ev.orgId);
       showToast({
         tone: "success",
-        title: "Assembly proposed",
-        message: `Your assembly has been proposed. Everyone in ${ev.scope} will be notified and can vote to confirm it.`,
+        title: "Meeting proposed",
+        message: `Your meeting has been proposed. Everyone in ${org ? org.neighborhood : "the neighborhood"} will be notified and can vote to confirm it.`,
       });
     }
     return ev;
   }
 
-  // a delegate drafts a council proposal on their assembly's page. it awaits
-  // ratification by that assembly before becoming a federation-wide council.
+  // a delegate drafts a council proposal on their meeting's page. it awaits
+  // ratification by that meeting before becoming a federation-wide council.
   function proposeCouncilDraft(assembly, details) {
+    const sponsorHood = orgs.find((o) => o.id === assembly.orgId)?.neighborhood || "";
     const proposal = {
       id: "cp" + Date.now(),
       assemblyId: assembly.id,
-      sponsorHood: assembly.scope,
+      sponsorHood,
       sponsorName: assembly.title,
       proposedBy: currentUserId,
       title: details.title,
@@ -149,7 +152,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     showToast({
       tone: "success",
       title: "Meeting proposed",
-      message: `Your federation council meeting proposal is posted to ${assembly.scope}. Attendees now vote to ratify it — ${COUNCIL_RATIFY_THRESHOLD} votes confirm the delegate's mandate.`,
+      message: `Your federation council meeting proposal is posted to ${sponsorHood}. Attendees now vote to ratify it — ${COUNCIL_RATIFY_THRESHOLD} votes confirm the delegate's mandate.`,
     });
   }
 
@@ -190,21 +193,24 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       dbCreateEvent(created);
       showToast({
         tone: "success",
-        title: "Council confirmed by the assembly",
+        title: "Council confirmed by the meeting",
         message: `${created.scope} ratified the proposal. It's now a proposed federation council meeting — other neighborhoods will be notified to hold assemblies of their own.`,
       });
     }
   }
 
-  // from a proposed council, a viewer proposes an assembly in their own
+  // from a proposed council, a viewer proposes a meeting in their own
   // neighborhood to decide whether to endorse the council. returns the
-  // created assembly so the caller can navigate to it.
+  // created meeting so the caller can navigate to it. (function name kept
+  // as-is — the federation endorsement flow itself isn't being rebuilt in
+  // this pass, only kept data-consistent with the assembly->meeting rename.)
   function proposeEndorsingAssembly(council, details, hood) {
+    const hoodOrg = orgs.find((o) => o.neighborhood === hood);
     const ev = {
       id: "e" + Date.now(),
       title: details.title,
-      kind: "assembly",
-      scope: hood,
+      kind: "meeting",
+      orgId: hoodOrg ? hoodOrg.id : null,
       endorsesCouncilId: council.id,
       host: { type: "member", id: currentUserId },
       date: details.date, start: details.start, end: details.end,
@@ -219,17 +225,17 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setVoteState((prev) => ({ ...prev, [ev.id]: true }));
     showToast({
       tone: "success",
-      title: "Assembly proposed",
-      message: `Your ${hood} assembly to weigh in on this council is proposed. Neighbors will be notified and can vote to confirm it.`,
+      title: "Meeting proposed",
+      message: `Your ${hood} meeting to weigh in on this council is proposed. Neighbors will be notified and can vote to confirm it.`,
     });
     return ev;
   }
 
-  // voting on a neighborhood assembly and RSVPing to it are the same act —
-  // these meetings are confirmed by resident participation, so there's no
-  // "voted but not coming" state. Kept as one function (not a separate
+  // voting on a Neighborhood Council meeting and RSVPing to it are the same
+  // act — these meetings are confirmed by resident participation, so there's
+  // no "voted but not coming" state. Kept as one function (not a separate
   // toggleRsvp call alongside this one) so both arrays update atomically.
-  // If this assembly exists to endorse a council and just reached quorum,
+  // If this meeting exists to endorse a council and just reached quorum,
   // its neighborhood's endorsement is recorded on that council too.
   function toggleVote(eventId) {
     let votedPatch = null;
@@ -248,9 +254,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
           ? (hasRsvp ? ev.rsvps : [...ev.rsvps, currentUserId])
           : ev.rsvps.filter((id) => id !== currentUserId);
         votedPatch = { votes, rsvps };
-        if (ev.endorsesCouncilId && votes.length >= (kindOf(ev).threshold || 5)) {
+        if (ev.endorsesCouncilId && votes.length >= meetingThreshold(ev)) {
           endorseCouncilId = ev.endorsesCouncilId;
-          endorseHood = ev.scope;
+          endorseHood = orgs.find((o) => o.id === ev.orgId)?.neighborhood;
         }
         return { ...ev, votes, rsvps };
       });
@@ -311,18 +317,22 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return true;
   });
 
-  // an org outside the viewer's own neighborhood is invisible unless it's
-  // scoped to Providence (federation-wide) or the viewer is already one of
-  // its members — membership always wins so rescoping an org (see the Scope
-  // field on its manage page) can never lock its own members out of it,
-  // including the ability to change the scope back. Filtered here so it
-  // cascades everywhere orgs are read: the directory, Home's "Local
-  // organizations"/"My organizations" cards, and the /organizations/[id]
-  // and /organizations/[id]/manage routes, which 404 for an org filtered
-  // out here since they read from this same array.
-  const visibleOrgs = orgs.filter((o) => (
-    o.level === profile.neighborhood || o.level === "Providence" || o.members.includes(profile.id)
-  ));
+  // an org's effective scope is derived by walking its parentId chain up to
+  // the nearest Neighborhood Council (orgScope, in lib/orgs.util.js) — null
+  // means federation-wide (root, no neighborhood ancestor). An org outside
+  // the viewer's own neighborhood is invisible unless it's federation-wide
+  // or the viewer is already one of its members — membership always wins so
+  // reparenting an org (see the Scope field on its manage page) can never
+  // lock its own members out of it, including the ability to change the
+  // scope back. Filtered here so it cascades everywhere orgs are read: the
+  // directory, Home's "Local organizations"/"My organizations" cards, and
+  // the /organizations/[id] and /organizations/[id]/manage routes, which
+  // 404 for an org filtered out here since they read from this same array.
+  const orgsById = orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
+  const visibleOrgs = orgs.filter((o) => {
+    const scope = orgScope(o, orgsById);
+    return scope === profile.neighborhood || scope === null || orgMembers(o, MEMBERS).includes(profile.id);
+  });
 
   return (
     <AppStateContext.Provider

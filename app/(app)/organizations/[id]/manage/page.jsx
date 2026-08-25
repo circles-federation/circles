@@ -15,6 +15,7 @@ export default function Page() {
   return (
     <ManageOrgPage
       org={org}
+      orgs={orgs}
       onSave={(patch) => saveOrg(org.id, patch)}
       onBack={() => router.back()}
     />

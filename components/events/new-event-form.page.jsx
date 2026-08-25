@@ -4,15 +4,16 @@ import { useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton, ConfirmModal, Eyebrow, fieldInput, fieldLabel, TabbedPanel } from "@/components/shared";
-import { EVENT_KINDS, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
+import { EVENT_KINDS, MEMBERS, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
 import { useIsMobile } from "@/lib/hooks";
+import { orgMembers } from "@/lib/orgs.util";
 import { FAINT, FLAME, INK, PAPER, PLUM, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 const DEFAULT_START = "18:00";
 const DEFAULT_END = "20:00";
 const DEFAULT_SLOTS = [{ label: "", description: "", min: "1", max: "" }];
 
-export function NewEventForm({ profile, onCreate, onCancel }) {
+export function NewEventForm({ profile, orgs, onCreate, onCancel }) {
   const isMobile = useIsMobile();
   // host options: the current user, plus every org they belong to
   const myOrgs = ORGS_BY_MEMBER[profile.id] || [];
@@ -20,6 +21,11 @@ export function NewEventForm({ profile, onCreate, onCancel }) {
     { key: "member:" + profile.id, label: `${profile.name} (you)`, host: { type: "member", id: profile.id } },
     ...myOrgs.map((o) => ({ key: "org:" + o.id, label: o.name, host: { type: "org", id: o.id } })),
   ];
+  // the proposer's own Neighborhood Council — meetings are always hosted by
+  // it for now; no picker needed since a resident has exactly one (general
+  // org-hosted meetings are future work, see lib/orgs.util.js)
+  const myCouncil = orgs.find((o) => o.neighborhood === profile.neighborhood);
+  const meetingThresholdPreview = myCouncil ? Math.floor(orgMembers(myCouncil, MEMBERS).length / 2) + 1 : 0;
 
   const [type, setType] = useState("ordinary");
   const [title, setTitle] = useState("");
@@ -39,7 +45,7 @@ export function NewEventForm({ profile, onCreate, onCancel }) {
   // true once the user has entered anything — guards Back/Cancel behind a
   // confirmation rather than tracking a "dirty" diff against saved data,
   // since a new-event form has no prior saved state to diff against.
-  // Switching the Event/Assembly tab alone doesn't count: it's a selection,
+  // Switching the Event/Meeting tab alone doesn't count: it's a selection,
   // not entered content, and it doesn't clear anything already typed.
   const dirty =
     title.trim() !== "" ||
@@ -69,14 +75,14 @@ export function NewEventForm({ profile, onCreate, onCancel }) {
     if (!date) return setError("Pick a date.");
     if (!location.trim()) return setError("Add a location.");
     if (gov) {
-      // governance meetings are proposed by a person, not an org; the proposer is the first vote.
-      // assemblies are scoped to the proposer's neighborhood; councils are federation-wide.
-      const scope = profile.neighborhood; // assemblies are scoped to the proposer's neighborhood
+      // governance meetings are proposed by a person, not an org; the
+      // proposer is the first vote. A meeting is hosted by the proposer's
+      // own Neighborhood Council (see myCouncil above).
       onCreate({
         id: "e" + Date.now(),
         title: title.trim(),
         kind: type,
-        scope,
+        orgId: myCouncil ? myCouncil.id : null,
         host: { type: "member", id: profile.id },
         date, start, end,
         location: location.trim(),
@@ -130,7 +136,7 @@ export function NewEventForm({ profile, onCreate, onCancel }) {
 
   const types = [
     ["ordinary", "Event"],
-    ["assembly", "Assembly"],
+    ["meeting", "Meeting"],
   ];
 
   return (
@@ -140,7 +146,7 @@ export function NewEventForm({ profile, onCreate, onCancel }) {
       <div style={{ borderTop: `3px solid ${accent}`, borderBottom: `1px solid ${INK}`, marginTop: 16, paddingTop: 16, paddingBottom: 20 }}>
         <Eyebrow style={{ color: gov ? FLAME : SOFT }}>{gov ? "Propose" : "Create"}</Eyebrow>
         <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.95, margin: "12px 0 0" }}>
-          {type === "ordinary" ? "New event" : "Neighborhood assembly"}
+          {type === "ordinary" ? "New event" : "Neighborhood council meeting"}
         </h1>
       </div>
 
@@ -152,9 +158,7 @@ export function NewEventForm({ profile, onCreate, onCancel }) {
       >
       {gov && (
         <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: "#222", lineHeight: 1.5, margin: "0 0 4px", borderLeft: `3px solid ${FLAME}`, paddingLeft: 12 }}>
-          {type === "assembly"
-            ? <>This is a governance meeting for <strong>{profile.neighborhood}</strong>. Once proposed it needs <strong>{meta.threshold} votes from {profile.neighborhood} residents</strong> to be confirmed. Your proposal counts as the first vote.</>
-            : <>This is a federation-wide governance meeting. Once proposed it needs <strong>{meta.threshold} votes</strong> from across the federation to be confirmed. Your proposal counts as the first vote.</>}
+          This is a governance meeting for <strong>{profile.neighborhood}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {profile.neighborhood} residents</strong> to be confirmed. Your proposal counts as the first vote.
         </p>
       )}
 

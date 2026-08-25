@@ -6,7 +6,7 @@ import { endorsementCount, isConfirmed, neighborhoodMajority } from "@/lib/gover
 /* On an upcoming federation council: endorsement badges per neighborhood
    that's signed on, a progress rail toward the majority needed, and (if the
    viewer's own neighborhood hasn't endorsed yet) a button to propose the
-   endorsing assembly. Once the council is past, PastCouncilSummary takes
+   endorsing meeting. Once the council is past, PastCouncilSummary takes
    over instead. */
 export function CouncilEndorsementPanel({ event: e, profile, onProposeEndorsingAssembly }) {
   const confirmed = isConfirmed(e);
@@ -18,7 +18,7 @@ export function CouncilEndorsementPanel({ event: e, profile, onProposeEndorsingA
     <div className={clsx("mt-6 border p-5", confirmed ? "border-leaf" : "border-flame")}>
       <Eyebrow className={confirmed ? "text-leaf" : "text-flame"}>Neighborhood endorsements</Eyebrow>
       <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-[#222]">
-        A federation council meeting is confirmed once a majority of neighborhoods endorse it — <strong>{councilMajority}</strong> of {new Set(MEMBERS.map((m) => m.neighborhood)).size}. Each neighborhood endorses by passing an assembly vote of its own.
+        A federation council meeting is confirmed once a majority of neighborhoods endorse it — <strong>{councilMajority}</strong> of {new Set(MEMBERS.map((m) => m.neighborhood)).size}. Each neighborhood endorses by passing a meeting vote of its own.
       </p>
       <div className="mt-3.5 flex flex-wrap gap-2">
         {(e.endorsements || []).map((hood) => (
@@ -42,7 +42,7 @@ export function CouncilEndorsementPanel({ event: e, profile, onProposeEndorsingA
             onClick={() => onProposeEndorsingAssembly(e, myHood)}
             className="btn-invert btn-ink cursor-pointer whitespace-nowrap border border-flame bg-flame px-4 py-2.75 font-sans text-eyebrow font-bold uppercase tracking-[0.08em] text-paper"
           >
-            Propose {myHood} assembly →
+            Propose {myHood} meeting →
           </button>
         )}
         {endorsed && (

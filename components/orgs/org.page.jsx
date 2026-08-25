@@ -3,17 +3,22 @@ import clsx from "clsx";
 import { BackButton, Chip, Eyebrow, Tag } from "@/components/shared";
 import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
+import { OrgCard } from "./org-card";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { avatarFor, memberById } from "@/lib/data";
+import { avatarFor, memberById, MEMBERS } from "@/lib/data";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { kindOf } from "@/lib/governance.util";
 import { useIsMobile } from "@/lib/hooks";
+import { orgChildren, orgMembers, orgScope } from "@/lib/orgs.util";
 import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
-export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, onBack, backLabel, onOpenMember, onOpenEvent, onManage }) {
+export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, onBack, backLabel, onOpenMember, onOpenOrg, onOpenEvent, onManage }) {
   const isMobile = useIsMobile();
-  const { profile } = useAppState();
-  const members = o.members.map(memberById).filter(Boolean);
+  const { profile, orgs } = useAppState();
+  const orgsById = orgs.reduce((acc, org) => { acc[org.id] = org; return acc; }, {});
+  const scope = orgScope(o, orgsById);
+  const members = orgMembers(o, MEMBERS).map(memberById).filter(Boolean);
+  const childOrgs = orgChildren(o, orgs);
   // events convened by this org, soonest first (location is irrelevant)
   const hostedEvents = [...events]
     .filter((e) => e.host.type === "org" && e.host.id === o.id)
@@ -32,8 +37,8 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Eyebrow style={{ color: SOFT }}>{o.kind}</Eyebrow>
-            {o.level !== "Providence" && (
-              <Chip title={o.level === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{o.level}</Chip>
+            {scope !== null && (
+              <Chip title={scope === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{scope}</Chip>
             )}
           </div>
           <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.92, margin: "12px 0 0" }}>{o.name}</h1>
@@ -106,6 +111,20 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
           </p>
         )}
       </section>
+
+      {childOrgs.length > 0 && (
+        <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: `1px solid ${INK}`, paddingBottom: 11 }}>
+            <Eyebrow style={{ color: SOFT }}>Sub-organizations</Eyebrow>
+            <span style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xs }}>{childOrgs.length}</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 16, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
+            {childOrgs.map((child) => (
+              <OrgCard key={child.id} o={child} onOpenOrg={onOpenOrg} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

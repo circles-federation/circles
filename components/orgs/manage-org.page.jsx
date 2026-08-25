@@ -5,19 +5,23 @@ import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, Section, SectionGroup, Select, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
-import { MEMBERS } from "@/lib/data";
 
 // matches org.page.jsx's read-only facts grid (label above a bold value,
 // evenly split columns) — kept fixed at 4 slots since that's what the
 // reference display grid assumes today.
 const FACT_SLOTS = 4;
 
-// neighborhoods first (sorted), then Providence (the federation level) last
-// — same derivation/ordering as org-directory.page.jsx's "Level" filter.
-const SCOPE_OPTIONS = [...new Set(MEMBERS.map((m) => m.neighborhood))].sort().concat("Providence");
-
-export function ManageOrgPage({ org: o, onSave, onBack }) {
-  const [level, setLevel] = useState(o.level);
+export function ManageOrgPage({ org: o, orgs, onSave, onBack }) {
+  const [parentId, setParentId] = useState(o.parentId ?? null);
+  // Neighborhood Councils first (sorted), then Providence (root, no parent)
+  // last — same ordering the old neighborhood-level picker used. Only
+  // Neighborhood Councils are offered as a parent for now — general
+  // reparenting under any org is future work.
+  const scopeOptions = orgs
+    .filter((org) => org.neighborhood)
+    .map((org) => ({ id: org.id, label: org.neighborhood }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .concat([{ id: null, label: "Providence" }]);
   const [about, setAbout] = useState(o.about);
   const [offers, setOffers] = useState([...o.offers]);
   const [facts, setFacts] = useState(() =>
@@ -38,7 +42,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
   // fewer (or zero) hours rows than it started with.
   const hoursPairs = hours.map((h) => [h.day.trim(), h.time.trim()]).filter(([day, time]) => day || time);
   const dirty =
-    level !== o.level ||
+    parentId !== (o.parentId ?? null) ||
     about !== o.about ||
     offers.join("\u0000") !== o.offers.join("\u0000") ||
     JSON.stringify(factPairs) !== JSON.stringify(o.facts) ||
@@ -64,7 +68,7 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
   }
 
   function handleSave() {
-    onSave({ level, about: about.trim(), offers, facts: factPairs, website: website.trim(), address: address.trim(), hours: hoursPairs });
+    onSave({ parentId, about: about.trim(), offers, facts: factPairs, website: website.trim(), address: address.trim(), hours: hoursPairs });
     onBack();
   }
 
@@ -90,9 +94,9 @@ export function ManageOrgPage({ org: o, onSave, onBack }) {
       <SectionGroup>
         <Section>
           <Label htmlFor="org-scope">Scope</Label>
-          <Select id="org-scope" value={level} onChange={(e) => setLevel(e.target.value)} className="max-w-90">
-            {SCOPE_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s}</option>
+          <Select id="org-scope" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="max-w-90">
+            {scopeOptions.map((s) => (
+              <option key={s.id ?? "providence"} value={s.id ?? ""}>{s.label}</option>
             ))}
           </Select>
           <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">

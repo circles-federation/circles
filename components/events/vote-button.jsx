@@ -4,7 +4,7 @@ import clsx from "clsx";
 const BASE = "inline-flex items-center gap-2.25 whitespace-nowrap border font-sans font-bold uppercase tracking-[0.12em]";
 const SIZE = { big: "text-eyebrow py-3.5 px-5", small: "text-label py-2.25 px-3.25" };
 
-/* Combined vote + attend control for a neighborhood assembly — voting for
+/* Combined vote + attend control for a Neighborhood Council meeting — voting for
    the meeting is how you indicate you'll be there, so there's only one
    action (see toggleVote in app-state-provider.jsx, which keeps votes and
    RSVPs in lockstep). Stays open even after quorum is met, since people

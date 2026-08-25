@@ -3,14 +3,22 @@
 import { useMemo, useState } from "react";
 import { PageHeader, SearchWithFilter } from "@/components/shared";
 import { OrgCard } from "./org-card";
+import { orgScope } from "@/lib/orgs.util";
 import { INK, TYPE, sans } from "@/lib/theme";
+
+// orgScope() returns null for a root/federation-wide org — displayed as
+// "Providence" here, matching the old level field's literal value.
+function scopeLabel(o, orgsById) {
+  return orgScope(o, orgsById) ?? "Providence";
+}
 
 export function OrgDirectory({ orgs, onOpenOrg, initialLevel = null }) {
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState(initialLevel);
+  const orgsById = orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
   // neighborhoods first (sorted), then Providence (the federation level) last
   const levels = (() => {
-    const all = [...new Set(orgs.map((o) => o.level))];
+    const all = [...new Set(orgs.map((o) => scopeLabel(o, orgsById)))];
     const hoods = all.filter((l) => l !== "Providence").sort();
     return all.includes("Providence") ? [...hoods, "Providence"] : hoods;
   })();
@@ -18,11 +26,12 @@ export function OrgDirectory({ orgs, onOpenOrg, initialLevel = null }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return orgs.filter((o) => {
-      if (level && o.level !== level) return false;
+      const scope = scopeLabel(o, orgsById);
+      if (level && scope !== level) return false;
       if (!q) return true;
-      return [o.name, o.kind, o.tagline, o.level, ...o.offers].join(" ").toLowerCase().includes(q);
+      return [o.name, o.kind, o.tagline, scope, ...o.offers].join(" ").toLowerCase().includes(q);
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [orgs, query, level]);
+  }, [orgs, orgsById, query, level]);
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 24px 80px" }}>

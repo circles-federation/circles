@@ -1,14 +1,16 @@
 import clsx from "clsx";
 import { VoteButton } from "./vote-button";
-import { isConfirmed, canVote, kindOf, scopeLabel, voteCount } from "@/lib/governance.util";
+import { isConfirmed, canVote, kindOf, meetingThreshold, scopeLabel, voteCount } from "@/lib/governance.util";
 import { isPastEvent } from "@/lib/format.util";
 
-/* Quorum banner for a neighborhood assembly — progress toward confirmation
-   plus the combined vote+attend control. Not shown for councils, which
-   confirm by neighborhood endorsement instead (see CouncilEndorsementPanel). */
-export function AssemblyVoteBanner({ event: e, profile, voted, onToggleVote }) {
+/* Quorum banner for a Neighborhood Council meeting — progress toward
+   confirmation plus the combined vote+attend control. Not shown for
+   councils, which confirm by neighborhood endorsement instead (see
+   CouncilEndorsementPanel). */
+export function MeetingVoteBanner({ event: e, profile, voted, onToggleVote }) {
   const k = kindOf(e);
   const votes = voteCount(e);
+  const threshold = meetingThreshold(e);
   const confirmed = isConfirmed(e);
   const eligible = canVote(e, profile);
   const past = isPastEvent(e);
@@ -19,13 +21,13 @@ export function AssemblyVoteBanner({ event: e, profile, voted, onToggleVote }) {
         <p className="m-0 font-serif text-base leading-[1.45] text-[#222]">
           {confirmed
             ? <>Quorum met — this meeting is <span className="font-bold text-leaf">confirmed</span> for {scopeLabel(e)}.</>
-            : <>This {k.label.toLowerCase()} needs <strong>{k.threshold}</strong> votes from {scopeLabel(e)} to be held. <span className="font-bold text-flame">{k.threshold - votes} more</span> to confirm.</>}
+            : <>This {k.label.toLowerCase()} needs <strong>{threshold}</strong> votes from {scopeLabel(e)} to be held. <span className="font-bold text-flame">{threshold - votes} more</span> to confirm.</>}
         </p>
         {/* progress rail */}
         <div className="mt-3 h-1.5 bg-faint">
           <div
             className={clsx("h-1.5 transition-[width] duration-300", confirmed ? "bg-leaf" : "bg-flame")}
-            style={{ width: `${Math.min(100, (votes / k.threshold) * 100)}%` }}
+            style={{ width: `${Math.min(100, (votes / threshold) * 100)}%` }}
           />
         </div>
         {!eligible && (
@@ -37,7 +39,7 @@ export function AssemblyVoteBanner({ event: e, profile, voted, onToggleVote }) {
       <VoteButton
         voted={voted}
         count={votes}
-        threshold={k.threshold}
+        threshold={threshold}
         onToggle={onToggleVote}
         big
         eligible={eligible}
