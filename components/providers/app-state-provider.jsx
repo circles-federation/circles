@@ -194,7 +194,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       showToast({
         tone: "success",
         title: "Council confirmed by the meeting",
-        message: `${created.scope} ratified the proposal. It's now a proposed federation council meeting — other neighborhoods will be notified to hold assemblies of their own.`,
+        message: `${created.scope} ratified the proposal. It's now a proposed federation council meeting — other neighborhoods will be notified to hold meetings of their own.`,
       });
     }
   }

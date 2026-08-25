@@ -1,21 +1,7 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { Directory } from "@/components/directory/directory.page";
-import { useProfileModal } from "@/components/providers/profile-modal-provider";
-
-function PeopleDirectory() {
-  const searchParams = useSearchParams();
-  const { open } = useProfileModal();
-
-  return <Directory onOpenMember={open} initialHood={searchParams.get("hood")} />;
-}
-
+// People and Organizations merged into one unified Directory — see
+// components/directory/browse.page.jsx.
 export default function Page() {
-  return (
-    <Suspense fallback={null}>
-      <PeopleDirectory />
-    </Suspense>
-  );
+  redirect("/directory");
 }

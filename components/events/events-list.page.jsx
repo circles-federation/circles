@@ -15,7 +15,7 @@ export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
-      // status filter applies to governance events (assemblies / council meetings)
+      // status filter applies to governance events (meetings / council meetings)
       if (status) {
         if (!kindOf(e).governance) return false;
         const confirmed = isConfirmed(e);

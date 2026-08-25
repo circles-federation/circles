@@ -9,7 +9,6 @@ import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
 import { MEMBERS, avatarFor } from "@/lib/data";
 import { isPastEvent, parseDay } from "@/lib/format.util";
-import { kindOf } from "@/lib/governance.util";
 import { useIsMobile } from "@/lib/hooks";
 import { orgMembers, orgScope } from "@/lib/orgs.util";
 import { FAINT, INK, PAPER, SOFT, TEAL, TYPE, sans, serif } from "@/lib/theme";
@@ -23,7 +22,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
   const neighbors = MEMBERS.filter((m) => m.neighborhood === profile.neighborhood);
   const localOrgs = orgs.filter((o) => orgScope(o, orgsById) === profile.neighborhood);
   const upcoming = [...events].filter((e) => !isPastEvent(e)).sort((a, b) => parseDay(a.date) - parseDay(b.date));
-  const assemblies = upcoming.filter((e) => kindOf(e).governance && e.scope === profile.neighborhood);
+  const meetings = upcoming.filter((e) => e.kind === "meeting" && orgsById[e.orgId]?.neighborhood === profile.neighborhood);
 
   // the user's own organizations (speed dial)
   const myOrgs = orgs.filter((o) => orgMembers(o, MEMBERS).includes(profile.id));
@@ -73,7 +72,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))", gap: 16, marginTop: 14 }}>
           <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
           <StatCard value={localOrgs.length} label="Local organizations" onClick={onOpenLocalOrgs} />
-          <StatCard value={assemblies.length} label="Upcoming assemblies" onClick={() => setView("events")} />
+          <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
           <button
             onClick={onPlayGame}
             className="btn-invert btn-teal"

@@ -8,8 +8,7 @@ import { INK, PAPER, SOFT, TYPE, sans } from "@/lib/theme";
 
 const TABS = [
   ["/home", "Home"],
-  ["/people", "People"],
-  ["/organizations", "Organizations"],
+  ["/directory", "Directory"],
   ["/events", "Events"],
 ];
 
@@ -18,9 +17,13 @@ export function TopBar() {
   const router = useRouter();
 
   // a tab is "active" if the current route is it, a nested route beneath it,
-  // or (for Home) one of the sibling pages reached only from Home
+  // or (for Home) one of the sibling pages reached only from Home, or (for
+  // Directory) an individual org's page — org detail/manage pages still
+  // live under /organizations, not /directory, since only Neighborhood
+  // Councils browse there (see lib/hooks.js's openOrg)
   function isActive(href) {
     if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");
+    if (href === "/directory") return pathname.startsWith("/directory") || pathname.startsWith("/organizations");
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 

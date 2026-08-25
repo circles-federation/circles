@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { notFound, useParams, useRouter, useSearchParams } from "next/navigation";
 import { OrgPage } from "@/components/orgs/org.page";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -18,7 +18,15 @@ function OrgDetail() {
   const nav = useAppNav();
 
   const org = orgs.find((o) => o.id === id);
+
+  // Neighborhood Councils browse at /directory instead of having their own
+  // page here (see lib/hooks.js's openOrg) — bounce a stray link forward
+  useEffect(() => {
+    if (org?.neighborhood) router.replace(`/directory/${id}`);
+  }, [org, id, router]);
+
   if (!org) notFound();
+  if (org.neighborhood) return null;
 
   return (
     <OrgPage

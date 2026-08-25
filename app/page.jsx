@@ -88,7 +88,7 @@ export default function WelcomePage() {
             Providence
           </h1>
           <p style={{ fontFamily: serif, fontSize: TYPE.lg, color: "#222", margin: "14px 0 28px", lineHeight: 1.5 }}>
-            A federation of neighborhoods, organizations, and assemblies. Sign in with your email to get to your neighborhood.
+            A federation of neighborhoods, organizations, and neighborhood councils. Sign in with your email to get to your neighborhood.
           </p>
         </div>
 

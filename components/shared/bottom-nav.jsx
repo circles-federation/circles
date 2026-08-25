@@ -5,25 +5,22 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import {
   HomeIcon as HomeOutline,
-  UsersIcon as UsersOutline,
-  BuildingOffice2Icon as OrganizationsOutline,
+  FolderIcon as DirectoryOutline,
   CalendarDaysIcon as EventsOutline,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeSolid,
-  UsersIcon as UsersSolid,
-  BuildingOffice2Icon as OrganizationsSolid,
+  FolderIcon as DirectorySolid,
   CalendarDaysIcon as EventsSolid,
 } from "@heroicons/react/24/solid";
 
 const TABS = [
   { href: "/home", label: "Home", outline: HomeOutline, solid: HomeSolid },
-  { href: "/people", label: "People", outline: UsersOutline, solid: UsersSolid },
-  { href: "/organizations", label: "Organizations", outline: OrganizationsOutline, solid: OrganizationsSolid },
+  { href: "/directory", label: "Directory", outline: DirectoryOutline, solid: DirectorySolid },
   { href: "/events", label: "Events", outline: EventsOutline, solid: EventsSolid },
 ];
 
-/* Mobile-only bottom nav, replacing the top bar's hamburger menu: same four
+/* Mobile-only bottom nav, replacing the top bar's hamburger menu: same
    destinations as TopBar's desktop nav, icon + label stacked per tab.
    Visibility is a CSS breakpoint (matching TopBar's `min-[720px]:flex`), not
    useIsMobile — that hook reads window width in state, which the server
@@ -33,9 +30,12 @@ export function BottomNav() {
   const pathname = usePathname();
 
   // mirrors TopBar's isActive: Home also covers the game and profile pages,
-  // which are reached only from Home and have no bottom-nav tab of their own
+  // which are reached only from Home and have no bottom-nav tab of their
+  // own; Directory also covers individual org pages, which still live under
+  // /organizations — see top-bar.jsx's isActive for why.
   function isActive(href) {
     if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");
+    if (href === "/directory") return pathname.startsWith("/directory") || pathname.startsWith("/organizations");
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
