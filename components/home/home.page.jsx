@@ -3,7 +3,7 @@
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
-import { Chip, Eyebrow, ForwardLink } from "@/components/shared";
+import { Chip, Eyebrow } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
@@ -65,10 +65,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
 
       {/* my neighborhood — one compact panel of stats */}
       <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <Eyebrow style={{ color: SOFT }}>My neighborhood</Eyebrow>
-          <ForwardLink onClick={onOpenNeighbors}>Neighbors</ForwardLink>
-        </div>
+        <Eyebrow style={{ color: SOFT }}>My neighborhood</Eyebrow>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))", gap: 16, marginTop: 14 }}>
           <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
           <StatCard value={localOrgs.length} label="Local organizations" onClick={onOpenLocalOrgs} />
@@ -92,10 +89,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
 
       {/* my organizations — speed dial using the same cards as the directory */}
       <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <Eyebrow style={{ color: SOFT }}>My organizations</Eyebrow>
-          <ForwardLink onClick={() => setView("orgs")}>All organizations</ForwardLink>
-        </div>
+        <Eyebrow style={{ color: SOFT }}>My organizations</Eyebrow>
         {myOrgs.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
             {myOrgs.map((o) => (
@@ -111,10 +105,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
 
       {/* my events — created or RSVP'd, past and present */}
       <section style={{ padding: "32px 0 0" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <Eyebrow style={{ color: SOFT }}>My events</Eyebrow>
-          <ForwardLink onClick={() => setView("events")}>All events</ForwardLink>
-        </div>
+        <Eyebrow style={{ color: SOFT }}>My events</Eyebrow>
         <EventFeed
           events={myEvents}
           onOpenEvent={onOpenEvent}
