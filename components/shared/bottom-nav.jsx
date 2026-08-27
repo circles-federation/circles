@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import {
   HomeIcon as HomeOutline,
-  FolderIcon as DirectoryOutline,
+  GlobeAmericasIcon as DirectoryOutline,
   CalendarDaysIcon as EventsOutline,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeSolid,
-  FolderIcon as DirectorySolid,
+  GlobeAmericasIcon as DirectorySolid,
   CalendarDaysIcon as EventsSolid,
 } from "@heroicons/react/24/solid";
 
