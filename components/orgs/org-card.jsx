@@ -22,13 +22,16 @@ import { orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
    scope (orgScope always resolves the whole subtree to the same ancestor),
    so repeating it on each card would be redundant.
 
-   showNeighborhoodEyebrow defaults off (BrowsePage already labels its
-   "Neighborhoods"/"Councils" grid, so a per-card "Neighborhood" eyebrow
-   would be redundant there) but Home's speed dial opts in — it's a single
-   flat, mixed-kind list with no grid label to lean on, so the eyebrow is
-   the only way to tell a neighborhood card apart from an org card at a
-   glance. */
-export function OrgCard({ o, onOpenOrg, showScopeChip = true, showNeighborhoodEyebrow = false }) {
+   showKindEyebrow controls the "Neighborhood"/kind eyebrow and defaults to
+   the opposite of isNeighborhood — on for a normal org, off for a
+   Neighborhood Council — matching the plain Organizations directory. But
+   any caller can override in either direction when its own grid label
+   already says what the eyebrow would: BrowsePage's Councils grid passes
+   false even for non-neighborhood cards (Finance/Grounds/Community), since
+   "Councils" is right there in the section header; Home's speed dial
+   passes true for its neighborhood card, since that's a single flat,
+   mixed-kind list with no grid label to lean on. */
+export function OrgCard({ o, onOpenOrg, showScopeChip = true, showKindEyebrow = !o.neighborhood }) {
   const { profile, orgs } = useAppState();
   const orgsById = orgs.reduce((acc, org) => { acc[org.id] = org; return acc; }, {});
   const isNeighborhood = !!o.neighborhood;
@@ -41,7 +44,7 @@ export function OrgCard({ o, onOpenOrg, showScopeChip = true, showNeighborhoodEy
       onClick={() => onOpenOrg(o)}
       className="ink-press bg-paper flex cursor-pointer flex-col border-r border-b border-ink p-5.5 text-left"
     >
-      {(!isNeighborhood || showNeighborhoodEyebrow) && (
+      {showKindEyebrow && (
         <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
           <Eyebrow className="text-soft">{isNeighborhood ? "Neighborhood" : o.kind}</Eyebrow>
           {!isNeighborhood && showScopeChip && scope !== null && (

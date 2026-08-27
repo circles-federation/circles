@@ -93,7 +93,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
         {myOrgs.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
             {myOrgs.map((o) => (
-              <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showNeighborhoodEyebrow />
+              <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showKindEyebrow />
             ))}
           </div>
         ) : (

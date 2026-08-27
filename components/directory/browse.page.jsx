@@ -76,7 +76,7 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
   };
 
   const sections = [
-    { key: "councils", label: view.councilsLabel, items: councilFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={isRoot} /> },
+    { key: "councils", label: view.councilsLabel, items: councilFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={isRoot} showKindEyebrow={false} /> },
     { key: "orgs", label: "Organizations", items: orgFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={isRoot} /> },
     { key: "people", label: "People", items: files, minWidth: 230, renderItem: (m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showScopeChip={isRoot} /> },
   ].filter((s) => s.items.length > 0);
