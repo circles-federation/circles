@@ -17,27 +17,31 @@ import { INK, SOFT, TYPE, sans } from "@/lib/theme";
    one level, per the user's explicit "start with flat search within the
    current folder's subtree" — global cross-subtree search is future work.
 
-   Folders split into two grids by kind: "Councils" (kind === "Council")
-   above "Organizations" (everything else) — a general rule, not special-
-   cased to Neighborhood Councils, though they're the only orgs with
-   Council-kind children today. */
+   Root vs. org-folder differences (title, the councils-grid label, the
+   search placeholder) are resolved once into `view` below, rather than as
+   ternaries repeated through the JSX. The grids to show are a `sections`
+   list (already filtered to non-empty), stacked via one flex/gap wrapper
+   rather than each <FolderGrid> padding itself for spacing, and the
+   breadcrumb bar is its own <Breadcrumbs> — both local to this file since
+   they're not (yet) needed anywhere else. */
 export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot, onOpenMember }) {
   const [query, setQuery] = useState("");
   const orgsById = useMemo(() => orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {}), [orgs]);
   const membersById = useMemo(() => members.reduce((acc, m) => { acc[m.id] = m; return acc; }, {}), [members]);
 
-  const breadcrumbs = org ? orgAncestors(org, orgsById) : [];
-  const directFolders = org ? orgChildren(org, orgs) : orgs.filter((o) => !o.parentId);
-  const directFiles = org ? orgMembers(org, members).map((id) => membersById[id]).filter(Boolean) : [];
+  const isRoot = !org;
+  const breadcrumbTrail = isRoot ? [] : orgAncestors(org, orgsById);
+  const directFolders = isRoot ? orgs.filter((o) => !o.parentId) : orgChildren(org, orgs);
+  const directFiles = isRoot ? [] : orgMembers(org, members).map((id) => membersById[id]).filter(Boolean);
 
   const q = query.trim().toLowerCase();
   const searching = q.length > 0;
   // every org in the current subtree (including the current org itself),
   // or the whole tree at the true root — what search flattens across
   const subtreeOrgIds = useMemo(() => {
-    if (!org) return new Set(orgs.map((o) => o.id));
+    if (isRoot) return new Set(orgs.map((o) => o.id));
     return new Set([org.id, ...orgDescendantIds(org, orgs)]);
-  }, [org, orgs]);
+  }, [isRoot, org, orgs]);
 
   const folders = useMemo(() => {
     if (!searching) return directFolders;
@@ -59,79 +63,80 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [searching, directFiles, subtreeOrgIds, orgsById, members, q]);
 
+  const view = {
+    title: isRoot ? "Directory" : orgDisplayName(org),
+    councilsLabel: isRoot ? "Neighborhoods" : "Councils",
+    searchPlaceholder: isRoot ? "Search a name, kind, or what they offer" : `Search within ${orgDisplayName(org)}`,
+  };
+
+  const sections = [
+    { key: "councils", label: view.councilsLabel, items: councilFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} /> },
+    { key: "orgs", label: "Organizations", items: orgFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} /> },
+    { key: "people", label: "People", items: files, minWidth: 230, renderItem: (m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} /> },
+  ].filter((s) => s.items.length > 0);
+
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 24px 80px" }}>
-      {org && (
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <button
-            onClick={onOpenRoot}
-            className="cursor-pointer border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase hover:text-ink"
-          >
-            Providence
-          </button>
-          {breadcrumbs.map((b) => (
-            <span key={b.id} className="flex items-center gap-1.5">
-              <span style={{ color: SOFT }}>/</span>
-              <button
-                onClick={() => onOpenOrg(b)}
-                className="cursor-pointer border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase hover:text-ink"
-              >
-                {orgDisplayName(b)}
-              </button>
-            </span>
-          ))}
-          <span style={{ color: SOFT }}>/</span>
-          <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-ink uppercase">{orgDisplayName(org)}</span>
-        </div>
-      )}
+      <Breadcrumbs trail={breadcrumbTrail} current={org} onOpenRoot={onOpenRoot} onOpenOrg={onOpenOrg} />
 
-      <PageHeader title={org ? orgDisplayName(org) : "Directory"}>
+      <PageHeader title={view.title}>
         <span style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xs, letterSpacing: "0.08em" }}>{folders.length + files.length} shown</span>
       </PageHeader>
 
       <SearchWithFilter
         query={query}
         onQuery={setQuery}
-        placeholder={org ? `Search within ${orgDisplayName(org)}` : "Search a name, kind, or what they offer"}
+        placeholder={view.searchPlaceholder}
         filters={[]}
       />
 
-      {councilFolders.length > 0 && (
-        <section className="pt-7">
-          <Eyebrow style={{ color: SOFT }}>{org ? "Councils" : "Neighborhoods"}</Eyebrow>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
-            {councilFolders.map((o) => (
-              <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {orgFolders.length > 0 && (
-        <section className="pt-7">
-          <Eyebrow style={{ color: SOFT }}>Organizations</Eyebrow>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
-            {orgFolders.map((o) => (
-              <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {files.length > 0 && (
-        <section className="pt-7">
-          <Eyebrow style={{ color: SOFT }}>People</Eyebrow>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 230px), 1fr))", gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
-            {files.map((m) => (
-              <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {folders.length === 0 && files.length === 0 && (
+      {sections.length > 0 ? (
+        <div className="mt-7 flex flex-col gap-7">
+          {sections.map((s) => (
+            <FolderGrid key={s.key} label={s.label} items={s.items} minWidth={s.minWidth} renderItem={s.renderItem} />
+          ))}
+        </div>
+      ) : (
         <p className="mt-7 font-serif text-sm text-soft">Nothing here yet.</p>
       )}
     </div>
+  );
+}
+
+function Breadcrumbs({ trail, current, onOpenRoot, onOpenOrg }) {
+  if (!current) return null;
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-1.5">
+      <button
+        onClick={onOpenRoot}
+        className="cursor-pointer border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase hover:text-ink"
+      >
+        Providence
+      </button>
+      {trail.map((b) => (
+        <span key={b.id} className="flex items-center gap-1.5">
+          <span style={{ color: SOFT }}>/</span>
+          <button
+            onClick={() => onOpenOrg(b)}
+            className="cursor-pointer border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase hover:text-ink"
+          >
+            {orgDisplayName(b)}
+          </button>
+        </span>
+      ))}
+      <span style={{ color: SOFT }}>/</span>
+      <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-ink uppercase">{orgDisplayName(current)}</span>
+    </div>
+  );
+}
+
+function FolderGrid({ label, items, minWidth, renderItem }) {
+  return (
+    <section>
+      <Eyebrow style={{ color: SOFT }}>{label}</Eyebrow>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${minWidth}px), 1fr))`, gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
+        {items.map(renderItem)}
+      </div>
+    </section>
   );
 }
