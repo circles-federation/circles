@@ -8,9 +8,9 @@ import { orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
    Home dashboard's "my organizations" speed dial, so they look identical.
    A Neighborhood Council (org.neighborhood set) displays differently from
    every other org: its bare neighborhood name instead of its full org name,
-   "Neighborhood" instead of its kind, and no scope chip (it IS the scope) —
-   Finance/Grounds/Community Council are still kind "Council" too but aren't
-   neighborhood-rooted, so they render normally. */
+   no kind eyebrow, and no scope chip (it IS the scope) — Finance/Grounds/
+   Community Council are still kind "Council" too but aren't neighborhood-
+   rooted, so they render normally. */
 export function OrgCard({ o, onOpenOrg }) {
   const { profile, orgs } = useAppState();
   const orgsById = orgs.reduce((acc, org) => { acc[org.id] = org; return acc; }, {});
@@ -25,16 +25,18 @@ export function OrgCard({ o, onOpenOrg }) {
       style={{
         textAlign: "left", border: "none",
         borderRight: `1px solid ${INK}`, borderBottom: `1px solid ${INK}`,
-        padding: 22, cursor: "pointer", display: "flex", flexDirection: "column", minHeight: 168,
+        padding: 22, cursor: "pointer", display: "flex", flexDirection: "column",
       }}
     >
-      <div className="flex min-h-[26.5px] items-center justify-between gap-2">
-        <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{isNeighborhood ? "Neighborhood" : o.kind}</Eyebrow>
-        {!isNeighborhood && scope !== null && (
-          <Chip title={scope === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{scope}</Chip>
-        )}
-      </div>
-      <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xl, letterSpacing: "-0.025em", lineHeight: 1.0, marginTop: 12 }}>{orgDisplayName(o)}</div>
+      {!isNeighborhood && (
+        <div className="flex min-h-[26.5px] items-center justify-between gap-2 mb-3">
+          <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{o.kind}</Eyebrow>
+          {scope !== null && (
+            <Chip title={scope === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{scope}</Chip>
+          )}
+        </div>
+      )}
+      <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xl, letterSpacing: "-0.025em", lineHeight: 1.0 }}>{orgDisplayName(o)}</div>
       <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: "#222", margin: "10px 0 0", lineHeight: 1.4 }}>{o.tagline}</p>
       <div style={{ marginTop: "auto", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ display: "flex" }}>
