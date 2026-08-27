@@ -5,7 +5,6 @@ import { Eyebrow, PageHeader, SearchWithFilter } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { MemberCard } from "./member-card";
 import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers } from "@/lib/orgs.util";
-import { INK, SOFT, TYPE, sans } from "@/lib/theme";
 
 /* The unified Directory — replaces the separate People and Organizations
    pages. Browsing is a folder hierarchy: orgs are folders (they nest via
@@ -76,11 +75,11 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
   ].filter((s) => s.items.length > 0);
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 24px 80px" }}>
+    <div className="mx-auto max-w-270 px-6 pt-10 pb-20">
       <Breadcrumbs trail={breadcrumbTrail} current={org} onOpenRoot={onOpenRoot} onOpenOrg={onOpenOrg} />
 
       <PageHeader title={view.title}>
-        <span style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xs, letterSpacing: "0.08em" }}>{folders.length + files.length} shown</span>
+        <span className="font-sans text-xs font-extrabold tracking-[0.08em]">{folders.length + files.length} shown</span>
       </PageHeader>
 
       <SearchWithFilter
@@ -115,7 +114,7 @@ function Breadcrumbs({ trail, current, onOpenRoot, onOpenOrg }) {
       </button>
       {trail.map((b) => (
         <span key={b.id} className="flex items-center gap-1.5">
-          <span style={{ color: SOFT }}>/</span>
+          <span className="text-soft">/</span>
           <button
             onClick={() => onOpenOrg(b)}
             className="cursor-pointer border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase hover:text-ink"
@@ -124,7 +123,7 @@ function Breadcrumbs({ trail, current, onOpenRoot, onOpenOrg }) {
           </button>
         </span>
       ))}
-      <span style={{ color: SOFT }}>/</span>
+      <span className="text-soft">/</span>
       <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-ink uppercase">{orgDisplayName(current)}</span>
     </div>
   );
@@ -133,8 +132,11 @@ function Breadcrumbs({ trail, current, onOpenRoot, onOpenOrg }) {
 function FolderGrid({ label, items, minWidth, renderItem }) {
   return (
     <section>
-      <Eyebrow style={{ color: SOFT }}>{label}</Eyebrow>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${minWidth}px), 1fr))`, gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
+      <Eyebrow className="text-soft">{label}</Eyebrow>
+      <div
+        className="mt-3.5 grid border-t border-l border-ink"
+        style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${minWidth}px), 1fr))` }}
+      >
         {items.map(renderItem)}
       </div>
     </section>
