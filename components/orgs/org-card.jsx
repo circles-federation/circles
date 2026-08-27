@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { HomeIcon } from "@heroicons/react/24/outline";
 import { Chip, Eyebrow } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { avatarFor, memberById, MEMBERS } from "@/lib/data";
@@ -10,7 +11,9 @@ import { orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
    every other org: its bare neighborhood name instead of its full org name,
    no kind eyebrow, and no scope chip (it IS the scope) — Finance/Grounds/
    Community Council are still kind "Council" too but aren't neighborhood-
-   rooted, so they render normally.
+   rooted, so they render normally. The viewer's own home neighborhood card
+   also gets a small teal home icon next to its title (matching BrowsePage's
+   page-title treatment when browsing inside that same folder).
 
    showScopeChip defaults on for flat/mixed-scope lists (Home's "my
    organizations" speed dial) but callers rendering a single org's own
@@ -22,6 +25,7 @@ export function OrgCard({ o, onOpenOrg, showScopeChip = true }) {
   const { profile, orgs } = useAppState();
   const orgsById = orgs.reduce((acc, org) => { acc[org.id] = org; return acc; }, {});
   const isNeighborhood = !!o.neighborhood;
+  const isHome = isNeighborhood && o.neighborhood === profile.neighborhood;
   const scope = orgScope(o, orgsById);
   const members = orgMembers(o, MEMBERS);
 
@@ -38,7 +42,10 @@ export function OrgCard({ o, onOpenOrg, showScopeChip = true }) {
           )}
         </div>
       )}
-      <div className="font-sans text-xl leading-none font-extrabold tracking-[-0.025em]">{orgDisplayName(o)}</div>
+      <div className="flex items-center gap-2 font-sans text-xl leading-none font-extrabold tracking-[-0.025em]">
+        {orgDisplayName(o)}
+        {isHome && <HomeIcon className="size-5 shrink-0 text-teal" strokeWidth={2} />}
+      </div>
       <p className="mt-2.5 font-serif text-sm leading-[1.4] text-[#222]">{o.tagline}</p>
       <div className="mt-auto flex items-center justify-between pt-4">
         <span className="flex">
