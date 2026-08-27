@@ -120,7 +120,7 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 16, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
             {childOrgs.map((child) => (
-              <OrgCard key={child.id} o={child} onOpenOrg={onOpenOrg} />
+              <OrgCard key={child.id} o={child} onOpenOrg={onOpenOrg} showScopeChip={false} />
             ))}
           </div>
         </section>

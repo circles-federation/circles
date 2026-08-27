@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { HomeIcon } from "@heroicons/react/24/outline";
 import { Eyebrow, PageHeader, SearchWithFilter } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { MemberCard } from "./member-card";
-import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers } from "@/lib/orgs.util";
+import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
 
 /* The unified Directory — replaces the separate People and Organizations
    pages. Browsing is a folder hierarchy: orgs are folders (they nest via
@@ -62,6 +63,12 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [searching, directFiles, subtreeOrgIds, orgsById, members, q]);
 
+  // every card inside a folder shares that folder's own scope (orgScope
+  // always resolves a whole subtree to the same ancestor), so the scope chip
+  // only earns its place at the true root, where scope actually varies
+  // between cards — inside a folder it's redundant with the page title below.
+  const isHomeScope = !isRoot && orgScope(org, orgsById) === profile.neighborhood;
+
   const view = {
     title: isRoot ? "Directory" : orgDisplayName(org),
     councilsLabel: isRoot ? "Neighborhoods" : "Councils",
@@ -69,16 +76,27 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
   };
 
   const sections = [
-    { key: "councils", label: view.councilsLabel, items: councilFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} /> },
-    { key: "orgs", label: "Organizations", items: orgFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} /> },
-    { key: "people", label: "People", items: files, minWidth: 230, renderItem: (m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} /> },
+    { key: "councils", label: view.councilsLabel, items: councilFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={isRoot} /> },
+    { key: "orgs", label: "Organizations", items: orgFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={isRoot} /> },
+    { key: "people", label: "People", items: files, minWidth: 230, renderItem: (m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showScopeChip={isRoot} /> },
   ].filter((s) => s.items.length > 0);
 
   return (
     <div className="mx-auto max-w-270 px-6 pt-10 pb-20">
       <Breadcrumbs trail={breadcrumbTrail} current={org} onOpenRoot={onOpenRoot} onOpenOrg={onOpenOrg} />
 
-      <PageHeader title={view.title}>
+      <PageHeader
+        title={
+          isHomeScope ? (
+            <span className="inline-flex items-center gap-2">
+              {view.title}
+              <HomeIcon className="size-6 shrink-0 text-teal" strokeWidth={2} />
+            </span>
+          ) : (
+            view.title
+          )
+        }
+      >
         <span className="font-sans text-xs font-extrabold tracking-[0.08em]">{folders.length + files.length} shown</span>
       </PageHeader>
 

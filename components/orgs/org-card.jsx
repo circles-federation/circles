@@ -10,8 +10,15 @@ import { orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
    every other org: its bare neighborhood name instead of its full org name,
    no kind eyebrow, and no scope chip (it IS the scope) — Finance/Grounds/
    Community Council are still kind "Council" too but aren't neighborhood-
-   rooted, so they render normally. */
-export function OrgCard({ o, onOpenOrg }) {
+   rooted, so they render normally.
+
+   showScopeChip defaults on for flat/mixed-scope lists (Home's "my
+   organizations" speed dial) but callers rendering a single org's own
+   children (BrowsePage inside a folder, OrgPage's Sub-organizations) pass
+   false — every card in such a list structurally shares that folder's own
+   scope (orgScope always resolves the whole subtree to the same ancestor),
+   so repeating it on each card would be redundant. */
+export function OrgCard({ o, onOpenOrg, showScopeChip = true }) {
   const { profile, orgs } = useAppState();
   const orgsById = orgs.reduce((acc, org) => { acc[org.id] = org; return acc; }, {});
   const isNeighborhood = !!o.neighborhood;
@@ -26,7 +33,7 @@ export function OrgCard({ o, onOpenOrg }) {
       {!isNeighborhood && (
         <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
           <Eyebrow className="text-soft">{o.kind}</Eyebrow>
-          {scope !== null && (
+          {showScopeChip && scope !== null && (
             <Chip title={scope === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{scope}</Chip>
           )}
         </div>
