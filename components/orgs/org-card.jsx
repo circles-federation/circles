@@ -1,7 +1,7 @@
+import clsx from "clsx";
 import { Chip, Eyebrow } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { avatarFor, memberById, MEMBERS } from "@/lib/data";
-import { INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 import { orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
 
 /* Reusable organization card — used in the Organizations directory and the
@@ -20,28 +20,28 @@ export function OrgCard({ o, onOpenOrg }) {
 
   return (
     <button
-      className="ink-press bg-paper"
       onClick={() => onOpenOrg(o)}
-      style={{
-        textAlign: "left", border: "none",
-        borderRight: `1px solid ${INK}`, borderBottom: `1px solid ${INK}`,
-        padding: 22, cursor: "pointer", display: "flex", flexDirection: "column",
-      }}
+      className="ink-press bg-paper flex cursor-pointer flex-col border-r border-b border-ink p-5.5 text-left"
     >
       {!isNeighborhood && (
-        <div className="flex min-h-[26.5px] items-center justify-between gap-2 mb-3">
-          <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{o.kind}</Eyebrow>
+        <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
+          <Eyebrow className="text-soft">{o.kind}</Eyebrow>
           {scope !== null && (
             <Chip title={scope === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{scope}</Chip>
           )}
         </div>
       )}
-      <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xl, letterSpacing: "-0.025em", lineHeight: 1.0 }}>{orgDisplayName(o)}</div>
-      <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: "#222", margin: "10px 0 0", lineHeight: 1.4 }}>{o.tagline}</p>
-      <div style={{ marginTop: "auto", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ display: "flex" }}>
+      <div className="font-sans text-xl leading-none font-extrabold tracking-[-0.025em]">{orgDisplayName(o)}</div>
+      <p className="mt-2.5 font-serif text-sm leading-[1.4] text-[#222]">{o.tagline}</p>
+      <div className="mt-auto flex items-center justify-between pt-4">
+        <span className="flex">
           {members.slice(0, 8).map((id, i) => (
-            <img key={id} src={avatarFor(memberById(id))} alt="" style={{ width: 26, height: 26, objectFit: "cover", border: `1px solid ${INK}`, marginLeft: i === 0 ? 0 : -8, background: PAPER }} />
+            <img
+              key={id}
+              src={avatarFor(memberById(id))}
+              alt=""
+              className={clsx("h-6.5 w-6.5 border border-ink bg-paper object-cover", i !== 0 && "-ml-2")}
+            />
           ))}
         </span>
       </div>
