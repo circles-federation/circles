@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { notFound, useParams, useRouter } from "next/navigation";
-import { BrowsePage } from "@/components/directory/browse.page";
+import { NeighborhoodDirectoryPage } from "@/components/directory/neighborhood-directory.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useProfileModal } from "@/components/providers/profile-modal-provider";
 import { MEMBERS } from "@/lib/data";
@@ -29,7 +29,7 @@ export default function Page() {
   if (!isCouncil) return null;
 
   return (
-    <BrowsePage
+    <NeighborhoodDirectoryPage
       org={org}
       orgs={orgs}
       members={MEMBERS}

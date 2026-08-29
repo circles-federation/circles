@@ -12,23 +12,24 @@ import { orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
    and no scope chip (it IS the scope) — Finance/Grounds/Community Council
    are still kind "Council" too but aren't neighborhood-rooted, so they
    render normally. The viewer's own home neighborhood card also gets a
-   small teal home icon next to its title (matching BrowsePage's page-title
-   treatment when browsing inside that same folder).
+   small teal home icon next to its title (matching NeighborhoodDirectoryPage's
+   page-title treatment when browsing inside that same folder).
 
    showScopeChip defaults on for flat/mixed-scope lists (Home's "my
-   organizations" speed dial) but callers rendering a single org's own
-   children (BrowsePage inside a folder, OrgPage's Sub-organizations) pass
-   false — every card in such a list structurally shares that folder's own
-   scope (orgScope always resolves the whole subtree to the same ancestor),
-   so repeating it on each card would be redundant.
+   organizations" speed dial, CityDirectoryPage) but callers rendering a
+   single org's own children (NeighborhoodDirectoryPage, OrgPage's
+   Sub-organizations) pass false — every card in such a list structurally
+   shares that folder's own scope (orgScope always resolves the whole
+   subtree to the same ancestor), so repeating it on each card would be
+   redundant.
 
    showKindEyebrow controls the "Neighborhood"/kind eyebrow and defaults to
    the opposite of isNeighborhood — on for a normal org, off for a
    Neighborhood Council — matching the plain Organizations directory. But
    any caller can override in either direction when its own grid label
-   already says what the eyebrow would: BrowsePage's Councils grid passes
-   false even for non-neighborhood cards (Finance/Grounds/Community), since
-   "Councils" is right there in the section header; Home's speed dial
+   already says what the eyebrow would: NeighborhoodDirectoryPage's Councils
+   grid passes false even for non-neighborhood cards (Finance/Grounds/Community),
+   since "Councils" is right there in the section header; Home's speed dial
    passes true for its neighborhood card, since that's a single flat,
    mixed-kind list with no grid label to lean on. */
 export function OrgCard({ o, onOpenOrg, showScopeChip = true, showKindEyebrow = !o.neighborhood }) {

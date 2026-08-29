@@ -46,7 +46,6 @@ export function ProfileModalProvider({ children }) {
   function currentPageLabel() {
     if (pathname === "/home") return "Home";
     if (pathname === "/federation") return "Federation";
-    if (pathname === "/people") return "People";
     const orgMatch = pathname.match(/^\/organizations\/([^/]+)/);
     if (orgMatch) return orgs.find((o) => o.id === orgMatch[1])?.name;
     const eventMatch = pathname.match(/^\/events\/([^/]+)/);
