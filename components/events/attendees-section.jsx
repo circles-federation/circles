@@ -1,6 +1,6 @@
 import clsx from "clsx";
-import { Eyebrow } from "@/components/shared";
-import { avatarFor, memberById } from "@/lib/data";
+import { Avatar, Eyebrow } from "@/components/shared";
+import { memberById } from "@/lib/data";
 import { canReadDetails, scopeLabel } from "@/lib/governance.util";
 import { hasRoles } from "@/lib/roles.util";
 
@@ -26,7 +26,7 @@ export function AttendeesSection({ event: e, profile, onOpenMember }) {
               className={clsx("ink-press flex cursor-pointer items-center gap-3 border-0 border-r border-b border-ink p-3.5 text-left", m.id === profile.id ? "bg-[#f4f4f4]" : "bg-paper")}
               onClick={() => onOpenMember(m)}
             >
-              <img src={avatarFor(m)} alt="" className="h-11 w-11 shrink-0 border border-ink object-cover" />
+              <Avatar member={m} size={44} />
               <div>
                 <div className="font-sans text-sm font-bold">{m.name}{m.id === profile.id ? " (you)" : ""}</div>
                 {/* text-micro omitted: Eyebrow's inline-style guard already dropped this

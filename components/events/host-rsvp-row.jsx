@@ -1,5 +1,5 @@
 import { RsvpButton } from "./rsvp-button";
-import { Eyebrow } from "@/components/shared";
+import { Avatar, Eyebrow } from "@/components/shared";
 import { hostInfo } from "@/lib/data";
 import { isPastEvent } from "@/lib/format.util";
 import { isExclusive, isHostOrgMember, kindOf } from "@/lib/governance.util";
@@ -24,8 +24,8 @@ export function HostRsvpRow({ event: e, profile, going, attendeeCount, onOpenOrg
         onClick={() => (h.org ? onOpenOrg(h.org) : onOpenMember(h.member))}
         className="flex cursor-pointer items-center gap-3 border-none bg-transparent p-0"
       >
-        {h.avatar
-          ? <img src={h.avatar} alt="" className="h-10 w-10 border border-ink object-cover" />
+        {h.member
+          ? <Avatar member={h.member} size={40} />
           : <div className="flex h-10 w-10 items-center justify-center border border-ink bg-ink font-sans text-lg font-extrabold text-paper">{h.label[0]}</div>}
         <div className="text-left">
           {/* text-micro omitted: Eyebrow's inline-style guard already dropped this

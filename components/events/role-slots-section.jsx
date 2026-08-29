@@ -1,6 +1,6 @@
 import clsx from "clsx";
-import { Eyebrow } from "@/components/shared";
-import { avatarFor, memberById } from "@/lib/data";
+import { Avatar, Eyebrow } from "@/components/shared";
+import { memberById } from "@/lib/data";
 import { isPastEvent } from "@/lib/format.util";
 import { roleFull, roleUnmet } from "@/lib/roles.util";
 
@@ -63,7 +63,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
               onClick={() => onOpenMember(m)}
               className={clsx("flex cursor-pointer items-center gap-2 border border-ink py-1.5 pr-2.5 pl-1.5", m.id === profile.id ? "bg-[#f4f4f4]" : "bg-paper")}
             >
-              <img src={avatarFor(m)} alt="" className="h-7 w-7 border border-ink object-cover" />
+              <Avatar member={m} size={28} />
               <span className="font-sans text-xs font-bold">{m.name}{m.id === profile.id ? " (you)" : ""}</span>
             </button>
           ))}

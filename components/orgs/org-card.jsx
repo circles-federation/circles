@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { Chip, Eyebrow } from "@/components/shared";
+import { Avatar, Chip, Eyebrow } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { avatarFor, memberById, MEMBERS } from "@/lib/data";
+import { memberById, MEMBERS } from "@/lib/data";
 import { orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
 
 /* Reusable organization card — used in the Organizations directory and the
@@ -61,12 +61,7 @@ export function OrgCard({ o, onOpenOrg, showScopeChip = true, showKindEyebrow = 
       <div className="mt-auto flex items-center justify-between pt-4">
         <span className="flex">
           {members.slice(0, 8).map((id, i) => (
-            <img
-              key={id}
-              src={avatarFor(memberById(id))}
-              alt=""
-              className={clsx("h-6.5 w-6.5 border border-ink bg-paper object-cover", i !== 0 && "-ml-2")}
-            />
+            <Avatar key={id} member={memberById(id)} size={26} className={clsx(i !== 0 && "-ml-2")} />
           ))}
         </span>
       </div>

@@ -1,11 +1,11 @@
 import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, Chip, Eyebrow, Tag } from "@/components/shared";
+import { Avatar, BackButton, Chip, Eyebrow, Tag } from "@/components/shared";
 import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
 import { OrgCard } from "./org-card";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { avatarFor, memberById, MEMBERS } from "@/lib/data";
+import { memberById, MEMBERS } from "@/lib/data";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { kindOf } from "@/lib/governance.util";
 import { useIsMobile } from "@/lib/hooks";
@@ -144,7 +144,7 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
                   padding: 14, cursor: "pointer", display: "flex", gap: 12, alignItems: "center",
                 }}
               >
-                <img src={avatarFor(m)} alt="" style={{ width: 44, height: 44, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
+                <Avatar member={m} size={44} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{m.name}</div>
                   <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{m.role}</Eyebrow>

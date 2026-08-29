@@ -1,5 +1,4 @@
-import { Chip, Eyebrow } from "@/components/shared";
-import { avatarFor } from "@/lib/data";
+import { Avatar, Chip, Eyebrow } from "@/components/shared";
 
 /* A "file" in the directory hierarchy — a person, who (unlike an org) never
    nests. Reusable card, used anywhere a flat member list is shown.
@@ -16,7 +15,7 @@ export function MemberCard({ m, profile, onOpenMember, showScopeChip = true }) {
       onClick={() => onOpenMember(m)}
       className="ink-press bg-paper flex cursor-pointer items-center gap-3.5 border-r border-b border-ink p-4.5 text-left"
     >
-      <img src={avatarFor(m)} alt="" className="h-14 w-14 shrink-0 border border-ink object-cover" />
+      <Avatar member={m} size={56} />
       <div className="min-w-0">
         <div className="font-sans text-base font-extrabold tracking-[-0.01em]">
           {m.name}
