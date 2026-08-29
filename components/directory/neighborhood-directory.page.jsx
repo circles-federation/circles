@@ -10,8 +10,9 @@ import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers
 
 /* A single neighborhood's own directory (rendered at /directory/[id], where
    org is always that neighborhood's Neighborhood Council — see
-   app/(app)/directory/[id]/page.jsx, which bounces any non-Council id to
-   /organizations/[id] instead). Shows the Council's own sub-councils
+   app/(app)/directory/[id]/page.jsx, which renders every other org as its
+   own detail page, OrgPage, at that same route instead). Shows the
+   Council's own sub-councils
    (Finance/Grounds/Community, for The 903) and organizations as folders,
    and its residents (its derived membership, see orgMembers in
    lib/orgs.util.js) as files. Search flattens the Council's whole subtree

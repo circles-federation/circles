@@ -16,14 +16,13 @@ export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // a tab is "active" if the current route is it, a nested route beneath it,
-  // or (for Home) one of the sibling pages reached only from Home, or (for
-  // Directory) an individual org's page — org detail/manage pages still
-  // live under /organizations, not /directory, since only Neighborhood
-  // Councils browse there (see lib/hooks.js's openOrg)
+  // a tab is "active" if the current route is it or a nested route beneath
+  // it, or (for Home) one of the sibling pages reached only from Home. Every
+  // org page (Council folder view, org detail, or manage) lives under
+  // /directory regardless of how deep the org sits in the hierarchy — see
+  // lib/hooks.js's openOrg — so the generic case below covers it.
   function isActive(href) {
     if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");
-    if (href === "/directory") return pathname.startsWith("/directory") || pathname.startsWith("/organizations");
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 

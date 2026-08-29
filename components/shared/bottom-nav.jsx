@@ -31,11 +31,10 @@ export function BottomNav() {
 
   // mirrors TopBar's isActive: Home also covers the game and profile pages,
   // which are reached only from Home and have no bottom-nav tab of their
-  // own; Directory also covers individual org pages, which still live under
-  // /organizations — see top-bar.jsx's isActive for why.
+  // own. Every org page lives under /directory — see top-bar.jsx's isActive
+  // for why the generic case below already covers it.
   function isActive(href) {
     if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");
-    if (href === "/directory") return pathname.startsWith("/directory") || pathname.startsWith("/organizations");
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 

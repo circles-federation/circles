@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ProfileModal } from "@/components/directory/profile-modal";
 import { useAppNav } from "@/lib/hooks";
+import { orgDisplayName } from "@/lib/orgs.util";
 import { useAppState } from "./app-state-provider";
 
 /* The member-profile modal is a global overlay, not a route — it can be
@@ -46,8 +47,11 @@ export function ProfileModalProvider({ children }) {
   function currentPageLabel() {
     if (pathname === "/home") return "Home";
     if (pathname === "/federation") return "Federation";
-    const orgMatch = pathname.match(/^\/organizations\/([^/]+)/);
-    if (orgMatch) return orgs.find((o) => o.id === orgMatch[1])?.name;
+    const orgMatch = pathname.match(/^\/directory\/([^/]+)/);
+    if (orgMatch) {
+      const org = orgs.find((o) => o.id === orgMatch[1]);
+      return org && orgDisplayName(org);
+    }
     const eventMatch = pathname.match(/^\/events\/([^/]+)/);
     if (eventMatch) return events.find((e) => e.id === eventMatch[1])?.title;
     return undefined;
