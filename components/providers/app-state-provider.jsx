@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 import { useToast } from "@/components/shared";
-import { COUNCIL_RATIFY_THRESHOLD, MEMBERS } from "@/lib/data";
+import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
 import {
   createCouncilProposal as dbCreateCouncilProposal,
   createEvent as dbCreateEvent,
@@ -13,7 +13,6 @@ import { updateMember as dbUpdateMember } from "@/lib/db/members";
 import { updateOrg as dbUpdateOrg } from "@/lib/db/orgs";
 import { FEDERATION_COUNCIL_ENABLED } from "@/lib/feature-flags";
 import { isExclusive, isHostOrgMember, kindOf, meetingThreshold } from "@/lib/governance.util";
-import { orgMembers, orgScope } from "@/lib/orgs.util";
 
 /* Holds the app's entire "database" — events, orgs, the current user's RSVPs/
    votes/profile, and pending council proposals — plus the mutations on it.
@@ -317,28 +316,18 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return true;
   });
 
-  // an org's effective scope is derived by walking its parentId chain up to
-  // the nearest Neighborhood Council (orgScope, in lib/orgs.util.js) — null
-  // means federation-wide (root, no neighborhood ancestor). An org outside
-  // the viewer's own neighborhood is invisible unless it's federation-wide
-  // or the viewer is already one of its members — membership always wins so
-  // reparenting an org (see the Scope field on its manage page) can never
-  // lock its own members out of it, including the ability to change the
-  // scope back. Filtered here so it cascades everywhere orgs are read: the
-  // directory, Home's "Local organizations"/"My organizations" cards, and
-  // the /organizations/[id] and /organizations/[id]/manage routes, which
-  // 404 for an org filtered out here since they read from this same array.
-  const orgsById = orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
-  const visibleOrgs = orgs.filter((o) => {
-    if (o.neighborhood) return true; // a Neighborhood Council's own scope is itself, not the viewer's — but every Council is the Directory's entry point into that neighborhood, so it's always visible
-    const scope = orgScope(o, orgsById);
-    return scope === profile.neighborhood || scope === null || orgMembers(o, MEMBERS).includes(profile.id);
-  });
+  // orgs aren't filtered by the viewer's own neighborhood — the Directory
+  // nests every Neighborhood Council at the federation root specifically so
+  // any neighborhood's whole subtree (its own Councils and organizations)
+  // can be browsed into, not just the viewer's home one. Home's own "Local
+  // organizations"/"My organizations" cards narrow to the viewer's
+  // neighborhood themselves (see home.page.jsx's own orgScope filter),
+  // independent of this array.
 
   return (
     <AppStateContext.Provider
       value={{
-        events: visibleEvents, orgs: visibleOrgs, councilProposals, rsvpState, voteState, profile,
+        events: visibleEvents, orgs, councilProposals, rsvpState, voteState, profile,
         toggleRsvp, toggleRoleSlot, createEvent, proposeCouncilDraft,
         ratifyCouncilProposal, proposeEndorsingAssembly, toggleVote,
         saveOrg, saveProfile,
