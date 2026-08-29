@@ -5,7 +5,14 @@ import { HomeIcon } from "@heroicons/react/24/outline";
 import { Eyebrow, PageHeader, SearchWithFilter } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { MemberCard } from "./member-card";
-import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
+import {
+  orgAncestors,
+  orgChildren,
+  orgDescendantIds,
+  orgDisplayName,
+  orgMembers,
+  orgScope,
+} from "@/lib/orgs.util";
 
 /* The unified Directory — replaces the separate People and Organizations
    pages. Browsing is a folder hierarchy: orgs are folders (they nest via
@@ -24,15 +31,43 @@ import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers
    rather than each <FolderGrid> padding itself for spacing, and the
    breadcrumb bar is its own <Breadcrumbs> — both local to this file since
    they're not (yet) needed anywhere else. */
-export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot, onOpenMember }) {
+export function BrowsePage({
+  org,
+  orgs,
+  members,
+  profile,
+  onOpenOrg,
+  onOpenRoot,
+  onOpenMember,
+}) {
   const [query, setQuery] = useState("");
-  const orgsById = useMemo(() => orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {}), [orgs]);
-  const membersById = useMemo(() => members.reduce((acc, m) => { acc[m.id] = m; return acc; }, {}), [members]);
+  const orgsById = useMemo(
+    () =>
+      orgs.reduce((acc, o) => {
+        acc[o.id] = o;
+        return acc;
+      }, {}),
+    [orgs],
+  );
+  const membersById = useMemo(
+    () =>
+      members.reduce((acc, m) => {
+        acc[m.id] = m;
+        return acc;
+      }, {}),
+    [members],
+  );
 
   const isRoot = !org;
   const breadcrumbTrail = isRoot ? [] : orgAncestors(org, orgsById);
-  const directFolders = isRoot ? orgs.filter((o) => !o.parentId) : orgChildren(org, orgs);
-  const directFiles = isRoot ? [] : orgMembers(org, members).map((id) => membersById[id]).filter(Boolean);
+  const directFolders = isRoot
+    ? orgs.filter((o) => !o.parentId)
+    : orgChildren(org, orgs);
+  const directFiles = isRoot
+    ? []
+    : orgMembers(org, members)
+        .map((id) => membersById[id])
+        .filter(Boolean);
 
   const q = query.trim().toLowerCase();
   const searching = q.length > 0;
@@ -47,7 +82,12 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
     if (!searching) return directFolders;
     return orgs
       .filter((o) => subtreeOrgIds.has(o.id) && o.id !== org?.id)
-      .filter((o) => [o.name, o.kind, o.tagline, ...(o.offers || [])].join(" ").toLowerCase().includes(q))
+      .filter((o) =>
+        [o.name, o.kind, o.tagline, ...(o.offers || [])]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [searching, directFolders, orgs, subtreeOrgIds, org, q]);
   const councilFolders = folders.filter((o) => o.kind === "Council");
@@ -56,10 +96,17 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
   const files = useMemo(() => {
     if (!searching) return directFiles;
     const ids = new Set();
-    subtreeOrgIds.forEach((id) => orgMembers(orgsById[id], members).forEach((mid) => ids.add(mid)));
+    subtreeOrgIds.forEach((id) =>
+      orgMembers(orgsById[id], members).forEach((mid) => ids.add(mid)),
+    );
     return members
       .filter((m) => ids.has(m.id))
-      .filter((m) => [m.name, m.role, ...(m.skills || []), ...(m.interests || [])].join(" ").toLowerCase().includes(q))
+      .filter((m) =>
+        [m.name, m.role, ...(m.skills || []), ...(m.interests || [])]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [searching, directFiles, subtreeOrgIds, orgsById, members, q]);
 
@@ -67,23 +114,72 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
   // always resolves a whole subtree to the same ancestor), so the scope chip
   // only earns its place at the true root, where scope actually varies
   // between cards — inside a folder it's redundant with the page title below.
-  const isHomeScope = !isRoot && orgScope(org, orgsById) === profile.neighborhood;
+  const isHomeScope =
+    !isRoot && orgScope(org, orgsById) === profile.neighborhood;
 
   const view = {
     title: isRoot ? "Directory" : orgDisplayName(org),
     councilsLabel: isRoot ? "Neighborhoods" : "Councils",
-    searchPlaceholder: isRoot ? "Search a name, kind, or what they offer" : `Search within ${orgDisplayName(org)}`,
+    searchPlaceholder: isRoot
+      ? "Search a name, kind, or what they offer"
+      : `Search within ${orgDisplayName(org)}`,
   };
 
   const sections = [
-    { key: "councils", label: view.councilsLabel, items: councilFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={isRoot} showKindEyebrow={false} /> },
-    { key: "orgs", label: "Organizations", items: orgFolders, minWidth: 300, renderItem: (o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={isRoot} /> },
-    { key: "people", label: "People", items: files, minWidth: 230, renderItem: (m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showScopeChip={isRoot} /> },
+    {
+      key: "councils",
+      label: view.councilsLabel,
+      items: councilFolders,
+      minWidth: 300,
+      renderItem: (o) => (
+        <OrgCard
+          key={o.id}
+          o={o}
+          onOpenOrg={onOpenOrg}
+          showScopeChip={isRoot}
+          showKindEyebrow={false}
+        />
+      ),
+    },
+    {
+      key: "orgs",
+      label: "Organizations",
+      items: orgFolders,
+      minWidth: 300,
+      renderItem: (o) => (
+        <OrgCard
+          key={o.id}
+          o={o}
+          onOpenOrg={onOpenOrg}
+          showScopeChip={isRoot}
+        />
+      ),
+    },
+    {
+      key: "people",
+      label: "People",
+      items: files,
+      minWidth: 230,
+      renderItem: (m) => (
+        <MemberCard
+          key={m.id}
+          m={m}
+          profile={profile}
+          onOpenMember={onOpenMember}
+          showScopeChip={isRoot}
+        />
+      ),
+    },
   ].filter((s) => s.items.length > 0);
 
   return (
     <div className="mx-auto max-w-270 px-6 pt-10 pb-20">
-      <Breadcrumbs trail={breadcrumbTrail} current={org} onOpenRoot={onOpenRoot} onOpenOrg={onOpenOrg} />
+      <Breadcrumbs
+        trail={breadcrumbTrail}
+        current={org}
+        onOpenRoot={onOpenRoot}
+        onOpenOrg={onOpenOrg}
+      />
 
       <PageHeader
         title={
@@ -96,9 +192,7 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
             view.title
           )
         }
-      >
-        <span className="font-sans text-xs font-extrabold tracking-[0.08em]">{folders.length + files.length} shown</span>
-      </PageHeader>
+      />
 
       <SearchWithFilter
         query={query}
@@ -110,7 +204,13 @@ export function BrowsePage({ org, orgs, members, profile, onOpenOrg, onOpenRoot,
       {sections.length > 0 ? (
         <div className="mt-7 flex flex-col gap-7">
           {sections.map((s) => (
-            <FolderGrid key={s.key} label={s.label} items={s.items} minWidth={s.minWidth} renderItem={s.renderItem} />
+            <FolderGrid
+              key={s.key}
+              label={s.label}
+              items={s.items}
+              minWidth={s.minWidth}
+              renderItem={s.renderItem}
+            />
           ))}
         </div>
       ) : (
@@ -142,7 +242,9 @@ function Breadcrumbs({ trail, current, onOpenRoot, onOpenOrg }) {
         </span>
       ))}
       <span className="text-soft">/</span>
-      <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-ink uppercase">{orgDisplayName(current)}</span>
+      <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-ink uppercase">
+        {orgDisplayName(current)}
+      </span>
     </div>
   );
 }
@@ -153,7 +255,9 @@ function FolderGrid({ label, items, minWidth, renderItem }) {
       <Eyebrow className="text-soft">{label}</Eyebrow>
       <div
         className="mt-3.5 grid border-t border-l border-ink"
-        style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${minWidth}px), 1fr))` }}
+        style={{
+          gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${minWidth}px), 1fr))`,
+        }}
       >
         {items.map(renderItem)}
       </div>
