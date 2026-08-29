@@ -330,6 +330,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // 404 for an org filtered out here since they read from this same array.
   const orgsById = orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
   const visibleOrgs = orgs.filter((o) => {
+    if (o.neighborhood) return true; // a Neighborhood Council's own scope is itself, not the viewer's — but every Council is the Directory's entry point into that neighborhood, so it's always visible
     const scope = orgScope(o, orgsById);
     return scope === profile.neighborhood || scope === null || orgMembers(o, MEMBERS).includes(profile.id);
   });
