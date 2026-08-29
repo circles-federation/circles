@@ -1,6 +1,5 @@
 import { Chip, Eyebrow } from "@/components/shared";
 import { avatarFor } from "@/lib/data";
-import { INK, PAPER, SOFT, TYPE, sans } from "@/lib/theme";
 
 /* A "file" in the directory hierarchy — a person, who (unlike an org) never
    nests. Reusable card, used anywhere a flat member list is shown.
@@ -14,21 +13,16 @@ import { INK, PAPER, SOFT, TYPE, sans } from "@/lib/theme";
 export function MemberCard({ m, profile, onOpenMember, showScopeChip = true }) {
   return (
     <button
-      className="ink-press"
       onClick={() => onOpenMember(m)}
-      style={{
-        textAlign: "left", background: PAPER, border: "none",
-        borderRight: `1px solid ${INK}`, borderBottom: `1px solid ${INK}`,
-        padding: 18, cursor: "pointer", display: "flex", gap: 14, alignItems: "center",
-      }}
+      className="ink-press bg-paper flex cursor-pointer items-center gap-3.5 border-r border-b border-ink p-4.5 text-left"
     >
-      <img src={avatarFor(m)} alt="" style={{ width: 56, height: 56, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.base, letterSpacing: "-0.01em" }}>
+      <img src={avatarFor(m)} alt="" className="h-14 w-14 shrink-0 border border-ink object-cover" />
+      <div className="min-w-0">
+        <div className="font-sans text-base font-extrabold tracking-[-0.01em]">
           {m.name}
-          {m.id === profile.id && <span style={{ color: SOFT, fontWeight: 600 }}> (you)</span>}
+          {m.id === profile.id && <span className="font-semibold text-soft"> (you)</span>}
         </div>
-        <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{m.role}</Eyebrow>
+        <Eyebrow className="text-soft">{m.role}</Eyebrow>
         {showScopeChip && (
           <div className="mt-1.75">
             <Chip title={`Neighborhood: ${m.neighborhood}`}>{m.neighborhood}</Chip>
