@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
+import { ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 import { logout } from "@/lib/auth";
-import { INK, PAPER, SOFT, TYPE, sans } from "@/lib/theme";
 
 const TABS = [
   ["/home", "Home"],
@@ -35,29 +35,25 @@ export function TopBar() {
   }
 
   return (
-    <div
-      className="sticky top-0 z-50 shadow-[0_2px_6px_rgba(10,10,10,0.08)]"
-      style={{ background: PAPER }}
-    >
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 58 }}>
-        <Link href="/federation" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none", color: "inherit" }}>
-          <span style={{ fontFamily: sans, fontWeight: 800, letterSpacing: "-0.02em", fontSize: TYPE.lg }}>Providence</span>
+    <div className="sticky top-0 z-50 bg-paper shadow-[0_2px_6px_rgba(10,10,10,0.08)]">
+      <div className="mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
+        <Link href="/federation" className="border-none bg-transparent p-0 text-inherit no-underline">
+          <span className="font-sans text-lg font-extrabold tracking-[-0.02em]">Providence</span>
         </Link>
 
         {/* on mobile, these four destinations live in BottomNav instead —
             hidden via CSS breakpoint (not useIsMobile) so this never has to
             reconcile a server/client mismatch on the first paint */}
-        <div className="hidden min-[720px]:flex items-center gap-6">
-          <nav style={{ display: "flex", gap: 24 }}>
+        <div className="hidden items-center gap-6 min-[720px]:flex">
+          <nav className="flex gap-6">
             {TABS.map(([href, label]) => (
               <Link
                 key={href}
                 href={href}
-                style={{
-                  fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase",
-                  fontWeight: 600, padding: "4px 0", color: INK, textDecoration: "none",
-                  borderBottom: `2px solid ${isActive(href) ? INK : "transparent"}`,
-                }}
+                className={clsx(
+                  "border-b-2 py-1 font-sans text-xs font-semibold tracking-wide text-ink uppercase no-underline",
+                  isActive(href) ? "border-b-ink" : "border-b-transparent",
+                )}
               >
                 {label}
               </Link>
@@ -67,10 +63,9 @@ export function TopBar() {
             onClick={handleLogout}
             title="Log out"
             aria-label="Log out"
-            className="ink-press inline-flex items-center"
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: SOFT }}
+            className="ink-press inline-flex cursor-pointer items-center border-none bg-transparent p-0 text-soft"
           >
-            <ArrowRightOnRectangleIcon className="size-4.5" strokeWidth={2} />
+            <ArrowRightStartOnRectangleIcon className="size-4.5" strokeWidth={2} />
           </button>
         </div>
       </div>
