@@ -2,10 +2,9 @@
 
 import { useEffect } from "react";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import { Avatar, Chip, Eyebrow, Tag } from "@/components/shared";
+import { Avatar, Chip, Eyebrow, EyebrowGroup, Tag } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { ORGS_BY_MEMBER } from "@/lib/data";
-import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 export function ProfileModal({ member: m, onClose, onOpenOrg }) {
   const { profile } = useAppState();
@@ -20,79 +19,66 @@ export function ProfileModal({ member: m, onClose, onOpenOrg }) {
   return (
     <div
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, background: "rgba(10,10,10,0.55)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "60px 20px", zIndex: 100, overflowY: "auto" }}
+      className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto bg-ink/55 px-5 pt-15"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: PAPER, border: `1px solid ${INK}`, maxWidth: 560, width: "100%", boxShadow: "8px 8px 0 rgba(10,10,10,1)" }}
+        className="w-full max-w-140 border border-ink bg-paper shadow-[8px_8px_0_rgba(10,10,10,1)]"
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${INK}`, padding: "12px 18px" }}>
-          <Eyebrow style={{ color: SOFT }}>Profile</Eyebrow>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: sans, fontSize: TYPE.lg, fontWeight: 700, lineHeight: 1 }}>✕</button>
+        <div className="flex items-center justify-between border-b border-ink px-4.5 py-3">
+          <Eyebrow className="text-soft">Profile</Eyebrow>
+          <button onClick={onClose} className="cursor-pointer border-none bg-transparent font-sans text-lg font-bold leading-none">✕</button>
         </div>
 
-        <div style={{ display: "flex", gap: 20, padding: 22, borderBottom: `1px solid ${FAINT}` }}>
+        <div className="flex gap-5 border-b border-faint p-5.5">
           <Avatar member={m} size={110} />
           <div>
-            <h2 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.heading, letterSpacing: "-0.03em", lineHeight: 0.95, margin: 0 }}>{m.name}</h2>
-            <p style={{ fontFamily: sans, fontSize: TYPE.eyebrow, letterSpacing: "0.04em", color: SOFT, marginTop: 6 }}>{m.pronouns}</p>
-            <div style={{ marginTop: 10 }}><Tag filled>{m.role}</Tag></div>
+            <h2 className="font-sans text-heading leading-[0.95] font-extrabold tracking-tight">{m.name}</h2>
+            <p className="mt-1.5 font-sans text-eyebrow tracking-[0.04em] text-soft">{m.pronouns}</p>
+            <div className="mt-2.5"><Tag filled>{m.role}</Tag></div>
           </div>
         </div>
 
-        <div style={{ padding: 22 }}>
-          <p style={{ fontFamily: serif, fontSize: TYPE.lg, lineHeight: 1.5, margin: "0 0 22px" }}>{m.bio}</p>
+        <div className="flex flex-col gap-5.5 p-5.5">
+          <p className="font-serif text-lg leading-normal">{m.bio}</p>
 
           {m.email && (
-            <>
-              <Eyebrow style={{ color: SOFT }}>Get in touch</Eyebrow>
-              <div style={{ marginTop: 10, marginBottom: 22 }}>
-                <a
-                  href={`mailto:${m.email}`}
-                  style={{
-                    fontFamily: sans, fontSize: TYPE.sm, fontWeight: 700, color: INK, textDecoration: "none",
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                    border: `1px solid ${INK}`, padding: "9px 13px", wordBreak: "break-all",
-                  }}
-                >
-                  <span style={{ fontSize: TYPE.eyebrow }}>✉</span>
-                  {m.email}
-                </a>
-              </div>
-            </>
+            <EyebrowGroup label="Get in touch">
+              <a
+                href={`mailto:${m.email}`}
+                className="inline-flex items-center gap-2 border border-ink px-3.25 py-2.25 font-sans text-sm font-bold break-all text-ink"
+              >
+                <span className="text-eyebrow">✉</span>
+                {m.email}
+              </a>
+            </EyebrowGroup>
           )}
 
-          <Eyebrow style={{ color: SOFT }}>Skills offered</Eyebrow>
-          <div style={{ marginTop: 10, marginBottom: 22 }}>
+          <EyebrowGroup label="Skills offered">
             {m.skills.map((s) => <Tag key={s}>{s}</Tag>)}
-          </div>
+          </EyebrowGroup>
 
-          <Eyebrow style={{ color: SOFT }}>Interests</Eyebrow>
-          <div style={{ marginTop: 10, marginBottom: 22 }}>
+          <EyebrowGroup label="Interests">
             {m.interests.map((s) => <Tag key={s}>{s}</Tag>)}
-          </div>
+          </EyebrowGroup>
 
-          <Eyebrow style={{ color: SOFT }}>Neighborhood</Eyebrow>
-          <div style={{ marginTop: 12, marginBottom: orgs.length ? 22 : 0, display: "flex", flexWrap: "wrap", gap: 0 }}>
-            <Chip title={m.neighborhood === profile.neighborhood ? "This neighborhood" : "Another neighborhood in the federation"}>{m.neighborhood}</Chip>
-          </div>
+          <EyebrowGroup label="Neighborhood">
+            <div className="flex flex-wrap gap-0">
+              <Chip title={m.neighborhood === profile.neighborhood ? "This neighborhood" : "Another neighborhood in the federation"}>{m.neighborhood}</Chip>
+            </div>
+          </EyebrowGroup>
 
           {orgs.length > 0 && (
-            <>
-              <Eyebrow style={{ color: SOFT }}>Member of</Eyebrow>
-              <div style={{ marginTop: 12, borderTop: `1px solid ${INK}` }}>
+            <EyebrowGroup label="Member of">
+              <div className="border-t border-ink">
                 {orgs.map((o) => (
                   <button
                     key={o.id}
                     onClick={() => onOpenOrg(o)}
-                    style={{
-                      width: "100%", textAlign: "left", background: PAPER, border: "none",
-                      borderBottom: `1px solid ${FAINT}`, padding: "12px 0", cursor: "pointer",
-                      display: "flex", justifyContent: "space-between", alignItems: "baseline",
-                    }}
+                    className="flex w-full cursor-pointer items-baseline justify-between border-0 border-b border-faint bg-paper py-3 text-left"
                   >
-                    <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{o.name}</span>
-                    <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }} className="inline-flex items-center gap-1">
+                    <span className="font-sans text-sm font-bold">{o.name}</span>
+                    <Eyebrow className="inline-flex items-center gap-1 text-soft">
                       {o.kind}
                       {/* strokeWidth is in viewBox units, not px — smaller than the
                           usual size-3.5/strokeWidth-2.5 pair, so the width is scaled
@@ -102,7 +88,7 @@ export function ProfileModal({ member: m, onClose, onOpenOrg }) {
                   </button>
                 ))}
               </div>
-            </>
+            </EyebrowGroup>
           )}
         </div>
       </div>

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Avatar, Eyebrow } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup } from "@/components/shared";
 import { memberById } from "@/lib/data";
 import { isPastEvent } from "@/lib/format.util";
 import { roleFull, roleUnmet } from "@/lib/roles.util";
@@ -81,19 +81,20 @@ export function RoleSlotsSection({ event: e, profile, onToggleRoleSlot, onOpenMe
 
   return (
     <section className="pt-8">
-      <Eyebrow className="text-soft">Slots</Eyebrow>
-      <div className="mt-4 flex flex-col gap-4.5">
-        {e.roles.map((role) => (
-          <RoleSlotCard
-            key={role.key}
-            role={role}
-            event={e}
-            profile={profile}
-            onToggleRoleSlot={onToggleRoleSlot}
-            onOpenMember={onOpenMember}
-          />
-        ))}
-      </div>
+      <EyebrowGroup label="Slots">
+        <div className="flex flex-col gap-4.5">
+          {e.roles.map((role) => (
+            <RoleSlotCard
+              key={role.key}
+              role={role}
+              event={e}
+              profile={profile}
+              onToggleRoleSlot={onToggleRoleSlot}
+              onOpenMember={onOpenMember}
+            />
+          ))}
+        </div>
+      </EyebrowGroup>
     </section>
   );
 }

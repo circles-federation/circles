@@ -3,7 +3,7 @@
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
-import { Avatar, Button, Chip, Eyebrow, FolderGrid, Section, SectionGroup } from "@/components/shared";
+import { Avatar, Button, Chip, Eyebrow, EyebrowGroup, FolderGrid, Section, SectionGroup } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
@@ -68,20 +68,21 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
       <SectionGroup>
         {/* my neighborhood — one compact panel of stats */}
         <Section>
-          <Eyebrow className="text-soft">My neighborhood</Eyebrow>
-          <div className="mt-3.5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,160px),1fr))] gap-4">
-            <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
-            <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalOrgs} />
-            <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
-            <button
-              onClick={onPlayGame}
-              title="Play the neighbor name game"
-              className="btn-invert btn-teal flex aspect-square w-full cursor-pointer flex-col items-stretch justify-between border border-teal bg-teal p-5 text-paper"
-            >
-              <Eyebrow className="text-left text-paper">Meet My Neighbors</Eyebrow>
-              <PlayIcon className="h-(--text-hero) w-(--text-hero) self-end" />
-            </button>
-          </div>
+          <EyebrowGroup label="My neighborhood">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,160px),1fr))] gap-4">
+              <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
+              <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalOrgs} />
+              <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
+              <button
+                onClick={onPlayGame}
+                title="Play the neighbor name game"
+                className="btn-invert btn-teal flex aspect-square w-full cursor-pointer flex-col items-stretch justify-between border border-teal bg-teal p-5 text-paper"
+              >
+                <Eyebrow className="text-left text-paper">Meet My Neighbors</Eyebrow>
+                <PlayIcon className="h-(--text-hero) w-(--text-hero) self-end" />
+              </button>
+            </div>
+          </EyebrowGroup>
         </Section>
 
         {/* my organizations — speed dial using the same cards as the directory */}
@@ -94,12 +95,11 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
               renderItem={(o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showKindEyebrow />}
             />
           ) : (
-            <>
-              <Eyebrow className="text-soft">My circles</Eyebrow>
-              <p className="mt-3.5 font-serif text-base text-soft">
+            <EyebrowGroup label="My circles">
+              <p className="font-serif text-base text-soft">
                 You’re not a member of any organization yet. Browse the directory to find one.
               </p>
-            </>
+            </EyebrowGroup>
           )}
         </Section>
 

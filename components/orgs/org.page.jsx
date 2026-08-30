@@ -1,6 +1,6 @@
 import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, BackButton, Button, Chip, Eyebrow, Section, SectionGroup, Tag } from "@/components/shared";
+import { Avatar, BackButton, Button, Chip, Eyebrow, EyebrowGroup, Section, SectionGroup, Tag } from "@/components/shared";
 import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
 import { OrgCard } from "./org-card";
@@ -71,15 +71,15 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
 
       <SectionGroup>
         <Section>
-          <Eyebrow className="text-soft">About</Eyebrow>
-          <p className="mt-3.5 max-w-[40em] font-serif text-lg leading-[1.55]">{o.about}</p>
+          <EyebrowGroup label="About">
+            <p className="max-w-[40em] font-serif text-lg leading-[1.55]">{o.about}</p>
+          </EyebrowGroup>
         </Section>
 
         <Section>
-          <Eyebrow className="text-soft">What they offer</Eyebrow>
-          <div className="mt-3.5">
+          <EyebrowGroup label="What they offer">
             {o.offers.map((s) => <Tag key={s}>{s}</Tag>)}
-          </div>
+          </EyebrowGroup>
         </Section>
 
         <Section>
