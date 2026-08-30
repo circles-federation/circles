@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound, useParams, useRouter } from "next/navigation";
-import { GovernanceProposalForm } from "@/components/events/governance-proposal-form.page";
+import { GovernanceProposalFormPage } from "@/components/events/governance-proposal-form.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 
 /* One route serves both governance-proposal flows: a confirmed meeting
@@ -36,7 +36,7 @@ export default function Page() {
   }
 
   return (
-    <GovernanceProposalForm
+    <GovernanceProposalFormPage
       mode={mode}
       context={event}
       hood={hood}

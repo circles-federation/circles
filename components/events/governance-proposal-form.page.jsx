@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { BackButton, Eyebrow, fieldInput, fieldLabel } from "@/components/shared";
+import { BackButton, Button, Eyebrow, Input, Label, TextArea } from "@/components/shared";
 import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
-import { FLAME, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 /* A focused form for proposing a federation council (from a confirmed
    meeting) or an endorsing meeting (from a council). Collects title, date,
    time, location, and agenda — mirroring the meeting event form. */
-export function GovernanceProposalForm({ mode, context, hood, sponsorHood, onSubmit, onCancel }) {
+export function GovernanceProposalFormPage({ mode, context, hood, sponsorHood, onSubmit, onCancel }) {
   const isCouncil = mode === "council";
   const [title, setTitle] = useState(isCouncil ? "Providence Federation Council" : `${hood} Neighborhood Council Meeting`);
   const [date, setDate] = useState("");
@@ -26,72 +25,58 @@ export function GovernanceProposalForm({ mode, context, hood, sponsorHood, onSub
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "28px 24px 80px" }}>
+    <div className="mx-auto max-w-160 px-6 pt-7 pb-20">
       <BackButton onClick={onCancel}>Cancel</BackButton>
 
-      <div style={{ borderTop: `3px solid ${FLAME}`, borderBottom: `1px solid ${INK}`, marginTop: 16, paddingTop: 16, paddingBottom: 20 }}>
-        <Eyebrow style={{ color: FLAME }}>{isCouncil ? "Propose a federation council meeting" : `Propose a ${hood} meeting`}</Eyebrow>
-        <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.heading, letterSpacing: "-0.03em", lineHeight: 1, margin: "12px 0 0" }}>
+      <div className="mt-4 border-t-[3px] border-t-flame border-b border-b-ink pt-4 pb-5">
+        <Eyebrow className="text-flame">{isCouncil ? "Propose a federation council meeting" : `Propose a ${hood} meeting`}</Eyebrow>
+        <h1 className="mt-3 font-sans text-heading leading-none font-extrabold tracking-tight">
           {isCouncil ? "New meeting proposal" : "New meeting"}
         </h1>
-        <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: SOFT, margin: "12px 0 0", lineHeight: 1.5, maxWidth: "42em" }}>
+        <p className="mt-3 max-w-[42em] font-serif text-sm leading-normal text-soft">
           {isCouncil
             ? `As a delegate of ${sponsorHood}, draft the federation council meeting for your meeting to ratify. Once ${COUNCIL_RATIFY_THRESHOLD} attendees vote to ratify, it becomes a proposed federation council meeting.`
             : `Propose a meeting in ${hood} to decide whether to endorse "${context.title}". If your meeting passes its vote, ${hood} endorses the federation council meeting.`}
         </p>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 24 }}>
+      <div className="mt-6 flex flex-col gap-5.5">
         <div>
-          <label style={fieldLabel}>Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} style={fieldInput} />
+          <Label htmlFor="title">Title</Label>
+          <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 160px" }}>
-            <label style={fieldLabel}>Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={fieldInput} />
+        <div className="flex flex-wrap gap-3.5">
+          <div className="grow basis-40">
+            <Label htmlFor="date">Date</Label>
+            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <div style={{ flex: "1 1 100px" }}>
-            <label style={fieldLabel}>Start</label>
-            <input type="time" value={start} onChange={(e) => setStart(e.target.value)} style={fieldInput} />
+          <div className="grow basis-25">
+            <Label htmlFor="start">Start</Label>
+            <Input id="start" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
-          <div style={{ flex: "1 1 100px" }}>
-            <label style={fieldLabel}>End</label>
-            <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} style={fieldInput} />
+          <div className="grow basis-25">
+            <Label htmlFor="end">End</Label>
+            <Input id="end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
-        </div>
-        <div>
-          <label style={fieldLabel}>Location</label>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where will it be held?" style={fieldInput} />
         </div>
         <div>
-          <label style={fieldLabel}>Agenda</label>
-          <textarea value={agenda} onChange={(e) => setAgenda(e.target.value)} rows={4} placeholder="What's on the agenda?" style={{ ...fieldInput, resize: "vertical", lineHeight: 1.5 }} />
+          <Label htmlFor="location">Location</Label>
+          <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where will it be held?" />
+        </div>
+        <div>
+          <Label htmlFor="agenda">Agenda</Label>
+          <TextArea id="agenda" value={agenda} onChange={(e) => setAgenda(e.target.value)} rows={4} placeholder="What's on the agenda?" />
         </div>
 
-        {error && <p style={{ fontFamily: sans, fontSize: TYPE.xs, color: "#c0392b", margin: 0 }}>{error}</p>}
+        {error && <p className="font-sans text-xs text-danger">{error}</p>}
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button
-            onClick={submit}
-            className="btn-invert btn-flame"
-            style={{
-              fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700,
-              cursor: "pointer", padding: "13px 24px", border: `1px solid ${FLAME}`, background: FLAME, color: PAPER,
-            }}
-          >
+        <div className="flex flex-wrap gap-3">
+          <Button accent="flame" onClick={submit}>
             {isCouncil ? "Post proposal" : "Propose meeting"}
-          </button>
-          <button
-            onClick={onCancel}
-            className="ink-press"
-            style={{
-              fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700,
-              cursor: "pointer", padding: "13px 24px", border: `1px solid ${INK}`, background: PAPER, color: INK,
-            }}
-          >
+          </Button>
+          <Button variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>
