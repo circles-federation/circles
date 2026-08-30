@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PageHeader, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageHeader, SearchWithFilter } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
-import { FolderGrid } from "./folder-grid";
 
 /* The federation-wide root of the Directory (rendered at /directory with no
    id) — shows every Neighborhood Council (each one the entry point into

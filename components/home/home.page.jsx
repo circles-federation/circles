@@ -3,15 +3,14 @@
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
-import { Chip, Eyebrow } from "@/components/shared";
+import { Avatar, Button, Chip, Eyebrow, FolderGrid, Section, SectionGroup } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
-import { MEMBERS, avatarFor } from "@/lib/data";
+import { MEMBERS } from "@/lib/data";
 import { isPastEvent, parseDay } from "@/lib/format.util";
 import { useIsMobile } from "@/lib/hooks";
 import { orgMembers, orgScope } from "@/lib/orgs.util";
-import { FAINT, INK, PAPER, SOFT, TEAL, TYPE, sans, serif } from "@/lib/theme";
 
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their organizations (speed
@@ -35,89 +34,87 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
   // the user's events — created or RSVP'd; EventFeed orders and paginates them
   const myEvents = events.filter((e) => (e.rsvps || []).includes(profile.id) || rsvpState[e.id] || (e.host && e.host.type === "member" && e.host.id === profile.id));
 
-  const avatarSize = isMobile ? 64 : 96;
-
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", padding: "36px 24px 80px" }}>
+    <div className="mx-auto max-w-270 px-6 pt-9 pb-20">
       {/* identity masthead */}
-      <div style={{ borderTop: `3px solid ${INK}`, borderBottom: `1px solid ${INK}`, paddingTop: 18, paddingBottom: 22, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 18 : 20, alignItems: isMobile ? "stretch" : "flex-start" }}>
-        <div style={{ display: "flex", gap: 20, alignItems: "center", flex: 1, minWidth: 0 }}>
-          <img src={avatarFor(profile)} alt="" style={{ width: avatarSize, height: avatarSize, objectFit: "cover", border: `1px solid ${INK}`, flexShrink: 0 }} />
-          <div style={{ minWidth: 0 }}>
-            <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.95, margin: 0 }}>
+      <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
+        <div className="flex min-w-0 flex-1 items-center gap-5">
+          <Avatar member={profile} size={isMobile ? 64 : 96} />
+          <div className="min-w-0">
+            <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">
               {profile.name}
-              {profile.lastName && <span title="Stored in the system, but not shown to other members" style={{ color: "#9a9a9a", marginLeft: "0.3em", cursor: "help" }}>{profile.lastName}</span>}
+              {profile.lastName && (
+                <span title="Stored in the system, but not shown to other members" className="ml-[0.3em] cursor-help text-[#9a9a9a]">
+                  {profile.lastName}
+                </span>
+              )}
             </h1>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: serif, fontSize: TYPE.lg, color: SOFT }}>{profile.pronouns} · {profile.role}</span>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="font-serif text-lg text-soft">{profile.pronouns} · {profile.role}</span>
               <Chip title="Your neighborhood">{profile.neighborhood}</Chip>
             </div>
           </div>
         </div>
-        <button
+        <Button
+          variant="secondary"
           onClick={onEditProfile}
-          className={clsx(
-            "ink-press inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer",
-            "font-sans text-xs tracking-wide uppercase font-bold py-3 px-4.5 border border-ink bg-paper text-ink",
-            isMobile ? "self-stretch w-full" : "self-start w-auto"
-          )}
+          className={clsx("w-full self-stretch", "min-[720px]:w-auto min-[720px]:self-start")}
         >
           <PencilIcon className="size-3.5" strokeWidth={2.5} />
           Edit profile
-        </button>
+        </Button>
       </div>
 
-      {/* my neighborhood — one compact panel of stats */}
-      <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <Eyebrow style={{ color: SOFT }}>My neighborhood</Eyebrow>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))", gap: 16, marginTop: 14 }}>
-          <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
-          <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalOrgs} />
-          <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
-          <button
-            onClick={onPlayGame}
-            className="btn-invert btn-teal"
-            title="Play the neighbor name game"
-            style={{
-              aspectRatio: "1 / 1", border: `1px solid ${TEAL}`, background: TEAL, color: PAPER,
-              cursor: "pointer",
-              display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "stretch",
-              padding: 20, width: "100%",
-            }}
-          >
-            <Eyebrow style={{ color: PAPER, fontSize: TYPE.micro, textAlign: "left" }}>Meet My Neighbors</Eyebrow>
-            <PlayIcon style={{ width: TYPE.hero, height: TYPE.hero, alignSelf: "flex-end" }} />
-          </button>
-        </div>
-      </section>
-
-      {/* my organizations — speed dial using the same cards as the directory */}
-      <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <Eyebrow style={{ color: SOFT }}>My circles</Eyebrow>
-        {myOrgs.length > 0 ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
-            {myOrgs.map((o) => (
-              <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showKindEyebrow />
-            ))}
+      <SectionGroup>
+        {/* my neighborhood — one compact panel of stats */}
+        <Section>
+          <Eyebrow className="text-soft">My neighborhood</Eyebrow>
+          <div className="mt-3.5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,160px),1fr))] gap-4">
+            <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
+            <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalOrgs} />
+            <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
+            <button
+              onClick={onPlayGame}
+              title="Play the neighbor name game"
+              className="btn-invert btn-teal flex aspect-square w-full cursor-pointer flex-col items-stretch justify-between border border-teal bg-teal p-5 text-paper"
+            >
+              <Eyebrow className="text-left text-paper">Meet My Neighbors</Eyebrow>
+              <PlayIcon className="h-(--text-hero) w-(--text-hero) self-end" />
+            </button>
           </div>
-        ) : (
-          <p style={{ fontFamily: serif, fontSize: TYPE.base, color: SOFT, margin: "14px 0 0" }}>
-            You’re not a member of any organization yet. Browse the directory to find one.
-          </p>
-        )}
-      </section>
+        </Section>
 
-      {/* my events — created or RSVP'd, past and present */}
-      <section style={{ padding: "32px 0 0" }}>
-        <Eyebrow style={{ color: SOFT }}>My events</Eyebrow>
-        <EventFeed
-          events={myEvents}
-          onOpenEvent={onOpenEvent}
-          pageSize={5}
-          topBorder
-          emptyText="You're not on any events yet. RSVP to one and it'll show up here."
-        />
-      </section>
+        {/* my organizations — speed dial using the same cards as the directory */}
+        <Section>
+          {myOrgs.length > 0 ? (
+            <FolderGrid
+              label="My circles"
+              items={myOrgs}
+              minWidth={300}
+              renderItem={(o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showKindEyebrow />}
+            />
+          ) : (
+            <>
+              <Eyebrow className="text-soft">My circles</Eyebrow>
+              <p className="mt-3.5 font-serif text-base text-soft">
+                You’re not a member of any organization yet. Browse the directory to find one.
+              </p>
+            </>
+          )}
+        </Section>
+
+        {/* my events — created or RSVP'd, past and present */}
+        <Section>
+          <Eyebrow className="text-soft">My events</Eyebrow>
+          <EventFeed
+            events={myEvents}
+            onOpenEvent={onOpenEvent}
+            pageSize={5}
+            topBorder
+            emptyText="You're not on any events yet. RSVP to one and it'll show up here."
+          />
+        </Section>
+      </SectionGroup>
     </div>
   );
 }

@@ -2,10 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { PageHeader, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageHeader, SearchWithFilter } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { MemberCard } from "./member-card";
-import { FolderGrid } from "./folder-grid";
 import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers } from "@/lib/orgs.util";
 
 /* A single neighborhood's own directory (rendered at /directory/[id], where

@@ -13,6 +13,7 @@ export { ConfirmModal } from "./confirm-modal";
 export { Eyebrow } from "./eyebrow";
 export { FloatingActionButton } from "./floating-action-button";
 export { fieldLabel, fieldInput } from "./form-fields";
+export { FolderGrid } from "./folder-grid";
 export { ForwardLink } from "./forward-link";
 export { Input } from "./input";
 export { Label } from "./label";

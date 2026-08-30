@@ -7,7 +7,7 @@ import clsx from "clsx";
    doesn't carry a dangling border. */
 export function Section({ className, children, ...rest }) {
   return (
-    <section className={clsx("py-6.5", className)} {...rest}>
+    <section className={clsx("py-8", className)} {...rest}>
       {children}
     </section>
   );

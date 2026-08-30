@@ -2,11 +2,11 @@ import clsx from "clsx";
 
 /* Wraps a run of Sections and owns the hairline rules between them (via
    Tailwind's divide-y, so a lone or last Section never ends up with a
-   dangling border of its own) plus one final rule after the last child,
-   matching the rule that used to trail every section unconditionally. */
+   dangling border of its own) — dividers only appear between Sections, never
+   trailing after the last one. */
 export function SectionGroup({ className, children, ...rest }) {
   return (
-    <div className={clsx("divide-y divide-faint border-b border-faint", className)} {...rest}>
+    <div className={clsx("divide-y divide-faint", className)} {...rest}>
       {children}
     </div>
   );
