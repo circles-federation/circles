@@ -20,7 +20,11 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
   const isMobile = useIsMobile();
   const orgsById = orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
   const neighbors = MEMBERS.filter((m) => m.neighborhood === profile.neighborhood);
-  const localOrgs = orgs.filter((o) => orgScope(o, orgsById) === profile.neighborhood);
+  // excludes the neighborhood's own Council (o.neighborhood set) — clicking
+  // this stat opens that Council's folder page, which shows its children,
+  // not itself, so the count would otherwise be one higher than what's
+  // actually there to click through to.
+  const localCircles = orgs.filter((o) => orgScope(o, orgsById) === profile.neighborhood && !o.neighborhood);
   const upcoming = [...events].filter((e) => !isPastEvent(e)).sort((a, b) => parseDay(a.date) - parseDay(b.date));
   const meetings = upcoming.filter((e) => e.kind === "meeting" && orgsById[e.orgId]?.neighborhood === profile.neighborhood);
 
@@ -68,7 +72,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
         <Eyebrow style={{ color: SOFT }}>My neighborhood</Eyebrow>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))", gap: 16, marginTop: 14 }}>
           <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
-          <StatCard value={localOrgs.length} label="Local organizations" onClick={onOpenLocalOrgs} />
+          <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalOrgs} />
           <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
           <button
             onClick={onPlayGame}
