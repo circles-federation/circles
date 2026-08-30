@@ -3,7 +3,6 @@ import { DateTile } from "./date-tile";
 import { Eyebrow } from "@/components/shared";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
 import { isConfirmed, isExclusive, kindOf } from "@/lib/governance.util";
-import { FLAME, LEAF, PLUM } from "@/lib/theme";
 
 /* Date tile, kind/exclusivity badges, title, and location — the header
    block every event detail page opens with. */
@@ -11,7 +10,7 @@ export function EventMasthead({ event: e, events, onOpenEvent }) {
   const k = kindOf(e);
   const gov = k.governance;
   const confirmed = isConfirmed(e);
-  const govAccent = confirmed ? LEAF : FLAME; // raw value: DateTile isn't Tailwind-converted
+  const govAccent = confirmed ? "leaf" : "flame";
   const exclusive = isExclusive(e);
   const past = isPastEvent(e);
   const d = parseDay(e.date);
@@ -22,7 +21,7 @@ export function EventMasthead({ event: e, events, onOpenEvent }) {
 
   return (
     <div className={clsx("mt-4 flex items-start gap-5.5 border-t-[3px] border-b border-b-ink pt-4.5 pb-5.5", topBorderClass)}>
-      <DateTile iso={e.date} large accentColor={gov ? govAccent : (exclusive ? PLUM : undefined)} />
+      <DateTile iso={e.date} large accent={gov ? govAccent : (exclusive ? "plum" : undefined)} />
       <div className="flex-1">
         {gov && (
           <div className="mb-2.5 flex items-center gap-2">

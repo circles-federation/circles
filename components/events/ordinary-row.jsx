@@ -21,7 +21,7 @@ export function OrdinaryRow({ e, onOpenEvent }) {
   const cancelled = !past && hasRoles(e) && shiftCancelled(e);
   return (
     <div style={{ borderBottom: `1px solid ${INK}`, display: "flex", gap: 18, padding: "20px 22px 20px 16px", alignItems: "flex-start", borderLeft: `4px solid ${exclusive ? PLUM : "transparent"}`, ...(exclusive ? { background: "rgba(106,61,154,0.04)" } : {}) }}>
-      <DateTile iso={e.date} accentColor={past ? SOFT : (exclusive ? PLUM : undefined)} />
+      <DateTile iso={e.date} accent={past ? "soft" : (exclusive ? "plum" : undefined)} />
       <button
         onClick={() => onOpenEvent(e)}
         style={{ flex: 1, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}

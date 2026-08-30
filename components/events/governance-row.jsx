@@ -24,6 +24,7 @@ export function GovernanceRow({ e, onOpenEvent, hasCouncilProposal }) {
   const confirmed = isConfirmed(e);
   const past = isPastEvent(e);
   const accent = confirmed ? LEAF : (past ? SOFT : FLAME);
+  const accentKey = confirmed ? "leaf" : (past ? "soft" : "flame"); // DateTile takes a named accent, not a raw hex
   const wash = past ? "transparent" : (confirmed ? "rgba(46,125,50,0.05)" : "rgba(225,83,11,0.035)");
   const metaColor = past ? SOFT : "#222";
   // status text differs: meetings count resident votes; councils count endorsing neighborhoods
@@ -40,7 +41,7 @@ export function GovernanceRow({ e, onOpenEvent, hasCouncilProposal }) {
       : (confirmed ? "" : `· Proposed — ${threshold - votes} more to confirm`);
   return (
     <div style={{ borderBottom: `1px solid ${INK}`, display: "flex", gap: 18, padding: "20px 22px 20px 16px", alignItems: "flex-start", borderLeft: `4px solid ${accent}`, background: wash }}>
-      <DateTile iso={e.date} accentColor={accent} />
+      <DateTile iso={e.date} accent={accentKey} />
       <button
         onClick={() => onOpenEvent(e)}
         style={{ flex: 1, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
