@@ -1,9 +1,122 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon, FunnelIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 import { Eyebrow } from "./eyebrow";
-import { FAINT, FLAME, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
+
+/* The magnifying-glass icon, text input, and (when there's a query) the
+   clear button — the left/middle portion of the bordered search row.
+   Private to SearchWithFilter, which supplies the shared border around it
+   and FilterTrigger together. */
+function SearchField({ query, onQuery, placeholder }) {
+  return (
+    <>
+      <span className="flex items-center pl-3.5 text-soft">
+        <MagnifyingGlassIcon className="size-4" strokeWidth={2} />
+      </span>
+      <input
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+        placeholder={placeholder}
+        className="min-w-0 flex-1 border-none bg-paper py-3 pr-3.5 pl-2 font-serif text-base outline-none"
+      />
+      {query && (
+        <button
+          onClick={() => onQuery("")}
+          aria-label="Clear search"
+          title="Clear search"
+          className="flex cursor-pointer items-center justify-center border-none bg-paper px-3 text-soft"
+        >
+          <XMarkIcon className="size-4" strokeWidth={2} />
+        </button>
+      )}
+    </>
+  );
+}
+
+/* The funnel button that opens the filter menu, with a small flame badge
+   showing how many filter groups are active. */
+function FilterTrigger({ activeCount, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Filter"
+      title="Filter"
+      className={clsx(
+        "relative flex cursor-pointer items-center justify-center border-0 border-l border-ink px-3.5 text-base",
+        activeCount > 0 ? "bg-ink text-paper" : "bg-paper text-ink",
+      )}
+    >
+      <FunnelIcon className="size-3.5" strokeWidth={2.5} />
+      {activeCount > 0 && (
+        <span className="absolute top-1.5 right-1.5 flex h-3.75 min-w-3.75 items-center justify-center rounded-full bg-flame px-0.75 font-sans text-[10px] leading-none font-extrabold text-paper">
+          {activeCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/* One filter option row inside a FilterGroup — "All" or one of the group's
+   own option values. */
+function FilterOption({ label, selected, isLast, onSelect }) {
+  return (
+    <button
+      onClick={onSelect}
+      className={clsx(
+        "cursor-pointer flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left font-sans text-xs font-semibold tracking-[0.04em]",
+        !isLast && "border-b border-faint",
+        selected ? "bg-ink text-paper" : "bg-paper text-ink",
+      )}
+    >
+      {label}
+      {selected && <CheckIcon className="size-3" strokeWidth={3} />}
+    </button>
+  );
+}
+
+/* One labeled group of options in the filter menu — a header (label +
+   "Clear" when active) over the "All" option plus each of the group's own. */
+function FilterGroup({ group: g, isLast }) {
+  const all = [null, ...g.options];
+  return (
+    <div className={clsx(!isLast && "border-b-2 border-ink")}>
+      <div className="flex items-center justify-between border-b border-faint bg-[#f4f4f4] px-3.5 pt-2.25 pb-2">
+        <Eyebrow className="text-soft">{g.label}</Eyebrow>
+        {g.active && (
+          <button
+            onClick={() => g.onFilter(null)}
+            className="cursor-pointer border-none bg-transparent p-0 font-sans text-micro font-bold tracking-[0.06em] text-flame uppercase"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      {all.map((opt, i) => (
+        <FilterOption
+          key={opt || "all"}
+          label={opt || "All"}
+          selected={g.active === opt}
+          isLast={i === all.length - 1}
+          onSelect={() => g.onFilter(opt)}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* The dropdown itself — one FilterGroup per entry in `groups`, floated
+   below the search row. */
+function FilterMenu({ groups }) {
+  return (
+    <div className="absolute top-[calc(100%+4px)] right-0 z-40 max-h-100 min-w-55 max-w-full overflow-y-auto border border-ink bg-paper shadow-[4px_4px_0_rgba(10,10,10,0.08)]">
+      {groups.map((g, gi) => (
+        <FilterGroup key={g.label || gi} group={g} isLast={gi === groups.length - 1} />
+      ))}
+    </div>
+  );
+}
 
 /* Search input with a compact filter menu attached to its right edge. Supports
    one or more filter groups via the `filters` prop:
@@ -28,97 +141,12 @@ export function SearchWithFilter({ query, onQuery, placeholder, filters, filterL
   }, [open]);
 
   return (
-    <div ref={wrapRef} style={{ position: "relative", marginTop: 20 }}>
-      <div style={{ display: "flex", alignItems: "stretch", border: `1px solid ${INK}` }}>
-        <span style={{ display: "flex", alignItems: "center", paddingLeft: 14, color: SOFT }}>
-          <MagnifyingGlassIcon className="size-4" strokeWidth={2} />
-        </span>
-        <input
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          placeholder={placeholder}
-          style={{
-            flex: 1, minWidth: 0, padding: "12px 14px 12px 8px", border: "none",
-            fontFamily: serif, fontSize: TYPE.base, background: PAPER, outline: "none",
-          }}
-        />
-        {query && (
-          <button
-            onClick={() => onQuery("")}
-            aria-label="Clear search"
-            title="Clear search"
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-              border: "none", background: PAPER, color: SOFT, padding: "0 12px", fontSize: TYPE.lg, lineHeight: 1,
-            }}
-          >
-            ✕
-          </button>
-        )}
-        {groups.length > 0 && (
-          <button
-            onClick={() => setOpen((o) => !o)}
-            aria-label="Filter"
-            title="Filter"
-            style={{
-              position: "relative", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-              borderLeft: `1px solid ${INK}`, borderTop: "none", borderRight: "none", borderBottom: "none",
-              background: activeCount > 0 ? INK : PAPER, color: activeCount > 0 ? PAPER : INK,
-              padding: "0 14px", fontSize: TYPE.base,
-            }}
-          >
-            <FunnelIcon className="size-3.5" strokeWidth={2.5} />
-            {activeCount > 0 && (
-              <span style={{
-                position: "absolute", top: 6, right: 6, minWidth: 15, height: 15, padding: "0 3px",
-                borderRadius: 8, background: FLAME, color: PAPER, fontFamily: sans, fontSize: 10, fontWeight: 800,
-                display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
-              }}>{activeCount}</span>
-            )}
-          </button>
-        )}
+    <div ref={wrapRef} className="relative mt-5">
+      <div className="flex items-stretch border border-ink">
+        <SearchField query={query} onQuery={onQuery} placeholder={placeholder} />
+        {groups.length > 0 && <FilterTrigger activeCount={activeCount} onClick={() => setOpen((o) => !o)} />}
       </div>
-      {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, minWidth: 220, maxWidth: "100%", background: PAPER, border: `1px solid ${INK}`, zIndex: 40, boxShadow: "4px 4px 0 rgba(10,10,10,0.08)", maxHeight: 400, overflowY: "auto" }}>
-          {groups.map((g, gi) => {
-            const all = [null, ...g.options];
-            return (
-              <div key={g.label || gi} style={{ borderBottom: gi === groups.length - 1 ? "none" : `2px solid ${INK}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 14px 8px", background: "#f4f4f4", borderBottom: `1px solid ${FAINT}` }}>
-                  <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{g.label}</Eyebrow>
-                  {g.active && (
-                    <button
-                      onClick={() => g.onFilter(null)}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontFamily: sans, fontSize: TYPE.micro, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700, color: FLAME, padding: 0 }}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {all.map((opt, i) => {
-                  const selected = g.active === opt;
-                  const last = i === all.length - 1;
-                  return (
-                    <button
-                      key={opt || "all"}
-                      onClick={() => { g.onFilter(opt); }}
-                      style={{
-                        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
-                        fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.04em", fontWeight: 600, cursor: "pointer",
-                        padding: "10px 14px", border: "none", borderBottom: last ? "none" : `1px solid ${FAINT}`,
-                        background: selected ? INK : PAPER, color: selected ? PAPER : INK,
-                      }}
-                    >
-                      {opt || "All"}
-                      {selected && <CheckIcon className="size-3" strokeWidth={3} />}
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {open && <FilterMenu groups={groups} />}
     </div>
   );
 }
