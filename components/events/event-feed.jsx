@@ -2,18 +2,19 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { Eyebrow } from "@/components/shared";
+import { Button, Eyebrow } from "@/components/shared";
 import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
 import { isPastEvent, parseDay } from "@/lib/format.util";
 import { kindOf } from "@/lib/governance.util";
-import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 /* A single chronological event feed: upcoming events first (soonest at top),
    then past events (most recent first), so reading downward moves backward
    through time across the present moment. Paginates with "Load more", which
-   appends older events. Reused by the Events page and the Home dashboard. */
-export function EventFeed({ events, councilProposals, onOpenEvent, pageSize = 12, emptyText = "No events yet.", topBorder = false }) {
+   appends older events. Reused by the Events page and the Home dashboard —
+   spacing above the list is the caller's job (e.g. home.page.jsx wraps this
+   in an EyebrowGroup), not this component's. */
+export function EventFeed({ events, councilProposals, onOpenEvent, pageSize = 12, emptyText = "No events yet." }) {
   const { ordered, upcomingCount } = useMemo(() => {
     const up = [], pa = [];
     events.forEach((e) => (isPastEvent(e) ? pa : up).push(e));
@@ -30,21 +31,19 @@ export function EventFeed({ events, councilProposals, onOpenEvent, pageSize = 12
   const showSeam = upcomingCount > 0 && upcomingCount < ordered.length && upcomingCount <= visible.length;
 
   if (ordered.length === 0) {
-    return (
-      <p style={{ fontFamily: serif, fontSize: TYPE.base, color: SOFT, margin: "16px 0 0" }}>{emptyText}</p>
-    );
+    return <p className="mt-4 font-serif text-base text-soft">{emptyText}</p>;
   }
 
   return (
     <>
-      <div className="tab-list" style={{ marginTop: topBorder ? 14 : 0, borderTop: `1px solid ${INK}` }}>
+      <div className="border-t border-ink">
         {visible.map((e, i) => (
           <Fragment key={e.id}>
             {showSeam && i === upcomingCount && (
-              <div aria-label="Past events below" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: `1px solid ${INK}` }}>
-                <span style={{ flex: 1, height: 1, background: FAINT }} />
-                <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>Past</Eyebrow>
-                <span style={{ flex: 1, height: 1, background: FAINT }} />
+              <div aria-label="Past events below" className="flex items-center gap-3 border-b border-ink px-4 py-3.5">
+                <span className="h-px flex-1 bg-faint" />
+                <Eyebrow className="text-soft">Past</Eyebrow>
+                <span className="h-px flex-1 bg-faint" />
               </div>
             )}
             {kindOf(e).governance
@@ -54,22 +53,13 @@ export function EventFeed({ events, councilProposals, onOpenEvent, pageSize = 12
         ))}
       </div>
       {remaining > 0 && (
-        <button
-          onClick={() => setShownCount((n) => n + pageSize)}
-          className="ink-press"
-          style={{
-            width: "100%", marginTop: 16, cursor: "pointer",
-            fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700,
-            padding: "14px 8px", border: `1px solid ${INK}`, background: PAPER, color: INK,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          }}
-        >
+        <Button variant="secondary" onClick={() => setShownCount((n) => n + pageSize)} className="mt-4 w-full">
           Load older events
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: SOFT }}>
+          <span className="inline-flex items-center gap-1 text-soft">
             {remaining} more
             <ChevronDownIcon className="size-3" strokeWidth={3} />
           </span>
-        </button>
+        </Button>
       )}
     </>
   );

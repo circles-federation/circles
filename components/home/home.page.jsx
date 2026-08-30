@@ -105,14 +105,14 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
 
         {/* my events — created or RSVP'd, past and present */}
         <Section>
-          <Eyebrow className="text-soft">My events</Eyebrow>
-          <EventFeed
-            events={myEvents}
-            onOpenEvent={onOpenEvent}
-            pageSize={5}
-            topBorder
-            emptyText="You're not on any events yet. RSVP to one and it'll show up here."
-          />
+          <EyebrowGroup label="My events">
+            <EventFeed
+              events={myEvents}
+              onOpenEvent={onOpenEvent}
+              pageSize={5}
+              emptyText="You're not on any events yet. RSVP to one and it'll show up here."
+            />
+          </EyebrowGroup>
         </Section>
       </SectionGroup>
     </div>

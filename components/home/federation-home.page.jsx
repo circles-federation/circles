@@ -39,13 +39,14 @@ export function FederationHome({ events, onOpenEvent, setView }) {
           <Eyebrow style={{ color: SOFT }}>Events</Eyebrow>
           <ForwardLink onClick={() => setView("events")}>All events</ForwardLink>
         </div>
-        <EventFeed
-          events={events}
-          onOpenEvent={onOpenEvent}
-          pageSize={6}
-          topBorder
-          emptyText="Nothing on the calendar across the federation right now."
-        />
+        <div style={{ marginTop: 14 }}>
+          <EventFeed
+            events={events}
+            onOpenEvent={onOpenEvent}
+            pageSize={6}
+            emptyText="Nothing on the calendar across the federation right now."
+          />
+        </div>
       </section>
     </div>
   );
