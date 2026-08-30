@@ -6,8 +6,8 @@
 /*  confirmations, errors, etc.                                       */
 /* ------------------------------------------------------------------ */
 import { createContext, useCallback, useContext, useState } from "react";
-import { useIsMobile } from "@/lib/hooks";
-import { INK, LEAF, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 
 const ToastContext = createContext(null);
 
@@ -17,15 +17,16 @@ export function useToast() {
   return ctx || { showToast: () => {} };
 }
 
+// full literal class strings per key — Tailwind's static scan can't see
+// through a template-interpolated class name like `border-l-${tone}`
 const TOAST_TONES = {
-  success: { bar: LEAF, label: "Success" },
-  error:   { bar: "#c0392b", label: "Something went wrong" },
-  info:    { bar: INK, label: "Notice" },
+  success: { border: "border-l-leaf", text: "text-leaf", label: "Success" },
+  error: { border: "border-l-danger", text: "text-danger", label: "Something went wrong" },
+  info: { border: "border-l-ink", text: "text-ink", label: "Notice" },
 };
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
-  const isMobile = useIsMobile();
 
   const dismiss = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -53,45 +54,33 @@ export function ToastProvider({ children }) {
       {children}
       <div
         aria-live="polite"
-        style={{
-          position: "fixed", zIndex: 1000,
-          top: isMobile ? 0 : 16,
-          left: isMobile ? 0 : "auto",
-          right: isMobile ? 0 : 16,
-          width: isMobile ? "100%" : "auto",
-          maxWidth: isMobile ? "100%" : 380,
-          display: "flex", flexDirection: "column", gap: 10,
-          padding: isMobile ? 10 : 0,
-          pointerEvents: "none",
-        }}
+        className="pointer-events-none fixed top-0 right-0 left-0 z-1000 flex w-full max-w-full flex-col gap-2.5 p-2.5 min-[720px]:top-4 min-[720px]:right-4 min-[720px]:left-auto min-[720px]:w-auto min-[720px]:max-w-95 min-[720px]:p-0"
       >
         {toasts.map((t) => {
           const tone = TOAST_TONES[t.tone] || TOAST_TONES.info;
           return (
             <div
               key={t.id}
-              style={{
-                pointerEvents: "auto",
-                background: PAPER, color: INK,
-                border: `1px solid ${INK}`, borderLeft: `5px solid ${tone.bar}`,
-                boxShadow: "4px 4px 0 rgba(10,10,10,0.12)",
-                padding: "14px 16px",
-                display: "flex", alignItems: "flex-start", gap: 12,
-                animation: "toastIn .18s ease-out",
-              }}
+              className={clsx(
+                // per-side classes on purpose: a shorthand like border-ink would
+                // set border-left-color too, colliding with tone.border below in
+                // a way Tailwind resolves by stylesheet order, not intent
+                "pointer-events-auto flex items-start gap-3 border-t border-r border-b border-t-ink border-r-ink border-b-ink border-l-[5px] bg-paper px-4 py-3.5 text-ink shadow-[4px_4px_0_rgba(10,10,10,0.12)] animate-[toastIn_0.18s_ease-out]",
+                tone.border,
+              )}
             >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.eyebrow, letterSpacing: "0.1em", textTransform: "uppercase", color: tone.bar }}>
+              <div className="min-w-0 flex-1">
+                <div className={clsx("font-sans text-eyebrow font-extrabold tracking-wide uppercase", tone.text)}>
                   {t.title || tone.label}
                 </div>
-                <div style={{ fontFamily: serif, fontSize: TYPE.sm, lineHeight: 1.45, marginTop: 4 }}>{t.message}</div>
+                <div className="mt-1 font-serif text-sm leading-[1.45]">{t.message}</div>
               </div>
               <button
                 onClick={() => dismiss(t.id)}
                 aria-label="Dismiss"
-                style={{ background: "none", border: "none", cursor: "pointer", color: SOFT, fontSize: TYPE.lg, lineHeight: 1, padding: 0, flexShrink: 0 }}
+                className="shrink-0 cursor-pointer border-none bg-transparent p-0 text-soft"
               >
-                ✕
+                <XMarkIcon className="size-3.5" strokeWidth={2.5} />
               </button>
             </div>
           );
