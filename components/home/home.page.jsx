@@ -1,8 +1,7 @@
 "use client";
 
-import { PencilIcon } from "@heroicons/react/24/outline";
+import { ArrowRightStartOnRectangleIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
-import clsx from "clsx";
 import { Avatar, Button, Chip, Eyebrow, EyebrowGroup, FolderGrid, Section, SectionGroup } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { EventFeed } from "@/components/events/event-feed";
@@ -15,7 +14,7 @@ import { orgMembers, orgScope } from "@/lib/orgs.util";
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their organizations (speed
    dial), and their events. Profile editing lives on a separate page. */
-export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalOrgs, onPlayGame, onOpenOrg, onEditProfile }) {
+export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalOrgs, onPlayGame, onOpenOrg, onEditProfile, onLogout }) {
   const isMobile = useIsMobile();
   const orgsById = orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
   const neighbors = MEMBERS.filter((m) => m.neighborhood === profile.neighborhood);
@@ -55,14 +54,20 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
             </div>
           </div>
         </div>
-        <Button
-          variant="secondary"
-          onClick={onEditProfile}
-          className={clsx("w-full self-stretch", "min-[720px]:w-auto min-[720px]:self-start")}
-        >
-          <PencilIcon className="size-3.5" strokeWidth={2.5} />
-          Edit profile
-        </Button>
+        <div className="grid grid-cols-[auto_1fr] gap-2.5 min-[720px]:grid-cols-[auto_auto]">
+          <button
+            onClick={onEditProfile}
+            title="Edit profile"
+            aria-label="Edit profile"
+            className="ink-press inline-flex aspect-square cursor-pointer items-center justify-center border border-ink bg-paper p-3.25"
+          >
+            <PencilIcon className="size-3.5" strokeWidth={2.5} />
+          </button>
+          <Button variant="danger" onClick={onLogout}>
+            <ArrowRightStartOnRectangleIcon className="size-3.5" strokeWidth={2.5} />
+            Log out
+          </Button>
+        </div>
       </div>
 
       <SectionGroup>
