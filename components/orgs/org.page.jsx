@@ -1,6 +1,6 @@
 import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, BackButton, Chip, Eyebrow, Tag } from "@/components/shared";
+import { Avatar, BackButton, Button, Chip, Eyebrow, Section, SectionGroup, Tag } from "@/components/shared";
 import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
 import { OrgCard } from "./org-card";
@@ -8,12 +8,9 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { memberById, MEMBERS } from "@/lib/data";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { kindOf } from "@/lib/governance.util";
-import { useIsMobile } from "@/lib/hooks";
 import { orgChildren, orgMembers, orgScope } from "@/lib/orgs.util";
-import { FAINT, INK, PAPER, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, onBack, backLabel, onOpenMember, onOpenOrg, onOpenEvent, onManage }) {
-  const isMobile = useIsMobile();
   const { profile, orgs } = useAppState();
   const orgsById = orgs.reduce((acc, org) => { acc[org.id] = org; return acc; }, {});
   const scope = orgScope(o, orgsById);
@@ -25,30 +22,25 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
     .sort((a, b) => parseDay(a.date) - parseDay(b.date));
 
   return (
-    <div style={{ maxWidth: 880, margin: "0 auto", padding: "28px 24px 80px" }}>
+    <div className="mx-auto max-w-220 px-6 pt-7 pb-20">
       <BackButton onClick={onBack}>{backLabel || "All organizations"}</BackButton>
 
-      <div
-        style={{
-          borderTop: `3px solid ${INK}`, borderBottom: `1px solid ${INK}`, marginTop: 16, paddingTop: 16, paddingBottom: 22,
-          display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 18 : 20, alignItems: isMobile ? "stretch" : "flex-start",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Eyebrow style={{ color: SOFT }}>{o.kind}</Eyebrow>
+      <div className="mt-4 flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2.5">
+            <Eyebrow className="text-soft">{o.kind}</Eyebrow>
             {scope !== null && (
               <Chip title={scope === profile.neighborhood ? "Local to this neighborhood" : "Across the federation"}>{scope}</Chip>
             )}
           </div>
-          <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.92, margin: "12px 0 0" }}>{o.name}</h1>
-          <p style={{ fontFamily: serif, fontStyle: "italic", fontSize: TYPE.xl, color: "#222", margin: "14px 0 0" }}>{o.tagline}</p>
+          <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{o.name}</h1>
+          <p className="mt-3.5 font-serif text-xl text-[#222] italic">{o.tagline}</p>
           {lastEditor && (
-            <div style={{ marginTop: 16, fontFamily: sans, fontSize: TYPE.label, letterSpacing: "0.02em", color: SOFT }}>
+            <div className="mt-4 font-sans text-label tracking-[0.02em] text-soft">
               Last edited by{" "}
               <button
                 onClick={() => onOpenMember(lastEditor)}
-                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: sans, fontSize: TYPE.label, letterSpacing: "0.02em", color: INK, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 2 }}
+                className="cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-[0.02em] text-ink underline underline-offset-2"
               >
                 {lastEditor.name}
               </button>
@@ -57,171 +49,161 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
           )}
         </div>
         {isMember && (
-          <button
+          <Button
+            variant="secondary"
             onClick={onManage}
-            className={clsx(
-              "ink-press inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer",
-              "font-sans text-xs tracking-wide uppercase font-bold py-3 px-4.5 border border-ink bg-paper text-ink",
-              isMobile ? "self-stretch w-full" : "self-start w-auto"
-            )}
+            className={clsx("w-full self-stretch", "min-[720px]:w-auto min-[720px]:self-start")}
           >
             <PencilIcon className="size-3.5" strokeWidth={2.5} />
             Manage
-          </button>
+          </Button>
         )}
       </div>
 
       <div className="grid grid-cols-1 min-[480px]:grid-cols-2 min-[720px]:grid-cols-4 gap-px bg-faint border-b border-ink">
         {o.facts.map(([k, v]) => (
           <div key={k} className="bg-paper py-4 px-3.5">
-            <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{k}</Eyebrow>
-            <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.lg, letterSpacing: "-0.01em", marginTop: 8 }}>{v}</div>
+            <Eyebrow className="text-soft">{k}</Eyebrow>
+            <div className="mt-2 font-sans text-lg font-extrabold tracking-[-0.01em]">{v}</div>
           </div>
         ))}
       </div>
 
-      <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <Eyebrow style={{ color: SOFT }}>About</Eyebrow>
-        <p style={{ fontFamily: serif, fontSize: TYPE.lg, lineHeight: 1.55, margin: "14px 0 0", maxWidth: "40em" }}>{o.about}</p>
-      </section>
+      <SectionGroup>
+        <Section>
+          <Eyebrow className="text-soft">About</Eyebrow>
+          <p className="mt-3.5 max-w-[40em] font-serif text-lg leading-[1.55]">{o.about}</p>
+        </Section>
 
-      <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <Eyebrow style={{ color: SOFT }}>What they offer</Eyebrow>
-        <div style={{ marginTop: 14 }}>
-          {o.offers.map((s) => <Tag key={s}>{s}</Tag>)}
-        </div>
-      </section>
-
-      <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: `1px solid ${INK}`, paddingBottom: 11 }}>
-          <Eyebrow style={{ color: SOFT }}>Events they host</Eyebrow>
-          <span style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xs }}>{hostedEvents.length}</span>
-        </div>
-        {hostedEvents.length > 0 ? (
-          <div style={{ marginTop: 4 }}>
-            {hostedEvents.map((e) => (
-              kindOf(e).governance
-                ? <GovernanceRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
-                : <OrdinaryRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
-            ))}
+        <Section>
+          <Eyebrow className="text-soft">What they offer</Eyebrow>
+          <div className="mt-3.5">
+            {o.offers.map((s) => <Tag key={s}>{s}</Tag>)}
           </div>
-        ) : (
-          <p style={{ fontFamily: serif, fontSize: TYPE.base, color: SOFT, margin: "16px 0 0" }}>
-            No upcoming events hosted by {o.name}.
-          </p>
-        )}
-      </section>
+        </Section>
 
-      {childOrgs.length > 0 && (
-        <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: `1px solid ${INK}`, paddingBottom: 11 }}>
-            <Eyebrow style={{ color: SOFT }}>Sub-organizations</Eyebrow>
-            <span style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xs }}>{childOrgs.length}</span>
+        <Section>
+          <Eyebrow className="text-soft">Events they host</Eyebrow>
+          {/* no border of its own on either branch (unlike the grids below),
+              so the header rule lives here instead, on the wrapper */}
+          <div className="mt-4 border-t border-ink">
+            {hostedEvents.length > 0 ? (
+              <div className="pt-1">
+                {hostedEvents.map((e) => (
+                  kindOf(e).governance
+                    ? <GovernanceRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
+                    : <OrdinaryRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
+                ))}
+              </div>
+            ) : (
+              <p className="pt-4 font-serif text-base text-soft">
+                No upcoming events hosted by {o.name}.
+              </p>
+            )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 16, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
-            {childOrgs.map((child) => (
-              <OrgCard key={child.id} o={child} onOpenOrg={onOpenOrg} showScopeChip={false} />
-            ))}
-          </div>
-        </section>
-      )}
+        </Section>
 
-      <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <Eyebrow style={{ color: SOFT }}>Members</Eyebrow>
-          <span style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.xs }}>{members.length}</span>
-        </div>
-        {members.length > 0 ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 200px), 1fr))", gap: 0, marginTop: 16, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
-            {members.map((m) => (
-              <button
-                key={m.id}
-                className="ink-press"
-                onClick={() => onOpenMember(m)}
-                style={{
-                  textAlign: "left", background: PAPER, border: "none",
-                  borderRight: `1px solid ${INK}`, borderBottom: `1px solid ${INK}`,
-                  padding: 14, cursor: "pointer", display: "flex", gap: 12, alignItems: "center",
-                }}
-              >
-                <Avatar member={m} size={44} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{m.name}</div>
-                  <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{m.role}</Eyebrow>
-                  <div style={{ marginTop: 6 }}>
-                    <Chip title={`Neighborhood: ${m.neighborhood}`}>{m.neighborhood}</Chip>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p style={{ fontFamily: serif, fontSize: TYPE.base, color: SOFT, margin: "16px 0 0" }}>
-            No members of {o.name} are listed here yet.
-          </p>
-        )}
-      </section>
-
-      {(o.website || o.address || (o.hours && o.hours.length > 0)) && (
-      <section style={{ padding: "32px 0 0" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: `1px solid ${INK}`, paddingBottom: 11 }}>
-          <Eyebrow style={{ color: SOFT }}>Visit</Eyebrow>
-        </div>
-        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 0, border: `1px solid ${FAINT}` }}>
-          <div style={{ padding: "16px 18px", borderRight: `1px solid ${FAINT}`, borderBottom: `1px solid ${FAINT}` }}>
-            <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>Website</Eyebrow>
-            <div style={{ marginTop: 8 }}>
-              {o.website
-                ? (
-                  <a
-                    href={`https://${o.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-sans text-sm font-bold text-ink underline underline-offset-2 break-all"
-                  >
-                    {o.website}
-                    <ArrowTopRightOnSquareIcon className="size-3.5" strokeWidth={2.5} />
-                  </a>
-                )
-                : <span style={{ fontFamily: serif, fontSize: TYPE.sm, color: SOFT }}>—</span>}
+        {childOrgs.length > 0 && (
+          <Section>
+            <Eyebrow className="text-soft">Sub-organizations</Eyebrow>
+            {/* the grid's own border-t is the header rule — same as Members below */}
+            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">
+              {childOrgs.map((child) => (
+                <OrgCard key={child.id} o={child} onOpenOrg={onOpenOrg} showScopeChip={false} />
+              ))}
             </div>
-          </div>
-          <div style={{ padding: "16px 18px", borderRight: `1px solid ${FAINT}`, borderBottom: `1px solid ${FAINT}` }}>
-            <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>Address</Eyebrow>
-            <div style={{ marginTop: 8 }}>
-              {o.address
-                ? o.address.split(",").map((line, i) => (
-                    <div key={i} style={{ fontFamily: serif, fontSize: TYPE.sm, color: "#222", lineHeight: 1.4 }}>{line.trim()}</div>
-                  ))
-                : <span style={{ fontFamily: serif, fontSize: TYPE.sm, color: SOFT }}>—</span>}
-            </div>
-          </div>
-          <div style={{ padding: "16px 18px", borderBottom: `1px solid ${FAINT}` }}>
-            <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>Open hours</Eyebrow>
-            <div style={{ marginTop: 8 }}>
-              {o.hours && o.hours.length > 0
-                ? o.hours.map(([d, t]) => (
-                    <div key={d} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontFamily: serif, fontSize: TYPE.sm, color: "#222", padding: "1px 0" }}>
-                      <span style={{ color: SOFT }}>{d}</span>
-                      <span>{t}</span>
+          </Section>
+        )}
+
+        <Section>
+          <Eyebrow className="text-soft">Members</Eyebrow>
+          {members.length > 0 ? (
+            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
+              {members.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => onOpenMember(m)}
+                  className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-3.5 text-left"
+                >
+                  <Avatar member={m} size={44} />
+                  <div className="min-w-0">
+                    <div className="font-sans text-sm font-bold">{m.name}</div>
+                    <Eyebrow className="text-soft">{m.role}</Eyebrow>
+                    <div className="mt-1.5">
+                      <Chip title={`Neighborhood: ${m.neighborhood}`}>{m.neighborhood}</Chip>
                     </div>
-                  ))
-                : <span style={{ fontFamily: serif, fontSize: TYPE.sm, color: SOFT }}>—</span>}
+                  </div>
+                </button>
+              ))}
             </div>
-          </div>
-        </div>
-      </section>
-      )}
+          ) : (
+            <p className="mt-4 font-serif text-base text-soft">
+              No members of {o.name} are listed here yet.
+            </p>
+          )}
+        </Section>
 
-      <section style={{ padding: "32px 0 0" }}>
-        <div className="grid grid-cols-1 min-[720px]:grid-cols-2 border border-ink">
-          <div className="border-b border-ink min-[720px]:border-b-0 min-[720px]:border-r" style={{ padding: 24 }}>
-            <Eyebrow style={{ color: SOFT }}>How to join</Eyebrow>
-            <p style={{ fontFamily: serif, fontSize: TYPE.base, lineHeight: 1.5, margin: "12px 0 0" }}>{o.join}</p>
+        {(o.website || o.address || (o.hours && o.hours.length > 0)) && (
+          <Section>
+            <Eyebrow className="text-soft">Visit</Eyebrow>
+            {/* the box's own border is the header rule here, fainter than the
+                ink one above since it's framing a box rather than a card grid */}
+            <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] border border-faint">
+              <div className="border-r border-b border-faint px-4.5 py-4">
+                <Eyebrow className="text-soft">Website</Eyebrow>
+                <div className="mt-2">
+                  {o.website
+                    ? (
+                      <a
+                        href={`https://${o.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-sans text-sm font-bold text-ink underline underline-offset-2 break-all"
+                      >
+                        {o.website}
+                        <ArrowTopRightOnSquareIcon className="size-3.5" strokeWidth={2.5} />
+                      </a>
+                    )
+                    : <span className="font-serif text-sm text-soft">—</span>}
+                </div>
+              </div>
+              <div className="border-r border-b border-faint px-4.5 py-4">
+                <Eyebrow className="text-soft">Address</Eyebrow>
+                <div className="mt-2">
+                  {o.address
+                    ? o.address.split(",").map((line, i) => (
+                        <div key={i} className="font-serif text-sm leading-[1.4] text-[#222]">{line.trim()}</div>
+                      ))
+                    : <span className="font-serif text-sm text-soft">—</span>}
+                </div>
+              </div>
+              <div className="border-b border-faint px-4.5 py-4">
+                <Eyebrow className="text-soft">Open hours</Eyebrow>
+                <div className="mt-2">
+                  {o.hours && o.hours.length > 0
+                    ? o.hours.map(([d, t]) => (
+                        <div key={d} className="flex justify-between gap-3 py-px font-serif text-sm text-[#222]">
+                          <span className="text-soft">{d}</span>
+                          <span>{t}</span>
+                        </div>
+                      ))
+                    : <span className="font-serif text-sm text-soft">—</span>}
+                </div>
+              </div>
+            </div>
+          </Section>
+        )}
+      </SectionGroup>
+
+      <section className="pt-8">
+        <div className="grid grid-cols-1 border border-ink min-[720px]:grid-cols-2">
+          <div className="border-b border-ink p-6 min-[720px]:border-r min-[720px]:border-b-0">
+            <Eyebrow className="text-soft">How to join</Eyebrow>
+            <p className="mt-3 font-serif text-base leading-normal">{o.join}</p>
           </div>
-          <div style={{ padding: 24, background: INK, color: PAPER }}>
-            <Eyebrow style={{ color: "#bdbdbd" }}>Get in touch</Eyebrow>
-            <p style={{ fontFamily: sans, fontSize: TYPE.lg, fontWeight: 700, margin: "12px 0 0", overflowWrap: "break-word" }}>{o.contact}</p>
+          <div className="bg-ink p-6 text-paper">
+            <Eyebrow className="text-[#bdbdbd]">Get in touch</Eyebrow>
+            <p className="mt-3 font-sans text-lg font-bold wrap-break-word">{o.contact}</p>
           </div>
         </div>
       </section>
