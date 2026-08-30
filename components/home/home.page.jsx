@@ -89,7 +89,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
 
       {/* my organizations — speed dial using the same cards as the directory */}
       <section style={{ padding: "32px 0", borderBottom: `1px solid ${FAINT}` }}>
-        <Eyebrow style={{ color: SOFT }}>My organizations</Eyebrow>
+        <Eyebrow style={{ color: SOFT }}>My circles</Eyebrow>
         {myOrgs.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 0, marginTop: 14, borderTop: `1px solid ${INK}`, borderLeft: `1px solid ${INK}` }}>
             {myOrgs.map((o) => (
