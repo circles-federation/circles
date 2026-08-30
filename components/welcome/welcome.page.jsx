@@ -81,7 +81,7 @@ export function WelcomePage() {
             Providence
           </h1>
           <p className="mt-3.5 mb-7 font-serif text-lg leading-normal text-[#222]">
-            A federation of neighborhoods and other organizations. Sign in with your email to get to your neighborhood.
+            A federation of neighborhoods and other organizations. Sign in with your email to connect with your community.
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export function WelcomePage() {
               autoFocus
               required
             />
-            <Button type="submit" disabled={busy} className="mt-4 w-full">
+            <Button type="submit" disabled={busy || !email.trim()} className="mt-4 w-full">
               {busy ? "Sending…" : "Send code"}
             </Button>
           </form>
@@ -123,7 +123,7 @@ export function WelcomePage() {
               inputMode="numeric"
               required
             />
-            <Button type="submit" disabled={busy} className="mt-4 w-full">
+            <Button type="submit" disabled={busy || code.trim().length !== 6} className="mt-4 w-full">
               {busy ? "Verifying…" : "Verify"}
             </Button>
             <Button type="button" variant="secondary" onClick={useDifferentEmail} className="mt-3 w-full">
