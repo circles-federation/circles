@@ -6,7 +6,6 @@ import clsx from "clsx";
 import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { EVENT_KINDS, MEMBERS, ORGS_BY_MEMBER } from "@/lib/data";
 import { orgMembers } from "@/lib/orgs.util";
-import { FLAME, INK } from "@/lib/theme";
 
 const DEFAULT_START = "18:00";
 const DEFAULT_END = "20:00";
@@ -14,9 +13,6 @@ const DEFAULT_SLOTS = [{ label: "", description: "", min: "1", max: "" }];
 
 // full literal class strings per key — Tailwind's static scan can't see
 // through a template-interpolated class name like `border-t-${accent}`.
-// FLAME/INK (raw hex) stay imported separately below just for TabbedPanel's
-// own `accent` prop, which that component still consumes as a CSS color —
-// it isn't Tailwind-converted yet.
 const ACCENT = {
   ink: { borderT: "border-t-ink", border: "border-ink", text: "text-ink" },
   flame: { borderT: "border-t-flame", border: "border-flame", text: "text-flame" },
@@ -161,9 +157,10 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }) {
 
       {/* type selector — reusable tabbed panel wrapping the form fields */}
       <TabbedPanel
-        tabs={types.map(([key, label]) => ({ key, label, accent: EVENT_KINDS[key].governance ? FLAME : INK }))}
+        tabs={types.map(([key, label]) => ({ key, label, variant: EVENT_KINDS[key].governance ? "flame" : "ink" }))}
         active={type}
         onChange={(key) => { setType(key); setError(""); }}
+        className="mt-6"
       >
       {gov && (
         <p className="mb-1 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
