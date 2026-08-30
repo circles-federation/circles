@@ -124,6 +124,15 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         title: "Meeting proposed",
         message: `Your meeting has been proposed. Everyone in ${org ? org.neighborhood : "the neighborhood"} will be notified and can vote to confirm it.`,
       });
+    } else {
+      // "RSVPs are open" would be wrong for a role-slotted event (see
+      // lib/roles.util.js) — it's signups, not a plain RSVP list — so the
+      // message stays agnostic to which one this event actually uses.
+      showToast({
+        tone: "success",
+        title: "Event created",
+        message: `${ev.title} is on the calendar.`,
+      });
     }
     return ev;
   }
