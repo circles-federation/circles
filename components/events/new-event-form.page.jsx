@@ -1,20 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, ConfirmModal, Eyebrow, fieldInput, fieldLabel, TabbedPanel } from "@/components/shared";
-import { EVENT_KINDS, MEMBERS, ORGS_BY_MEMBER, avatarFor } from "@/lib/data";
-import { useIsMobile } from "@/lib/hooks";
+import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, Select, TabbedPanel, TextArea } from "@/components/shared";
+import { EVENT_KINDS, MEMBERS, ORGS_BY_MEMBER } from "@/lib/data";
 import { orgMembers } from "@/lib/orgs.util";
-import { FAINT, FLAME, INK, PAPER, PLUM, SOFT, TYPE, sans, serif } from "@/lib/theme";
+import { FLAME, INK } from "@/lib/theme";
 
 const DEFAULT_START = "18:00";
 const DEFAULT_END = "20:00";
 const DEFAULT_SLOTS = [{ label: "", description: "", min: "1", max: "" }];
 
-export function NewEventForm({ profile, orgs, onCreate, onCancel }) {
-  const isMobile = useIsMobile();
+// full literal class strings per key — Tailwind's static scan can't see
+// through a template-interpolated class name like `border-t-${accent}`.
+// FLAME/INK (raw hex) stay imported separately below just for TabbedPanel's
+// own `accent` prop, which that component still consumes as a CSS color —
+// it isn't Tailwind-converted yet.
+const ACCENT = {
+  ink: { borderT: "border-t-ink", border: "border-ink", text: "text-ink" },
+  flame: { borderT: "border-t-flame", border: "border-flame", text: "text-flame" },
+};
+
+export function NewEventFormPage({ profile, orgs, onCreate, onCancel }) {
   // host options: the current user, plus every org they belong to
   const myOrgs = ORGS_BY_MEMBER[profile.id] || [];
   const hostOptions = [
@@ -68,7 +76,8 @@ export function NewEventForm({ profile, orgs, onCreate, onCancel }) {
 
   const meta = EVENT_KINDS[type];
   const gov = meta.governance;
-  const accent = gov ? FLAME : INK;
+  const accentKey = gov ? "flame" : "ink";
+  const accent = ACCENT[accentKey];
 
   function submit() {
     if (!title.trim()) return setError("Give the " + (gov ? "meeting" : "event") + " a title.");
@@ -140,12 +149,12 @@ export function NewEventForm({ profile, orgs, onCreate, onCancel }) {
   ];
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "28px 24px 80px" }}>
+    <div className="mx-auto max-w-170 px-6 pt-7 pb-20">
       <BackButton onClick={handleLeave}>All events</BackButton>
 
-      <div style={{ borderTop: `3px solid ${accent}`, borderBottom: `1px solid ${INK}`, marginTop: 16, paddingTop: 16, paddingBottom: 20 }}>
-        <Eyebrow style={{ color: gov ? FLAME : SOFT }}>{gov ? "Propose" : "Create"}</Eyebrow>
-        <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.title, letterSpacing: "-0.035em", lineHeight: 0.95, margin: "12px 0 0" }}>
+      <div className={clsx("mt-4 border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
+        <Eyebrow className={gov ? "text-flame" : "text-soft"}>{gov ? "Propose" : "Create"}</Eyebrow>
+        <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">
           {type === "ordinary" ? "New event" : "Neighborhood council meeting"}
         </h1>
       </div>
@@ -157,126 +166,118 @@ export function NewEventForm({ profile, orgs, onCreate, onCancel }) {
         onChange={(key) => { setType(key); setError(""); }}
       >
       {gov && (
-        <p style={{ fontFamily: serif, fontSize: TYPE.sm, color: "#222", lineHeight: 1.5, margin: "0 0 4px", borderLeft: `3px solid ${FLAME}`, paddingLeft: 12 }}>
+        <p className="mb-1 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
           This is a governance meeting for <strong>{profile.neighborhood}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {profile.neighborhood} residents</strong> to be confirmed. Your proposal counts as the first vote.
         </p>
       )}
 
-      <div style={{ paddingTop: gov ? 22 : 0, display: "flex", flexDirection: "column", gap: 22 }}>
+      <div className={clsx("flex flex-col gap-5.5", gov && "pt-5.5")}>
         <div>
-          <label style={fieldLabel}>Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={gov ? "What is this meeting about?" : "What's happening?"} style={fieldInput} />
+          <Label htmlFor="title">Title</Label>
+          <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={gov ? "What is this meeting about?" : "What's happening?"} />
         </div>
 
         {!gov && (
           <div>
-            <label style={fieldLabel}>Hosted by</label>
-            <div style={{ position: "relative" }}>
-              <select value={hostKey} onChange={(e) => setHostKey(e.target.value)} style={{ ...fieldInput, cursor: "pointer", appearance: "none", borderRadius: 0, paddingRight: 36 }}>
-                {hostOptions.map((h) => (
-                  <option key={h.key} value={h.key}>{h.label}</option>
-                ))}
-              </select>
-              <ChevronDownIcon
-                className="size-4"
-                strokeWidth={2}
-                style={{ position: "absolute", top: "50%", right: 12, transform: "translateY(-50%)", color: SOFT, pointerEvents: "none" }}
-              />
-            </div>
+            <Label htmlFor="host">Hosted by</Label>
+            <Select id="host" value={hostKey} onChange={(e) => setHostKey(e.target.value)}>
+              {hostOptions.map((h) => (
+                <option key={h.key} value={h.key}>{h.label}</option>
+              ))}
+            </Select>
             {hostKey.startsWith("org:") && (
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 14, cursor: "pointer", padding: "12px 14px", border: `1px solid ${membersOnly ? PLUM : FAINT}`, background: membersOnly ? "rgba(106,61,154,0.06)" : PAPER }}>
+              <label className={clsx("mt-3.5 flex cursor-pointer items-start gap-2.5 border px-3.5 py-3", membersOnly ? "border-plum bg-plum/6" : "border-faint bg-paper")}>
                 <input
                   type="checkbox"
                   checked={membersOnly}
                   onChange={(e) => setMembersOnly(e.target.checked)}
-                  style={{ width: 18, height: 18, marginTop: 1, accentColor: PLUM, flexShrink: 0, cursor: "pointer" }}
+                  className="mt-px size-4.5 shrink-0 cursor-pointer accent-plum"
                 />
                 <span>
-                  <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm, color: membersOnly ? PLUM : INK }}>Members only</span>
-                  <span style={{ display: "block", fontFamily: serif, fontSize: TYPE.sm, color: SOFT, lineHeight: 1.45, marginTop: 3 }}>
+                  <span className={clsx("font-sans text-sm font-bold", membersOnly ? "text-plum" : "text-ink")}>Members only</span>
+                  <span className="mt-0.75 block font-serif text-sm leading-[1.45] text-soft">
                     Everyone can see this event, but only members of {hostOptions.find((h) => h.key === hostKey).label} can RSVP and are emailed about it.
                   </span>
                 </span>
               </label>
             )}
             {hostKey.startsWith("org:") && (
-              <div style={{ marginTop: 14, border: `1px solid ${useSlots ? INK : FAINT}`, padding: "14px 16px" }}>
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+              <div className={clsx("mt-3.5 border px-4 py-3.5", useSlots ? "border-ink" : "border-faint")}>
+                <label className="flex cursor-pointer items-start gap-2.5">
                   <input
                     type="checkbox"
                     checked={useSlots}
                     onChange={(e) => setUseSlots(e.target.checked)}
-                    style={{ width: 18, height: 18, marginTop: 1, accentColor: INK, flexShrink: 0, cursor: "pointer" }}
+                    className="mt-px size-4.5 shrink-0 cursor-pointer accent-ink"
                   />
                   <span>
-                    <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>Use slots</span>
-                    <span style={{ display: "block", fontFamily: serif, fontSize: TYPE.sm, color: SOFT, lineHeight: 1.45, marginTop: 3 }}>
+                    <span className="font-sans text-sm font-bold">Use slots</span>
+                    <span className="mt-0.75 block font-serif text-sm leading-[1.45] text-soft">
                       Define named roles people sign up for (like shift lead, greeter). Slots replace the normal RSVP.
                     </span>
                   </span>
                 </label>
 
                 {useSlots && (
-                  <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div className="mt-4 flex flex-col gap-3.5">
                     {slots.map((s, i) => (
-                      <div key={i} style={{ border: `1px solid ${FAINT}`, padding: "14px 14px 16px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.eyebrow, letterSpacing: "0.08em", textTransform: "uppercase", color: SOFT }}>Slot {i + 1}</span>
+                      <div key={i} className="border border-faint px-3.5 pt-3.5 pb-4">
+                        <div className="mb-2.5 flex items-center justify-between">
+                          <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase">Slot {i + 1}</span>
                           {slots.length > 1 && (
                             <button
                               onClick={() => setSlots(slots.filter((_, j) => j !== i))}
-                              style={{ background: "none", border: "none", cursor: "pointer", color: SOFT, fontFamily: sans, fontSize: TYPE.eyebrow, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700, padding: 0 }}
+                              className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.06em] text-soft uppercase"
                             >
-                              ✕ Remove
+                              <XMarkIcon className="size-3" strokeWidth={3} />
+                              Remove
                             </button>
                           )}
                         </div>
-                        <input
-                          value={s.label}
-                          onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
-                          placeholder="Slot name (e.g. Shift lead)"
-                          style={{ ...fieldInput, marginBottom: 10 }}
-                        />
-                        <input
-                          value={s.description}
-                          onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
-                          placeholder="Description (optional)"
-                          style={{ ...fieldInput, marginBottom: 10 }}
-                        />
-                        <div style={{ display: "flex", gap: 12 }}>
-                          <div style={{ flex: 1 }}>
-                            <label style={fieldLabel}>Min</label>
-                            <input
-                              type="number" min="0"
-                              value={s.min}
-                              onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, min: e.target.value } : x))}
-                              style={{ ...fieldInput, fontFamily: sans, fontSize: TYPE.sm }}
-                            />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <label style={fieldLabel}>Max (optional)</label>
-                            <input
-                              type="number" min="1"
-                              value={s.max}
-                              onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, max: e.target.value } : x))}
-                              placeholder="No limit"
-                              style={{ ...fieldInput, fontFamily: sans, fontSize: TYPE.sm }}
-                            />
+                        <div className="flex flex-col gap-2.5">
+                          <Input
+                            value={s.label}
+                            onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                            placeholder="Slot name (e.g. Shift lead)"
+                          />
+                          <Input
+                            value={s.description}
+                            onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
+                            placeholder="Description (optional)"
+                          />
+                          <div className="flex gap-3">
+                            <div className="flex-1">
+                              <Label htmlFor={`slot-min-${i}`}>Min</Label>
+                              <Input
+                                id={`slot-min-${i}`}
+                                type="number" min="0"
+                                value={s.min}
+                                onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, min: e.target.value } : x))}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <Label htmlFor={`slot-max-${i}`}>Max (optional)</Label>
+                              <Input
+                                id={`slot-max-${i}`}
+                                type="number" min="1"
+                                value={s.max}
+                                onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, max: e.target.value } : x))}
+                                placeholder="No limit"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
                     ))}
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="compact"
                       onClick={() => setSlots([...slots, { label: "", description: "", min: "1", max: "" }])}
-                      className="ink-press"
-                      style={{
-                        fontFamily: sans, fontSize: TYPE.eyebrow, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700,
-                        cursor: "pointer", padding: "10px 15px", alignSelf: "flex-start",
-                        border: `1px solid ${INK}`, background: PAPER, color: INK,
-                      }}
+                      className="self-start"
                     >
-                      + Add slot
-                    </button>
+                      <PlusIcon className="size-3.5" strokeWidth={2.5} />
+                      Add slot
+                    </Button>
                   </div>
                 )}
               </div>
@@ -285,70 +286,54 @@ export function NewEventForm({ profile, orgs, onCreate, onCancel }) {
         )}
         {gov && (
           <div>
-            <label style={fieldLabel}>Proposed by</label>
-            <div style={{ ...fieldInput, display: "flex", alignItems: "center", gap: 10 }}>
-              <img src={avatarFor(profile)} alt="" style={{ width: 26, height: 26, objectFit: "cover", border: `1px solid ${INK}` }} />
-              <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.sm }}>{profile.name} (you)</span>
+            <Label>Proposed by</Label>
+            <div className="flex items-center gap-2.5 border border-ink bg-paper px-3 py-2.75">
+              <Avatar member={profile} size={26} />
+              <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
             </div>
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 14 }}>
+        <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
           <div>
-            <label style={fieldLabel}>Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...fieldInput, fontFamily: sans, fontSize: TYPE.sm }} />
+            <Label htmlFor="date">Date</Label>
+            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, gridColumn: isMobile ? "auto" : "span 2" }}>
+          <div className="grid grid-cols-2 gap-3.5 min-[720px]:col-span-2">
             <div>
-              <label style={fieldLabel}>Start</label>
-              <input type="time" value={start} onChange={(e) => setStart(e.target.value)} style={{ ...fieldInput, fontFamily: sans, fontSize: TYPE.sm }} />
+              <Label htmlFor="start">Start</Label>
+              <Input id="start" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
             </div>
             <div>
-              <label style={fieldLabel}>End</label>
-              <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} style={{ ...fieldInput, fontFamily: sans, fontSize: TYPE.sm }} />
+              <Label htmlFor="end">End</Label>
+              <Input id="end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
           </div>
         </div>
 
         <div>
-          <label style={fieldLabel}>Location</label>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" style={fieldInput} />
+          <Label htmlFor="location">Location</Label>
+          <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" />
         </div>
 
         <div>
-          <label style={fieldLabel}>{gov ? "Agenda" : "Description"}</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder={gov ? "What should this meeting decide or discuss?" : "What's it about, what to bring, who it's for…"} style={{ ...fieldInput, resize: "vertical", lineHeight: 1.5 }} />
+          <Label htmlFor="description">{gov ? "Agenda" : "Description"}</Label>
+          <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder={gov ? "What should this meeting decide or discuss?" : "What's it about, what to bring, who it's for…"} />
         </div>
 
         {error && (
-          <div style={{ fontFamily: sans, fontSize: TYPE.xs, fontWeight: 600, color: accent, borderLeft: `3px solid ${accent}`, paddingLeft: 12 }}>
+          <div className={clsx("border-l-[3px] pl-3 font-sans text-xs font-semibold", accent.border, accent.text)}>
             {error}
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", borderTop: `1px solid ${INK}`, paddingTop: 22 }}>
-          <button
-            onClick={submit}
-            className={clsx("btn-invert", gov ? "btn-flame" : "btn-ink")}
-            style={{
-              fontFamily: sans, fontSize: TYPE.eyebrow, letterSpacing: "0.14em", textTransform: "uppercase",
-              fontWeight: 700, background: accent, color: PAPER, border: `1px solid ${accent}`,
-              padding: "14px 28px", cursor: "pointer",
-            }}
-          >
+        <div className="flex flex-wrap gap-3 border-t border-ink pt-5.5">
+          <Button accent={accentKey} onClick={submit}>
             {gov ? "Propose meeting" : "Create event"}
-          </button>
-          <button
-            onClick={handleLeave}
-            className="ink-press"
-            style={{
-              fontFamily: sans, fontSize: TYPE.eyebrow, letterSpacing: "0.14em", textTransform: "uppercase",
-              fontWeight: 700, background: PAPER, color: INK, border: `1px solid ${INK}`,
-              padding: "14px 24px", cursor: "pointer",
-            }}
-          >
+          </Button>
+          <Button variant="secondary" onClick={handleLeave}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
       </TabbedPanel>

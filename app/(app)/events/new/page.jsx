@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { NewEventForm } from "@/components/events/new-event-form.page";
+import { NewEventFormPage } from "@/components/events/new-event-form.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 
 export default function Page() {
@@ -9,7 +9,7 @@ export default function Page() {
   const { createEvent, orgs, profile } = useAppState();
 
   return (
-    <NewEventForm
+    <NewEventFormPage
       profile={profile}
       orgs={orgs}
       // replace, not push: the form is done with, so its history entry should
