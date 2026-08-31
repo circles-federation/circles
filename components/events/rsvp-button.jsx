@@ -1,41 +1,44 @@
-import { FAINT, INK, PAPER, PLUM, SOFT, sans } from "@/lib/theme";
+import { CheckIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 
 export function RsvpButton({ going, count, onToggle, big, disabled, reason }) {
+  const sizeClasses = big ? "py-3.25 px-6" : "py-2.5 px-3.75";
+
   if (disabled) {
-    const label = reason === "membersOnly"
-      ? "Members only"
-      : (going ? "✓ Went" : "Ended");
     const title = reason === "membersOnly"
       ? "Only members of the hosting organization can RSVP to this event"
       : "This event has already happened";
     return (
       <div
         title={title}
-        style={{
-          fontFamily: sans, fontSize: big ? 12 : 11, letterSpacing: "0.14em", textTransform: "uppercase",
-          fontWeight: 700, padding: big ? "14px 22px" : "9px 14px",
-          border: `1px solid ${reason === "membersOnly" ? PLUM : FAINT}`, background: PAPER, color: reason === "membersOnly" ? PLUM : SOFT,
-          display: "inline-flex", alignItems: "center", gap: 10, whiteSpace: "nowrap", cursor: "not-allowed",
-        }}
+        className={clsx(
+          "inline-flex cursor-not-allowed items-center gap-2.5 border bg-paper font-sans text-xs font-bold tracking-wide whitespace-nowrap uppercase",
+          sizeClasses,
+          reason === "membersOnly" ? "border-plum text-plum" : "border-faint text-soft",
+        )}
       >
-        <span>{label}</span>
-        <span style={{ fontWeight: 800, opacity: 0.7 }}>{count}</span>
+        <span className="inline-flex items-center gap-1">
+          {going && <CheckIcon className="size-3" strokeWidth={3} />}
+          {reason === "membersOnly" ? "Members only" : (going ? "Went" : "Ended")}
+        </span>
+        <span className="font-extrabold opacity-70">{count}</span>
       </div>
     );
   }
   return (
     <button
       onClick={onToggle}
-      style={{
-        fontFamily: sans, fontSize: big ? 12 : 11, letterSpacing: "0.14em", textTransform: "uppercase",
-        fontWeight: 700, cursor: "pointer", padding: big ? "14px 22px" : "9px 14px",
-        border: `1px solid ${INK}`,
-        background: going ? INK : PAPER, color: going ? PAPER : INK,
-        display: "inline-flex", alignItems: "center", gap: 10,
-      }}
+      className={clsx(
+        "inline-flex cursor-pointer items-center gap-2.5 border border-ink font-sans text-xs font-bold tracking-wide whitespace-nowrap uppercase",
+        sizeClasses,
+        going ? "bg-ink text-paper" : "bg-paper text-ink",
+      )}
     >
-      <span>{going ? "✓ Going" : "RSVP"}</span>
-      <span style={{ fontWeight: 800, opacity: 0.7 }}>{count}</span>
+      <span className="inline-flex items-center gap-1">
+        {going && <CheckIcon className="size-3" strokeWidth={3} />}
+        {going ? "Going" : "RSVP"}
+      </span>
+      <span className="font-extrabold opacity-70">{count}</span>
     </button>
   );
 }
