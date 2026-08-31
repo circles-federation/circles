@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { Button, fieldInput } from "@/components/shared";
-import { INK, SOFT, TYPE, sans, serif } from "@/lib/theme";
+import { Button, Input } from "@/components/shared";
 
 /* an editable list of tags: each removable, with an input to add new ones */
 export function EditableTags({ values, onChange, placeholder }) {
@@ -16,28 +15,28 @@ export function EditableTags({ values, onChange, placeholder }) {
   }
   return (
     <div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+      <div className="mb-2.5 flex flex-wrap gap-2">
         {values.map((v) => (
-          <span key={v} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: `1px solid ${INK}`, padding: "5px 8px 5px 11px", fontFamily: sans, fontSize: TYPE.eyebrow, fontWeight: 600 }}>
+          <span key={v} className="inline-flex items-center gap-1.75 border border-ink py-1.25 pr-2 pl-2.75 font-sans text-eyebrow font-semibold">
             {v}
             <button
               onClick={() => onChange(values.filter((x) => x !== v))}
               aria-label={`Remove ${v}`}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "inline-flex", color: SOFT }}
+              className="inline-flex cursor-pointer border-none bg-transparent p-0 text-soft"
             >
               <XMarkIcon className="size-3" strokeWidth={3} />
             </button>
           </span>
         ))}
-        {values.length === 0 && <span style={{ fontFamily: serif, fontSize: TYPE.sm, color: SOFT }}>None yet.</span>}
+        {values.length === 0 && <span className="font-serif text-sm text-soft">None yet.</span>}
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
+      <div className="flex gap-2">
+        <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           placeholder={placeholder}
-          style={{ ...fieldInput, flex: 1 }}
+          className="flex-1"
         />
         <Button variant="secondary" size="compact" disabled={!draft.trim()} onClick={add}>
           Add
