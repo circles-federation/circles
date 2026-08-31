@@ -1,12 +1,11 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Design tokens — mirrors lib/theme.js exactly. If you change a
-   value here, change it there too (and vice versa): lib/theme.js
-   is what existing inline styles still read from; this @theme block
-   is what Tailwind utility classes read from. Two representations
-   of the same design system, kept in sync by hand until components
-   finish migrating off inline styles.
+   Design tokens — the single source of truth for the app's colors,
+   fonts, and type scale. Used to live in two places (this block plus
+   a parallel lib/theme.js of JS constants for components still using
+   inline style={{...}}) until every component finished migrating to
+   Tailwind utility classes and lib/theme.js was deleted.
    ============================================================ */
 @theme {
   --color-ink: #0a0a0a;
@@ -22,7 +21,9 @@
   --font-sans: "Helvetica Neue", Arial, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
 
-  /* type scale (major third, 1.25) — see lib/theme.js for the full rationale */
+  /* type scale (major third, 1.25): three fluid display tiers above an
+     eight-step text ramp, so the hierarchy reads as intended rather than
+     drifting across near-duplicate sizes */
   --text-hero: clamp(40px, 11vw, 64px);
   --text-title: clamp(30px, 8vw, 44px);
   --text-heading: clamp(24px, 6vw, 32px);

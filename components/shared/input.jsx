@@ -3,8 +3,7 @@
 import clsx from "clsx";
 
 /* Shared single-line text field — the bordered, serif-body look already
-   established throughout the app's forms (matches the old fieldInput
-   style constant in form-fields.jsx exactly). */
+   established throughout the app's forms. */
 export function Input({ className, ...rest }) {
   return (
     <input
