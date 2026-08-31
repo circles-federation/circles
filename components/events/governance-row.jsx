@@ -1,12 +1,11 @@
 "use client";
 
 import clsx from "clsx";
-import { DateTile } from "./date-tile";
+import { EventRow } from "./event-row";
 import { Eyebrow } from "@/components/shared";
 import { hostInfo } from "@/lib/data";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
 import { endorsementCount, isConfirmed, kindOf, meetingThreshold, neighborhoodMajority, voteCount } from "@/lib/governance.util";
-import { FLAME, INK, LEAF, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 // this row only ever shows governance kinds, and EVENT_KINDS' canonical
 // labels ("Neighborhood Council Meeting", "Federation Council Meeting") read
@@ -23,10 +22,7 @@ export function GovernanceRow({ e, onOpenEvent, hasCouncilProposal }) {
   const isCouncil = e.kind === "council";
   const confirmed = isConfirmed(e);
   const past = isPastEvent(e);
-  const accent = confirmed ? LEAF : (past ? SOFT : FLAME);
-  const accentKey = confirmed ? "leaf" : (past ? "soft" : "flame"); // DateTile takes a named accent, not a raw hex
-  const wash = past ? "transparent" : (confirmed ? "rgba(46,125,50,0.05)" : "rgba(225,83,11,0.035)");
-  const metaColor = past ? SOFT : "#222";
+  const accentKey = confirmed ? "leaf" : (past ? "soft" : "flame"); // fed to both DateTile and EventRow's own accent
   // status text differs: meetings count resident votes; councils count endorsing neighborhoods
   const votes = voteCount(e);
   const councilMaj = neighborhoodMajority();
@@ -39,39 +35,41 @@ export function GovernanceRow({ e, onOpenEvent, hasCouncilProposal }) {
     : isCouncil
       ? (confirmed ? "" : `· Proposed — ${councilMaj - endorsementCount(e)} more neighborhoods`)
       : (confirmed ? "" : `· Proposed — ${threshold - votes} more to confirm`);
+
   return (
-    <div style={{ borderBottom: `1px solid ${INK}`, display: "flex", gap: 18, padding: "20px 22px 20px 16px", alignItems: "flex-start", borderLeft: `4px solid ${accent}`, background: wash }}>
-      <DateTile iso={e.date} accent={accentKey} />
-      <button
-        onClick={() => onOpenEvent(e)}
-        style={{ flex: 1, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <Eyebrow style={{ color: SOFT, fontSize: TYPE.micro }}>{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
-          <Eyebrow style={{ color: accent, fontSize: TYPE.micro }}>· {KIND_CHIP_LABEL[e.kind] || k.label}</Eyebrow>
+    <EventRow
+      e={e}
+      onOpenEvent={onOpenEvent}
+      dateAccent={accentKey}
+      rowAccent={accentKey}
+      washed={!past}
+      title={e.title}
+      titleMuted={past && !confirmed}
+      meta={`Proposed by ${h.label} · ${e.location}`}
+      metaMuted={past}
+      tags={
+        <>
+          <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
+          <Eyebrow className={accentKey === "leaf" ? "text-leaf" : accentKey === "flame" ? "text-flame" : "text-soft"}>
+            · {KIND_CHIP_LABEL[e.kind] || k.label}
+          </Eyebrow>
           {statusText && (
-            <span style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.label, letterSpacing: "0.08em", textTransform: "uppercase", color: confirmed ? LEAF : SOFT }}>
+            <span className={clsx("font-sans text-label font-bold tracking-[0.08em] uppercase", confirmed ? "text-leaf" : "text-soft")}>
               {statusText}
             </span>
           )}
           {hasCouncilProposal && !past && (
-            <span title="A federation council meeting has been proposed from this meeting" style={{ fontFamily: sans, fontWeight: 700, fontSize: TYPE.label, letterSpacing: "0.06em", textTransform: "uppercase", color: FLAME, border: `1px solid ${FLAME}`, padding: "1px 7px" }}>
+            <span title="A federation council meeting has been proposed from this meeting" className="border border-flame px-1.75 py-px font-sans text-label font-bold tracking-[0.06em] text-flame uppercase">
               ◆ Meeting proposed
             </span>
           )}
-        </div>
-        <div className={clsx("mt-1.75 mb-1.5 font-sans text-lg min-[720px]:text-xl font-extrabold tracking-[-0.025em] leading-[1.05]", past && !confirmed ? "text-soft" : "text-ink")}>
-          {e.title}
-        </div>
-        <div style={{ fontFamily: serif, fontSize: TYPE.sm, color: metaColor }}>
-          Proposed by {h.label} · {e.location}
-        </div>
-      </button>
-      <div style={{ flexShrink: 0, paddingTop: 4, textAlign: "right" }}>
-        <div style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.sm, color: confirmed ? LEAF : (past ? SOFT : INK), whiteSpace: "nowrap" }}>
+        </>
+      }
+      right={
+        <div className={clsx("font-sans text-sm font-extrabold whitespace-nowrap", confirmed ? "text-leaf" : (past ? "text-soft" : "text-ink"))}>
           {count}/{threshold} {past ? "Went" : "Going"}
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 }
