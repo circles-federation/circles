@@ -5,7 +5,6 @@ import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
 import { MEMBERS, ORGS } from "@/lib/data";
 import { isPastEvent, parseDay } from "@/lib/format.util";
-import { INK, SOFT, TYPE, sans, serif } from "@/lib/theme";
 
 /* The Providence federation home / dashboard — same layout as the neighborhood
    home, but aggregated across the whole federation. */
@@ -15,18 +14,18 @@ export function FederationHome({ events, onOpenEvent, setView }) {
   const councils = upcoming.filter((e) => e.kind === "council"); // federation-level meetings
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", padding: "36px 24px 80px" }}>
+    <div className="mx-auto max-w-270 px-6 pt-9 pb-20">
       {/* masthead */}
-      <div style={{ borderTop: `3px solid ${INK}`, borderBottom: `1px solid ${INK}`, paddingTop: 18, paddingBottom: 22 }}>
-        <Eyebrow style={{ color: SOFT }}>Federation</Eyebrow>
-        <h1 style={{ fontFamily: sans, fontWeight: 800, fontSize: TYPE.hero, letterSpacing: "-0.04em", lineHeight: 0.9, margin: "12px 0 0" }}>Providence</h1>
-        <p style={{ fontFamily: serif, fontSize: TYPE.lg, color: "#222", margin: "14px 0 0", maxWidth: "40em", lineHeight: 1.5 }}>
-          A federation of neighborhoods across Providence. Here’s everything happening across the commune.
+      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5">
+        <Eyebrow className="text-soft">Federation</Eyebrow>
+        <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">Providence</h1>
+        <p className="mt-3.5 max-w-[40em] font-serif text-lg leading-normal text-[#222]">
+          A federation of neighborhoods across Providence.<br />Here’s everything happening across the city.
         </p>
       </div>
 
       {/* stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 16, marginTop: 28 }}>
+      <div className="mt-7 grid grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-4">
         <StatCard value={neighborhoods.length} label="Neighborhoods" />
         <StatCard value={ORGS.length} label="Organizations" onClick={() => setView("orgs")} />
         <StatCard value={councils.length} label="Upcoming meetings" onClick={() => setView("events")} />
@@ -34,12 +33,12 @@ export function FederationHome({ events, onOpenEvent, setView }) {
       </div>
 
       {/* all events across the federation */}
-      <section style={{ marginTop: 48 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <Eyebrow style={{ color: SOFT }}>Events</Eyebrow>
+      <section className="mt-12">
+        <div className="flex items-baseline justify-between">
+          <Eyebrow className="text-soft">Events</Eyebrow>
           <ForwardLink onClick={() => setView("events")}>All events</ForwardLink>
         </div>
-        <div style={{ marginTop: 14 }}>
+        <div className="mt-3.5">
           <EventFeed
             events={events}
             onOpenEvent={onOpenEvent}
