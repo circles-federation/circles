@@ -2,11 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import { FloatingActionButton, PageHeader, SearchWithFilter } from "@/components/shared";
+import { Button, FloatingActionButton, PageHeader, SearchWithFilter } from "@/components/shared";
 import { EventFeed } from "./event-feed";
 import { hostInfo } from "@/lib/data";
 import { isConfirmed, kindOf } from "@/lib/governance.util";
-import { INK, PAPER, TYPE, sans } from "@/lib/theme";
 
 export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }) {
   const [query, setQuery] = useState("");
@@ -29,21 +28,19 @@ export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }
   }, [events, query, status]);
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 24px 80px" }}>
+    <div className="mx-auto max-w-270 px-6 pt-10 pb-20">
       <PageHeader title="Events">
-        <button
-          onClick={onNewEvent}
-          className="btn-invert btn-ink hidden min-[720px]:inline-flex"
-          style={{
-            fontFamily: sans, fontSize: TYPE.xs, letterSpacing: "0.1em", textTransform: "uppercase",
-            fontWeight: 700, cursor: "pointer", padding: "9px 16px",
-            border: `1px solid ${INK}`, background: INK, color: PAPER,
-            alignItems: "center", gap: 6,
-          }}
-        >
-          <PlusIcon className="size-3.5" strokeWidth={2.5} />
-          New Event
-        </button>
+        {/* wrapped rather than putting "hidden min-[720px]:inline-flex" on
+            Button's own className — Button already carries an unconditional
+            inline-flex, and stacking a conflicting "hidden" alongside it
+            would be a base-state coin flip (Tailwind resolves same-specificity
+            display utilities by generated-CSS order, not JSX order) */}
+        <span className="hidden min-[720px]:block">
+          <Button size="compact" onClick={onNewEvent}>
+            <PlusIcon className="size-3.5" strokeWidth={2.5} />
+            New Event
+          </Button>
+        </span>
       </PageHeader>
 
       {/* bottom clears BottomNav (app/(app) layout only), which the welcome
@@ -51,7 +48,7 @@ export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }
       <FloatingActionButton
         onClick={onNewEvent}
         title="New event"
-        icon={<PlusIcon className="size-5" strokeWidth={2} style={{ color: INK }} />}
+        icon={<PlusIcon className="size-5 text-ink" strokeWidth={2} />}
         bottom={96}
         className="min-[720px]:hidden"
       />
@@ -65,7 +62,7 @@ export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }
         ]}
       />
 
-      <div style={{ marginTop: 28 }}>
+      <div className="mt-7">
         <EventFeed
           events={filtered}
           councilProposals={councilProposals}
