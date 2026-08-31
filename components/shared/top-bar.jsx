@@ -23,12 +23,30 @@ export function TopBar() {
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  // mobile has no room for both a brand mark and the current section, so it
+  // shows the section name instead — just the top-level name (e.g.
+  // "Directory"), never the name of an org/neighborhood being browsed
+  // within it, at least for now. Reuses TABS/isActive rather than a second
+  // route-to-label list. pathname is available identically on server and
+  // client for a given route, so this is safe to compute unconditionally —
+  // only which of the two (brand link vs section name) is visible is a
+  // breakpoint-driven CSS toggle, not a JS/hydration-sensitive one.
+  function currentSectionName() {
+    const tab = TABS.find(([href]) => isActive(href));
+    if (tab) return tab[1];
+    if (pathname.startsWith("/federation")) return "Federation";
+    return "Providence";
+  }
+
   return (
     <div className="sticky top-0 z-50 bg-paper shadow-[0_2px_6px_rgba(10,10,10,0.08)]">
       <div className="mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
-        <Link href="/federation" className="border-none bg-transparent p-0 text-inherit no-underline">
+        <Link href="/federation" className="hidden border-none bg-transparent p-0 text-inherit no-underline min-[720px]:block">
           <span className="font-sans text-lg font-extrabold tracking-[-0.02em]">Providence</span>
         </Link>
+        <span className="font-sans text-lg font-extrabold tracking-[-0.02em] min-[720px]:hidden">
+          {currentSectionName()}
+        </span>
 
         {/* on mobile, these three destinations live in BottomNav instead —
             hidden via CSS breakpoint (not useIsMobile) so this never has to
