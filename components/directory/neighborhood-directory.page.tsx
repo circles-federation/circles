@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { FolderGrid, PageHeader, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { MemberCard } from "./member-card";
 import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers } from "@/lib/orgs.util";
@@ -95,7 +95,7 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
   const anySections = councilFolders.length > 0 || orgFolders.length > 0 || peopleFiles.length > 0;
 
   return (
-    <div className="mx-auto max-w-270 px-6 pt-10 pb-20">
+    <PageContainer size="wide">
       <Breadcrumbs trail={orgAncestors(org, orgsById)} current={org} onOpenRoot={onOpenRoot} onOpenOrg={onOpenOrg} />
 
       <PageHeader
@@ -112,6 +112,7 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
       />
 
       <SearchWithFilter
+        className="mt-5"
         query={query}
         onQuery={setQuery}
         placeholder={`Search within ${orgDisplayName(org)}`}
@@ -150,7 +151,7 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
       ) : (
         <p className="mt-7 font-serif text-sm text-soft">Nothing here yet.</p>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

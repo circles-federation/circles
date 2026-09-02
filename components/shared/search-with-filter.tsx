@@ -169,6 +169,11 @@ interface SearchWithFilterProps {
   options?: string[];
   active?: string | null;
   onFilter?: (value: string | null) => void;
+  // spacing above this component is the caller's job, not a built-in
+  // default — how much (if any) depends on what, if anything, sits above it
+  // on a given page (see city-directory.page.jsx and events-list.page.jsx,
+  // where that varies by breakpoint since their PageHeader hides on mobile).
+  className?: string;
 }
 
 /* Search input with a compact filter menu attached to its right edge. Supports
@@ -179,7 +184,7 @@ interface SearchWithFilterProps {
    trigger is a small funnel icon that shows a count badge when any group has
    a selection. A legacy single-filter API (filterLabel/options/active/onFilter)
    is still accepted and normalized into one single-select group. */
-export function SearchWithFilter({ query, onQuery, placeholder, filters, filterLabel, options, active, onFilter }: SearchWithFilterProps) {
+export function SearchWithFilter({ query, onQuery, placeholder, filters, filterLabel, options, active, onFilter, className }: SearchWithFilterProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -195,7 +200,7 @@ export function SearchWithFilter({ query, onQuery, placeholder, filters, filterL
   }, [open]);
 
   return (
-    <div ref={wrapRef} className="relative mt-5">
+    <div ref={wrapRef} className={clsx("relative", className)}>
       <div className="flex items-stretch border border-ink">
         <SearchField query={query} onQuery={onQuery} placeholder={placeholder} />
         {groups.length > 0 && <FilterTrigger activeCount={activeCount} onClick={() => setOpen((o) => !o)} />}

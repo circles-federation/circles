@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { EyeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, Button, ConfirmModal, Eyebrow, Label, Section, SectionGroup, TextArea } from "@/components/shared";
+import { BackButton, Button, ConfirmModal, Eyebrow, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
 import { EditableTags } from "./editable-tags";
 import type { Profile } from "@/lib/types";
 
@@ -39,7 +39,7 @@ export function EditMyselfPage({ profile, onSave, onBack }: EditMyselfPageProps)
   }
 
   return (
-    <div className="mx-auto max-w-190 px-6 pt-7 pb-20">
+    <PageContainer size="normal">
       <BackButton onClick={handleLeave}>Home</BackButton>
 
       <div className="mt-4 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-4.5">
@@ -125,6 +125,6 @@ export function EditMyselfPage({ profile, onSave, onBack }: EditMyselfPageProps)
           onCancel={() => setConfirmingDiscard(false)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

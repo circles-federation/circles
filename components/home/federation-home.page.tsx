@@ -1,6 +1,6 @@
 "use client";
 
-import { Eyebrow, ForwardLink } from "@/components/shared";
+import { Eyebrow, ForwardLink, PageContainer } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
 import { MEMBERS, ORGS } from "@/lib/data";
@@ -21,7 +21,7 @@ export function FederationHome({ events, onOpenEvent, setView }: FederationHomeP
   const councils = upcoming.filter((e) => e.kind === "council"); // federation-level meetings
 
   return (
-    <div className="mx-auto max-w-270 px-6 pt-9 pb-20">
+    <PageContainer size="wide">
       {/* masthead */}
       <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5">
         <Eyebrow className="text-soft">Federation</Eyebrow>
@@ -54,6 +54,6 @@ export function FederationHome({ events, onOpenEvent, setView }: FederationHomeP
           />
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }

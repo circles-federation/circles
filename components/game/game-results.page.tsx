@@ -1,6 +1,6 @@
 "use client";
 
-import { BackButton, Eyebrow } from "@/components/shared";
+import { BackButton, Eyebrow, PageContainer } from "@/components/shared";
 
 interface GameResultsPageProps {
   score: number;
@@ -17,7 +17,7 @@ export function GameResultsPage({ score, roundsLength, onRestart, onExit }: Game
   const pct = Math.round((score / roundsLength) * 100);
 
   return (
-    <div className="mx-auto max-w-170 px-6 pt-7 pb-16">
+    <PageContainer size="compact">
       <BackButton onClick={onExit}>Home</BackButton>
       <Eyebrow className="mt-7 block text-soft">Round complete</Eyebrow>
       <div className="mt-3.5 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
@@ -41,6 +41,6 @@ export function GameResultsPage({ score, roundsLength, onRestart, onExit }: Game
           Done
         </button>
       </div>
-    </div>
+    </PageContainer>
   );
 }

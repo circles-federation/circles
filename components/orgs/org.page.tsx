@@ -1,6 +1,6 @@
 import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, BackButton, Button, Chip, Eyebrow, EyebrowGroup, Section, SectionGroup, Tag } from "@/components/shared";
+import { Avatar, BackButton, Button, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
 import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
 import { OrgCard } from "./org-card";
@@ -37,7 +37,7 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
 
   return (
-    <div className="mx-auto max-w-220 px-6 pt-7 pb-20">
+    <PageContainer size="normal">
       <BackButton onClick={onBack}>{backLabel || "All organizations"}</BackButton>
 
       <div className="mt-4 flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
@@ -222,6 +222,6 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
           </div>
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, Section, SectionGroup, Select, TextArea } from "@/components/shared";
+import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
 import type { Org } from "@/lib/types";
 
@@ -103,7 +103,7 @@ export function ManageOrgPage({ org: o, orgs, onSave, onBack }: ManageOrgPagePro
   }
 
   return (
-    <div className="mx-auto max-w-190 px-6 pt-7 pb-20">
+    <PageContainer size="normal">
       <BackButton onClick={handleLeave}>{o.name}</BackButton>
 
       <div className="mt-4 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5">
@@ -241,6 +241,6 @@ export function ManageOrgPage({ org: o, orgs, onSave, onBack }: ManageOrgPagePro
           onCancel={() => setConfirmingDiscard(false)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

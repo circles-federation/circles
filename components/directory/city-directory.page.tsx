@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { FolderGrid, PageHeader, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import type { Org } from "@/lib/types";
 
@@ -52,10 +52,20 @@ export function CityDirectoryPage({ orgs, onOpenOrg }: CityDirectoryPageProps) {
   ].filter((s) => s.items.length > 0);
 
   return (
-    <div className="mx-auto max-w-270 px-6 pt-10 pb-20">
-      <PageHeader title="Directory" />
+    <PageContainer size="wide">
+      {/* the top bar already shows "Directory" as the mobile section name
+          (see top-bar.tsx), so this exact-duplicate title is redundant below
+          that breakpoint — hidden there rather than removed, so it still
+          shows at 720px+ where the top bar reverts to the brand link. */}
+      <div className="hidden min-[720px]:block">
+        <PageHeader title="Directory" />
+      </div>
 
+      {/* mt-5 only once there's something above it to space away from — at
+          mobile, with PageHeader hidden, this is the top of the page, and
+          PageContainer's own pt-6 already provides the right gap on its own. */}
       <SearchWithFilter
+        className="min-[720px]:mt-5"
         query={query}
         onQuery={setQuery}
         placeholder="Search a name, kind, or what they offer"
@@ -71,6 +81,6 @@ export function CityDirectoryPage({ orgs, onOpenOrg }: CityDirectoryPageProps) {
       ) : (
         <p className="mt-7 font-serif text-sm text-soft">Nothing here yet.</p>
       )}
-    </div>
+    </PageContainer>
   );
 }

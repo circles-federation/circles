@@ -2,7 +2,7 @@
 
 import { ArrowRightStartOnRectangleIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
-import { Avatar, Button, Chip, Eyebrow, EyebrowGroup, FolderGrid, Section, SectionGroup } from "@/components/shared";
+import { Avatar, Button, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { OrgCard } from "@/components/orgs/org-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
@@ -57,7 +57,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
   const myEvents = events.filter((e) => (e.rsvps || []).includes(profile.id) || rsvpState[e.id] || (e.host.type === "member" && e.host.id === profile.id));
 
   return (
-    <div className="mx-auto max-w-270 px-6 pt-9 pb-20">
+    <PageContainer size="wide">
       {/* identity masthead */}
       <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="flex min-w-0 flex-1 items-center gap-5">
@@ -143,6 +143,6 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
           </EyebrowGroup>
         </Section>
       </SectionGroup>
-    </div>
+    </PageContainer>
   );
 }

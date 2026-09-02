@@ -1,7 +1,7 @@
 "use client";
 
 import { AttendeesSection } from "./attendees-section";
-import { BackButton } from "@/components/shared";
+import { BackButton, PageContainer } from "@/components/shared";
 import { CouncilEndorsementPanel } from "./council-endorsement-panel";
 import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";
@@ -54,7 +54,7 @@ export function EventPage({ event: e, events, profile, councilProposals, rsvpSta
   const myProposals = (councilProposals || []).filter((p) => p.assemblyId === e.id);
 
   return (
-    <div className="mx-auto max-w-220 px-6 pt-7 pb-20">
+    <PageContainer size="normal">
       <BackButton onClick={onBack}>{backLabel || "All events"}</BackButton>
 
       <EventMasthead event={e} events={events} onOpenEvent={onOpenEvent} />
@@ -100,6 +100,6 @@ export function EventPage({ event: e, events, profile, councilProposals, rsvpSta
       <RoleSlotsSection event={e} profile={profile} onToggleRoleSlot={onToggleRoleSlot} onOpenMember={onOpenMember} />
 
       <AttendeesSection event={e} profile={profile} onOpenMember={onOpenMember} />
-    </div>
+    </PageContainer>
   );
 }

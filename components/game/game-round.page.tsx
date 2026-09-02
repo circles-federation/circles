@@ -2,7 +2,7 @@
 
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, Button, Eyebrow } from "@/components/shared";
+import { BackButton, Button, Eyebrow, PageContainer } from "@/components/shared";
 import { avatarFor } from "@/lib/data";
 import type { Round } from "@/lib/game.util";
 
@@ -24,7 +24,7 @@ export function GameRoundPage({ round, idx, roundsLength, score, picked, answere
   const m = round.person;
 
   return (
-    <div className="mx-auto max-w-170 px-6 pt-7 pb-16">
+    <PageContainer size="compact">
       <BackButton onClick={onExit} className="mb-4">Home</BackButton>
       <div className="flex items-baseline justify-between border-b border-ink pb-2.75">
         <Eyebrow>Who is this?</Eyebrow>
@@ -89,6 +89,6 @@ export function GameRoundPage({ round, idx, roundsLength, score, picked, answere
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

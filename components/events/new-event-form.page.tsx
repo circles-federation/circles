@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, Select, TabbedPanel, TextArea } from "@/components/shared";
+import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { EVENT_KINDS, MEMBERS, ORGS_BY_MEMBER } from "@/lib/data";
 import { orgDisplayName, orgMembers, orgsForMember, orgScope } from "@/lib/orgs.util";
 import type { Event, EventKindKey, Host, Org, Profile, Role } from "@/lib/types";
@@ -182,7 +182,7 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEvent
   ];
 
   return (
-    <div className="mx-auto max-w-170 px-6 pt-7 pb-20">
+    <PageContainer size="compact">
       <BackButton onClick={handleLeave}>All events</BackButton>
 
       <div className={clsx("mt-4 border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
@@ -392,6 +392,6 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEvent
           onCancel={() => setConfirmingDiscard(false)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

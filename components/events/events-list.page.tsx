@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import { Button, FloatingActionButton, PageHeader, SearchWithFilter } from "@/components/shared";
+import { Button, FloatingActionButton, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { EventFeed } from "./event-feed";
 import { hostInfo } from "@/lib/data";
 import { isConfirmed, kindOf } from "@/lib/governance.util";
@@ -38,20 +38,21 @@ export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }
   }, [events, query, status]);
 
   return (
-    <div className="mx-auto max-w-270 px-6 pt-10 pb-20">
-      <PageHeader title="Events">
-        {/* wrapped rather than putting "hidden min-[720px]:inline-flex" on
-            Button's own className — Button already carries an unconditional
-            inline-flex, and stacking a conflicting "hidden" alongside it
-            would be a base-state coin flip (Tailwind resolves same-specificity
-            display utilities by generated-CSS order, not JSX order) */}
-        <span className="hidden min-[720px]:block">
+    <PageContainer size="wide">
+      {/* the top bar already shows "Events" as the mobile section name (see
+          top-bar.tsx), so this exact-duplicate title — and the "New Event"
+          button beside it, already redundant with the FloatingActionButton
+          below — is hidden rather than removed, so both still show at
+          720px+ where the top bar reverts to the brand link and the FAB
+          disappears. */}
+      <div className="hidden min-[720px]:block">
+        <PageHeader title="Events">
           <Button size="compact" onClick={onNewEvent}>
             <PlusIcon className="size-3.5" strokeWidth={2.5} />
             New Event
           </Button>
-        </span>
-      </PageHeader>
+        </PageHeader>
+      </div>
 
       {/* bottom clears BottomNav (app/(app) layout only), which the welcome
           page's default offset doesn't need to account for */}
@@ -63,7 +64,11 @@ export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }
         className="min-[720px]:hidden"
       />
 
+      {/* mt-5 only once there's something above it to space away from — at
+          mobile, with PageHeader hidden, this is the top of the page, and
+          PageContainer's own pt-6 already provides the right gap on its own. */}
       <SearchWithFilter
+        className="min-[720px]:mt-5"
         query={query}
         onQuery={setQuery}
         placeholder="Search a title, host, or location"
@@ -80,6 +85,6 @@ export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }
           emptyText={query || status ? "No events match your search." : "No events yet. Create one to get started."}
         />
       </div>
-    </div>
+    </PageContainer>
   );
 }

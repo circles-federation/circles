@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BackButton, Button, Eyebrow, Input, Label, TextArea } from "@/components/shared";
+import { BackButton, Button, Eyebrow, Input, Label, PageContainer, TextArea } from "@/components/shared";
 import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
 import type { Event, ProposalDetails } from "@/lib/types";
 
@@ -35,7 +35,7 @@ export function GovernanceProposalFormPage({ mode, context, hood, sponsorHood, o
   }
 
   return (
-    <div className="mx-auto max-w-160 px-6 pt-7 pb-20">
+    <PageContainer size="compact">
       <BackButton onClick={onCancel}>Cancel</BackButton>
 
       <div className="mt-4 border-t-[3px] border-t-flame border-b border-b-ink pt-4 pb-5">
@@ -89,6 +89,6 @@ export function GovernanceProposalFormPage({ mode, context, hood, sponsorHood, o
           </Button>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
