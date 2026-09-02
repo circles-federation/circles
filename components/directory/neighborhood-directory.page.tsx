@@ -8,7 +8,12 @@ import { MemberCard } from "./member-card";
 import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers } from "@/lib/orgs.util";
 import type { Member, Org, Profile } from "@/lib/types";
 
-type EntityType = "Councils" | "Organizations" | "People";
+const ENTITY_TYPES = ["Councils", "Organizations", "People"] as const;
+type EntityType = (typeof ENTITY_TYPES)[number];
+
+function isEntityType(value: string): value is EntityType {
+  return (ENTITY_TYPES as readonly string[]).includes(value);
+}
 
 interface NeighborhoodDirectoryPageProps {
   org: Org;
@@ -18,6 +23,12 @@ interface NeighborhoodDirectoryPageProps {
   onOpenOrg: (o: Org) => void;
   onOpenRoot: () => void;
   onOpenMember: (m: Member) => void;
+  // seeds the Type filter — e.g. Home's "Neighbors"/"Local circles" stat
+  // cards land here pre-filtered rather than on the unfiltered folder view.
+  // Invalid/unrecognized values (a hand-edited URL, say) are dropped rather
+  // than surfaced as an error, same as an unmatched search query just shows
+  // "Nothing here yet."
+  initialTypeFilter?: string[];
 }
 
 /* A single neighborhood's own directory (rendered at /directory/[id], where
@@ -34,9 +45,9 @@ interface NeighborhoodDirectoryPageProps {
    so OrgCard/MemberCard's scope chips remain off throughout — unlike
    CityDirectoryPage, where cards span multiple neighborhoods and the chip
    is what tells them apart. */
-export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenOrg, onOpenRoot, onOpenMember }: NeighborhoodDirectoryPageProps) {
+export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenOrg, onOpenRoot, onOpenMember, initialTypeFilter }: NeighborhoodDirectoryPageProps) {
   const [query, setQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<EntityType[]>([]);
+  const [typeFilter, setTypeFilter] = useState<EntityType[]>(() => (initialTypeFilter || []).filter(isEntityType));
   const orgsById = useMemo(() => orgs.reduce<Record<string, Org>>((acc, o) => { acc[o.id] = o; return acc; }, {}), [orgs]);
   const membersById = useMemo(() => members.reduce<Record<number, Member>>((acc, m) => { acc[m.id] = m; return acc; }, {}), [members]);
 
@@ -105,7 +116,7 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
         onQuery={setQuery}
         placeholder={`Search within ${orgDisplayName(org)}`}
         filters={[
-          { label: "Type", options: ["Councils", "Organizations", "People"], multi: true, active: typeFilter, onFilter: (v) => setTypeFilter(v as EntityType[]) },
+          { label: "Type", options: [...ENTITY_TYPES], multi: true, active: typeFilter, onFilter: (v) => setTypeFilter(v as EntityType[]) },
         ]}
       />
 

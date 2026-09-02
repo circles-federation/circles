@@ -59,7 +59,17 @@ export function useAppNav() {
     // than its position in the tree — a Neighborhood Council (org.neighborhood
     // set) renders as the folder view there, everything else as its own
     // detail page (see app/(app)/directory/[id]/page.jsx), so reparenting an
-    // org never changes its URL
-    openOrg: (o: Org, backLabel?: string) => router.push(`/directory/${o.id}${backLabel ? `?from=${encodeURIComponent(backLabel)}` : ""}`),
+    // org never changes its URL. entityTypes, when given, seeds the folder
+    // view's own Type filter via a ?types= query param (comma-joined) — e.g.
+    // Home's "Neighbors"/"Local circles" stat cards land pre-filtered instead
+    // of dumping the visitor on the unfiltered folder and making them filter
+    // by hand.
+    openOrg: (o: Org, backLabel?: string, entityTypes?: string[]) => {
+      const params = new URLSearchParams();
+      if (backLabel) params.set("from", backLabel);
+      if (entityTypes && entityTypes.length > 0) params.set("types", entityTypes.join(","));
+      const qs = params.toString();
+      router.push(`/directory/${o.id}${qs ? `?${qs}` : ""}`);
+    },
   };
 }

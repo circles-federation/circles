@@ -37,6 +37,7 @@ function DirectoryOrg() {
         onOpenOrg={nav.openOrg}
         onOpenRoot={() => router.push("/directory")}
         onOpenMember={open}
+        initialTypeFilter={searchParams.get("types")?.split(",")}
       />
     );
   }
