@@ -9,7 +9,7 @@ import { StatCard } from "./stat-card";
 import { MEMBERS } from "@/lib/data";
 import { isPastEvent, parseDay } from "@/lib/format.util";
 import { useIsMobile } from "@/lib/hooks";
-import { orgMembers, orgScope } from "@/lib/orgs.util";
+import { orgsForMember, orgScope } from "@/lib/orgs.util";
 
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their organizations (speed
@@ -24,10 +24,13 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
   // actually there to click through to.
   const localCircles = orgs.filter((o) => orgScope(o, orgsById) === profile.neighborhood && !o.neighborhood);
   const upcoming = [...events].filter((e) => !isPastEvent(e)).sort((a, b) => parseDay(a.date) - parseDay(b.date));
-  const meetings = upcoming.filter((e) => e.kind === "meeting" && orgsById[e.orgId]?.neighborhood === profile.neighborhood);
+  // orgScope (not a direct .neighborhood check) so a meeting hosted by a
+  // sub-org (e.g. Finance Council) still counts as "in my neighborhood",
+  // not just one hosted by the council itself
+  const meetings = upcoming.filter((e) => e.kind === "meeting" && orgsById[e.orgId] && orgScope(orgsById[e.orgId], orgsById) === profile.neighborhood);
 
   // the user's own organizations (speed dial)
-  const myOrgs = orgs.filter((o) => orgMembers(o, MEMBERS).includes(profile.id));
+  const myOrgs = orgsForMember(profile.id, orgs, MEMBERS);
 
   // the user's events — created or RSVP'd, upcoming first then past
   // the user's events — created or RSVP'd; EventFeed orders and paginates them

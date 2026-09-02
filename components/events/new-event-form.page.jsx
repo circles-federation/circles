@@ -5,7 +5,7 @@ import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { EVENT_KINDS, MEMBERS, ORGS_BY_MEMBER } from "@/lib/data";
-import { orgMembers } from "@/lib/orgs.util";
+import { orgDisplayName, orgMembers, orgsForMember, orgScope } from "@/lib/orgs.util";
 
 const DEFAULT_START = "18:00";
 const DEFAULT_END = "20:00";
@@ -25,15 +25,32 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }) {
     { key: "member:" + profile.id, label: `${profile.name} (you)`, host: { type: "member", id: profile.id } },
     ...myOrgs.map((o) => ({ key: "org:" + o.id, label: o.name, host: { type: "org", id: o.id } })),
   ];
-  // the proposer's own Neighborhood Council — meetings are always hosted by
-  // it for now; no picker needed since a resident has exactly one (general
-  // org-hosted meetings are future work, see lib/orgs.util.js)
-  const myCouncil = orgs.find((o) => o.neighborhood === profile.neighborhood);
-  const meetingThresholdPreview = myCouncil ? Math.floor(orgMembers(myCouncil, MEMBERS).length / 2) + 1 : 0;
+
+  // circles eligible to propose a meeting for: any org the proposer belongs
+  // to (via orgsForMember, so this includes their home Neighborhood Council
+  // and any of its sub-orgs, unlike hostOptions above, which only sees
+  // literal membership) — except a city-wide org (orgScope null), since
+  // citywide meetings aren't supported yet. The home council sorts first
+  // as the most likely default.
+  const orgsById = orgs.reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
+  const homeCouncil = orgs.find((o) => o.neighborhood === profile.neighborhood);
+  const eligibleCircles = [
+    ...(homeCouncil ? [homeCouncil] : []),
+    ...orgsForMember(profile.id, orgs, MEMBERS).filter((o) => o.id !== homeCouncil?.id && orgScope(o, orgsById) !== null),
+  ];
+  // labels precomputed here, not inline in JSX — calling orgDisplayName
+  // directly inside a JSX expression trips the react-hooks/purity rule's
+  // reachability analysis for this component (it stops being able to prove
+  // submit()'s Date.now() call is confined to an event handler).
+  const circleOptions = eligibleCircles.map((o) => ({ id: o.id, label: orgDisplayName(o) }));
 
   const [type, setType] = useState("ordinary");
   const [title, setTitle] = useState("");
   const [hostKey, setHostKey] = useState(hostOptions[0].key);
+  const [circleId, setCircleId] = useState(eligibleCircles[0]?.id || "");
+  const circle = orgsById[circleId] || null;
+  const circleName = circle ? orgDisplayName(circle) : "";
+  const meetingThresholdPreview = circle ? Math.floor(orgMembers(circle, MEMBERS).length / 2) + 1 : 0;
   const [date, setDate] = useState("");
   const [start, setStart] = useState(DEFAULT_START);
   const [end, setEnd] = useState(DEFAULT_END);
@@ -54,6 +71,7 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }) {
   const dirty =
     title.trim() !== "" ||
     hostKey !== hostOptions[0].key ||
+    circleId !== (eligibleCircles[0]?.id || "") ||
     date !== "" ||
     start !== DEFAULT_START ||
     end !== DEFAULT_END ||
@@ -81,13 +99,13 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }) {
     if (!location.trim()) return setError("Add a location.");
     if (gov) {
       // governance meetings are proposed by a person, not an org; the
-      // proposer is the first vote. A meeting is hosted by the proposer's
-      // own Neighborhood Council (see myCouncil above).
+      // proposer is the first vote. A meeting is hosted by whichever
+      // circle the proposer chose (see circle/eligibleCircles above).
       onCreate({
         id: "e" + Date.now(),
         title: title.trim(),
         kind: type,
-        orgId: myCouncil ? myCouncil.id : null,
+        orgId: circle ? circle.id : null,
         host: { type: "member", id: profile.id },
         date, start, end,
         location: location.trim(),
@@ -151,7 +169,7 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }) {
       <div className={clsx("mt-4 border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
         <Eyebrow className={gov ? "text-flame" : "text-soft"}>{gov ? "Propose" : "Create"}</Eyebrow>
         <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">
-          {type === "ordinary" ? "New event" : "Neighborhood council meeting"}
+          {type === "ordinary" ? "New event" : "New meeting"}
         </h1>
       </div>
 
@@ -162,9 +180,9 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }) {
         onChange={(key) => { setType(key); setError(""); }}
         className="mt-6"
       >
-      {gov && (
+      {gov && circle && (
         <p className="mb-1 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
-          This is a governance meeting for <strong>{profile.neighborhood}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {profile.neighborhood} residents</strong> to be confirmed. Your proposal counts as the first vote.
+          This is a governance meeting for <strong>{circleName}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {circle.neighborhood ? "residents" : "members"}</strong> to be confirmed. Your proposal counts as the first vote.
         </p>
       )}
 
@@ -279,6 +297,16 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }) {
                 )}
               </div>
             )}
+          </div>
+        )}
+        {gov && (
+          <div>
+            <Label htmlFor="circle">Propose for</Label>
+            <Select id="circle" value={circleId} onChange={(e) => setCircleId(e.target.value)}>
+              {circleOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </Select>
           </div>
         )}
         {gov && (

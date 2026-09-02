@@ -1,12 +1,12 @@
 import clsx from "clsx";
 import { Avatar, Eyebrow } from "@/components/shared";
 import { memberById } from "@/lib/data";
-import { canReadDetails, scopeLabel } from "@/lib/governance.util";
+import { canReadDetails, scopeLabel, scopeNoun } from "@/lib/governance.util";
 import { hasRoles } from "@/lib/roles.util";
 
 /* Flat attendee roster for a non-slotted event (role-slotted events show
    who's in each role instead, via RoleSlotsSection). Hidden for a viewer
-   who isn't a resident of a meeting's neighborhood. */
+   outside a meeting's own circle. */
 export function AttendeesSection({ event: e, profile, onOpenMember }) {
   if (hasRoles(e)) return null;
   const canRead = canReadDetails(e, profile);
@@ -38,7 +38,7 @@ export function AttendeesSection({ event: e, profile, onOpenMember }) {
         </div>
       ) : (
         <p className="mt-4 font-serif text-sm text-soft">
-          Hidden — only residents of {scopeLabel(e)} can see who’s attending.
+          Hidden — only {scopeNoun(e)} of {scopeLabel(e)} can see who’s attending.
         </p>
       )}
     </section>

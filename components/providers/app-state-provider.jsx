@@ -13,6 +13,7 @@ import { updateMember as dbUpdateMember } from "@/lib/db/members";
 import { updateOrg as dbUpdateOrg } from "@/lib/db/orgs";
 import { FEDERATION_COUNCIL_ENABLED } from "@/lib/feature-flags";
 import { isExclusive, isHostOrgMember, kindOf, meetingThreshold } from "@/lib/governance.util";
+import { orgDisplayName } from "@/lib/orgs.util";
 
 /* Holds the app's entire "database" — events, orgs, the current user's RSVPs/
    votes/profile, and pending council proposals — plus the mutations on it.
@@ -119,10 +120,14 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     }
     if (ev.kind === "meeting") {
       const org = orgs.find((o) => o.id === ev.orgId);
+      // "residents" reads naturally for a Neighborhood Council; any other
+      // circle (a sub-org, or another org entirely) just has "members" —
+      // see lib/governance.util.js's scopeNoun for the same distinction.
+      const noun = org?.neighborhood ? "residents" : "members";
       showToast({
         tone: "success",
         title: "Meeting proposed",
-        message: `Your meeting has been proposed. Everyone in ${org ? org.neighborhood : "the neighborhood"} will be notified and can vote to confirm it.`,
+        message: `Your meeting has been proposed. All ${org ? `${noun} of ${orgDisplayName(org)}` : "members"} will be notified and can vote to confirm it.`,
       });
     } else {
       // "RSVPs are open" would be wrong for a role-slotted event (see

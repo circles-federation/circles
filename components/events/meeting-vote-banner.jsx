@@ -1,12 +1,12 @@
 import clsx from "clsx";
 import { VoteButton } from "./vote-button";
-import { isConfirmed, canVote, kindOf, meetingThreshold, scopeLabel, voteCount } from "@/lib/governance.util";
+import { isConfirmed, canVote, kindOf, meetingThreshold, scopeLabel, scopeNoun, voteCount } from "@/lib/governance.util";
 import { isPastEvent } from "@/lib/format.util";
 
-/* Quorum banner for a Neighborhood Council meeting — progress toward
-   confirmation plus the combined vote+attend control. Not shown for
-   councils, which confirm by neighborhood endorsement instead (see
-   CouncilEndorsementPanel). */
+/* Quorum banner for a circle's meeting (a Neighborhood Council, one of its
+   sub-orgs, or another org) — progress toward confirmation plus the
+   combined vote+attend control. Not shown for councils, which confirm by
+   neighborhood endorsement instead (see CouncilEndorsementPanel). */
 export function MeetingVoteBanner({ event: e, profile, voted, onToggleVote }) {
   const k = kindOf(e);
   const votes = voteCount(e);
@@ -21,7 +21,7 @@ export function MeetingVoteBanner({ event: e, profile, voted, onToggleVote }) {
         <p className="m-0 font-serif text-base leading-[1.45] text-[#222]">
           {confirmed
             ? <>Quorum met — this meeting is <span className="font-bold text-leaf">confirmed</span> for {scopeLabel(e)}.</>
-            : <>This {k.label.toLowerCase()} needs <strong>{threshold}</strong> votes from {scopeLabel(e)} to be held. <span className="font-bold text-flame">{threshold - votes} more</span> to confirm.</>}
+            : <>This {k.label.toLowerCase()} needs <strong>{threshold}</strong> votes from {scopeNoun(e)} of {scopeLabel(e)} to be held. <span className="font-bold text-flame">{threshold - votes} more</span> to confirm.</>}
         </p>
         {/* progress rail */}
         <div className="mt-3 h-1.5 bg-faint">
@@ -32,7 +32,7 @@ export function MeetingVoteBanner({ event: e, profile, voted, onToggleVote }) {
         </div>
         {!eligible && (
           <p className="mt-2.5 font-sans text-xs leading-[1.4] tracking-[0.02em] text-soft">
-            Voting and attending is limited to residents of {scopeLabel(e)}.
+            Voting and attending is limited to {scopeNoun(e)} of {scopeLabel(e)}.
           </p>
         )}
       </div>
@@ -43,7 +43,7 @@ export function MeetingVoteBanner({ event: e, profile, voted, onToggleVote }) {
         onToggle={onToggleVote}
         big
         eligible={eligible}
-        ineligibleNote={`Only people in ${scopeLabel(e)} can vote on this`}
+        ineligibleNote={`Only ${scopeNoun(e)} of ${scopeLabel(e)} can vote on this`}
         past={past}
       />
     </div>
