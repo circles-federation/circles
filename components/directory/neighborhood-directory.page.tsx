@@ -8,6 +8,8 @@ import { MemberCard } from "./member-card";
 import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers } from "@/lib/orgs.util";
 import type { Member, Org, Profile } from "@/lib/types";
 
+type EntityType = "Councils" | "Organizations" | "People";
+
 interface NeighborhoodDirectoryPageProps {
   org: Org;
   orgs: Org[];
@@ -34,6 +36,7 @@ interface NeighborhoodDirectoryPageProps {
    is what tells them apart. */
 export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenOrg, onOpenRoot, onOpenMember }: NeighborhoodDirectoryPageProps) {
   const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<EntityType[]>([]);
   const orgsById = useMemo(() => orgs.reduce<Record<string, Org>>((acc, o) => { acc[o.id] = o; return acc; }, {}), [orgs]);
   const membersById = useMemo(() => members.reduce<Record<number, Member>>((acc, m) => { acc[m.id] = m; return acc; }, {}), [members]);
 
@@ -67,9 +70,18 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
 
   const isHome = org.neighborhood === profile.neighborhood;
 
-  const councilFolders = folders.filter((o) => o.kind === "Council");
-  const orgFolders = folders.filter((o) => o.kind !== "Council");
-  const anySections = councilFolders.length > 0 || orgFolders.length > 0 || files.length > 0;
+  // no types selected means no filter applied (show everything) — folders/
+  // files above still do the query narrowing, this just decides which of
+  // the three grids below are eligible to render at all. Any combination of
+  // types can be selected at once (e.g. Councils + Organizations, no People).
+  const showCouncils = typeFilter.length === 0 || typeFilter.includes("Councils");
+  const showOrgs = typeFilter.length === 0 || typeFilter.includes("Organizations");
+  const showPeople = typeFilter.length === 0 || typeFilter.includes("People");
+
+  const councilFolders = showCouncils ? folders.filter((o) => o.kind === "Council") : [];
+  const orgFolders = showOrgs ? folders.filter((o) => o.kind !== "Council") : [];
+  const peopleFiles = showPeople ? files : [];
+  const anySections = councilFolders.length > 0 || orgFolders.length > 0 || peopleFiles.length > 0;
 
   return (
     <div className="mx-auto max-w-270 px-6 pt-10 pb-20">
@@ -92,7 +104,9 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
         query={query}
         onQuery={setQuery}
         placeholder={`Search within ${orgDisplayName(org)}`}
-        filters={[]}
+        filters={[
+          { label: "Type", options: ["Councils", "Organizations", "People"], multi: true, active: typeFilter, onFilter: (v) => setTypeFilter(v as EntityType[]) },
+        ]}
       />
 
       {anySections ? (
@@ -113,10 +127,10 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
               renderItem={(o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={false} />}
             />
           )}
-          {files.length > 0 && (
+          {peopleFiles.length > 0 && (
             <FolderGrid
               label="People"
-              items={files}
+              items={peopleFiles}
               minWidth={230}
               renderItem={(m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showScopeChip={false} />}
             />

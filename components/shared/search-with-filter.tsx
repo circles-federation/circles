@@ -5,12 +5,29 @@ import { CheckIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicon
 import clsx from "clsx";
 import { Eyebrow } from "./eyebrow";
 
-interface FilterGroupData {
+// a group is single-select by default (an "All" option plus one active value,
+// same shape as Events' Status filter) — pass multi: true for a group whose
+// options aren't mutually exclusive (e.g. the Directory's entity-type
+// filter, where "Councils" and "Organizations" can both be on at once).
+interface FilterGroupDataSingle {
   label: string;
   options: string[];
+  multi?: false;
   active: string | null;
   onFilter: (value: string | null) => void;
 }
+
+interface FilterGroupDataMulti {
+  label: string;
+  options: string[];
+  multi: true;
+  active: string[];
+  // called with the full next selection, not just the toggled value, so the
+  // caller can hand this straight to a plain useState setter
+  onFilter: (value: string[]) => void;
+}
+
+type FilterGroupData = FilterGroupDataSingle | FilterGroupDataMulti;
 
 /* The magnifying-glass icon, text input, and (when there's a query) the
    clear button — the left/middle portion of the bordered search row.
@@ -19,7 +36,7 @@ interface FilterGroupData {
 function SearchField({ query, onQuery, placeholder }: { query: string; onQuery: (value: string) => void; placeholder?: string }) {
   return (
     <>
-      <span className="flex items-center pl-3.5 text-soft">
+      <span className="flex items-center pl-3.5">
         <MagnifyingGlassIcon className="size-4" strokeWidth={2} />
       </span>
       <input
@@ -66,7 +83,9 @@ function FilterTrigger({ activeCount, onClick }: { activeCount: number; onClick:
 }
 
 /* One filter option row inside a FilterGroup — "All" or one of the group's
-   own option values. */
+   own option values (single-select), or one independently-toggleable option
+   (multi-select). Visually identical either way — only how `onSelect` is
+   wired differs. */
 function FilterOption({ label, selected, isLast, onSelect }: { label: string; selected: boolean; isLast: boolean; onSelect: () => void }) {
   return (
     <button
@@ -84,31 +103,45 @@ function FilterOption({ label, selected, isLast, onSelect }: { label: string; se
 }
 
 /* One labeled group of options in the filter menu — a header (label +
-   "Clear" when active) over the "All" option plus each of the group's own. */
+   "Clear" when active) over the options themselves: a single-select group
+   gets an "All" option prepended (picking one clears the rest), a multi
+   group's options are independently toggleable checkboxes with no "All"
+   row (deselecting everything is already equivalent to "All"). */
 function FilterGroup({ group: g, isLast }: { group: FilterGroupData; isLast: boolean }) {
-  const all: (string | null)[] = [null, ...g.options];
+  const isActive = g.multi ? g.active.length > 0 : g.active !== null;
+
   return (
     <div className={clsx(!isLast && "border-b-2 border-ink")}>
       <div className="flex items-center justify-between border-b border-faint bg-[#f4f4f4] px-3.5 pt-2.25 pb-2">
         <Eyebrow className="text-soft">{g.label}</Eyebrow>
-        {g.active && (
+        {isActive && (
           <button
-            onClick={() => g.onFilter(null)}
+            onClick={() => (g.multi ? g.onFilter([]) : g.onFilter(null))}
             className="cursor-pointer border-none bg-transparent p-0 font-sans text-micro font-bold tracking-[0.06em] text-flame uppercase"
           >
             Clear
           </button>
         )}
       </div>
-      {all.map((opt, i) => (
-        <FilterOption
-          key={opt || "all"}
-          label={opt || "All"}
-          selected={g.active === opt}
-          isLast={i === all.length - 1}
-          onSelect={() => g.onFilter(opt)}
-        />
-      ))}
+      {g.multi
+        ? g.options.map((opt, i) => (
+          <FilterOption
+            key={opt}
+            label={opt}
+            selected={g.active.includes(opt)}
+            isLast={i === g.options.length - 1}
+            onSelect={() => g.onFilter(g.active.includes(opt) ? g.active.filter((a) => a !== opt) : [...g.active, opt])}
+          />
+        ))
+        : [null, ...g.options].map((opt, i, all) => (
+          <FilterOption
+            key={opt || "all"}
+            label={opt || "All"}
+            selected={g.active === opt}
+            isLast={i === all.length - 1}
+            onSelect={() => g.onFilter(opt)}
+          />
+        ))}
     </div>
   );
 }
@@ -141,17 +174,18 @@ interface SearchWithFilterProps {
 /* Search input with a compact filter menu attached to its right edge. Supports
    one or more filter groups via the `filters` prop:
      filters = [{ label, options, active, onFilter }, ...]
-   Each group renders as a labeled section in a single dropdown. The trigger is
-   a small funnel icon that shows a dot when any filter is active. A legacy
-   single-filter API (filterLabel/options/active/onFilter) is still accepted and
-   normalized into one group. */
+   Each group renders as a labeled section in a single dropdown, single-select
+   by default or independently-toggleable options with `multi: true`. The
+   trigger is a small funnel icon that shows a count badge when any group has
+   a selection. A legacy single-filter API (filterLabel/options/active/onFilter)
+   is still accepted and normalized into one single-select group. */
 export function SearchWithFilter({ query, onQuery, placeholder, filters, filterLabel, options, active, onFilter }: SearchWithFilterProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   // normalize: accept either `filters` (new) or the legacy single-filter props
   const groups: FilterGroupData[] = filters || (options && onFilter ? [{ label: filterLabel || "", options, active: active ?? null, onFilter }] : []);
-  const activeCount = groups.filter((g) => g.active).length;
+  const activeCount = groups.filter((g) => (g.multi ? g.active.length > 0 : g.active !== null)).length;
 
   useEffect(() => {
     if (!open) return;
