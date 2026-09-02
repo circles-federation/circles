@@ -1,45 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useAppState } from "@/components/providers/app-state-provider";
-import { MEMBERS } from "@/lib/data";
 import { GameResultsPage } from "./game-results.page";
 import { GameRoundPage } from "./game-round.page";
-import type { Member } from "@/lib/types";
+import { buildRounds, type Round } from "@/lib/game.util";
+import type { Member, Profile } from "@/lib/types";
 
-export interface Round {
-  person: Member;
-  options: string[];
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j]!, a[i]!];
-  }
-  return a;
-}
-
-function buildRounds(homeHood: string, excludeId: number): Round[] {
-  // the game is for learning your direct neighbors, so it draws only from the
-  // player's own neighborhood, minus the player themselves — you already know who you are
-  const neighbors = MEMBERS.filter((m) => m.neighborhood === homeHood && m.id !== excludeId);
-  const pool = shuffle(neighbors);
-  return pool.map((person) => {
-    const distractors = shuffle(neighbors.filter((m) => m.id !== person.id)).slice(0, 3);
-    const options = shuffle([person, ...distractors]).map((m) => m.name);
-    return { person, options };
-  });
+interface NameGamePageProps {
+  members: Member[];
+  profile: Profile;
+  onExit: () => void;
 }
 
 /* Orchestrates the name-learning game: builds a shuffled round set for the
    player's own neighborhood, then renders either the current round
    (GameRoundPage) or the end screen (GameResultsPage) once every round has
    been answered. */
-export function NameGamePage({ onExit }: { onExit: () => void }) {
-  const { profile } = useAppState();
-  const [rounds, setRounds] = useState<Round[]>(() => buildRounds(profile.neighborhood, profile.id));
+export function NameGamePage({ members, profile, onExit }: NameGamePageProps) {
+  const [rounds, setRounds] = useState<Round[]>(() => buildRounds(members, profile.neighborhood, profile.id));
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
@@ -63,7 +41,7 @@ export function NameGamePage({ onExit }: { onExit: () => void }) {
   }
 
   function restart() {
-    setRounds(buildRounds(profile.neighborhood, profile.id));
+    setRounds(buildRounds(members, profile.neighborhood, profile.id));
     setIdx(0);
     setPicked(null);
     setScore(0);

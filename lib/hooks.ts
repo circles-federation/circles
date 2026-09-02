@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Event, Org } from "./types";
+import { MEMBERS } from "./data";
+import type { Event, Member, Org } from "./types";
+
+/* Seam for the roster of members — a thin wrapper around the static seed
+   array for now, but the intended shape going forward for any data a
+   component needs: reach for a hook here rather than importing lib/data.ts's
+   constants directly, so a future real fetch (e.g. lib/db/members.ts's
+   getMembers(), or AppStateProvider tracking members once it needs to) can
+   replace this function's insides without touching call sites. */
+export function useMembers(): Member[] {
+  return MEMBERS;
+}
 
 /* Tracks whether the viewport is below a mobile breakpoint. Always starts
    `false` (matching what the server renders, since it has no viewport to
