@@ -61,6 +61,15 @@ export function isHostOrgMember(e: Event, member: Member | null | undefined): bo
   const org = orgById(e.host.id);
   return !!org && org.members.includes(member.id);
 }
+// whether a given member organizes this event, and so may edit it — the
+// event's own host for a member-hosted event, or any member of its hosting
+// org for an org-hosted one (orgs are managed collectively, same "any
+// member can act for the org" model as OrgPage's own Manage button).
+export function isEventOrganizer(e: Event, member: Member | null | undefined): boolean {
+  if (!member) return false;
+  if (e.host.type === "member") return e.host.id === member.id;
+  return isHostOrgMember(e, member);
+}
 // narrows an Event to its meeting-specific fields where governance logic
 // reads several of them together and would benefit from real narrowing
 // instead of optional-chaining/guards at each field.

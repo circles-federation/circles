@@ -5,6 +5,7 @@ import { notFound, useParams, useRouter, useSearchParams } from "next/navigation
 import { EventPage } from "@/components/events/event.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useProfileModal } from "@/components/providers/profile-modal-provider";
+import { useToast } from "@/components/shared";
 import { useAppNav } from "@/lib/hooks";
 
 function EventDetail() {
@@ -16,6 +17,7 @@ function EventDetail() {
     toggleRoleSlot, ratifyCouncilProposal, profile,
   } = useAppState();
   const { open } = useProfileModal();
+  const { showToast } = useToast();
   const nav = useAppNav();
 
   const event = events.find((e) => e.id === id);
@@ -40,6 +42,9 @@ function EventDetail() {
       onProposeCouncil={() => router.push(`/events/${event.id}/propose`)}
       onRatifyProposal={ratifyCouncilProposal}
       onProposeEndorsingAssembly={() => router.push(`/events/${event.id}/propose`)}
+      // TODO: there's no edit-event page/route yet — this button exists
+      // ahead of it, per the plan to build the button first.
+      onEditEvent={() => showToast({ tone: "info", title: "Coming soon", message: "Editing events isn't built yet." })}
     />
   );
 }

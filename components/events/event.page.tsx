@@ -35,6 +35,7 @@ interface EventPageProps {
   onProposeCouncil: (e: Event) => void;
   onRatifyProposal: (proposalId: string) => void;
   onProposeEndorsingAssembly: (e: Event, hood: string) => void;
+  onEditEvent: () => void;
 }
 
 /* The event detail page — composed from the sections below, each of which
@@ -44,7 +45,7 @@ interface EventPageProps {
    This shell only owns cross-cutting app state (rsvp/vote toggles, the
    confirmed-meeting's council proposals) and the top-level "which panel
    applies to this event kind" decisions. */
-export function EventPage({ event: e, events, profile, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenOrg, onOpenEvent, onToggleRoleSlot, onProposeCouncil, onRatifyProposal, onProposeEndorsingAssembly }: EventPageProps) {
+export function EventPage({ event: e, events, profile, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenOrg, onOpenEvent, onToggleRoleSlot, onProposeCouncil, onRatifyProposal, onProposeEndorsingAssembly, onEditEvent }: EventPageProps) {
   const gov = kindOf(e).governance;
   const isMeeting = e.kind === "meeting";
   const isCouncil = e.kind === "council";
@@ -57,7 +58,7 @@ export function EventPage({ event: e, events, profile, councilProposals, rsvpSta
     <PageContainer size="normal">
       <BackButton onClick={onBack}>{backLabel || "All events"}</BackButton>
 
-      <EventMasthead event={e} events={events} onOpenEvent={onOpenEvent} />
+      <EventMasthead event={e} events={events} profile={profile} onOpenEvent={onOpenEvent} onEdit={onEditEvent} />
 
       {gov && !isCouncil && (
         <MeetingVoteBanner event={e} profile={profile} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
