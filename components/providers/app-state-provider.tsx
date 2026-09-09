@@ -26,6 +26,7 @@ export interface AppStateValue {
   toggleRsvp(eventId: string): void;
   toggleRoleSlot(eventId: string, roleKey: string): void;
   createEvent(ev: Event): Event;
+  updateEventDetails(id: string, patch: Partial<Event>): void;
   proposeCouncilDraft(assembly: Event, details: ProposalDetails): void;
   ratifyCouncilProposal(proposalId: string): void;
   proposeEndorsingAssembly(council: Event, details: ProposalDetails, hood: string): Event;
@@ -167,6 +168,19 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       });
     }
     return ev;
+  }
+
+  // save edits to an event's own details (title/host/date/location/etc.)
+  // from the edit-event form — deliberately doesn't touch governance state
+  // (votes/rsvps/endorsements), which toggleVote/toggleRsvp own instead.
+  function updateEventDetails(id: string, patch: Partial<Event>) {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+    dbUpdateEvent(id, patch);
+    showToast({
+      tone: "success",
+      title: "Changes saved",
+      message: "Your edits are now live for everyone to see.",
+    });
   }
 
   // a delegate drafts a council proposal on their meeting's page. it awaits
@@ -374,7 +388,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     <AppStateContext.Provider
       value={{
         events: visibleEvents, orgs, councilProposals, rsvpState, voteState, profile,
-        toggleRsvp, toggleRoleSlot, createEvent, proposeCouncilDraft,
+        toggleRsvp, toggleRoleSlot, createEvent, updateEventDetails, proposeCouncilDraft,
         ratifyCouncilProposal, proposeEndorsingAssembly, toggleVote,
         saveOrg, saveProfile,
       }}

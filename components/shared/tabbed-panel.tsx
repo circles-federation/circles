@@ -8,6 +8,10 @@ interface Tab {
   label: ReactNode;
   variant?: TabAccent;
   count?: number;
+  // a disabled tab can never become active — its label is hidden entirely
+  // (rather than shown-but-unclickable) so it reads as an inert filler slot,
+  // not a real option; open to revisiting this treatment later.
+  disabled?: boolean;
 }
 
 interface TabbedPanelProps {
@@ -43,17 +47,19 @@ export function TabbedPanel({ tabs, active, onChange, bodyPad = true, className,
             <button
               key={t.key}
               onClick={() => onChange(t.key)}
+              disabled={t.disabled}
               className={clsx(
-                "relative -mb-px inline-flex flex-1 cursor-pointer items-center justify-center gap-2",
+                "relative -mb-px inline-flex flex-1 items-center justify-center gap-2",
                 "border-t border-t-ink border-r border-r-ink py-3.25 px-2",
                 "font-sans text-eyebrow font-bold tracking-wide uppercase",
                 i === 0 ? "border-l border-l-ink" : "border-l-0",
+                t.disabled ? "cursor-not-allowed" : "cursor-pointer",
                 on
                   ? clsx("z-2 border-b border-b-transparent bg-paper text-ink", ACCENT_SHADOW[t.variant || "ink"])
                   : "z-1 border-b border-b-ink bg-[#f4f4f4] text-soft",
               )}
             >
-              {t.label}
+              {!t.disabled && t.label}
               {t.count != null && <span className="opacity-70">{t.count}</span>}
             </button>
           );

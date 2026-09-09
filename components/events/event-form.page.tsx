@@ -27,14 +27,35 @@ const ACCENT: Record<"ink" | "flame", { borderT: string; border: string; text: s
   flame: { borderT: "border-t-flame", border: "border-flame", text: "text-flame" },
 };
 
-interface NewEventFormPageProps {
+interface EventFormPageBaseProps {
   profile: Profile;
   orgs: Org[];
-  onCreate: (ev: Event) => void;
   onCancel: () => void;
 }
 
-export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEventFormPageProps) {
+interface CreateEventFormPageProps extends EventFormPageBaseProps {
+  mode: "create";
+  onCreate: (ev: Event) => void;
+}
+
+interface EditEventFormPageProps extends EventFormPageBaseProps {
+  mode: "edit";
+  event: Event;
+  onSave: (patch: Partial<Event>) => void;
+}
+
+type EventFormPageProps = CreateEventFormPageProps | EditEventFormPageProps;
+
+/* Shared by /events/new (mode "create") and /events/[id]/edit (mode "edit")
+   — the same form either way, just seeded from blank defaults or from the
+   event being edited. Editing can't change the event's kind (ordinary vs
+   meeting): the tab for whichever kind the event ISN'T gets disabled rather
+   than removed, so the tab bar's shape stays identical between the two
+   modes. */
+export function EventFormPage(props: EventFormPageProps) {
+  const { profile, orgs, onCancel, mode } = props;
+  const event = mode === "edit" ? props.event : null;
+
   // host options: the current user, plus every org they belong to
   const myOrgs: Org[] = ORGS_BY_MEMBER[profile.id] || [];
   const hostOptions: { key: string; label: string; host: Host }[] = [
@@ -60,44 +81,77 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEvent
   // submit()'s Date.now() call is confined to an event handler).
   const circleOptions = eligibleCircles.map((o) => ({ id: o.id, label: orgDisplayName(o) }));
 
-  const [type, setType] = useState<EventKindKey>("ordinary");
-  const [title, setTitle] = useState("");
-  // hostOptions always has at least one entry — the "(you)" member option is
-  // unconditional, orgs are only ever appended after it.
-  const [hostKey, setHostKey] = useState(hostOptions[0]!.key);
-  const [circleId, setCircleId] = useState(eligibleCircles[0]?.id || "");
+  // the form's starting values — blank defaults for a new event, or the
+  // event's own current values when editing. `dirty` (below) diffs live
+  // state against these, not hardcoded blanks, so opening the edit form
+  // doesn't itself count as a change.
+  const initialValues = event
+    ? {
+        type: (event.kind === "meeting" ? "meeting" : "ordinary") as EventKindKey,
+        title: event.title,
+        hostKey: event.host.type === "member" ? "member:" + event.host.id : "org:" + event.host.id,
+        circleId: event.orgId || eligibleCircles[0]?.id || "",
+        date: event.date,
+        start: event.start,
+        end: event.end,
+        location: event.location,
+        description: event.description,
+        membersOnly: !!event.membersOnly,
+        useSlots: Array.isArray(event.roles) && event.roles.length > 0,
+        slots: event.roles && event.roles.length > 0
+          ? event.roles.map((r): SlotDraft => ({ label: r.label, description: r.description || "", min: String(r.min), max: r.max != null ? String(r.max) : "" }))
+          : DEFAULT_SLOTS,
+      }
+    : {
+        type: "ordinary" as EventKindKey,
+        title: "",
+        hostKey: hostOptions[0]!.key,
+        circleId: eligibleCircles[0]?.id || "",
+        date: "",
+        start: DEFAULT_START,
+        end: DEFAULT_END,
+        location: "",
+        description: "",
+        membersOnly: false,
+        useSlots: false,
+        slots: DEFAULT_SLOTS,
+      };
+
+  const [type, setType] = useState<EventKindKey>(initialValues.type);
+  const [title, setTitle] = useState(initialValues.title);
+  const [hostKey, setHostKey] = useState(initialValues.hostKey);
+  const [circleId, setCircleId] = useState(initialValues.circleId);
   const circle = orgsById[circleId] || null;
   const circleName = circle ? orgDisplayName(circle) : "";
   const meetingThresholdPreview = circle ? Math.floor(orgMembers(circle, MEMBERS).length / 2) + 1 : 0;
-  const [date, setDate] = useState("");
-  const [start, setStart] = useState(DEFAULT_START);
-  const [end, setEnd] = useState(DEFAULT_END);
-  const [location, setLocation] = useState("");
-  const [description, setDescription] = useState("");
-  const [membersOnly, setMembersOnly] = useState(false);
+  const [date, setDate] = useState(initialValues.date);
+  const [start, setStart] = useState(initialValues.start);
+  const [end, setEnd] = useState(initialValues.end);
+  const [location, setLocation] = useState(initialValues.location);
+  const [description, setDescription] = useState(initialValues.description);
+  const [membersOnly, setMembersOnly] = useState(initialValues.membersOnly);
   // slots (roles) for org-hosted events: each { label, description, min, max }
-  const [useSlots, setUseSlots] = useState(false);
-  const [slots, setSlots] = useState<SlotDraft[]>(DEFAULT_SLOTS);
+  const [useSlots, setUseSlots] = useState(initialValues.useSlots);
+  const [slots, setSlots] = useState<SlotDraft[]>(initialValues.slots);
   const [error, setError] = useState("");
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
-  // true once the user has entered anything — guards Back/Cancel behind a
-  // confirmation rather than tracking a "dirty" diff against saved data,
-  // since a new-event form has no prior saved state to diff against.
-  // Switching the Event/Meeting tab alone doesn't count: it's a selection,
-  // not entered content, and it doesn't clear anything already typed.
+  // true once something differs from where the form started — guards Back/
+  // Cancel behind a confirmation. Switching the Event/Meeting tab alone
+  // doesn't count: it's a selection, not entered content (moot in edit mode
+  // anyway, since that tab is disabled there).
   const dirty =
-    title.trim() !== "" ||
-    hostKey !== hostOptions[0]!.key ||
-    circleId !== (eligibleCircles[0]?.id || "") ||
-    date !== "" ||
-    start !== DEFAULT_START ||
-    end !== DEFAULT_END ||
-    location.trim() !== "" ||
-    description.trim() !== "" ||
-    membersOnly ||
-    useSlots ||
-    JSON.stringify(slots) !== JSON.stringify(DEFAULT_SLOTS);
+    title.trim() !== initialValues.title.trim() ||
+    hostKey !== initialValues.hostKey ||
+    circleId !== initialValues.circleId ||
+    date !== initialValues.date ||
+    start !== initialValues.start ||
+    end !== initialValues.end ||
+    location.trim() !== initialValues.location.trim() ||
+    description.trim() !== initialValues.description.trim() ||
+    membersOnly !== initialValues.membersOnly ||
+    useSlots !== initialValues.useSlots ||
+    JSON.stringify(slots) !== JSON.stringify(initialValues.slots);
 
   // shared by the top BackButton and the bottom Cancel button — both leave
   // the form the same way, so both need the same unsaved-changes guard.
@@ -115,26 +169,38 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEvent
     if (!title.trim()) return setError("Give the " + (gov ? "meeting" : "event") + " a title.");
     if (!date) return setError("Pick a date.");
     if (!location.trim()) return setError("Add a location.");
+
     if (gov) {
       // governance meetings are proposed by a person, not an org; the
       // proposer is the first vote. A meeting is hosted by whichever
       // circle the proposer chose (see circle/eligibleCircles above).
-      onCreate({
-        id: "e" + Date.now(),
-        title: title.trim(),
-        kind: type,
-        orgId: circle ? circle.id : undefined,
-        host: { type: "member", id: profile.id },
-        date, start, end,
-        location: location.trim(),
-        description: description.trim() || "No agenda yet.",
-        votes: [profile.id],
-        rsvps: [profile.id],
-      });
+      if (mode === "edit") {
+        props.onSave({
+          title: title.trim(),
+          orgId: circle ? circle.id : undefined,
+          date, start, end,
+          location: location.trim(),
+          description: description.trim() || "No agenda yet.",
+        });
+      } else {
+        props.onCreate({
+          id: "e" + Date.now(),
+          title: title.trim(),
+          kind: type,
+          orgId: circle ? circle.id : undefined,
+          host: { type: "member", id: profile.id },
+          date, start, end,
+          location: location.trim(),
+          description: description.trim() || "No agenda yet.",
+          votes: [profile.id],
+          rsvps: [profile.id],
+        });
+      }
       return;
     }
-    // hostKey is always initialized from hostOptions[0].key and only ever
-    // set to another hostOptions entry's key, so a match always exists.
+    // hostKey is always initialized from hostOptions[0].key (or the event's
+    // own host, in edit mode) and only ever set to another hostOptions
+    // entry's key, so a match always exists.
     const chosen = hostOptions.find((h) => h.key === hostKey)!;
     const isOrgHost = chosen.host.type === "org";
 
@@ -162,18 +228,34 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEvent
       });
     }
 
-    onCreate({
-      id: "e" + Date.now(),
-      title: title.trim(),
-      kind: "ordinary",
-      host: chosen.host,
-      date, start, end,
-      location: location.trim(),
-      description: description.trim() || "No description yet.",
-      rsvps: roles ? [] : [profile.id],
-      ...(roles ? { roles } : {}),
-      ...(isOrgHost && membersOnly ? { membersOnly: true } : {}),
-    });
+    if (mode === "edit") {
+      // explicit false/undefined here (not omitted), unlike the create
+      // branch below — a patch has to actively clear membersOnly/roles if
+      // the user turned them off, since omitting the key would just leave
+      // whatever the event already had.
+      props.onSave({
+        title: title.trim(),
+        host: chosen.host,
+        date, start, end,
+        location: location.trim(),
+        description: description.trim() || "No description yet.",
+        roles: roles || undefined,
+        membersOnly: isOrgHost && membersOnly,
+      });
+    } else {
+      props.onCreate({
+        id: "e" + Date.now(),
+        title: title.trim(),
+        kind: "ordinary",
+        host: chosen.host,
+        date, start, end,
+        location: location.trim(),
+        description: description.trim() || "No description yet.",
+        rsvps: roles ? [] : [profile.id],
+        ...(roles ? { roles } : {}),
+        ...(isOrgHost && membersOnly ? { membersOnly: true } : {}),
+      });
+    }
   }
 
   const types: [EventKindKey, string][] = [
@@ -183,18 +265,25 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEvent
 
   return (
     <PageContainer size="compact">
-      <BackButton onClick={handleLeave}>All events</BackButton>
+      <BackButton onClick={handleLeave}>{mode === "edit" ? initialValues.title : "All events"}</BackButton>
 
       <div className={clsx("mt-4 border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
-        <Eyebrow className={gov ? "text-flame" : "text-soft"}>{gov ? "Propose" : "Create"}</Eyebrow>
+        <Eyebrow className={gov ? "text-flame" : "text-soft"}>{mode === "edit" ? "Edit" : (gov ? "Propose" : "Create")}</Eyebrow>
         <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">
-          {type === "ordinary" ? "New event" : "New meeting"}
+          {mode === "edit" ? initialValues.title : (type === "ordinary" ? "New event" : "New meeting")}
         </h1>
       </div>
 
-      {/* type selector — reusable tabbed panel wrapping the form fields */}
+      {/* type selector — reusable tabbed panel wrapping the form fields.
+          In edit mode the kind can't change, so whichever tab doesn't match
+          the event's own kind is disabled rather than removed, keeping the
+          same two-tab shape as the create form. */}
       <TabbedPanel
-        tabs={types.map(([key, label]) => ({ key, label, variant: EVENT_KINDS[key].governance ? "flame" as const : "ink" as const }))}
+        tabs={types.map(([key, label]) => ({
+          key, label,
+          variant: EVENT_KINDS[key].governance ? "flame" as const : "ink" as const,
+          disabled: mode === "edit" && key !== initialValues.type,
+        }))}
         active={type}
         onChange={(key) => { setType(key as EventKindKey); setError(""); }}
         className="mt-6"
@@ -373,7 +462,7 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEvent
 
         <div className="flex flex-wrap gap-3 border-t border-ink pt-5.5">
           <Button accent={accentKey} onClick={submit}>
-            {gov ? "Propose meeting" : "Create event"}
+            {mode === "edit" ? "Save changes" : (gov ? "Propose meeting" : "Create event")}
           </Button>
           <Button variant="secondary" onClick={handleLeave}>
             Cancel
@@ -385,7 +474,7 @@ export function NewEventFormPage({ profile, orgs, onCreate, onCancel }: NewEvent
       {confirmingDiscard && (
         <ConfirmModal
           title="Discard changes?"
-          message="You have unsaved changes to this event. If you leave now, they'll be lost."
+          message={`You have unsaved changes to this ${gov ? "meeting" : "event"}. If you leave now, they'll be lost.`}
           confirmLabel="Discard"
           cancelLabel="Cancel"
           onConfirm={onCancel}
