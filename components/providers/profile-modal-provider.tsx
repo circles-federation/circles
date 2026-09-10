@@ -52,7 +52,6 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
   // have a specific label for.
   function currentPageLabel() {
     if (pathname === "/home") return "Home";
-    if (pathname === "/federation") return "Federation";
     const orgMatch = pathname.match(/^\/directory\/([^/]+)/);
     if (orgMatch) {
       const org = orgs.find((o) => o.id === orgMatch[1]);

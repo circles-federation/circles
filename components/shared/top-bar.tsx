@@ -33,17 +33,13 @@ export function TopBar() {
   // breakpoint-driven CSS toggle, not a JS/hydration-sensitive one.
   function currentSectionName() {
     const tab = TABS.find(([href]) => isActive(href));
-    if (tab) return tab[1];
-    if (pathname.startsWith("/federation")) return "Federation";
-    return "Providence";
+    return tab ? tab[1] : "Providence";
   }
 
   return (
     <div className="sticky top-0 z-50 bg-paper shadow-[0_2px_6px_rgba(10,10,10,0.08)]">
       <div className="mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
-        <Link href="/federation" className="hidden border-none bg-transparent p-0 text-inherit no-underline min-[720px]:block">
-          <span className="font-sans text-lg font-extrabold tracking-[-0.02em]">Providence</span>
-        </Link>
+        <span className="hidden font-sans text-lg font-extrabold tracking-[-0.02em] min-[720px]:block">Providence</span>
         <span className="font-sans text-lg font-extrabold tracking-[-0.02em] min-[720px]:hidden">
           {currentSectionName()}
         </span>

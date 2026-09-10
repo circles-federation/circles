@@ -44,7 +44,6 @@ export function useIsMobile(breakpoint = 720): boolean {
 // pre-routing "setView(key)" API (only ever called with "orgs" or "events")
 const VIEW_ROUTES: Record<string, string> = {
   home: "/home",
-  federation: "/federation",
   directory: "/directory",
   orgs: "/directory",
   events: "/events",
