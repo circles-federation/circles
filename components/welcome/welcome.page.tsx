@@ -5,13 +5,10 @@ import { useRouter } from "next/navigation";
 import { UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, useToast } from "@/components/shared";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
-import { MEMBERS } from "@/lib/data";
+import { useMembers } from "@/lib/hooks";
 import type { Member } from "@/lib/types";
 
 type Step = "email" | "code";
-
-// only members with an email can actually be signed in as — see lib/db/members.js's getMemberByEmail
-const DEMO_MEMBERS = MEMBERS.filter((m) => m.email).sort((a, b) => a.name.localeCompare(b.name));
 
 /* The unauthenticated welcome page — passwordless email + one-time-code
    login. No real email provider yet, so requestLoginCode() hands the code
@@ -27,6 +24,8 @@ const DEMO_MEMBERS = MEMBERS.filter((m) => m.email).sort((a, b) => a.name.locale
 export function WelcomePage() {
   const router = useRouter();
   const { showToast } = useToast();
+  // only members with an email can actually be signed in as — see lib/db/members.ts's getMemberByEmail
+  const demoMembers = useMembers().filter((m) => m.email).sort((a, b) => a.name.localeCompare(b.name));
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -154,7 +153,7 @@ export function WelcomePage() {
             </button>
           </div>
           <div className="max-h-[60vh] overflow-y-auto">
-            {DEMO_MEMBERS.map((m) => (
+            {demoMembers.map((m) => (
               <button
                 key={m.id}
                 onClick={() => selectDemoMember(m)}

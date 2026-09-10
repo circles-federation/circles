@@ -6,9 +6,8 @@ import { Avatar, Button, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer,
 import { OrgCard } from "@/components/orgs/org-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
-import { MEMBERS } from "@/lib/data";
 import { isPastEvent, parseDay } from "@/lib/format.util";
-import { useIsMobile } from "@/lib/hooks";
+import { useIsMobile, useMembers } from "@/lib/hooks";
 import { orgsForMember, orgScope } from "@/lib/orgs.util";
 import type { Event, Org, Profile } from "@/lib/types";
 
@@ -32,8 +31,9 @@ interface HomeProps {
    dial), and their events. Profile editing lives on a separate page. */
 export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalOrgs, onPlayGame, onOpenOrg, onEditProfile, onLogout }: HomeProps) {
   const isMobile = useIsMobile();
+  const members = useMembers();
   const orgsById = orgs.reduce<Record<string, Org>>((acc, o) => { acc[o.id] = o; return acc; }, {});
-  const neighbors = MEMBERS.filter((m) => m.neighborhood === profile.neighborhood);
+  const neighbors = members.filter((m) => m.neighborhood === profile.neighborhood);
   // excludes the neighborhood's own Council (o.neighborhood set) — clicking
   // this stat opens that Council's folder page, which shows its children,
   // not itself, so the count would otherwise be one higher than what's
@@ -50,7 +50,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
   });
 
   // the user's own organizations (speed dial)
-  const myOrgs = orgsForMember(profile.id, orgs, MEMBERS);
+  const myOrgs = orgsForMember(profile.id, orgs, members);
 
   // the user's events — created or RSVP'd, upcoming first then past
   // the user's events — created or RSVP'd; EventFeed orders and paginates them

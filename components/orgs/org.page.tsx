@@ -5,9 +5,10 @@ import { GovernanceRow } from "@/components/events/governance-row";
 import { OrdinaryRow } from "@/components/events/ordinary-row";
 import { OrgCard } from "./org-card";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { memberById, MEMBERS } from "@/lib/data";
+import { memberById } from "@/lib/data";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { kindOf } from "@/lib/governance.util";
+import { useMembers } from "@/lib/hooks";
 import { orgChildren, orgMembers, orgScope } from "@/lib/orgs.util";
 import type { Event, Member, Org } from "@/lib/types";
 
@@ -27,9 +28,10 @@ interface OrgPageProps {
 
 export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, onBack, backLabel, onOpenMember, onOpenOrg, onOpenEvent, onManage }: OrgPageProps) {
   const { profile, orgs } = useAppState();
+  const allMembers = useMembers();
   const orgsById = orgs.reduce<Record<string, Org>>((acc, org) => { acc[org.id] = org; return acc; }, {});
   const scope = orgScope(o, orgsById);
-  const members = orgMembers(o, MEMBERS).map(memberById).filter((m): m is Member => Boolean(m));
+  const members = orgMembers(o, allMembers).map(memberById).filter((m): m is Member => Boolean(m));
   const childOrgs = orgChildren(o, orgs);
   // events convened by this org, soonest first (location is irrelevant)
   const hostedEvents = [...events]

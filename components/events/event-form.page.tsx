@@ -4,7 +4,8 @@ import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
-import { EVENT_KINDS, MEMBERS, ORGS_BY_MEMBER } from "@/lib/data";
+import { EVENT_KINDS, ORGS_BY_MEMBER } from "@/lib/data";
+import { useMembers } from "@/lib/hooks";
 import { orgDisplayName, orgMembers, orgsForMember, orgScope } from "@/lib/orgs.util";
 import type { Event, EventKindKey, Host, Org, Profile, Role } from "@/lib/types";
 
@@ -55,6 +56,7 @@ type EventFormPageProps = CreateEventFormPageProps | EditEventFormPageProps;
 export function EventFormPage(props: EventFormPageProps) {
   const { profile, orgs, onCancel, mode } = props;
   const event = mode === "edit" ? props.event : null;
+  const members = useMembers();
 
   // host options: the current user, plus every org they belong to
   const myOrgs: Org[] = ORGS_BY_MEMBER[profile.id] || [];
@@ -73,7 +75,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const homeCouncil = orgs.find((o) => o.neighborhood === profile.neighborhood);
   const eligibleCircles: Org[] = [
     ...(homeCouncil ? [homeCouncil] : []),
-    ...orgsForMember(profile.id, orgs, MEMBERS).filter((o) => o.id !== homeCouncil?.id && orgScope(o, orgsById) !== null),
+    ...orgsForMember(profile.id, orgs, members).filter((o) => o.id !== homeCouncil?.id && orgScope(o, orgsById) !== null),
   ];
   // labels precomputed here, not inline in JSX — calling orgDisplayName
   // directly inside a JSX expression trips the react-hooks/purity rule's
@@ -123,7 +125,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const [circleId, setCircleId] = useState(initialValues.circleId);
   const circle = orgsById[circleId] || null;
   const circleName = circle ? orgDisplayName(circle) : "";
-  const meetingThresholdPreview = circle ? Math.floor(orgMembers(circle, MEMBERS).length / 2) + 1 : 0;
+  const meetingThresholdPreview = circle ? Math.floor(orgMembers(circle, members).length / 2) + 1 : 0;
   const [date, setDate] = useState(initialValues.date);
   const [start, setStart] = useState(initialValues.start);
   const [end, setEnd] = useState(initialValues.end);

@@ -4,7 +4,8 @@ import clsx from "clsx";
 import type { CSSProperties } from "react";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { avatarFor, MEMBERS } from "@/lib/data";
+import { avatarFor } from "@/lib/data";
+import { useMembers } from "@/lib/hooks";
 import { sharesOrgWith } from "@/lib/orgs.util";
 import type { Member } from "@/lib/types";
 
@@ -24,7 +25,8 @@ interface AvatarProps {
    sizes across the app); className adds border/shrink/etc. on top. */
 export function Avatar({ member: m, size = 44, className }: AvatarProps) {
   const { profile, orgs } = useAppState();
-  const visible = m.id === profile.id || sharesOrgWith(profile.id, m.id, orgs, MEMBERS);
+  const members = useMembers();
+  const visible = m.id === profile.id || sharesOrgWith(profile.id, m.id, orgs, members);
   const style: CSSProperties = { width: size, height: size };
 
   if (!visible) {

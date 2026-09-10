@@ -6,8 +6,8 @@ import { NeighborhoodDirectoryPage } from "@/components/directory/neighborhood-d
 import { OrgPage } from "@/components/orgs/org.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useProfileModal } from "@/components/providers/profile-modal-provider";
-import { memberById, MEMBERS } from "@/lib/data";
-import { useAppNav } from "@/lib/hooks";
+import { memberById } from "@/lib/data";
+import { useAppNav, useMembers } from "@/lib/hooks";
 import { orgMembers } from "@/lib/orgs.util";
 
 // every org lives at this one flat route, however deep it sits in the
@@ -23,6 +23,7 @@ function DirectoryOrg() {
   const { orgs, events, profile } = useAppState();
   const { open } = useProfileModal();
   const nav = useAppNav();
+  const members = useMembers();
 
   const org = orgs.find((o) => o.id === id);
   if (!org) notFound();
@@ -32,7 +33,7 @@ function DirectoryOrg() {
       <NeighborhoodDirectoryPage
         org={org}
         orgs={orgs}
-        members={MEMBERS}
+        members={members}
         profile={profile}
         onOpenOrg={nav.openOrg}
         onOpenRoot={() => router.push("/directory")}
@@ -45,7 +46,7 @@ function DirectoryOrg() {
   return (
     <OrgPage
       org={org}
-      isMember={orgMembers(org, MEMBERS).includes(profile.id)}
+      isMember={orgMembers(org, members).includes(profile.id)}
       lastEditor={org.lastEditedBy ? memberById(org.lastEditedBy) || null : null}
       lastEditedAt={org.lastEditedAt}
       events={events}

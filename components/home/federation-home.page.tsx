@@ -3,8 +3,9 @@
 import { Eyebrow, ForwardLink, PageContainer } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
-import { MEMBERS, ORGS } from "@/lib/data";
+import { ORGS } from "@/lib/data";
 import { isPastEvent, parseDay } from "@/lib/format.util";
+import { useMembers } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
 interface FederationHomeProps {
@@ -16,7 +17,8 @@ interface FederationHomeProps {
 /* The Providence federation home / dashboard — same layout as the neighborhood
    home, but aggregated across the whole federation. */
 export function FederationHome({ events, onOpenEvent, setView }: FederationHomeProps) {
-  const neighborhoods = [...new Set(MEMBERS.map((m) => m.neighborhood))];
+  const members = useMembers();
+  const neighborhoods = [...new Set(members.map((m) => m.neighborhood))];
   const upcoming = [...events].filter((e) => !isPastEvent(e)).sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
   const councils = upcoming.filter((e) => e.kind === "council"); // federation-level meetings
 
