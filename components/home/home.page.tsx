@@ -61,7 +61,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
       {/* identity masthead */}
       <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="flex min-w-0 flex-1 items-center gap-5">
-          <Avatar member={profile} size={isMobile ? 64 : 96} />
+          <Avatar member={profile} size={isMobile ? 96 : 120} />
           <div className="min-w-0">
             <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">
               {profile.name}
@@ -71,8 +71,7 @@ export function Home({ profile, events, orgs, rsvpState, onOpenEvent, setView, o
                 </span>
               )}
             </h1>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <span className="font-serif text-lg text-soft">{profile.pronouns} · {profile.role}</span>
+            <div className="mt-3">
               <Chip title="Your neighborhood">{profile.neighborhood}</Chip>
             </div>
           </div>
