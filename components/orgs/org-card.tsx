@@ -2,8 +2,7 @@ import clsx from "clsx";
 import { HomeIcon } from "@heroicons/react/24/outline";
 import { Avatar, Chip, Eyebrow } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { memberById } from "@/lib/data";
-import { useMembers } from "@/lib/hooks";
+import { useMemberById, useMembers } from "@/lib/hooks";
 import { orgDisplayName, orgMembers, orgScope } from "@/lib/orgs.util";
 import type { Org } from "@/lib/types";
 
@@ -44,6 +43,7 @@ interface OrgCardProps {
 export function OrgCard({ o, onOpenOrg, showScopeChip = true, showKindEyebrow = !o.neighborhood }: OrgCardProps) {
   const { profile, orgs } = useAppState();
   const allMembers = useMembers();
+  const memberById = useMemberById();
   const orgsById = orgs.reduce<Record<string, Org>>((acc, org) => { acc[org.id] = org; return acc; }, {});
   const isNeighborhood = !!o.neighborhood;
   const isHome = isNeighborhood && o.neighborhood === profile.neighborhood;

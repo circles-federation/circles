@@ -13,6 +13,16 @@ export function useMembers(): Member[] {
   return MEMBERS;
 }
 
+/* A member-by-id lookup bound to useMembers() above — the hook call itself
+   happens once, here, at the top of the calling component; the plain
+   function it returns is what's actually safe to hand to .map() or call
+   per-item afterward (a hook can't be called once per array item — that's
+   a Rules-of-Hooks violation — but a plain closure returned by one can). */
+export function useMemberById(): (id: number) => Member | undefined {
+  const members = useMembers();
+  return (id: number) => members.find((m) => m.id === id);
+}
+
 /* Tracks whether the viewport is below a mobile breakpoint. Always starts
    `false` (matching what the server renders, since it has no viewport to
    read) and corrects itself in an effect after mount — reading

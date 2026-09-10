@@ -6,8 +6,7 @@ import { NeighborhoodDirectoryPage } from "@/components/directory/neighborhood-d
 import { OrgPage } from "@/components/orgs/org.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useProfileModal } from "@/components/providers/profile-modal-provider";
-import { memberById } from "@/lib/data";
-import { useAppNav, useMembers } from "@/lib/hooks";
+import { useAppNav, useMemberById, useMembers } from "@/lib/hooks";
 import { orgMembers } from "@/lib/orgs.util";
 
 // every org lives at this one flat route, however deep it sits in the
@@ -24,6 +23,7 @@ function DirectoryOrg() {
   const { open } = useProfileModal();
   const nav = useAppNav();
   const members = useMembers();
+  const memberById = useMemberById();
 
   const org = orgs.find((o) => o.id === id);
   if (!org) notFound();

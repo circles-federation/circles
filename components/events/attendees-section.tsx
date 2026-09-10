@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { Avatar, Eyebrow } from "@/components/shared";
-import { memberById } from "@/lib/data";
 import { canReadDetails, scopeLabel, scopeNoun } from "@/lib/governance.util";
+import { useMemberById } from "@/lib/hooks";
 import { hasRoles } from "@/lib/roles.util";
 import type { Event, Member, Profile } from "@/lib/types";
 
@@ -15,6 +15,8 @@ interface AttendeesSectionProps {
    who's in each role instead, via RoleSlotsSection). Hidden for a viewer
    outside a meeting's own circle. */
 export function AttendeesSection({ event: e, profile, onOpenMember }: AttendeesSectionProps) {
+  // called before the early return below — hooks can't be conditional
+  const memberById = useMemberById();
   if (hasRoles(e)) return null;
   const canRead = canReadDetails(e, profile);
   const attendees = e.rsvps.map(memberById).filter((m): m is Member => Boolean(m));

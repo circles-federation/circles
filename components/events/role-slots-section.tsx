@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { Avatar, Eyebrow, EyebrowGroup } from "@/components/shared";
-import { memberById } from "@/lib/data";
 import { isPastEvent } from "@/lib/format.util";
+import { useMemberById } from "@/lib/hooks";
 import { roleFull, roleUnmet } from "@/lib/roles.util";
 import type { Event, Member, Profile, Role } from "@/lib/types";
 
@@ -17,6 +17,7 @@ interface RoleSlotCardProps {
    toggle, and the roster of whoever's currently in it. Private to
    RoleSlotsSection — not used anywhere else. */
 function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember }: RoleSlotCardProps) {
+  const memberById = useMemberById();
   const past = isPastEvent(e);
   const filled = role.members.map(memberById).filter((m): m is Member => Boolean(m));
   const mine = role.members.includes(profile.id);
