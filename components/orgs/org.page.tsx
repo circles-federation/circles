@@ -1,12 +1,10 @@
 import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, BackButton, Button, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
-import { GovernanceRow } from "@/components/events/governance-row";
-import { OrdinaryRow } from "@/components/events/ordinary-row";
+import { EventFeed } from "@/components/events/event-feed";
 import { OrgCard } from "./org-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
-import { kindOf } from "@/lib/governance.util";
 import { useMemberById, useMembers } from "@/lib/hooks";
 import { orgChildren, orgMembers, orgScope } from "@/lib/orgs.util";
 import type { Event, Member, Org } from "@/lib/types";
@@ -101,22 +99,12 @@ export function OrgPage({ org: o, isMember, lastEditor, lastEditedAt, events, on
 
         <Section>
           <Eyebrow className="text-soft">Events they host</Eyebrow>
-          {/* no border of its own on either branch (unlike the grids below),
-              so the header rule lives here instead, on the wrapper */}
-          <div className="mt-4 border-t border-ink">
-            {hostedEvents.length > 0 ? (
-              <div className="pt-1">
-                {hostedEvents.map((e) => (
-                  kindOf(e).governance
-                    ? <GovernanceRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
-                    : <OrdinaryRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
-                ))}
-              </div>
-            ) : (
-              <p className="pt-4 font-serif text-base text-soft">
-                No upcoming events hosted by {o.name}.
-              </p>
-            )}
+          <div className="mt-4">
+            <EventFeed
+              events={hostedEvents}
+              onOpenEvent={onOpenEvent}
+              emptyText={`No upcoming events hosted by ${o.name}.`}
+            />
           </div>
         </Section>
 
