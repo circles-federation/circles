@@ -1,8 +1,9 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   check,
   date,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -15,14 +16,20 @@ import {
 } from "drizzle-orm/pg-core";
 import type { EventKindKey } from "@/lib/types";
 
-/* Drizzle table definitions — the only file besides lib/db/client.ts that
-   lib/db/*.ts may import from directly (see the wrapping rule in the plan).
-   Mirrors lib/types.ts field-for-field; ids are never DB-generated because
-   the app never creates a Member or Org (only edits one), and already
-   assigns its own string ids for Event/CouncilProposal at creation time.
+/* Drizzle table definitions — the only file besides lib/db/client.ts and
+   lib/better-auth.ts that lib/db/*.ts may import from directly (see the
+   wrapping rule in the plan). Mirrors lib/types.ts field-for-field; ids are
+   never DB-generated because the app never creates a Member or Org (only
+   edits one), and already assigns its own string ids for Event/
+   CouncilProposal at creation time.
 
-   Better Auth's own tables (users/sessions/accounts/verification) are added
-   here once its schema generator's exact output is confirmed — not yet. */
+   user/session/account/verification below are Better Auth's own tables —
+   generated verbatim via `npx auth generate --adapter drizzle --dialect
+   postgresql` against lib/better-auth.ts and reviewed before merging in,
+   not hand-written. Deliberately disconnected from `members`: a Better Auth
+   user is looked up by email (see lib/session.ts's getCurrentUserId), not by
+   a foreign key, so this file doesn't have to know about auth internals and
+   Better Auth doesn't have to know about the app's own member ids. */
 
 export const members = pgTable("members", {
   id: integer("id").primaryKey(),
@@ -172,3 +179,94 @@ export const councilProposalRatifyVotes = pgTable(
   },
   (t) => [primaryKey({ columns: [t.proposalId, t.memberId] })]
 );
+
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  image: text("image"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const session = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (t) => [index("session_userId_idx").on(t.userId)]
+);
+
+export const account = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("account_userId_idx").on(t.userId)]
+);
+
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("verification_identifier_idx").on(t.identifier)]
+);
+
+export const userRelations = relations(user, ({ many }) => ({
+  sessions: many(session),
+  accounts: many(account),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, {
+    fields: [session.userId],
+    references: [user.id],
+  }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+  user: one(user, {
+    fields: [account.userId],
+    references: [user.id],
+  }),
+}));
