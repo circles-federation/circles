@@ -4,13 +4,13 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import { useToast } from "@/components/shared";
 import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
 import {
-  createCouncilProposal as dbCreateCouncilProposal,
-  createEvent as dbCreateEvent,
-  updateCouncilProposal as dbUpdateCouncilProposal,
-  updateEvent as dbUpdateEvent,
-} from "@/lib/db/events";
-import { updateMember as dbUpdateMember } from "@/lib/db/members";
-import { updateOrg as dbUpdateOrg } from "@/lib/db/orgs";
+  createCouncilProposalAction as dbCreateCouncilProposal,
+  createEventAction as dbCreateEvent,
+  updateCouncilProposalAction as dbUpdateCouncilProposal,
+  updateEventAction as dbUpdateEvent,
+  updateMemberAction as dbUpdateMember,
+  updateOrgAction as dbUpdateOrg,
+} from "@/lib/db/actions";
 import { FEDERATION_COUNCIL_ENABLED } from "@/lib/feature-flags";
 import { isExclusive, isHostOrgMember, meetingThreshold } from "@/lib/governance.util";
 import { orgDisplayName } from "@/lib/orgs.util";
@@ -101,47 +101,44 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       if (!willGo) delete next[eventId];
       return next;
     });
-    // keep the event's rsvp list in sync immutably so counts & rosters agree across views
-    let nextRsvps: number[] | null = null;
-    setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id !== eventId) return e;
-        const has = e.rsvps.includes(currentUserId);
-        if (willGo && !has) nextRsvps = [...e.rsvps, currentUserId];
-        else if (!willGo && has) nextRsvps = e.rsvps.filter((id) => id !== currentUserId);
-        else nextRsvps = e.rsvps;
-        return { ...e, rsvps: nextRsvps };
-      })
-    );
-    if (nextRsvps) dbUpdateEvent(eventId, { rsvps: nextRsvps });
+    // keep the event's rsvp list in sync immutably so counts & rosters agree
+    // across views. Computed from `events` (already in scope) rather than
+    // inside the setEvents updater below — a value a functional updater
+    // assigns isn't available synchronously afterward (React doesn't run it
+    // inline), so reading it on the next line here would always see the
+    // updater's *initial* value, not what it computed. See saveOrg/
+    // saveProfile below for the same already-correct pattern.
+    const event = events.find((e) => e.id === eventId);
+    if (!event) return;
+    const has = event.rsvps.includes(currentUserId);
+    const nextRsvps =
+      willGo && !has ? [...event.rsvps, currentUserId] : !willGo && has ? event.rsvps.filter((id) => id !== currentUserId) : event.rsvps;
+    setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, rsvps: nextRsvps } : e)));
+    dbUpdateEvent(eventId, { rsvps: nextRsvps }).catch(console.error);
   }
 
   // join or leave a specific role slot on a slotted event (e.g. shift lead).
   // the current user may hold at most one role per event.
   function toggleRoleSlot(eventId: string, roleKey: string) {
-    let nextRoles: Event["roles"] | null = null;
-    setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id !== eventId || !Array.isArray(e.roles)) return e;
-        nextRoles = e.roles.map((r) => {
-          if (r.key === roleKey) {
-            const has = r.members.includes(currentUserId);
-            if (!has && r.max != null && r.members.length >= r.max) return r; // slot full — can't join
-            return { ...r, members: has ? r.members.filter((id) => id !== currentUserId) : [...r.members, currentUserId] };
-          }
-          // leaving any other role the user might hold, so they hold one slot at a time
-          return { ...r, members: r.members.filter((id) => id !== currentUserId) };
-        });
-        return { ...e, roles: nextRoles };
-      })
-    );
-    if (nextRoles) dbUpdateEvent(eventId, { roles: nextRoles });
+    const event = events.find((e) => e.id === eventId);
+    if (!event || !Array.isArray(event.roles)) return;
+    const nextRoles = event.roles.map((r) => {
+      if (r.key === roleKey) {
+        const has = r.members.includes(currentUserId);
+        if (!has && r.max != null && r.members.length >= r.max) return r; // slot full — can't join
+        return { ...r, members: has ? r.members.filter((id) => id !== currentUserId) : [...r.members, currentUserId] };
+      }
+      // leaving any other role the user might hold, so they hold one slot at a time
+      return { ...r, members: r.members.filter((id) => id !== currentUserId) };
+    });
+    setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, roles: nextRoles } : e)));
+    dbUpdateEvent(eventId, { roles: nextRoles }).catch(console.error);
   }
 
   // returns the created event so the caller can navigate to it
   function createEvent(ev: Event): Event {
     setEvents((prev) => [...prev, ev]);
-    dbCreateEvent(ev);
+    dbCreateEvent(ev).catch(console.error);
     setRsvpState((prev) => ({ ...prev, [ev.id]: true })); // creator is attending
     if (ev.votes && ev.votes.includes(currentUserId)) {
       setVoteState((prev) => ({ ...prev, [ev.id]: true })); // proposer's first vote
@@ -175,7 +172,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // (votes/rsvps/endorsements), which toggleVote/toggleRsvp own instead.
   function updateEventDetails(id: string, patch: Partial<Event>) {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
-    dbUpdateEvent(id, patch);
+    dbUpdateEvent(id, patch).catch(console.error);
     showToast({
       tone: "success",
       title: "Changes saved",
@@ -202,7 +199,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       councilId: null,
     };
     setCouncilProposals((prev) => [...prev, proposal]);
-    dbCreateCouncilProposal(proposal);
+    dbCreateCouncilProposal(proposal).catch(console.error);
     showToast({
       tone: "success",
       title: "Meeting proposed",
@@ -214,42 +211,37 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // the assembly quorum, a real federation council event is created (proposed
   // status), endorsed by the sponsoring neighborhood.
   function ratifyCouncilProposal(proposalId: string) {
+    const proposal = councilProposals.find((p) => p.id === proposalId);
+    if (!proposal || proposal.ratified) return;
+    const has = proposal.ratifyVotes.includes(currentUserId);
+    const votes = has ? proposal.ratifyVotes.filter((id) => id !== currentUserId) : [...proposal.ratifyVotes, currentUserId];
+
     let created: Event | null = null;
-    let proposalPatch: Partial<CouncilProposal> | null = null;
-    setCouncilProposals((prev) => prev.map((p) => {
-      if (p.id !== proposalId || p.ratified) return p;
-      const has = p.ratifyVotes.includes(currentUserId);
-      const votes = has ? p.ratifyVotes.filter((id) => id !== currentUserId) : [...p.ratifyVotes, currentUserId];
-      if (votes.length >= COUNCIL_RATIFY_THRESHOLD) {
-        const councilId = "e" + Date.now();
-        created = {
-          id: councilId,
-          title: p.title,
-          kind: "council",
-          scope: "federation",
-          sponsor: { id: p.assemblyId, name: p.sponsorName, neighborhood: p.sponsorHood },
-          host: { type: "member", id: p.proposedBy },
-          date: p.date, start: p.start, end: p.end,
-          location: p.location,
-          description: p.agenda,
-          endorsements: [p.sponsorHood], // sponsoring neighborhood endorses on ratification
-          rsvps: [],
-        };
-        proposalPatch = { ratifyVotes: votes, ratified: true, councilId };
-        return { ...p, ...proposalPatch };
-      }
-      proposalPatch = { ratifyVotes: votes };
-      return { ...p, ratifyVotes: votes };
-    }));
-    if (proposalPatch) dbUpdateCouncilProposal(proposalId, proposalPatch);
+    let proposalPatch: Partial<CouncilProposal> = { ratifyVotes: votes };
+    if (votes.length >= COUNCIL_RATIFY_THRESHOLD) {
+      const councilId = "e" + Date.now();
+      created = {
+        id: councilId,
+        title: proposal.title,
+        kind: "council",
+        scope: "federation",
+        sponsor: { id: proposal.assemblyId, name: proposal.sponsorName, neighborhood: proposal.sponsorHood },
+        host: { type: "member", id: proposal.proposedBy },
+        date: proposal.date, start: proposal.start, end: proposal.end,
+        location: proposal.location,
+        description: proposal.agenda,
+        endorsements: [proposal.sponsorHood], // sponsoring neighborhood endorses on ratification
+        rsvps: [],
+      };
+      proposalPatch = { ratifyVotes: votes, ratified: true, councilId };
+    }
+
+    setCouncilProposals((prev) => prev.map((p) => (p.id === proposalId ? { ...p, ...proposalPatch } : p)));
+    dbUpdateCouncilProposal(proposalId, proposalPatch).catch(console.error);
     if (created) {
-      // `created` is reassigned inside the .map() callback above; TS can't
-      // carry that narrowing back out to this outer scope (it conservatively
-      // keeps the pre-callback flow type here), even though the `if (created)`
-      // check above is a perfectly sound runtime guard — hence the assertion.
-      const confirmedEvent = created as Event;
+      const confirmedEvent = created;
       setEvents((prev) => [...prev, confirmedEvent]);
-      dbCreateEvent(confirmedEvent);
+      dbCreateEvent(confirmedEvent).catch(console.error);
       showToast({
         tone: "success",
         title: "Council confirmed by the meeting",
@@ -279,7 +271,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       rsvps: [currentUserId],
     };
     setEvents((prev) => [...prev, ev]);
-    dbCreateEvent(ev);
+    dbCreateEvent(ev).catch(console.error);
     setRsvpState((prev) => ({ ...prev, [ev.id]: true }));
     setVoteState((prev) => ({ ...prev, [ev.id]: true }));
     showToast({
@@ -297,45 +289,38 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // If this meeting exists to endorse a council and just reached quorum,
   // its neighborhood's endorsement is recorded on that council too.
   function toggleVote(eventId: string) {
-    let votedPatch: Partial<Event> | null = null;
-    let endorsedPatch: Partial<Event> | null = null;
+    const event = events.find((e) => e.id === eventId);
+    if (!event) return;
+    const has = (event.votes || []).includes(currentUserId);
+    const willAttend = !has;
+    const votes = has ? (event.votes || []).filter((id) => id !== currentUserId) : [...(event.votes || []), currentUserId];
+    const hasRsvp = event.rsvps.includes(currentUserId);
+    const rsvps = willAttend ? (hasRsvp ? event.rsvps : [...event.rsvps, currentUserId]) : event.rsvps.filter((id) => id !== currentUserId);
+    const votedPatch: Partial<Event> = { votes, rsvps };
+
     let endorseCouncilId: string | null = null;
-    let willAttend: boolean | null = null;
-    setEvents((prev) => {
-      let endorseHood: string | undefined;
-      const next = prev.map((ev) => {
-        if (ev.id !== eventId) return ev;
-        const has = (ev.votes || []).includes(currentUserId);
-        willAttend = !has;
-        const votes = has ? (ev.votes || []).filter((id) => id !== currentUserId) : [...(ev.votes || []), currentUserId];
-        const hasRsvp = ev.rsvps.includes(currentUserId);
-        const rsvps = willAttend
-          ? (hasRsvp ? ev.rsvps : [...ev.rsvps, currentUserId])
-          : ev.rsvps.filter((id) => id !== currentUserId);
-        votedPatch = { votes, rsvps };
-        if (ev.endorsesCouncilId && votes.length >= meetingThreshold(ev)) {
-          endorseCouncilId = ev.endorsesCouncilId;
-          endorseHood = orgs.find((o) => o.id === ev.orgId)?.neighborhood;
-        }
-        return { ...ev, votes, rsvps };
-      });
-      if (endorseCouncilId) {
-        return next.map((ev) => {
-          if (ev.id === endorseCouncilId && !(ev.endorsements || []).includes(endorseHood || "")) {
-            const endorsements = [...(ev.endorsements || []), endorseHood || ""];
-            endorsedPatch = { endorsements };
-            return { ...ev, endorsements };
-          }
-          return ev;
-        });
+    let endorsedPatch: Partial<Event> | null = null;
+    if (event.endorsesCouncilId && votes.length >= meetingThreshold(event)) {
+      const endorseHood = orgs.find((o) => o.id === event.orgId)?.neighborhood;
+      const council = events.find((e) => e.id === event.endorsesCouncilId);
+      if (council && !(council.endorsements || []).includes(endorseHood || "")) {
+        endorseCouncilId = event.endorsesCouncilId;
+        endorsedPatch = { endorsements: [...(council.endorsements || []), endorseHood || ""] };
       }
-      return next;
-    });
-    if (votedPatch) dbUpdateEvent(eventId, votedPatch);
-    if (endorseCouncilId && endorsedPatch) dbUpdateEvent(endorseCouncilId, endorsedPatch);
+    }
+
+    setEvents((prev) =>
+      prev.map((ev) => {
+        if (ev.id === eventId) return { ...ev, ...votedPatch };
+        if (endorseCouncilId && endorsedPatch && ev.id === endorseCouncilId) return { ...ev, ...endorsedPatch };
+        return ev;
+      })
+    );
+    dbUpdateEvent(eventId, votedPatch).catch(console.error);
+    if (endorseCouncilId && endorsedPatch) dbUpdateEvent(endorseCouncilId, endorsedPatch).catch(console.error);
     setVoteState((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
     setRsvpState((prev) => {
-      const next = { ...prev, [eventId]: !!willAttend };
+      const next = { ...prev, [eventId]: willAttend };
       if (!willAttend) delete next[eventId];
       return next;
     });
@@ -345,7 +330,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   function saveOrg(id: string, patch: Partial<Org>) {
     const fullPatch: Partial<Org> = { ...patch, lastEditedBy: currentUserId, lastEditedAt: new Date().toISOString() };
     setOrgs((prev) => prev.map((o) => (o.id === id ? { ...o, ...fullPatch } : o)));
-    dbUpdateOrg(id, fullPatch);
+    dbUpdateOrg(id, fullPatch).catch(console.error);
     const org = orgs.find((o) => o.id === id);
     showToast({
       tone: "success",
@@ -357,7 +342,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // save edits from the Edit Myself page back to the profile
   function saveProfile(next: Profile) {
     setProfile(next);
-    dbUpdateMember(currentUserId, next);
+    dbUpdateMember(currentUserId, next).catch(console.error);
     showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
   }
 
