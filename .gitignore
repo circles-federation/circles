@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# real beta seed data (names + emails) — never committed; the .example.json shows the shape
+/seed/*.json
+!/seed/*.example.json
+
 # vercel
 .vercel
 

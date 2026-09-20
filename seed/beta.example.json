@@ -1,0 +1,20 @@
+{
+  "city": { "name": "Exampleville" },
+  "neighborhood": {
+    "name": "Maple Street",
+    "tagline": "Every neighbor on Maple Street, together.",
+    "about": "The Maple Street neighborhood circle. Everyone who lives here is a member."
+  },
+  "council": {
+    "name": "Maple Street Council",
+    "tagline": "Keeps the block's shared decisions moving.",
+    "about": "The standing council for Maple Street — proposes and votes on neighborhood meetings."
+  },
+  "people": [
+    { "name": "Ada", "lastName": "Example", "pronouns": "she/her", "role": "Organizer", "email": "ada@example.com", "bio": "Short bio shown on their profile.", "skills": ["Facilitation"], "interests": ["Gardening"], "inCouncil": true },
+    { "name": "Ben", "pronouns": "he/him", "role": "Treasurer", "email": "ben@example.com", "bio": "", "skills": [], "interests": [], "inCouncil": true },
+    { "name": "Cy", "pronouns": "they/them", "role": "Neighbor", "email": "cy@example.com", "bio": "", "skills": [], "interests": [], "inCouncil": false },
+    { "name": "Dee", "role": "Neighbor", "email": "dee@example.com", "inCouncil": false },
+    { "name": "Eli", "role": "Neighbor", "email": "eli@example.com", "inCouncil": false }
+  ]
+}
