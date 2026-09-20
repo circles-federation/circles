@@ -5,9 +5,9 @@ import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
-import type { Org } from "@/lib/types";
+import type { Circle } from "@/lib/types";
 
-// matches org.page.jsx's read-only facts grid (label above a bold value,
+// matches circle.page.tsx's read-only facts grid (label above a bold value,
 // evenly split columns) — kept fixed at 4 slots since that's what the
 // reference display grid assumes today.
 const FACT_SLOTS = 4;
@@ -22,25 +22,25 @@ interface HourDraft {
   time: string;
 }
 
-interface ManageOrgPageProps {
-  org: Org;
-  orgs: Org[];
-  onSave: (patch: Partial<Org>) => void;
+interface ManageCirclePageProps {
+  circle: Circle;
+  circles: Circle[];
+  onSave: (patch: Partial<Circle>) => void;
   onBack: () => void;
 }
 
-export function ManageOrgPage({ org: o, orgs, onSave, onBack }: ManageOrgPageProps) {
+export function ManageCirclePage({ circle: o, circles, onSave, onBack }: ManageCirclePageProps) {
   const [parentId, setParentId] = useState<string | null>(o.parentId ?? null);
-  // Neighborhood Councils first (sorted), then Providence (root, no parent)
-  // last — same ordering the old neighborhood-level picker used. Only
-  // Neighborhood Councils are offered as a parent for now — general
-  // reparenting under any org is future work.
-  const scopeOptions: { id: string | null; label: string }[] = orgs
-    .filter((org) => org.neighborhood)
-    // the filter above guarantees org.neighborhood is set
-    .map((org): { id: string | null; label: string } => ({ id: org.id, label: org.neighborhood! }))
+  // neighborhoods first (sorted), then the city root last — only
+  // neighborhoods and the root are offered as a parent for now — general
+  // reparenting under any circle is future work. The root circle itself has
+  // no parent, so the Scope field below is hidden for it.
+  const root = circles.find((c) => c.parentId === null);
+  const scopeOptions: { id: string; label: string }[] = circles
+    .filter((c) => c.type === "neighborhood" && c.id !== o.id)
+    .map((c) => ({ id: c.id, label: c.name }))
     .sort((a, b) => a.label.localeCompare(b.label))
-    .concat([{ id: null, label: "Providence" }]);
+    .concat(root && root.id !== o.id ? [{ id: root.id, label: root.name }] : []);
   const [about, setAbout] = useState(o.about);
   const [offers, setOffers] = useState([...o.offers]);
   const [facts, setFacts] = useState<FactDraft[]>(() =>
@@ -50,8 +50,8 @@ export function ManageOrgPage({ org: o, orgs, onSave, onBack }: ManageOrgPagePro
     })
   );
   // blank slots (no label and no value) are dropped rather than saved as
-  // empty facts — this also lets an org end up with fewer than 4 facts,
-  // which org.page.jsx's display grid already handles (it sizes its
+  // empty facts — this also lets a circle end up with fewer than 4 facts,
+  // which circle.page.tsx's display grid already handles (it sizes its
   // columns from facts.length rather than assuming 4).
   const factPairs = facts
     .map((f): [string, string] => [f.label.trim(), f.value.trim()])
@@ -59,7 +59,7 @@ export function ManageOrgPage({ org: o, orgs, onSave, onBack }: ManageOrgPagePro
   const [website, setWebsite] = useState(o.website || "");
   const [address, setAddress] = useState(o.address || "");
   const [hours, setHours] = useState<HourDraft[]>(() => (o.hours || []).map(([day, time]) => ({ day, time })));
-  // same drop-blank-rows treatment as facts, letting an org end up with
+  // same drop-blank-rows treatment as facts, letting a circle end up with
   // fewer (or zero) hours rows than it started with.
   const hoursPairs = hours
     .map((h): [string, string] => [h.day.trim(), h.time.trim()])
@@ -107,7 +107,7 @@ export function ManageOrgPage({ org: o, orgs, onSave, onBack }: ManageOrgPagePro
       <BackButton onClick={handleLeave}>{o.name}</BackButton>
 
       <div className="mt-4 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5">
-        <Eyebrow className="text-soft">Manage organization</Eyebrow>
+        <Eyebrow className="text-soft">Manage circle</Eyebrow>
         <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{o.name}</h1>
         <p className="mt-3 max-w-[42em] font-serif text-sm leading-normal text-soft">
           You’re editing this page as a member. Changes are visible to everyone, and your name will show as the last editor.
@@ -115,17 +115,19 @@ export function ManageOrgPage({ org: o, orgs, onSave, onBack }: ManageOrgPagePro
       </div>
 
       <SectionGroup>
-        <Section>
-          <Label htmlFor="org-scope">Scope</Label>
-          <Select id="org-scope" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="max-w-90">
-            {scopeOptions.map((s) => (
-              <option key={s.id ?? "providence"} value={s.id ?? ""}>{s.label}</option>
-            ))}
-          </Select>
-          <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-            Choosing a neighborhood limits visibility to existing members and residents of that neighborhood. Choosing Providence makes the organization visible federation-wide.
-          </p>
-        </Section>
+        {o.parentId !== null && (
+          <Section>
+            <Label htmlFor="circle-scope">Scope</Label>
+            <Select id="circle-scope" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="max-w-90">
+              {scopeOptions.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </Select>
+            <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
+              Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
+            </p>
+          </Section>
+        )}
 
         <Section>
           <Label>Quick facts</Label>

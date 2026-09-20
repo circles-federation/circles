@@ -7,7 +7,7 @@ import { Eyebrow } from "./eyebrow";
 
 // a group is single-select by default (an "All" option plus one active value,
 // same shape as Events' Status filter) — pass multi: true for a group whose
-// options aren't mutually exclusive (e.g. the Directory's entity-type
+// options aren't mutually exclusive (e.g. the Circles page's entity-type
 // filter, where "Councils" and "Organizations" can both be on at once).
 interface FilterGroupDataSingle {
   label: string;

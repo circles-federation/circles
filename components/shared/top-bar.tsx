@@ -6,7 +6,7 @@ import clsx from "clsx";
 
 const TABS: [string, string][] = [
   ["/home", "Home"],
-  ["/directory", "Directory"],
+  ["/circles", "Circles"],
   ["/events", "Events"],
 ];
 
@@ -15,9 +15,9 @@ export function TopBar() {
 
   // a tab is "active" if the current route is it or a nested route beneath
   // it, or (for Home) one of the sibling pages reached only from Home. Every
-  // org page (Council folder view, org detail, or manage) lives under
-  // /directory regardless of how deep the org sits in the hierarchy — see
-  // lib/hooks.js's openOrg — so the generic case below covers it.
+  // circle page (neighborhood folder view, circle detail, or manage) lives
+  // under /circles regardless of how deep the circle sits in the hierarchy
+  // — see lib/hooks.ts's openCircle — so the generic case below covers it.
   function isActive(href: string): boolean {
     if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");
     return pathname === href || pathname.startsWith(`${href}/`);
@@ -25,7 +25,7 @@ export function TopBar() {
 
   // mobile has no room for both a brand mark and the current section, so it
   // shows the section name instead — just the top-level name (e.g.
-  // "Directory"), never the name of an org/neighborhood being browsed
+  // "Circles"), never the name of a circle being browsed
   // within it, at least for now. Reuses TABS/isActive rather than a second
   // route-to-label list. pathname is available identically on server and
   // client for a given route, so this is safe to compute unconditionally —

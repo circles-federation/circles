@@ -2,10 +2,9 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { ProfileModal } from "@/components/directory/profile-modal";
+import { ProfileModal } from "@/components/circles/profile-modal";
 import { useAppNav } from "@/lib/hooks";
-import { orgDisplayName } from "@/lib/orgs.util";
-import type { Member, Org } from "@/lib/types";
+import type { Member } from "@/lib/types";
 import { useAppState } from "./app-state-provider";
 
 interface ProfileModalContextValue {
@@ -14,7 +13,7 @@ interface ProfileModalContextValue {
 }
 
 /* The member-profile modal is a global overlay, not a route — it can be
-   opened from a dozen different pages (directory, event attendee lists, org
+   opened from a dozen different pages (circles, event attendee lists, circle
    member lists, role slots...) and should look identical regardless of where
    it was triggered from. Mounted once in the root layout so it persists
    across navigation, and closes itself whenever the route changes so it
@@ -30,7 +29,7 @@ export function useProfileModal(): ProfileModalContextValue {
 export function ProfileModalProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
   const pathname = usePathname();
-  const { orgs, events } = useAppState();
+  const { circles, events } = useAppState();
   const nav = useAppNav();
 
   const open = useCallback((m: Member) => setMember(m), []);
@@ -44,19 +43,16 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
     if (member) setMember(null);
   }
 
-  // the modal opens identically from a dozen different pages (directory,
-  // attendee lists, org member lists, role slots...), so the org link's back
-  // label has to be derived from wherever we actually are, the same way each
-  // page-specific route wires its own label — falling back to the org page's
-  // own default ("All organizations") when the current page isn't one we
+  // the modal opens identically from a dozen different pages (circles,
+  // attendee lists, circle member lists, role slots...), so the circle link's
+  // back label has to be derived from wherever we actually are, the same way
+  // each page-specific route wires its own label — falling back to the circle
+  // page's own default ("All circles") when the current page isn't one we
   // have a specific label for.
   function currentPageLabel() {
     if (pathname === "/home") return "Home";
-    const orgMatch = pathname.match(/^\/directory\/([^/]+)/);
-    if (orgMatch) {
-      const org = orgs.find((o) => o.id === orgMatch[1]);
-      return org && orgDisplayName(org);
-    }
+    const circleMatch = pathname.match(/^\/circles\/([^/]+)/);
+    if (circleMatch) return circles.find((c) => c.id === circleMatch[1])?.name;
     const eventMatch = pathname.match(/^\/events\/([^/]+)/);
     if (eventMatch) return events.find((e) => e.id === eventMatch[1])?.title;
     return undefined;
@@ -69,7 +65,7 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
         <ProfileModal
           member={member}
           onClose={close}
-          onOpenOrg={(o) => { close(); nav.openOrg(o, currentPageLabel()); }}
+          onOpenCircle={(c) => { close(); nav.openCircle(c, currentPageLabel()); }}
         />
       )}
     </ProfileModalContext.Provider>

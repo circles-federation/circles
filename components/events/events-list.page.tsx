@@ -4,38 +4,40 @@ import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Button, FloatingActionButton, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { EventFeed } from "./event-feed";
-import { hostInfo } from "@/lib/data";
+import { eventHost } from "@/lib/events.util";
 import { isConfirmed, kindOf } from "@/lib/governance.util";
-import type { CouncilProposal, Event } from "@/lib/types";
+import { useCirclesById, useMemberById } from "@/lib/hooks";
+import type { Event } from "@/lib/types";
 
 type StatusFilter = "Proposed" | "Confirmed" | null;
 
 interface EventsListProps {
   events: Event[];
-  councilProposals?: CouncilProposal[];
   onOpenEvent: (e: Event) => void;
   onNewEvent: () => void;
 }
 
-export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }: EventsListProps) {
+export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps) {
+  const byId = useCirclesById();
+  const memberById = useMemberById();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>(null); // null | "Proposed" | "Confirmed"
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
-      // status filter applies to governance events (meetings / council meetings)
+      // status filter applies to governance events (meetings)
       if (status) {
         if (!kindOf(e).governance) return false;
-        const confirmed = isConfirmed(e);
+        const confirmed = isConfirmed(e, byId);
         if (status === "Confirmed" && !confirmed) return false;
         if (status === "Proposed" && confirmed) return false;
       }
       if (!q) return true;
-      const host = hostInfo(e.host);
+      const host = eventHost(e, byId, memberById);
       return [e.title, host.label, e.location].join(" ").toLowerCase().includes(q);
     });
-  }, [events, query, status]);
+  }, [events, query, status, byId, memberById]);
 
   return (
     <PageContainer size="wide">
@@ -80,7 +82,6 @@ export function EventsList({ events, councilProposals, onOpenEvent, onNewEvent }
       <div className="mt-7">
         <EventFeed
           events={filtered}
-          councilProposals={councilProposals}
           onOpenEvent={onOpenEvent}
           emptyText={query || status ? "No events match your search." : "No events yet. Create one to get started."}
         />

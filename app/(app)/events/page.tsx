@@ -7,13 +7,12 @@ import { useAppNav } from "@/lib/hooks";
 
 export default function Page() {
   const router = useRouter();
-  const { events, councilProposals } = useAppState();
+  const { events } = useAppState();
   const nav = useAppNav();
 
   return (
     <EventsList
       events={events}
-      councilProposals={councilProposals}
       onOpenEvent={nav.openEvent}
       onNewEvent={() => router.push("/events/new")}
     />

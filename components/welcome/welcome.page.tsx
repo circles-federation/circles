@@ -5,10 +5,16 @@ import { useRouter } from "next/navigation";
 import { UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, useToast } from "@/components/shared";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
-import { useMembers } from "@/lib/hooks";
 import type { Member } from "@/lib/types";
 
 type Step = "email" | "code";
+
+interface WelcomePageProps {
+  // members with an email, handed in by the server (this page is outside
+  // AppStateProvider, so it can't read the roster from app state); empty in
+  // production, which hides the demo-accounts button
+  demoMembers: Member[];
+}
 
 /* The unauthenticated welcome page — passwordless email + one-time-code
    login. No real email provider yet, so requestLoginCode() hands the code
@@ -21,11 +27,11 @@ type Step = "email" | "code";
    product feature — it exists so someone showing the app off knows which
    emails are actually signed-in-able, since there's no real account list to
    check against yet. */
-export function WelcomePage() {
+export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) {
   const router = useRouter();
   const { showToast } = useToast();
   // only members with an email can actually be signed in as — see lib/db/members.ts's getMemberByEmail
-  const demoMembers = useMembers().filter((m) => m.email).sort((a, b) => a.name.localeCompare(b.name));
+  const demoMembers = [...demoMembersProp].sort((a, b) => a.name.localeCompare(b.name));
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -135,11 +141,13 @@ export function WelcomePage() {
         )}
       </div>
 
-      <FloatingActionButton
-        onClick={() => setDemoOpen(true)}
-        title="Demo accounts"
-        icon={<UsersIcon className="size-5 text-ink" strokeWidth={2} />}
-      />
+      {demoMembers.length > 0 && (
+        <FloatingActionButton
+          onClick={() => setDemoOpen(true)}
+          title="Demo accounts"
+          icon={<UsersIcon className="size-5 text-ink" strokeWidth={2} />}
+        />
+      )}
 
       {demoOpen && (
         <Modal onClose={() => setDemoOpen(false)} className="max-w-110">

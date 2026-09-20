@@ -1,16 +1,145 @@
 {
-  "id": "6402094c-f285-404e-81af-ba3ed13ac8fe",
+  "id": "366c08f4-5d5e-4907-8b0e-fd7c634cc7ab",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.council_proposal_ratify_votes": {
-      "name": "council_proposal_ratify_votes",
+    "public.account": {
+      "name": "account",
       "schema": "",
       "columns": {
-        "proposal_id": {
-          "name": "proposal_id",
+        "id": {
+          "name": "id",
           "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "account_userId_idx": {
+          "name": "account_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "account_user_id_user_id_fk": {
+          "name": "account_user_id_user_id_fk",
+          "tableFrom": "account",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.circle_members": {
+      "name": "circle_members",
+      "schema": "",
+      "columns": {
+        "circle_id": {
+          "name": "circle_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "circle_type": {
+          "name": "circle_type",
+          "type": "circle_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -21,24 +150,28 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "circle_members_one_neighborhood": {
+          "name": "circle_members_one_neighborhood",
+          "columns": [
+            {
+              "expression": "member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"circle_members\".\"circle_type\" = 'neighborhood'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
-        "council_proposal_ratify_votes_proposal_id_council_proposals_id_fk": {
-          "name": "council_proposal_ratify_votes_proposal_id_council_proposals_id_fk",
-          "tableFrom": "council_proposal_ratify_votes",
-          "tableTo": "council_proposals",
-          "columnsFrom": [
-            "proposal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "council_proposal_ratify_votes_member_id_members_id_fk": {
-          "name": "council_proposal_ratify_votes_member_id_members_id_fk",
-          "tableFrom": "council_proposal_ratify_votes",
+        "circle_members_member_id_members_id_fk": {
+          "name": "circle_members_member_id_members_id_fk",
+          "tableFrom": "circle_members",
           "tableTo": "members",
           "columnsFrom": [
             "member_id"
@@ -48,13 +181,28 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "circle_members_circle_id_circle_type_circles_id_type_fk": {
+          "name": "circle_members_circle_id_circle_type_circles_id_type_fk",
+          "tableFrom": "circle_members",
+          "tableTo": "circles",
+          "columnsFrom": [
+            "circle_id",
+            "circle_type"
+          ],
+          "columnsTo": [
+            "id",
+            "type"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
-        "council_proposal_ratify_votes_proposal_id_member_id_pk": {
-          "name": "council_proposal_ratify_votes_proposal_id_member_id_pk",
+        "circle_members_circle_id_member_id_pk": {
+          "name": "circle_members_circle_id_member_id_pk",
           "columns": [
-            "proposal_id",
+            "circle_id",
             "member_id"
           ]
         }
@@ -64,8 +212,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.council_proposals": {
-      "name": "council_proposals",
+    "public.circles": {
+      "name": "circles",
       "schema": "",
       "columns": {
         "id": {
@@ -74,88 +222,119 @@
           "primaryKey": true,
           "notNull": true
         },
-        "assembly_id": {
-          "name": "assembly_id",
+        "type": {
+          "name": "type",
+          "type": "circle_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "sponsor_hood": {
-          "name": "sponsor_hood",
+        "parent_id": {
+          "name": "parent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tagline": {
+          "name": "tagline",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "sponsor_name": {
-          "name": "sponsor_name",
+        "about": {
+          "name": "about",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "proposed_by": {
-          "name": "proposed_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "date": {
-          "name": "date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "start": {
-          "name": "start",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end": {
-          "name": "end",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "location": {
-          "name": "location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "agenda": {
-          "name": "agenda",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ratified": {
-          "name": "ratified",
-          "type": "boolean",
+        "offers": {
+          "name": "offers",
+          "type": "text[]",
           "primaryKey": false,
           "notNull": true,
-          "default": false
+          "default": "'{}'::text[]"
         },
-        "council_id": {
-          "name": "council_id",
+        "last_edited_by": {
+          "name": "last_edited_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_edited_at": {
+          "name": "last_edited_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facts": {
+          "name": "facts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "join": {
+          "name": "join",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact": {
+          "name": "contact",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hours": {
+          "name": "hours",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "circles_single_root": {
+          "name": "circles_single_root",
+          "columns": [
+            {
+              "expression": "(\"parent_id\" is null)",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"circles\".\"parent_id\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
-        "council_proposals_assembly_id_events_id_fk": {
-          "name": "council_proposals_assembly_id_events_id_fk",
-          "tableFrom": "council_proposals",
-          "tableTo": "events",
+        "circles_parent_id_circles_id_fk": {
+          "name": "circles_parent_id_circles_id_fk",
+          "tableFrom": "circles",
+          "tableTo": "circles",
           "columnsFrom": [
-            "assembly_id"
+            "parent_id"
           ],
           "columnsTo": [
             "id"
@@ -163,25 +342,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "council_proposals_proposed_by_members_id_fk": {
-          "name": "council_proposals_proposed_by_members_id_fk",
-          "tableFrom": "council_proposals",
+        "circles_last_edited_by_members_id_fk": {
+          "name": "circles_last_edited_by_members_id_fk",
+          "tableFrom": "circles",
           "tableTo": "members",
           "columnsFrom": [
-            "proposed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "council_proposals_council_id_events_id_fk": {
-          "name": "council_proposals_council_id_events_id_fk",
-          "tableFrom": "council_proposals",
-          "tableTo": "events",
-          "columnsFrom": [
-            "council_id"
+            "last_edited_by"
           ],
           "columnsTo": [
             "id"
@@ -191,7 +357,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "circles_id_type_unique": {
+          "name": "circles_id_type_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "type"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -338,15 +513,15 @@
           "primaryKey": false,
           "notNull": false
         },
-        "host_member_id": {
-          "name": "host_member_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "host_org_id": {
-          "name": "host_org_id",
+        "circle_id": {
+          "name": "circle_id",
           "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organizer_id": {
+          "name": "organizer_id",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -384,85 +559,31 @@
           "name": "members_only",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false
-        },
-        "org_id": {
-          "name": "org_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scope": {
-          "name": "scope",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sponsor_id": {
-          "name": "sponsor_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sponsor_name": {
-          "name": "sponsor_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sponsor_neighborhood": {
-          "name": "sponsor_neighborhood",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "endorsements": {
-          "name": "endorsements",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "endorses_council_id": {
-          "name": "endorses_council_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "events_host_member_id_members_id_fk": {
-          "name": "events_host_member_id_members_id_fk",
+        "events_circle_id_circles_id_fk": {
+          "name": "events_circle_id_circles_id_fk",
+          "tableFrom": "events",
+          "tableTo": "circles",
+          "columnsFrom": [
+            "circle_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "events_organizer_id_members_id_fk": {
+          "name": "events_organizer_id_members_id_fk",
           "tableFrom": "events",
           "tableTo": "members",
           "columnsFrom": [
-            "host_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "events_host_org_id_orgs_id_fk": {
-          "name": "events_host_org_id_orgs_id_fk",
-          "tableFrom": "events",
-          "tableTo": "orgs",
-          "columnsFrom": [
-            "host_org_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "events_org_id_orgs_id_fk": {
-          "name": "events_org_id_orgs_id_fk",
-          "tableFrom": "events",
-          "tableTo": "orgs",
-          "columnsFrom": [
-            "org_id"
+            "organizer_id"
           ],
           "columnsTo": [
             "id"
@@ -474,12 +595,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "event_host_exactly_one": {
-          "name": "event_host_exactly_one",
-          "value": "num_nonnulls(\"events\".\"host_member_id\", \"events\".\"host_org_id\") = 1"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.members": {
@@ -512,12 +628,6 @@
         },
         "role": {
           "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "neighborhood": {
-          "name": "neighborhood",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -561,204 +671,6 @@
           ]
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.org_members": {
-      "name": "org_members",
-      "schema": "",
-      "columns": {
-        "org_id": {
-          "name": "org_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "member_id": {
-          "name": "member_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "org_members_org_id_orgs_id_fk": {
-          "name": "org_members_org_id_orgs_id_fk",
-          "tableFrom": "org_members",
-          "tableTo": "orgs",
-          "columnsFrom": [
-            "org_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "org_members_member_id_members_id_fk": {
-          "name": "org_members_member_id_members_id_fk",
-          "tableFrom": "org_members",
-          "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "org_members_org_id_member_id_pk": {
-          "name": "org_members_org_id_member_id_pk",
-          "columns": [
-            "org_id",
-            "member_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.orgs": {
-      "name": "orgs",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "neighborhood": {
-          "name": "neighborhood",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tagline": {
-          "name": "tagline",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "about": {
-          "name": "about",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "offers": {
-          "name": "offers",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "last_edited_by": {
-          "name": "last_edited_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_edited_at": {
-          "name": "last_edited_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "facts": {
-          "name": "facts",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "join": {
-          "name": "join",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "contact": {
-          "name": "contact",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "website": {
-          "name": "website",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "hours": {
-          "name": "hours",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "orgs_parent_id_orgs_id_fk": {
-          "name": "orgs_parent_id_orgs_id_fk",
-          "tableFrom": "orgs",
-          "tableTo": "orgs",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "orgs_last_edited_by_members_id_fk": {
-          "name": "orgs_last_edited_by_members_id_fk",
-          "tableFrom": "orgs",
-          "tableTo": "members",
-          "columnsFrom": [
-            "last_edited_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -911,9 +823,254 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.session": {
+      "name": "session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "session_userId_idx": {
+          "name": "session_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "session_user_id_user_id_fk": {
+          "name": "session_user_id_user_id_fk",
+          "tableFrom": "session",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "session_token_unique": {
+          "name": "session_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user": {
+      "name": "user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_email_unique": {
+          "name": "user_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verification": {
+      "name": "verification",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "verification_identifier_idx": {
+          "name": "verification_identifier_idx",
+          "columns": [
+            {
+              "expression": "identifier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.circle_type": {
+      "name": "circle_type",
+      "schema": "public",
+      "values": [
+        "neighborhood",
+        "council",
+        "collective",
+        "cooperative",
+        "other"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

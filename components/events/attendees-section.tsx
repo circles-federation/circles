@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { Avatar, Eyebrow } from "@/components/shared";
 import { canReadDetails, scopeLabel, scopeNoun } from "@/lib/governance.util";
-import { useMemberById } from "@/lib/hooks";
+import { useCirclesById, useMemberById } from "@/lib/hooks";
 import { hasRoles } from "@/lib/roles.util";
 import type { Event, Member, Profile } from "@/lib/types";
 
@@ -17,8 +17,9 @@ interface AttendeesSectionProps {
 export function AttendeesSection({ event: e, profile, onOpenMember }: AttendeesSectionProps) {
   // called before the early return below — hooks can't be conditional
   const memberById = useMemberById();
+  const byId = useCirclesById();
   if (hasRoles(e)) return null;
-  const canRead = canReadDetails(e, profile);
+  const canRead = canReadDetails(e, profile, byId);
   const attendees = e.rsvps.map(memberById).filter((m): m is Member => Boolean(m));
 
   return (
@@ -47,7 +48,7 @@ export function AttendeesSection({ event: e, profile, onOpenMember }: AttendeesS
         </div>
       ) : (
         <p className="mt-4 font-serif text-sm text-soft">
-          Hidden — only {scopeNoun(e)} of {scopeLabel(e)} can see who’s attending.
+          Hidden — only {scopeNoun(e, byId)} of {scopeLabel(e, byId)} can see who’s attending.
         </p>
       )}
     </section>

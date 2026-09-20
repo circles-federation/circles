@@ -8,12 +8,12 @@ import { useAppNav } from "@/lib/hooks";
 
 export default function Page() {
   const router = useRouter();
-  const { profile, events, orgs, rsvpState } = useAppState();
+  const { profile, events, circles, rsvpState } = useAppState();
   const nav = useAppNav();
-  // "Neighbors" and "Local organizations" both just open the viewer's own
-  // Neighborhood Council folder now — see lib/orgs.util.js — pre-filtered to
-  // the relevant Type(s) so there's nothing left to click once they land.
-  const myCouncil = orgs.find((o) => o.neighborhood === profile.neighborhood);
+  // "Neighbors" and "Local circles" both just open the viewer's own
+  // neighborhood folder — pre-filtered to the relevant Type(s) so there's
+  // nothing left to click once they land.
+  const myNeighborhood = circles.find((c) => c.id === profile.homeCircleId);
 
   // the action itself is pure (sets/clears a cookie, doesn't navigate) —
   // matching this app's convention that mutators never navigate — so the
@@ -28,14 +28,14 @@ export default function Page() {
     <Home
       profile={profile}
       events={events}
-      orgs={orgs}
+      circles={circles}
       rsvpState={rsvpState}
       onOpenEvent={(e) => nav.openEvent(e, "Home")}
       setView={nav.setView}
-      onOpenNeighbors={() => myCouncil && nav.openOrg(myCouncil, "Home", ["People"])}
-      onOpenLocalOrgs={() => myCouncil && nav.openOrg(myCouncil, "Home", ["Councils", "Organizations"])}
+      onOpenNeighbors={() => myNeighborhood && nav.openCircle(myNeighborhood, "Home", ["People"])}
+      onOpenLocalCircles={() => myNeighborhood && nav.openCircle(myNeighborhood, "Home", ["Councils", "Organizations"])}
       onPlayGame={() => nav.setView("game")}
-      onOpenOrg={(o) => nav.openOrg(o, "Home")}
+      onOpenCircle={(c) => nav.openCircle(c, "Home")}
       onEditProfile={() => nav.setView("editMyself")}
       onLogout={handleLogout}
     />

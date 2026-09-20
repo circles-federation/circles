@@ -5,18 +5,18 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import {
   HomeIcon as HomeOutline,
-  GlobeAmericasIcon as DirectoryOutline,
+  GlobeAmericasIcon as CirclesOutline,
   CalendarDaysIcon as EventsOutline,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeSolid,
-  GlobeAmericasIcon as DirectorySolid,
+  GlobeAmericasIcon as CirclesSolid,
   CalendarDaysIcon as EventsSolid,
 } from "@heroicons/react/24/solid";
 
 const TABS = [
   { href: "/home", label: "Home", outline: HomeOutline, solid: HomeSolid },
-  { href: "/directory", label: "Directory", outline: DirectoryOutline, solid: DirectorySolid },
+  { href: "/circles", label: "Circles", outline: CirclesOutline, solid: CirclesSolid },
   { href: "/events", label: "Events", outline: EventsOutline, solid: EventsSolid },
 ];
 
@@ -31,7 +31,7 @@ export function BottomNav() {
 
   // mirrors TopBar's isActive: Home also covers the game and profile pages,
   // which are reached only from Home and have no bottom-nav tab of their
-  // own. Every org page lives under /directory — see top-bar.jsx's isActive
+  // own. Every circle page lives under /circles — see top-bar.jsx's isActive
   // for why the generic case below already covers it.
   function isActive(href: string): boolean {
     if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");

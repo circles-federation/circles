@@ -7,11 +7,10 @@ import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
 import { isPastEvent, parseDay } from "@/lib/format.util";
 import { kindOf } from "@/lib/governance.util";
-import type { CouncilProposal, Event } from "@/lib/types";
+import type { Event } from "@/lib/types";
 
 interface EventFeedProps {
   events: Event[];
-  councilProposals?: CouncilProposal[];
   onOpenEvent: (e: Event) => void;
   pageSize?: number;
   emptyText?: string;
@@ -23,7 +22,7 @@ interface EventFeedProps {
    revealed via the link below. Paginates with "Load more", which appends
    older events. Spacing above the list is the caller's job (e.g.
    home.page.jsx wraps this in an EyebrowGroup), not this component's. */
-export function EventFeed({ events, councilProposals, onOpenEvent, pageSize = 12, emptyText = "No events yet." }: EventFeedProps) {
+export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No events yet." }: EventFeedProps) {
   const { upcoming, past } = useMemo(() => {
     const up: Event[] = [], pa: Event[] = [];
     events.forEach((e) => (isPastEvent(e) ? pa : up).push(e));
@@ -72,7 +71,7 @@ export function EventFeed({ events, councilProposals, onOpenEvent, pageSize = 12
               </div>
             )}
             {kindOf(e).governance
-              ? <GovernanceRow e={e} onOpenEvent={onOpenEvent} hasCouncilProposal={(councilProposals || []).some((p) => p.assemblyId === e.id)} />
+              ? <GovernanceRow e={e} onOpenEvent={onOpenEvent} />
               : <OrdinaryRow e={e} onOpenEvent={onOpenEvent} />}
           </Fragment>
         ))}

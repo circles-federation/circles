@@ -1,5 +1,6 @@
 import { EyebrowGroup } from "@/components/shared";
 import { canReadDetails, scopeLabel, scopeNoun } from "@/lib/governance.util";
+import { useCirclesById } from "@/lib/hooks";
 import type { Event, Profile } from "@/lib/types";
 
 interface EventDetailsSectionProps {
@@ -9,10 +10,10 @@ interface EventDetailsSectionProps {
 
 /* The event's description — redacted with blacked-out placeholder bars for
    a viewer outside a meeting's own circle, since its agenda stays internal
-   to whichever circle (a Neighborhood Council, a sub-org, or another org)
-   convenes it. */
+   to whichever circle convenes it. */
 export function EventDetailsSection({ event: e, profile }: EventDetailsSectionProps) {
-  const canRead = canReadDetails(e, profile);
+  const byId = useCirclesById();
+  const canRead = canReadDetails(e, profile, byId);
 
   return (
     <section className="border-b border-faint py-8">
@@ -30,7 +31,7 @@ export function EventDetailsSection({ event: e, profile }: EventDetailsSectionPr
             <div className="flex items-start gap-3 border border-ink px-4.5 py-4">
               <span className="font-serif text-lg leading-[1.1]">🔒</span>
               <p className="m-0 font-serif text-sm leading-relaxed">
-                The agenda and notes for this meeting are visible only to {scopeNoun(e)} of {scopeLabel(e)}. You’re seeing that this meeting exists, but its internal business stays within the circle that convenes it.
+                The agenda and notes for this meeting are visible only to {scopeNoun(e, byId)} of {scopeLabel(e, byId)}. You’re seeing that this meeting exists, but its internal business stays within the circle that convenes it.
               </p>
             </div>
           </div>

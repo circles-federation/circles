@@ -14,10 +14,10 @@ export function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export function buildRounds(members: Member[], homeHood: string, excludeId: number): Round[] {
+export function buildRounds(members: Member[], homeCircleId: string | null, excludeId: number): Round[] {
   // the game is for learning your direct neighbors, so it draws only from the
   // player's own neighborhood, minus the player themselves — you already know who you are
-  const neighbors = members.filter((m) => m.neighborhood === homeHood && m.id !== excludeId);
+  const neighbors = members.filter((m) => homeCircleId !== null && m.homeCircleId === homeCircleId && m.id !== excludeId);
   const pool = shuffle(neighbors);
   return pool.map((person) => {
     const distractors = shuffle(neighbors.filter((m) => m.id !== person.id)).slice(0, 3);

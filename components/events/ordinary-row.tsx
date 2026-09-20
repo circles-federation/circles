@@ -4,9 +4,10 @@ import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { EventRow } from "./event-row";
 import { Eyebrow } from "@/components/shared";
-import { hostInfo } from "@/lib/data";
+import { eventHost } from "@/lib/events.util";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
 import { isExclusive } from "@/lib/governance.util";
+import { useCirclesById, useMemberById } from "@/lib/hooks";
 import { hasRoles, roleShort, shiftCancelled } from "@/lib/roles.util";
 import type { Event } from "@/lib/types";
 
@@ -18,7 +19,9 @@ interface OrdinaryRowProps {
 /* A single ordinary-event row. Read-only — RSVPing/signing up happens on
    the event's own page; this just shows how many people are going. */
 export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
-  const h = hostInfo(e.host);
+  const byId = useCirclesById();
+  const memberById = useMemberById();
+  const h = eventHost(e, byId, memberById);
   const past = isPastEvent(e);
   const exclusive = isExclusive(e);
   // slotted events don't use a plain RSVP list — count signups across roles instead

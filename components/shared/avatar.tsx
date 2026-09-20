@@ -4,9 +4,8 @@ import clsx from "clsx";
 import type { CSSProperties } from "react";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { avatarFor } from "@/lib/data";
-import { useMembers } from "@/lib/hooks";
-import { sharesOrgWith } from "@/lib/orgs.util";
+import { sharesCircleWith } from "@/lib/circles.util";
+import { avatarFor } from "@/lib/members.util";
 import type { Member } from "@/lib/types";
 
 interface AvatarProps {
@@ -15,18 +14,16 @@ interface AvatarProps {
   className?: string;
 }
 
-/* A member's profile photo — but only to a viewer who shares an org with
-   them (see sharesOrgWith in lib/orgs.util.ts), including the automatic
-   Neighborhood Council membership every resident of a neighborhood has, so
-   simply living in the same neighborhood is enough. A stranger outside the
+/* A member's profile photo — but only to a viewer who shares a circle with
+   them (see sharesCircleWith in lib/circles.util.ts), including their
+   neighborhood, so simply living in the same neighborhood is enough. A stranger outside the
    viewer's circle sees a plain gray square with a generic person icon
    instead of their actual face. The viewer's own photo is always visible
    regardless. `size` is a pixel number (avatars appear at many different
    sizes across the app); className adds border/shrink/etc. on top. */
 export function Avatar({ member: m, size = 44, className }: AvatarProps) {
-  const { profile, orgs } = useAppState();
-  const members = useMembers();
-  const visible = m.id === profile.id || sharesOrgWith(profile.id, m.id, orgs, members);
+  const { profile, circles } = useAppState();
+  const visible = m.id === profile.id || sharesCircleWith(profile.id, m.id, circles);
   const style: CSSProperties = { width: size, height: size };
 
   if (!visible) {

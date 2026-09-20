@@ -1,18 +1,18 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "./client";
-import { members } from "./schema";
+import { circleMembers, members } from "./schema";
 import type { Member } from "@/lib/types";
 
 type MemberRow = typeof members.$inferSelect;
 
-function toMember(row: MemberRow): Member {
+function toMember(row: MemberRow, homeCircleId: string | null): Member {
   return {
     id: row.id,
     name: row.name,
     lastName: row.lastName ?? undefined,
     pronouns: row.pronouns,
     role: row.role,
-    neighborhood: row.neighborhood,
+    homeCircleId,
     skills: row.skills,
     interests: row.interests,
     bio: row.bio,
@@ -20,23 +20,43 @@ function toMember(row: MemberRow): Member {
   };
 }
 
+// a member's home circle is their (at most one) neighborhood-type membership —
+// see circle_members' partial unique index
+const homeJoin = and(eq(circleMembers.memberId, members.id), eq(circleMembers.circleType, "neighborhood"));
+
 export async function getMembers(): Promise<Member[]> {
-  const rows = await db.select().from(members);
-  return rows.map(toMember);
+  const rows = await db.select({ member: members, homeCircleId: circleMembers.circleId }).from(members).leftJoin(circleMembers, homeJoin);
+  return rows.map((r) => toMember(r.member, r.homeCircleId));
 }
 
 export async function getMemberById(id: number): Promise<Member | null> {
-  const [row] = await db.select().from(members).where(eq(members.id, id));
-  return row ? toMember(row) : null;
+  const [row] = await db
+    .select({ member: members, homeCircleId: circleMembers.circleId })
+    .from(members)
+    .leftJoin(circleMembers, homeJoin)
+    .where(eq(members.id, id));
+  return row ? toMember(row.member, row.homeCircleId) : null;
 }
 
 export async function getMemberByEmail(email: string): Promise<Member | null> {
   const normalized = email.trim().toLowerCase();
-  const [row] = await db.select().from(members).where(eq(sql`lower(${members.email})`, normalized));
-  return row ? toMember(row) : null;
+  const [row] = await db
+    .select({ member: members, homeCircleId: circleMembers.circleId })
+    .from(members)
+    .leftJoin(circleMembers, homeJoin)
+    .where(eq(sql`lower(${members.email})`, normalized));
+  return row ? toMember(row.member, row.homeCircleId) : null;
 }
 
+/* Only the member's own columns are written — a caller may hand this a whole
+   Profile (AppStateProvider.saveProfile does), which carries fields that
+   aren't columns (emailPublic, homeCircleId). Changing a member's home circle
+   is a membership change, not a column edit. */
 export async function updateMember(id: number, patch: Partial<Member>): Promise<Member | null> {
-  const [row] = await db.update(members).set(patch).where(eq(members.id, id)).returning();
-  return row ? toMember(row) : null;
+  const { name, lastName, pronouns, role, skills, interests, bio, email } = patch;
+  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, email };
+  if (Object.values(columnPatch).some((v) => v !== undefined)) {
+    await db.update(members).set(columnPatch).where(eq(members.id, id));
+  }
+  return getMemberById(id);
 }

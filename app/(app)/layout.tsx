@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { AppShell } from "@/components/shared";
 import { AppStateProvider } from "@/components/providers/app-state-provider";
 import { ProfileModalProvider } from "@/components/providers/profile-modal-provider";
+import { getCircles } from "@/lib/db/circles";
 import { getEvents } from "@/lib/db/events";
-import { getMemberById } from "@/lib/db/members";
-import { getOrgs } from "@/lib/db/orgs";
+import { getMembers } from "@/lib/db/members";
 import { getCurrentUserId } from "@/lib/session";
 
 /* Everything that requires a logged-in member lives under this group.
@@ -19,18 +19,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const currentUserId = await getCurrentUserId();
   if (!currentUserId) redirect("/");
 
-  const [events, orgs, profile] = await Promise.all([
-    getEvents(),
-    getOrgs(),
-    getMemberById(currentUserId),
-  ]);
-  // getMemberById(currentUserId) always resolves here: currentUserId comes
-  // from a valid session cookie, which is only ever set to a real member id
-  // (see lib/auth.ts's verifyLoginCode).
+  const [events, circles, members] = await Promise.all([getEvents(), getCircles(), getMembers()]);
+  // the signed-in member always resolves here: currentUserId comes from a
+  // valid session, whose user is looked up back to a real member by email
+  // (see lib/session.ts).
+  const profile = members.find((m) => m.id === currentUserId);
   if (!profile) redirect("/");
 
   return (
-    <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialOrgs={orgs} initialProfile={profile}>
+    <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialCircles={circles} initialMembers={members} initialProfile={profile}>
       <ProfileModalProvider>
         <AppShell>{children}</AppShell>
       </ProfileModalProvider>

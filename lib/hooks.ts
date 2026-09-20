@@ -1,16 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MEMBERS } from "./data";
-import type { Event, Member, Org } from "./types";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { indexCircles, type CirclesById } from "./circles.util";
+import type { Circle, Event, Member } from "./types";
 
-/* Seam for the roster of members — a thin wrapper around the static seed
-   array for now, but the intended shape going forward for any data a
-   component needs: reach for a hook here rather than importing lib/data.ts's
-   constants directly, so a future real fetch (e.g. lib/db/members.ts's
-   getMembers(), or AppStateProvider tracking members once it needs to) can
-   replace this function's insides without touching call sites. */
+/* The seam components reach live data through — a hook here rather than
+   importing lib/data.ts's seed constants or threading props, so where the
+   data actually comes from (today AppStateProvider's server-seeded state) can
+   change without touching call sites. */
 export function useMembers(): Member[] {
-  return MEMBERS;
+  return useAppState().members;
 }
 
 /* A member-by-id lookup bound to useMembers() above — the hook call itself
@@ -21,6 +20,17 @@ export function useMembers(): Member[] {
 export function useMemberById(): (id: number) => Member | undefined {
   const members = useMembers();
   return (id: number) => members.find((m) => m.id === id);
+}
+
+export function useCircles(): Circle[] {
+  return useAppState().circles;
+}
+
+// id -> circle lookup, the shape circles.util.ts's tree helpers and
+// governance.util.ts's rules take
+export function useCirclesById(): CirclesById {
+  const circles = useCircles();
+  return useMemo(() => indexCircles(circles), [circles]);
 }
 
 /* Tracks whether the viewport is below a mobile breakpoint. Always starts
@@ -41,11 +51,10 @@ export function useIsMobile(breakpoint = 720): boolean {
 }
 
 // old view-state names -> routes, for components still written against the
-// pre-routing "setView(key)" API (only ever called with "orgs" or "events")
+// pre-routing "setView(key)" API (only ever called with "circles" or "events")
 const VIEW_ROUTES: Record<string, string> = {
   home: "/home",
-  directory: "/directory",
-  orgs: "/directory",
+  circles: "/circles",
   events: "/events",
   editMyself: "/profile/edit",
   game: "/game",
@@ -64,21 +73,21 @@ export function useAppNav() {
     // link was actually clicked from, instead of a hardcoded destination
     // that's only right when linked from the plain list view.
     openEvent: (e: Event, backLabel?: string) => router.push(`/events/${e.id}${backLabel ? `?from=${encodeURIComponent(backLabel)}` : ""}`),
-    // every org lives at /directory/[id], keyed by its own stable id rather
-    // than its position in the tree — a Neighborhood Council (org.neighborhood
-    // set) renders as the folder view there, everything else as its own
-    // detail page (see app/(app)/directory/[id]/page.jsx), so reparenting an
-    // org never changes its URL. entityTypes, when given, seeds the folder
-    // view's own Type filter via a ?types= query param (comma-joined) — e.g.
-    // Home's "Neighbors"/"Local circles" stat cards land pre-filtered instead
-    // of dumping the visitor on the unfiltered folder and making them filter
-    // by hand.
-    openOrg: (o: Org, backLabel?: string, entityTypes?: string[]) => {
+    // every circle lives at /circles/[id], keyed by its own stable id rather
+    // than its position in the tree — a neighborhood renders as the folder
+    // view there, everything else as its own detail page (see
+    // app/(app)/circles/[id]/page.tsx), so reparenting a circle never changes
+    // its URL. entityTypes, when given, seeds the folder view's own Type
+    // filter via a ?types= query param (comma-joined) — e.g. Home's
+    // "Neighbors"/"Local circles" stat cards land pre-filtered instead of
+    // dumping the visitor on the unfiltered folder and making them filter by
+    // hand.
+    openCircle: (c: Circle, backLabel?: string, entityTypes?: string[]) => {
       const params = new URLSearchParams();
       if (backLabel) params.set("from", backLabel);
       if (entityTypes && entityTypes.length > 0) params.set("types", entityTypes.join(","));
       const qs = params.toString();
-      router.push(`/directory/${o.id}${qs ? `?${qs}` : ""}`);
+      router.push(`/circles/${c.id}${qs ? `?${qs}` : ""}`);
     },
   };
 }

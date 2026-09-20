@@ -9,7 +9,7 @@ import type { Event } from "@/lib/types";
 function EditEvent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { events, orgs, profile, updateEventDetails } = useAppState();
+  const { events, circles, profile, updateEventDetails } = useAppState();
 
   const event = events.find((e) => e.id === id);
   if (!event) notFound();
@@ -19,7 +19,7 @@ function EditEvent() {
       mode="edit"
       event={event}
       profile={profile}
-      orgs={orgs}
+      circles={circles}
       // replace, not push: the form is done with, so its history entry
       // should be too — otherwise the back button lands on the now-stale
       // edit form instead of the event itself.

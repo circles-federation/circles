@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1789311230257,
-      "tag": "0000_exotic_mandarin",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1789756470879,
-      "tag": "0001_bumpy_ares",
+      "when": 1789926417317,
+      "tag": "0000_circles_baseline",
       "breakpoints": true
     }
   ]

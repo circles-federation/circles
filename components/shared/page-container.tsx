@@ -5,8 +5,8 @@ export type PageSize = "wide" | "normal" | "compact";
 
 // full literal class strings per key — Tailwind's static scan can't see
 // through a template-interpolated class name like `max-w-${n}`. Three
-// widths cover every page: wide (270) for dashboards/lists (Home, Directory,
-// Events list), normal (220) for detail pages (Event, Org), compact (170)
+// widths cover every page: wide (270) for dashboards/lists (Home, Circles,
+// Events list), normal (220) for detail pages (Event, Circle), compact (170)
 // for forms and the name game.
 const MAX_WIDTH: Record<PageSize, string> = {
   wide: "max-w-270",
@@ -29,7 +29,7 @@ interface PageContainerProps {
    pt-6 is flat, not per-page — Playwright measurements confirmed a 24px gap
    from the top bar everywhere, matching px-6, regardless of whether a page's
    first element is a masthead or a SearchWithFilter. A page whose own
-   PageHeader hides below 720px (Directory root, Events list) doesn't need
+   PageHeader hides below 720px (Circles root, Events list) doesn't need
    special-casing here either: PageHeader just occupies its own space when
    visible, and SearchWithFilter carries its own conditional margin above it
    (see city-directory.page.jsx and events-list.page.jsx) rather than this

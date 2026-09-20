@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import { HomeIcon } from "@heroicons/react/24/outline";
 import { FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
-import { OrgCard } from "@/components/orgs/org-card";
+import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
-import { orgAncestors, orgChildren, orgDescendantIds, orgDisplayName, orgMembers } from "@/lib/orgs.util";
-import type { Member, Org, Profile } from "@/lib/types";
+import { circleAncestors, circleChildren, circleDescendantIds, indexCircles } from "@/lib/circles.util";
+import type { Circle, Member, Profile } from "@/lib/types";
 
 const ENTITY_TYPES = ["Councils", "Organizations", "People"] as const;
 type EntityType = (typeof ENTITY_TYPES)[number];
@@ -15,12 +15,12 @@ function isEntityType(value: string): value is EntityType {
   return (ENTITY_TYPES as readonly string[]).includes(value);
 }
 
-interface NeighborhoodDirectoryPageProps {
-  org: Org;
-  orgs: Org[];
+interface NeighborhoodPageProps {
+  circle: Circle;
+  circles: Circle[];
   members: Member[];
   profile: Profile;
-  onOpenOrg: (o: Org) => void;
+  onOpenCircle: (c: Circle) => void;
   onOpenRoot: () => void;
   onOpenMember: (m: Member) => void;
   // seeds the Type filter — e.g. Home's "Neighbors"/"Local circles" stat
@@ -31,55 +31,53 @@ interface NeighborhoodDirectoryPageProps {
   initialTypeFilter?: string[];
 }
 
-/* A single neighborhood's own directory (rendered at /directory/[id], where
-   org is always that neighborhood's Neighborhood Council — see
-   app/(app)/directory/[id]/page.jsx, which renders every other org as its
-   own detail page, OrgPage, at that same route instead). Shows the
-   Council's own sub-councils
-   (Finance/Grounds/Community, for The 903) and organizations as folders,
-   and its residents (its derived membership, see orgMembers in
-   lib/orgs.util.js) as files. Search flattens the Council's whole subtree
-   rather than just one level.
+/* A single neighborhood's own folder (rendered at /circles/[id] for a
+   circle of type "neighborhood" — see app/(app)/circles/[id]/page.tsx, which
+   renders every other circle as its own detail page, CirclePage, at that same
+   route instead). Shows the neighborhood's own sub-councils
+   (Finance/Grounds/Community, for The 903) and other circles as folders, and
+   its residents (its explicit members) as files. Search flattens the whole
+   subtree rather than just one level.
 
-   Every card here shares this page's own scope (the Council being browsed),
-   so OrgCard/MemberCard's scope chips remain off throughout — unlike
-   CityDirectoryPage, where cards span multiple neighborhoods and the chip
-   is what tells them apart. */
-export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenOrg, onOpenRoot, onOpenMember, initialTypeFilter }: NeighborhoodDirectoryPageProps) {
+   Every card here shares this page's own scope (the neighborhood being
+   browsed), so CircleCard/MemberCard's scope chips remain off throughout —
+   unlike CirclesRootPage, where cards span multiple neighborhoods and the
+   chip is what tells them apart. */
+export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenRoot, onOpenMember, initialTypeFilter }: NeighborhoodPageProps) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<EntityType[]>(() => (initialTypeFilter || []).filter(isEntityType));
-  const orgsById = useMemo(() => orgs.reduce<Record<string, Org>>((acc, o) => { acc[o.id] = o; return acc; }, {}), [orgs]);
+  const circlesById = useMemo(() => indexCircles(circles), [circles]);
   const membersById = useMemo(() => members.reduce<Record<number, Member>>((acc, m) => { acc[m.id] = m; return acc; }, {}), [members]);
 
-  const directFolders = orgChildren(org, orgs);
-  const directFiles = orgMembers(org, members).map((id) => membersById[id]).filter((m): m is Member => Boolean(m));
+  const directFolders = circleChildren(circle, circles);
+  const directFiles = circle.members.map((id) => membersById[id]).filter((m): m is Member => Boolean(m));
 
   const q = query.trim().toLowerCase();
   const searching = q.length > 0;
-  const subtreeOrgIds = useMemo(() => new Set([org.id, ...orgDescendantIds(org, orgs)]), [org, orgs]);
+  const subtreeCircleIds = useMemo(() => new Set([circle.id, ...circleDescendantIds(circle, circles)]), [circle, circles]);
 
   const folders = useMemo(() => {
     if (!searching) return directFolders;
-    return orgs
-      .filter((o) => subtreeOrgIds.has(o.id) && o.id !== org.id)
-      .filter((o) => [o.name, o.kind, o.tagline, ...(o.offers || [])].join(" ").toLowerCase().includes(q))
+    return circles
+      .filter((c) => subtreeCircleIds.has(c.id) && c.id !== circle.id)
+      .filter((c) => [c.name, c.type, c.tagline, ...(c.offers || [])].join(" ").toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [searching, directFolders, orgs, subtreeOrgIds, org, q]);
+  }, [searching, directFolders, circles, subtreeCircleIds, circle, q]);
 
   const files = useMemo(() => {
     if (!searching) return directFiles;
     const ids = new Set<number>();
-    subtreeOrgIds.forEach((id) => {
-      const o = orgsById[id];
-      if (o) orgMembers(o, members).forEach((mid) => ids.add(mid));
+    subtreeCircleIds.forEach((id) => {
+      const c = circlesById[id];
+      if (c) c.members.forEach((mid) => ids.add(mid));
     });
     return members
       .filter((m) => ids.has(m.id))
       .filter((m) => [m.name, m.role, ...(m.skills || []), ...(m.interests || [])].join(" ").toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [searching, directFiles, subtreeOrgIds, orgsById, members, q]);
+  }, [searching, directFiles, subtreeCircleIds, circlesById, members, q]);
 
-  const isHome = org.neighborhood === profile.neighborhood;
+  const isHome = circle.id === profile.homeCircleId;
 
   // no types selected means no filter applied (show everything) — folders/
   // files above still do the query narrowing, this just decides which of
@@ -89,24 +87,24 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
   const showOrgs = typeFilter.length === 0 || typeFilter.includes("Organizations");
   const showPeople = typeFilter.length === 0 || typeFilter.includes("People");
 
-  const councilFolders = showCouncils ? folders.filter((o) => o.kind === "Council") : [];
-  const orgFolders = showOrgs ? folders.filter((o) => o.kind !== "Council") : [];
+  const councilFolders = showCouncils ? folders.filter((c) => c.type === "council") : [];
+  const otherFolders = showOrgs ? folders.filter((c) => c.type !== "council") : [];
   const peopleFiles = showPeople ? files : [];
-  const anySections = councilFolders.length > 0 || orgFolders.length > 0 || peopleFiles.length > 0;
+  const anySections = councilFolders.length > 0 || otherFolders.length > 0 || peopleFiles.length > 0;
 
   return (
     <PageContainer size="wide">
-      <Breadcrumbs trail={orgAncestors(org, orgsById)} current={org} onOpenRoot={onOpenRoot} onOpenOrg={onOpenOrg} />
+      <Breadcrumbs trail={circleAncestors(circle, circlesById).filter((c) => c.parentId !== null)} current={circle} onOpenRoot={onOpenRoot} onOpenCircle={onOpenCircle} />
 
       <PageHeader
         title={
           isHome ? (
             <span className="inline-flex items-center gap-2">
-              {orgDisplayName(org)}
+              {circle.name}
               <HomeIcon className="size-6 shrink-0 text-teal" strokeWidth={2} />
             </span>
           ) : (
-            orgDisplayName(org)
+            circle.name
           )
         }
       />
@@ -115,7 +113,7 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
         className="mt-5"
         query={query}
         onQuery={setQuery}
-        placeholder={`Search within ${orgDisplayName(org)}`}
+        placeholder={`Search within ${circle.name}`}
         filters={[
           { label: "Type", options: [...ENTITY_TYPES], multi: true, active: typeFilter, onFilter: (v) => setTypeFilter(v as EntityType[]) },
         ]}
@@ -128,15 +126,15 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
               label="Councils"
               items={councilFolders}
               minWidth={300}
-              renderItem={(o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={false} showKindEyebrow={false} />}
+              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showScopeChip={false} showKindEyebrow={false} />}
             />
           )}
-          {orgFolders.length > 0 && (
+          {otherFolders.length > 0 && (
             <FolderGrid
               label="Organizations"
-              items={orgFolders}
+              items={otherFolders}
               minWidth={300}
-              renderItem={(o) => <OrgCard key={o.id} o={o} onOpenOrg={onOpenOrg} showScopeChip={false} />}
+              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showScopeChip={false} />}
             />
           )}
           {peopleFiles.length > 0 && (
@@ -156,13 +154,13 @@ export function NeighborhoodDirectoryPage({ org, orgs, members, profile, onOpenO
 }
 
 interface BreadcrumbsProps {
-  trail: Org[];
-  current: Org;
+  trail: Circle[];
+  current: Circle;
   onOpenRoot: () => void;
-  onOpenOrg: (o: Org) => void;
+  onOpenCircle: (c: Circle) => void;
 }
 
-function Breadcrumbs({ trail, current, onOpenRoot, onOpenOrg }: BreadcrumbsProps) {
+function Breadcrumbs({ trail, current, onOpenRoot, onOpenCircle }: BreadcrumbsProps) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-1.5">
       <button
@@ -175,15 +173,15 @@ function Breadcrumbs({ trail, current, onOpenRoot, onOpenOrg }: BreadcrumbsProps
         <span key={b.id} className="flex items-center gap-1.5">
           <span className="text-soft">/</span>
           <button
-            onClick={() => onOpenOrg(b)}
+            onClick={() => onOpenCircle(b)}
             className="cursor-pointer border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase hover:text-ink"
           >
-            {orgDisplayName(b)}
+            {b.name}
           </button>
         </span>
       ))}
       <span className="text-soft">/</span>
-      <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-ink uppercase">{orgDisplayName(current)}</span>
+      <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-ink uppercase">{current.name}</span>
     </div>
   );
 }

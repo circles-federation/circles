@@ -38,7 +38,7 @@ export function eventDateTime(e: Event, time: string): Date | null {
      end time, which flips it back to running.
    - after the end time it's simply over.
    (In production, any scheduled<->cancelled flip emails everyone RSVP'd and all
-   members of the hosting org.) */
+   members of the hosting circle.) */
 export const CANCEL_WINDOW_MS = 60 * 60 * 1000; // one hour before start
 export function shiftEnded(e: Event): boolean {
   const end = eventDateTime(e, e.end);

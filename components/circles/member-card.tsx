@@ -1,4 +1,5 @@
 import { Avatar, Chip, Eyebrow } from "@/components/shared";
+import { useCirclesById } from "@/lib/hooks";
 import type { Member, Profile } from "@/lib/types";
 
 interface MemberCardProps {
@@ -8,16 +9,18 @@ interface MemberCardProps {
   showScopeChip?: boolean;
 }
 
-/* A "file" in the directory hierarchy — a person, who (unlike an org) never
+/* A "file" in the circle hierarchy — a person, who (unlike a circle) never
    nests. Reusable card, used anywhere a flat member list is shown.
 
-   showScopeChip defaults on but NeighborhoodDirectoryPage passes false while
+   showScopeChip defaults on but NeighborhoodPage passes false while
    browsing inside a folder: everyone shown there is definitionally a member
-   of that folder's own org, so repeating their neighborhood on every card is
-   redundant (same reasoning as OrgCard's showScopeChip) — it only earns its
+   of that folder's own circle, so repeating their neighborhood on every card is
+   redundant (same reasoning as CircleCard's showScopeChip) — it only earns its
    place when results can span neighborhoods, e.g. a subtree search from the
-   true Directory root. */
+   true Circles root. */
 export function MemberCard({ m, profile, onOpenMember, showScopeChip = true }: MemberCardProps) {
+  const byId = useCirclesById();
+  const home = m.homeCircleId ? byId[m.homeCircleId] : undefined;
   return (
     <button
       onClick={() => onOpenMember(m)}
@@ -30,9 +33,9 @@ export function MemberCard({ m, profile, onOpenMember, showScopeChip = true }: M
           {m.id === profile.id && <span className="font-semibold text-soft"> (you)</span>}
         </div>
         <Eyebrow className="text-soft">{m.role}</Eyebrow>
-        {showScopeChip && (
+        {showScopeChip && home && (
           <div className="mt-1.75">
-            <Chip title={`Neighborhood: ${m.neighborhood}`}>{m.neighborhood}</Chip>
+            <Chip title={`Neighborhood: ${home.name}`}>{home.name}</Chip>
           </div>
         )}
       </div>

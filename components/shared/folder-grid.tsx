@@ -8,8 +8,8 @@ interface FolderGridProps<T> {
   renderItem: (item: T, index: number, array: T[]) => ReactNode;
 }
 
-// one labeled grid of folder or file cards — used by CityDirectoryPage's and
-// NeighborhoodDirectoryPage's Councils/Organizations/People sections, and by
+// one labeled grid of folder or file cards — used by CirclesRootPage's and
+// NeighborhoodPage's Councils/Organizations/People sections, and by
 // Home's "My circles" speed dial
 export function FolderGrid<T>({ label, items, minWidth, renderItem }: FolderGridProps<T>) {
   return (

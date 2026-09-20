@@ -4,24 +4,28 @@ import { useEffect } from "react";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import { Avatar, Chip, Eyebrow, EyebrowGroup, Tag } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { ORGS_BY_MEMBER } from "@/lib/data";
-import type { Member, Org } from "@/lib/types";
+import { CIRCLE_TYPE_LABEL, circlesForMember } from "@/lib/circles.util";
+import { useCirclesById } from "@/lib/hooks";
+import type { Circle, Member } from "@/lib/types";
 
 interface ProfileModalProps {
   member: Member;
   onClose: () => void;
-  onOpenOrg: (org: Org) => void;
+  onOpenCircle: (c: Circle) => void;
 }
 
-export function ProfileModal({ member: m, onClose, onOpenOrg }: ProfileModalProps) {
-  const { profile } = useAppState();
+export function ProfileModal({ member: m, onClose, onOpenCircle }: ProfileModalProps) {
+  const { profile, circles } = useAppState();
+  const byId = useCirclesById();
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const orgs = ORGS_BY_MEMBER[m.id] || [];
+  // the neighborhood has its own section above, so it isn't repeated here
+  const memberCircles = circlesForMember(m.id, circles).filter((c) => c.type !== "neighborhood");
+  const home = m.homeCircleId ? byId[m.homeCircleId] : undefined;
 
   return (
     <div
@@ -69,24 +73,26 @@ export function ProfileModal({ member: m, onClose, onOpenOrg }: ProfileModalProp
             {m.interests.map((s) => <Tag key={s}>{s}</Tag>)}
           </EyebrowGroup>
 
-          <EyebrowGroup label="Neighborhood">
-            <div className="flex flex-wrap gap-0">
-              <Chip title={m.neighborhood === profile.neighborhood ? "This neighborhood" : "Another neighborhood in the federation"}>{m.neighborhood}</Chip>
-            </div>
-          </EyebrowGroup>
+          {home && (
+            <EyebrowGroup label="Neighborhood">
+              <div className="flex flex-wrap gap-0">
+                <Chip title={m.homeCircleId === profile.homeCircleId ? "This neighborhood" : "Another neighborhood in the federation"}>{home.name}</Chip>
+              </div>
+            </EyebrowGroup>
+          )}
 
-          {orgs.length > 0 && (
+          {memberCircles.length > 0 && (
             <EyebrowGroup label="Member of">
               <div className="border-t border-ink">
-                {orgs.map((o) => (
+                {memberCircles.map((c) => (
                   <button
-                    key={o.id}
-                    onClick={() => onOpenOrg(o)}
+                    key={c.id}
+                    onClick={() => onOpenCircle(c)}
                     className="flex w-full cursor-pointer items-baseline justify-between border-0 border-b border-faint bg-paper py-3 text-left"
                   >
-                    <span className="font-sans text-sm font-bold">{o.name}</span>
+                    <span className="font-sans text-sm font-bold">{c.name}</span>
                     <Eyebrow className="inline-flex items-center gap-1 text-soft">
-                      {o.kind}
+                      {CIRCLE_TYPE_LABEL[c.type]}
                       {/* strokeWidth is in viewBox units, not px — smaller than the
                           usual size-3.5/strokeWidth-2.5 pair, so the width is scaled
                           up (2.5 * 14/10) to keep the stroke the same physical thickness */}

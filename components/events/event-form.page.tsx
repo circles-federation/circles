@@ -4,10 +4,9 @@ import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
-import { EVENT_KINDS, ORGS_BY_MEMBER } from "@/lib/data";
-import { useMembers } from "@/lib/hooks";
-import { orgDisplayName, orgMembers, orgsForMember, orgScope } from "@/lib/orgs.util";
-import type { Event, EventKindKey, Host, Org, Profile, Role } from "@/lib/types";
+import { circlesForMember, indexCircles } from "@/lib/circles.util";
+import { EVENT_KINDS } from "@/lib/governance.util";
+import type { Circle, Event, EventKindKey, Profile, Role } from "@/lib/types";
 
 const DEFAULT_START = "18:00";
 const DEFAULT_END = "20:00";
@@ -30,7 +29,7 @@ const ACCENT: Record<"ink" | "flame", { borderT: string; border: string; text: s
 
 interface EventFormPageBaseProps {
   profile: Profile;
-  orgs: Org[];
+  circles: Circle[];
   onCancel: () => void;
 }
 
@@ -54,34 +53,34 @@ type EventFormPageProps = CreateEventFormPageProps | EditEventFormPageProps;
    than removed, so the tab bar's shape stays identical between the two
    modes. */
 export function EventFormPage(props: EventFormPageProps) {
-  const { profile, orgs, onCancel, mode } = props;
+  const { profile, circles, onCancel, mode } = props;
   const event = mode === "edit" ? props.event : null;
-  const members = useMembers();
 
-  // host options: the current user, plus every org they belong to
-  const myOrgs: Org[] = ORGS_BY_MEMBER[profile.id] || [];
-  const hostOptions: { key: string; label: string; host: Host }[] = [
-    { key: "member:" + profile.id, label: `${profile.name} (you)`, host: { type: "member", id: profile.id } },
-    ...myOrgs.map((o) => ({ key: "org:" + o.id, label: o.name, host: { type: "org" as const, id: o.id } })),
+  // host options: the current user (an event they organize personally, which
+  // lives in their home neighborhood), plus every circle they belong to (an
+  // event the circle itself hosts — circleId null marks the personal option)
+  const byId = indexCircles(circles);
+  const myCircles = circlesForMember(profile.id, circles);
+  const rootCircle = circles.find((c) => c.parentId === null);
+  const personalCircleId = profile.homeCircleId ?? rootCircle?.id ?? "";
+  const hostOptions: { key: string; label: string; circleId: string | null }[] = [
+    { key: "member:" + profile.id, label: `${profile.name} (you)`, circleId: null },
+    ...myCircles.map((c) => ({ key: "circle:" + c.id, label: c.name, circleId: c.id })),
   ];
 
-  // circles eligible to propose a meeting for: any org the proposer belongs
-  // to (via orgsForMember, so this includes their home Neighborhood Council
-  // and any of its sub-orgs, unlike hostOptions above, which only sees
-  // literal membership) — except a city-wide org (orgScope null), since
-  // citywide meetings aren't supported yet. The home council sorts first
-  // as the most likely default.
-  const orgsById = orgs.reduce<Record<string, Org>>((acc, o) => { acc[o.id] = o; return acc; }, {});
-  const homeCouncil = orgs.find((o) => o.neighborhood === profile.neighborhood);
-  const eligibleCircles: Org[] = [
-    ...(homeCouncil ? [homeCouncil] : []),
-    ...orgsForMember(profile.id, orgs, members).filter((o) => o.id !== homeCouncil?.id && orgScope(o, orgsById) !== null),
+  // circles eligible to propose a meeting for: any circle the proposer
+  // belongs to. Their home neighborhood sorts first as the most likely
+  // default.
+  const homeCircle = profile.homeCircleId ? byId[profile.homeCircleId] : undefined;
+  const eligibleCircles: Circle[] = [
+    ...(homeCircle ? [homeCircle] : []),
+    ...myCircles.filter((c) => c.id !== homeCircle?.id),
   ];
-  // labels precomputed here, not inline in JSX — calling orgDisplayName
-  // directly inside a JSX expression trips the react-hooks/purity rule's
+  // labels precomputed here, not inline in JSX — calling a helper directly
+  // inside a JSX expression trips the react-hooks/purity rule's
   // reachability analysis for this component (it stops being able to prove
   // submit()'s Date.now() call is confined to an event handler).
-  const circleOptions = eligibleCircles.map((o) => ({ id: o.id, label: orgDisplayName(o) }));
+  const circleOptions = eligibleCircles.map((c) => ({ id: c.id, label: c.name }));
 
   // the form's starting values — blank defaults for a new event, or the
   // event's own current values when editing. `dirty` (below) diffs live
@@ -91,8 +90,8 @@ export function EventFormPage(props: EventFormPageProps) {
     ? {
         type: (event.kind === "meeting" ? "meeting" : "ordinary") as EventKindKey,
         title: event.title,
-        hostKey: event.host.type === "member" ? "member:" + event.host.id : "org:" + event.host.id,
-        circleId: event.orgId || eligibleCircles[0]?.id || "",
+        hostKey: event.organizerId != null ? "member:" + event.organizerId : "circle:" + event.circleId,
+        circleId: event.circleId,
         date: event.date,
         start: event.start,
         end: event.end,
@@ -123,16 +122,16 @@ export function EventFormPage(props: EventFormPageProps) {
   const [title, setTitle] = useState(initialValues.title);
   const [hostKey, setHostKey] = useState(initialValues.hostKey);
   const [circleId, setCircleId] = useState(initialValues.circleId);
-  const circle = orgsById[circleId] || null;
-  const circleName = circle ? orgDisplayName(circle) : "";
-  const meetingThresholdPreview = circle ? Math.floor(orgMembers(circle, members).length / 2) + 1 : 0;
+  const circle = byId[circleId] || null;
+  const circleName = circle ? circle.name : "";
+  const meetingThresholdPreview = circle ? Math.floor(circle.members.length / 2) + 1 : 0;
   const [date, setDate] = useState(initialValues.date);
   const [start, setStart] = useState(initialValues.start);
   const [end, setEnd] = useState(initialValues.end);
   const [location, setLocation] = useState(initialValues.location);
   const [description, setDescription] = useState(initialValues.description);
   const [membersOnly, setMembersOnly] = useState(initialValues.membersOnly);
-  // slots (roles) for org-hosted events: each { label, description, min, max }
+  // slots (roles) for circle-hosted events: each { label, description, min, max }
   const [useSlots, setUseSlots] = useState(initialValues.useSlots);
   const [slots, setSlots] = useState<SlotDraft[]>(initialValues.slots);
   const [error, setError] = useState("");
@@ -173,13 +172,14 @@ export function EventFormPage(props: EventFormPageProps) {
     if (!location.trim()) return setError("Add a location.");
 
     if (gov) {
-      // governance meetings are proposed by a person, not an org; the
-      // proposer is the first vote. A meeting is hosted by whichever
-      // circle the proposer chose (see circle/eligibleCircles above).
+      // governance meetings are proposed by a person; the proposer is the
+      // first vote. A meeting belongs to whichever circle the proposer chose
+      // (see circle/eligibleCircles above).
+      if (!circle) return setError("You need to belong to a circle to propose a meeting.");
       if (mode === "edit") {
         props.onSave({
           title: title.trim(),
-          orgId: circle ? circle.id : undefined,
+          circleId: circle.id,
           date, start, end,
           location: location.trim(),
           description: description.trim() || "No agenda yet.",
@@ -189,8 +189,8 @@ export function EventFormPage(props: EventFormPageProps) {
           id: "e" + Date.now(),
           title: title.trim(),
           kind: type,
-          orgId: circle ? circle.id : undefined,
-          host: { type: "member", id: profile.id },
+          circleId: circle.id,
+          organizerId: profile.id,
           date, start, end,
           location: location.trim(),
           description: description.trim() || "No agenda yet.",
@@ -204,11 +204,15 @@ export function EventFormPage(props: EventFormPageProps) {
     // own host, in edit mode) and only ever set to another hostOptions
     // entry's key, so a match always exists.
     const chosen = hostOptions.find((h) => h.key === hostKey)!;
-    const isOrgHost = chosen.host.type === "org";
+    const circleHosted = chosen.circleId !== null;
+    const eventCircleId = chosen.circleId ?? personalCircleId;
+    if (!eventCircleId) return setError("There's no circle to put this event in.");
+    // a person-organized event names its organizer; a circle-hosted one has none
+    const organizerId = circleHosted ? undefined : profile.id;
 
-    // build slots (roles) if this is an org-hosted event using slots
+    // build slots (roles) if this is a circle-hosted event using slots
     let roles: Role[] | null = null;
-    if (isOrgHost && useSlots) {
+    if (circleHosted && useSlots) {
       const cleaned = slots.filter((s) => s.label.trim());
       if (cleaned.length === 0) return setError("Add at least one slot, or turn off slots.");
       for (const s of cleaned) {
@@ -237,25 +241,27 @@ export function EventFormPage(props: EventFormPageProps) {
       // whatever the event already had.
       props.onSave({
         title: title.trim(),
-        host: chosen.host,
+        circleId: eventCircleId,
+        organizerId,
         date, start, end,
         location: location.trim(),
         description: description.trim() || "No description yet.",
         roles: roles || undefined,
-        membersOnly: isOrgHost && membersOnly,
+        membersOnly: circleHosted && membersOnly,
       });
     } else {
       props.onCreate({
         id: "e" + Date.now(),
         title: title.trim(),
         kind: "ordinary",
-        host: chosen.host,
+        circleId: eventCircleId,
+        ...(organizerId != null ? { organizerId } : {}),
         date, start, end,
         location: location.trim(),
         description: description.trim() || "No description yet.",
         rsvps: roles ? [] : [profile.id],
         ...(roles ? { roles } : {}),
-        ...(isOrgHost && membersOnly ? { membersOnly: true } : {}),
+        ...(circleHosted && membersOnly ? { membersOnly: true } : {}),
       });
     }
   }
@@ -292,7 +298,7 @@ export function EventFormPage(props: EventFormPageProps) {
       >
       {gov && circle && (
         <p className="mb-1 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
-          This is a governance meeting for <strong>{circleName}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {circle.neighborhood ? "residents" : "members"}</strong> to be confirmed. Your proposal counts as the first vote.
+          This is a governance meeting for <strong>{circleName}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {circle.type === "neighborhood" ? "residents" : "members"}</strong> to be confirmed. Your proposal counts as the first vote.
         </p>
       )}
 
@@ -310,7 +316,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 <option key={h.key} value={h.key}>{h.label}</option>
               ))}
             </Select>
-            {hostKey.startsWith("org:") && (
+            {hostKey.startsWith("circle:") && (
               <label className={clsx("mt-3.5 flex cursor-pointer items-start gap-2.5 border px-3.5 py-3", membersOnly ? "border-plum bg-plum/6" : "border-faint bg-paper")}>
                 <input
                   type="checkbox"
@@ -326,7 +332,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 </span>
               </label>
             )}
-            {hostKey.startsWith("org:") && (
+            {hostKey.startsWith("circle:") && (
               <div className={clsx("mt-3.5 border px-4 py-3.5", useSlots ? "border-ink" : "border-faint")}>
                 <label className="flex cursor-pointer items-start gap-2.5">
                   <input

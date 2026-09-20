@@ -1,5 +1,13 @@
 import { WelcomePage } from "@/components/welcome/welcome.page";
+import { getMembers } from "@/lib/db/members";
 
-export default function Page() {
-  return <WelcomePage />;
+// reads the roster per request rather than freezing it into the build
+export const dynamic = "force-dynamic";
+
+export default async function Page() {
+  // the "Demo accounts" list is dev/demo scaffolding — it lists real members'
+  // emails to an unauthenticated visitor, so it's dropped entirely from a
+  // production build rather than left to ship real people's addresses.
+  const demoMembers = process.env.NODE_ENV === "production" ? [] : (await getMembers()).filter((m) => m.email);
+  return <WelcomePage demoMembers={demoMembers} />;
 }

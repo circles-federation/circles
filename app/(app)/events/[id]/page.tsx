@@ -12,8 +12,8 @@ function EventDetail() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
-    events, councilProposals, rsvpState, toggleRsvp, voteState, toggleVote,
-    toggleRoleSlot, ratifyCouncilProposal, profile,
+    events, rsvpState, toggleRsvp, voteState, toggleVote,
+    toggleRoleSlot, profile,
   } = useAppState();
   const { open } = useProfileModal();
   const nav = useAppNav();
@@ -24,9 +24,7 @@ function EventDetail() {
   return (
     <EventPage
       event={event}
-      events={events}
       profile={profile}
-      councilProposals={councilProposals}
       rsvpState={rsvpState}
       toggleRsvp={toggleRsvp}
       voteState={voteState}
@@ -34,12 +32,8 @@ function EventDetail() {
       onBack={() => router.back()}
       backLabel={searchParams.get("from") || undefined}
       onOpenMember={open}
-      onOpenOrg={(o) => nav.openOrg(o, event.title)}
+      onOpenCircle={(c) => nav.openCircle(c, event.title)}
       onToggleRoleSlot={toggleRoleSlot}
-      onOpenEvent={(e) => nav.openEvent(e, event.title)}
-      onProposeCouncil={() => router.push(`/events/${event.id}/propose`)}
-      onRatifyProposal={ratifyCouncilProposal}
-      onProposeEndorsingAssembly={() => router.push(`/events/${event.id}/propose`)}
       onEditEvent={() => router.push(`/events/${event.id}/edit`)}
     />
   );

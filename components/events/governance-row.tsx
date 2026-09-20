@@ -3,45 +3,32 @@
 import clsx from "clsx";
 import { EventRow } from "./event-row";
 import { Eyebrow } from "@/components/shared";
-import { hostInfo } from "@/lib/data";
+import { eventHost } from "@/lib/events.util";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
-import { endorsementCount, isConfirmed, kindOf, meetingThreshold, neighborhoodMajority, voteCount } from "@/lib/governance.util";
-import type { Event, EventKindKey } from "@/lib/types";
+import { isConfirmed, kindOf, meetingThreshold, voteCount } from "@/lib/governance.util";
+import { useCirclesById, useMemberById } from "@/lib/hooks";
+import type { Event } from "@/lib/types";
 
 interface GovernanceRowProps {
   e: Event;
   onOpenEvent: (e: Event) => void;
-  hasCouncilProposal?: boolean;
 }
 
-// this row only ever shows governance kinds, and EVENT_KINDS' canonical
-// labels ("Neighborhood Council Meeting", "Federation Council Meeting") read
-// too long for the chip here — the full label stays intact everywhere else
-// (e.g. event.page.jsx's masthead), this is purely a display choice for
-// this cramped context.
-const KIND_CHIP_LABEL: Partial<Record<EventKindKey, string>> = { meeting: "Meeting", council: "Council" };
-
 /* A single governance-event row. Read-only — voting/endorsing happens on
-   the event's own page; this just shows the vote/endorsement count. */
-export function GovernanceRow({ e, onOpenEvent, hasCouncilProposal }: GovernanceRowProps) {
+   the event's own page; this just shows the vote count. */
+export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
+  const byId = useCirclesById();
+  const memberById = useMemberById();
   const k = kindOf(e);
-  const h = hostInfo(e.host);
-  const isCouncil = e.kind === "council";
-  const confirmed = isConfirmed(e);
+  const h = eventHost(e, byId, memberById);
+  const confirmed = isConfirmed(e, byId);
   const past = isPastEvent(e);
   const accentKey = confirmed ? "leaf" : (past ? "soft" : "flame"); // fed to both DateTile and EventRow's own accent
-  // status text differs: meetings count resident votes; councils count endorsing neighborhoods
   const votes = voteCount(e);
-  const councilMaj = neighborhoodMajority();
-  // councils are "voted" on via neighborhood endorsements rather than individual
-  // votes, but the count/threshold display reads the same either way
-  const count = isCouncil ? endorsementCount(e) : votes;
-  const threshold = isCouncil ? councilMaj : meetingThreshold(e);
+  const threshold = meetingThreshold(e, byId);
   const statusText = past
     ? (confirmed ? "· Held" : "· Lapsed")
-    : isCouncil
-      ? (confirmed ? "" : `· Proposed — ${councilMaj - endorsementCount(e)} more neighborhoods`)
-      : (confirmed ? "" : `· Proposed — ${threshold - votes} more to confirm`);
+    : (confirmed ? "" : `· Proposed — ${threshold - votes} more to confirm`);
 
   return (
     <EventRow
@@ -58,23 +45,18 @@ export function GovernanceRow({ e, onOpenEvent, hasCouncilProposal }: Governance
         <>
           <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
           <Eyebrow className={accentKey === "leaf" ? "text-leaf" : accentKey === "flame" ? "text-flame" : "text-soft"}>
-            · {(e.kind && KIND_CHIP_LABEL[e.kind]) || k.label}
+            · {k.label}
           </Eyebrow>
           {statusText && (
             <span className={clsx("font-sans text-label font-bold tracking-[0.08em] uppercase", confirmed ? "text-leaf" : "text-soft")}>
               {statusText}
             </span>
           )}
-          {hasCouncilProposal && !past && (
-            <span title="A federation council meeting has been proposed from this meeting" className="border border-flame px-1.75 py-px font-sans text-label font-bold tracking-[0.06em] text-flame uppercase">
-              ◆ Meeting proposed
-            </span>
-          )}
         </>
       }
       right={
         <div className={clsx("font-sans text-sm font-extrabold whitespace-nowrap", confirmed ? "text-leaf" : (past ? "text-soft" : "text-ink"))}>
-          {count}/{threshold} {past ? "Went" : "Going"}
+          {votes}/{threshold} {past ? "Went" : "Going"}
         </div>
       }
     />

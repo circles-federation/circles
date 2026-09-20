@@ -1,22 +1,22 @@
 "use client";
 
 import { notFound, useParams, useRouter } from "next/navigation";
-import { ManageOrgPage } from "@/components/orgs/manage-org.page";
+import { ManageCirclePage } from "@/components/circles/manage-circle.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { orgs, saveOrg } = useAppState();
+  const { circles, saveCircle } = useAppState();
 
-  const org = orgs.find((o) => o.id === id);
-  if (!org) notFound();
+  const circle = circles.find((c) => c.id === id);
+  if (!circle) notFound();
 
   return (
-    <ManageOrgPage
-      org={org}
-      orgs={orgs}
-      onSave={(patch) => saveOrg(org.id, patch)}
+    <ManageCirclePage
+      circle={circle}
+      circles={circles}
+      onSave={(patch) => saveCircle(circle.id, patch)}
       onBack={() => router.back()}
     />
   );

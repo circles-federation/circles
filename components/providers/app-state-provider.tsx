@@ -2,24 +2,20 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useToast } from "@/components/shared";
-import { COUNCIL_RATIFY_THRESHOLD } from "@/lib/data";
+import { indexCircles } from "@/lib/circles.util";
 import {
-  createCouncilProposalAction as dbCreateCouncilProposal,
   createEventAction as dbCreateEvent,
-  updateCouncilProposalAction as dbUpdateCouncilProposal,
+  updateCircleAction as dbUpdateCircle,
   updateEventAction as dbUpdateEvent,
   updateMemberAction as dbUpdateMember,
-  updateOrgAction as dbUpdateOrg,
 } from "@/lib/db/actions";
-import { FEDERATION_COUNCIL_ENABLED } from "@/lib/feature-flags";
-import { isExclusive, isHostOrgMember, meetingThreshold } from "@/lib/governance.util";
-import { orgDisplayName } from "@/lib/orgs.util";
-import type { CouncilProposal, Event, Member, Org, ProposalDetails, Profile } from "@/lib/types";
+import { isEventCircleMember, isExclusive } from "@/lib/governance.util";
+import type { Circle, Event, Member, Profile } from "@/lib/types";
 
 export interface AppStateValue {
   events: Event[];
-  orgs: Org[];
-  councilProposals: CouncilProposal[];
+  circles: Circle[];
+  members: Member[];
   rsvpState: Record<string, boolean>;
   voteState: Record<string, boolean>;
   profile: Profile;
@@ -27,25 +23,23 @@ export interface AppStateValue {
   toggleRoleSlot(eventId: string, roleKey: string): void;
   createEvent(ev: Event): Event;
   updateEventDetails(id: string, patch: Partial<Event>): void;
-  proposeCouncilDraft(assembly: Event, details: ProposalDetails): void;
-  ratifyCouncilProposal(proposalId: string): void;
-  proposeEndorsingAssembly(council: Event, details: ProposalDetails, hood: string): Event;
   toggleVote(eventId: string): void;
-  saveOrg(id: string, patch: Partial<Org>): void;
+  saveCircle(id: string, patch: Partial<Circle>): void;
   saveProfile(next: Profile): void;
 }
 
-/* Holds the app's entire "database" — events, orgs, the current user's RSVPs/
-   votes/profile, and pending council proposals — plus the mutations on it.
-   There's no backend, so this is the single source of truth every route reads
-   from instead of a fetch. Mounted once in the (app) layout, seeded from data
-   the DAL (lib/db/) fetched server-side — see that layout for the fetch.
+/* Holds the app's runtime state — events, circles, members, the current
+   user's RSVPs/votes/profile — plus the mutations on it. This is the single
+   source of truth every route reads from instead of a fetch. Mounted once in
+   the (app) layout, seeded from data the DAL (lib/db/) fetched server-side —
+   see that layout for the fetch.
 
    Mutators here are pure state + toast — they never navigate. Where the
    original single-view app followed a mutation with a view change, that's now
    the calling route's job (it has the router; this provider shouldn't).
-   Each mutator also calls the matching lib/db/ write, fire-and-forget — no
-   rollback/error-handling yet, since the mock DAL can't actually fail. */
+   Each mutator also calls the matching lib/db/ write (through
+   lib/db/actions.ts's Server Actions), fire-and-forget — no rollback yet,
+   only a console.error on a rejected write. */
 const AppStateContext = createContext<AppStateValue | null>(null);
 
 export function useAppState(): AppStateValue {
@@ -58,20 +52,20 @@ interface AppStateProviderProps {
   children: ReactNode;
   currentUserId: number;
   initialEvents: Event[];
-  initialOrgs: Org[];
+  initialCircles: Circle[];
+  initialMembers: Member[];
   initialProfile: Member;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialOrgs, initialProfile }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialProfile }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
-  // orgs live in state so member edits (bio, offers) persist; seeded from the DAL fetch
-  const [orgs, setOrgs] = useState<Org[]>(() => initialOrgs.map((o) => ({ ...o, offers: [...o.offers], members: [...o.members] })));
-  // council proposals drafted on an assembly page, awaiting that assembly's
-  // ratification before they become federation-wide proposed councils. they do
-  // not appear anywhere events are listed until ratified.
-  const [councilProposals, setCouncilProposals] = useState<CouncilProposal[]>([]);
+  // circles live in state so member edits (bio, offers) persist; seeded from the DAL fetch
+  const [circles, setCircles] = useState<Circle[]>(() => initialCircles.map((c) => ({ ...c, offers: [...c.offers], members: [...c.members] })));
+  // the roster, so names/avatars/home circles resolve from live data rather
+  // than a static seed array; the signed-in member's own edits are mirrored in
+  const [members, setMembers] = useState<Member[]>(initialMembers);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
   const [rsvpState, setRsvpState] = useState<Record<string, boolean>>(() =>
     initialEvents.reduce<Record<string, boolean>>((acc, e) => {
@@ -79,7 +73,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       return acc;
     }, {})
   );
-  // voteState: { [eventId]: true } — the current user's votes on governance proposals
+  // voteState: { [eventId]: true } — the current user's votes on meetings
   const [voteState, setVoteState] = useState<Record<string, boolean>>(() =>
     initialEvents.reduce<Record<string, boolean>>((acc, e) => {
       if (e.votes && e.votes.includes(currentUserId)) acc[e.id] = true;
@@ -106,7 +100,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     // inside the setEvents updater below — a value a functional updater
     // assigns isn't available synchronously afterward (React doesn't run it
     // inline), so reading it on the next line here would always see the
-    // updater's *initial* value, not what it computed. See saveOrg/
+    // updater's *initial* value, not what it computed. See saveCircle/
     // saveProfile below for the same already-correct pattern.
     const event = events.find((e) => e.id === eventId);
     if (!event) return;
@@ -144,15 +138,15 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       setVoteState((prev) => ({ ...prev, [ev.id]: true })); // proposer's first vote
     }
     if (ev.kind === "meeting") {
-      const org = orgs.find((o) => o.id === ev.orgId);
-      // "residents" reads naturally for a Neighborhood Council; any other
-      // circle (a sub-org, or another org entirely) just has "members" —
-      // see lib/governance.util.ts's scopeNoun for the same distinction.
-      const noun = org?.neighborhood ? "residents" : "members";
+      const circle = circles.find((c) => c.id === ev.circleId);
+      // "residents" reads naturally for a neighborhood; any other circle just
+      // has "members" — see lib/governance.util.ts's scopeNoun for the same
+      // distinction.
+      const noun = circle?.type === "neighborhood" ? "residents" : "members";
       showToast({
         tone: "success",
         title: "Meeting proposed",
-        message: `Your meeting has been proposed. All ${org ? `${noun} of ${orgDisplayName(org)}` : "members"} will be notified and can vote to confirm it.`,
+        message: `Your meeting has been proposed. All ${circle ? `${noun} of ${circle.name}` : "members"} will be notified and can vote to confirm it.`,
       });
     } else {
       // "RSVPs are open" would be wrong for a role-slotted event (see
@@ -167,9 +161,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return ev;
   }
 
-  // save edits to an event's own details (title/host/date/location/etc.)
+  // save edits to an event's own details (title/circle/date/location/etc.)
   // from the edit-event form — deliberately doesn't touch governance state
-  // (votes/rsvps/endorsements), which toggleVote/toggleRsvp own instead.
+  // (votes/rsvps), which toggleVote/toggleRsvp own instead.
   function updateEventDetails(id: string, patch: Partial<Event>) {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
     dbUpdateEvent(id, patch).catch(console.error);
@@ -180,114 +174,10 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     });
   }
 
-  // a delegate drafts a council proposal on their meeting's page. it awaits
-  // ratification by that meeting before becoming a federation-wide council.
-  function proposeCouncilDraft(assembly: Event, details: ProposalDetails) {
-    const sponsorHood = orgs.find((o) => o.id === assembly.orgId)?.neighborhood || "";
-    const proposal: CouncilProposal = {
-      id: "cp" + Date.now(),
-      assemblyId: assembly.id,
-      sponsorHood,
-      sponsorName: assembly.title,
-      proposedBy: currentUserId,
-      title: details.title,
-      date: details.date, start: details.start, end: details.end,
-      location: details.location,
-      agenda: details.agenda,
-      ratifyVotes: [currentUserId], // proposer's own vote
-      ratified: false,
-      councilId: null,
-    };
-    setCouncilProposals((prev) => [...prev, proposal]);
-    dbCreateCouncilProposal(proposal).catch(console.error);
-    showToast({
-      tone: "success",
-      title: "Meeting proposed",
-      message: `Your federation council meeting proposal is posted to ${sponsorHood}. Attendees now vote to ratify it — ${COUNCIL_RATIFY_THRESHOLD} votes confirm the delegate's mandate.`,
-    });
-  }
-
-  // attendees of the sponsoring assembly vote to ratify a draft. once it reaches
-  // the assembly quorum, a real federation council event is created (proposed
-  // status), endorsed by the sponsoring neighborhood.
-  function ratifyCouncilProposal(proposalId: string) {
-    const proposal = councilProposals.find((p) => p.id === proposalId);
-    if (!proposal || proposal.ratified) return;
-    const has = proposal.ratifyVotes.includes(currentUserId);
-    const votes = has ? proposal.ratifyVotes.filter((id) => id !== currentUserId) : [...proposal.ratifyVotes, currentUserId];
-
-    let created: Event | null = null;
-    let proposalPatch: Partial<CouncilProposal> = { ratifyVotes: votes };
-    if (votes.length >= COUNCIL_RATIFY_THRESHOLD) {
-      const councilId = "e" + Date.now();
-      created = {
-        id: councilId,
-        title: proposal.title,
-        kind: "council",
-        scope: "federation",
-        sponsor: { id: proposal.assemblyId, name: proposal.sponsorName, neighborhood: proposal.sponsorHood },
-        host: { type: "member", id: proposal.proposedBy },
-        date: proposal.date, start: proposal.start, end: proposal.end,
-        location: proposal.location,
-        description: proposal.agenda,
-        endorsements: [proposal.sponsorHood], // sponsoring neighborhood endorses on ratification
-        rsvps: [],
-      };
-      proposalPatch = { ratifyVotes: votes, ratified: true, councilId };
-    }
-
-    setCouncilProposals((prev) => prev.map((p) => (p.id === proposalId ? { ...p, ...proposalPatch } : p)));
-    dbUpdateCouncilProposal(proposalId, proposalPatch).catch(console.error);
-    if (created) {
-      const confirmedEvent = created;
-      setEvents((prev) => [...prev, confirmedEvent]);
-      dbCreateEvent(confirmedEvent).catch(console.error);
-      showToast({
-        tone: "success",
-        title: "Council confirmed by the meeting",
-        message: `${confirmedEvent.scope} ratified the proposal. It's now a proposed federation council meeting — other neighborhoods will be notified to hold meetings of their own.`,
-      });
-    }
-  }
-
-  // from a proposed council, a viewer proposes a meeting in their own
-  // neighborhood to decide whether to endorse the council. returns the
-  // created meeting so the caller can navigate to it. (function name kept
-  // as-is — the federation endorsement flow itself isn't being rebuilt in
-  // this pass, only kept data-consistent with the assembly->meeting rename.)
-  function proposeEndorsingAssembly(council: Event, details: ProposalDetails, hood: string): Event {
-    const hoodOrg = orgs.find((o) => o.neighborhood === hood);
-    const ev: Event = {
-      id: "e" + Date.now(),
-      title: details.title,
-      kind: "meeting",
-      orgId: hoodOrg ? hoodOrg.id : undefined,
-      endorsesCouncilId: council.id,
-      host: { type: "member", id: currentUserId },
-      date: details.date, start: details.start, end: details.end,
-      location: details.location,
-      description: details.agenda,
-      votes: [currentUserId],
-      rsvps: [currentUserId],
-    };
-    setEvents((prev) => [...prev, ev]);
-    dbCreateEvent(ev).catch(console.error);
-    setRsvpState((prev) => ({ ...prev, [ev.id]: true }));
-    setVoteState((prev) => ({ ...prev, [ev.id]: true }));
-    showToast({
-      tone: "success",
-      title: "Meeting proposed",
-      message: `Your ${hood} meeting to weigh in on this council is proposed. Neighbors will be notified and can vote to confirm it.`,
-    });
-    return ev;
-  }
-
-  // voting on a Neighborhood Council meeting and RSVPing to it are the same
-  // act — these meetings are confirmed by resident participation, so there's
-  // no "voted but not coming" state. Kept as one function (not a separate
-  // toggleRsvp call alongside this one) so both arrays update atomically.
-  // If this meeting exists to endorse a council and just reached quorum,
-  // its neighborhood's endorsement is recorded on that council too.
+  // voting on a meeting and RSVPing to it are the same act — meetings are
+  // confirmed by member participation, so there's no "voted but not coming"
+  // state. Kept as one function (not a separate toggleRsvp call alongside this
+  // one) so both arrays update atomically.
   function toggleVote(eventId: string) {
     const event = events.find((e) => e.id === eventId);
     if (!event) return;
@@ -298,26 +188,8 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     const rsvps = willAttend ? (hasRsvp ? event.rsvps : [...event.rsvps, currentUserId]) : event.rsvps.filter((id) => id !== currentUserId);
     const votedPatch: Partial<Event> = { votes, rsvps };
 
-    let endorseCouncilId: string | null = null;
-    let endorsedPatch: Partial<Event> | null = null;
-    if (event.endorsesCouncilId && votes.length >= meetingThreshold(event)) {
-      const endorseHood = orgs.find((o) => o.id === event.orgId)?.neighborhood;
-      const council = events.find((e) => e.id === event.endorsesCouncilId);
-      if (council && !(council.endorsements || []).includes(endorseHood || "")) {
-        endorseCouncilId = event.endorsesCouncilId;
-        endorsedPatch = { endorsements: [...(council.endorsements || []), endorseHood || ""] };
-      }
-    }
-
-    setEvents((prev) =>
-      prev.map((ev) => {
-        if (ev.id === eventId) return { ...ev, ...votedPatch };
-        if (endorseCouncilId && endorsedPatch && ev.id === endorseCouncilId) return { ...ev, ...endorsedPatch };
-        return ev;
-      })
-    );
+    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, ...votedPatch } : ev)));
     dbUpdateEvent(eventId, votedPatch).catch(console.error);
-    if (endorseCouncilId && endorsedPatch) dbUpdateEvent(endorseCouncilId, endorsedPatch).catch(console.error);
     setVoteState((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
     setRsvpState((prev) => {
       const next = { ...prev, [eventId]: willAttend };
@@ -326,56 +198,55 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     });
   }
 
-  // save edits to an org and record who edited it and when
-  function saveOrg(id: string, patch: Partial<Org>) {
-    const fullPatch: Partial<Org> = { ...patch, lastEditedBy: currentUserId, lastEditedAt: new Date().toISOString() };
-    setOrgs((prev) => prev.map((o) => (o.id === id ? { ...o, ...fullPatch } : o)));
-    dbUpdateOrg(id, fullPatch).catch(console.error);
-    const org = orgs.find((o) => o.id === id);
+  // save edits to a circle and record who edited it and when
+  function saveCircle(id: string, patch: Partial<Circle>) {
+    const fullPatch: Partial<Circle> = { ...patch, lastEditedBy: currentUserId, lastEditedAt: new Date().toISOString() };
+    setCircles((prev) => prev.map((c) => (c.id === id ? { ...c, ...fullPatch } : c)));
+    dbUpdateCircle(id, fullPatch).catch(console.error);
+    const circle = circles.find((c) => c.id === id);
     showToast({
       tone: "success",
       title: "Changes saved",
-      message: `Your edits to ${org ? org.name : "the organization"} are now live for everyone to see.`,
+      message: `Your edits to ${circle ? circle.name : "the circle"} are now live for everyone to see.`,
     });
   }
 
   // save edits from the Edit Myself page back to the profile
   function saveProfile(next: Profile) {
     setProfile(next);
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === next.id
+          ? { ...m, name: next.name, lastName: next.lastName, pronouns: next.pronouns, role: next.role, skills: next.skills, interests: next.interests, bio: next.bio, email: next.email }
+          : m
+      )
+    );
     dbUpdateMember(currentUserId, next).catch(console.error);
     showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
   }
 
-  // filtered here, at the single source every route reads events from, so
-  // both rules apply everywhere at once (event lists, dashboards, and the
-  // /events/[id] and /events/[id]/propose routes, which 404 for an event
-  // filtered out here since they read from this same array):
-  // - federation council meetings are feature-flagged off by default (see
-  //   lib/feature-flags.ts)
-  // - a members-only event is invisible to anyone outside its hosting org,
-  //   not just un-RSVP-able — the org's privacy is the point, not just its
-  //   guest list
-  const visibleEvents = events.filter((e) => {
-    if (!FEDERATION_COUNCIL_ENABLED && e.kind === "council") return false;
-    if (isExclusive(e) && !isHostOrgMember(e, profile)) return false;
-    return true;
-  });
+  // filtered here, at the single source every route reads events from, so the
+  // rule applies everywhere at once (event lists, dashboards, and the
+  // /events/[id] route, which 404s for an event filtered out here since it
+  // reads from this same array): a members-only event is invisible to anyone
+  // outside its circle, not just un-RSVP-able — the circle's privacy is the
+  // point, not just its guest list
+  const circlesById = indexCircles(circles);
+  const visibleEvents = events.filter((e) => !(isExclusive(e) && !isEventCircleMember(e, profile, circlesById)));
 
-  // orgs aren't filtered by the viewer's own neighborhood — the Directory
-  // nests every Neighborhood Council at the federation root specifically so
-  // any neighborhood's whole subtree (its own Councils and organizations)
-  // can be browsed into, not just the viewer's home one. Home's own "Local
-  // organizations"/"My organizations" cards narrow to the viewer's
-  // neighborhood themselves (see home.page.jsx's own orgScope filter),
-  // independent of this array.
+  // circles aren't filtered by the viewer's own neighborhood — the Circles
+  // page nests every neighborhood at the city root specifically so any
+  // neighborhood's whole subtree can be browsed into, not just the viewer's
+  // home one. Home's own "Local circles"/"My circles" cards narrow to the
+  // viewer's neighborhood themselves (see home.page.tsx), independent of this
+  // array.
 
   return (
     <AppStateContext.Provider
       value={{
-        events: visibleEvents, orgs, councilProposals, rsvpState, voteState, profile,
-        toggleRsvp, toggleRoleSlot, createEvent, updateEventDetails, proposeCouncilDraft,
-        ratifyCouncilProposal, proposeEndorsingAssembly, toggleVote,
-        saveOrg, saveProfile,
+        events: visibleEvents, circles, members, rsvpState, voteState, profile,
+        toggleRsvp, toggleRoleSlot, createEvent, updateEventDetails, toggleVote,
+        saveCircle, saveProfile,
       }}
     >
       {children}

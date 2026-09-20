@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import type { ReactNode } from "react";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { useCirclesById } from "@/lib/hooks";
 
 interface ChipProps {
   children: ReactNode;
@@ -11,17 +12,18 @@ interface ChipProps {
 
 /* A small place badge. Solid ink = elsewhere/federation-level (the noteworthy
    case); hollow = local to this neighborhood (the quiet default).            */
-const FEDERATION_LABEL = "Providence"; // the city federation's name (org level)
 export function Chip({ children, title }: ChipProps) {
   // color is derived from the place: the CURRENT USER's own neighborhood is
   // teal, the city federation is black, any other neighborhood is a white
   // outline. Compared against the signed-in member's own neighborhood, not a
   // fixed constant — this is a shared login, and whoever's signed in should
   // see their own home highlighted, not always "The 903".
-  const { profile } = useAppState();
+  const { profile, circles } = useAppState();
+  const byId = useCirclesById();
   const place = typeof children === "string" ? children : "";
-  const local = place === profile.neighborhood;
-  const federation = place === FEDERATION_LABEL;
+  const local = !!profile.homeCircleId && place === byId[profile.homeCircleId]?.name;
+  // the city (root circle) is the federation-level place
+  const federation = place === circles.find((c) => c.parentId === null)?.name;
 
   return (
     <span

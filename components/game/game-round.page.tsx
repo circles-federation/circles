@@ -3,7 +3,7 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton, Button, Eyebrow, PageContainer } from "@/components/shared";
-import { avatarFor } from "@/lib/data";
+import { avatarFor } from "@/lib/members.util";
 import type { Round } from "@/lib/game.util";
 
 interface GameRoundPageProps {

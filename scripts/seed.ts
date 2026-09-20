@@ -1,8 +1,7 @@
-import { eq } from "drizzle-orm";
-import { EVENTS, MEMBERS, ORGS } from "@/lib/data";
+import { CIRCLES, EVENTS, MEMBERS } from "@/lib/data";
 import { db } from "@/lib/db/client";
 import { createEvent } from "@/lib/db/events";
-import { members as membersTable, orgMembers, orgs as orgsTable, user as userTable } from "@/lib/db/schema";
+import { circleMembers, circles as circlesTable, members as membersTable, user as userTable } from "@/lib/db/schema";
 
 /* One-time local dev setup — inserts today's seed fixtures into a fresh
    Postgres database (after `npx drizzle-kit migrate`):
@@ -13,8 +12,8 @@ import { members as membersTable, orgMembers, orgs as orgsTable, user as userTab
    that rule is about app runtime code, not one-off setup tooling. Reuses
    lib/db/events.ts's createEvent() for events (it already knows how to fan
    an Event out across events/event_rsvps/event_votes/roles/role_members);
-   members/orgs have no equivalent "create" DAL function (the app only ever
-   edits one), so those go straight through the Drizzle client. */
+   members/circles have no equivalent "create" DAL function (the app only
+   ever edits one), so those go straight through the Drizzle client. */
 async function seed() {
   console.log(`Seeding ${MEMBERS.length} members...`);
   await db.insert(membersTable).values(
@@ -24,7 +23,6 @@ async function seed() {
       lastName: m.lastName ?? null,
       pronouns: m.pronouns,
       role: m.role,
-      neighborhood: m.neighborhood,
       skills: m.skills,
       interests: m.interests,
       bio: m.bio,
@@ -32,36 +30,32 @@ async function seed() {
     }))
   );
 
-  console.log(`Seeding ${ORGS.length} orgs...`);
-  // parentId omitted on first insert — a child can precede its parent in
-  // ORGS, so parentId is only safe to set once every row exists
-  await db.insert(orgsTable).values(
-    ORGS.map((o) => ({
-      id: o.id,
-      name: o.name,
-      kind: o.kind,
-      parentId: null,
-      neighborhood: o.neighborhood ?? null,
-      tagline: o.tagline,
-      about: o.about,
-      offers: o.offers,
-      lastEditedBy: o.lastEditedBy ?? null,
-      lastEditedAt: o.lastEditedAt ? new Date(o.lastEditedAt) : null,
-      facts: o.facts,
-      join: o.join ?? null,
-      contact: o.contact ?? null,
-      website: o.website ?? null,
-      address: o.address ?? null,
-      hours: o.hours ?? null,
+  console.log(`Seeding ${CIRCLES.length} circles...`);
+  // parents are referenced in the same statement — Postgres checks FKs at the
+  // end of a multi-row insert, so order within CIRCLES doesn't matter
+  await db.insert(circlesTable).values(
+    CIRCLES.map((c) => ({
+      id: c.id,
+      type: c.type,
+      name: c.name,
+      parentId: c.parentId,
+      tagline: c.tagline,
+      about: c.about,
+      offers: c.offers,
+      lastEditedBy: c.lastEditedBy ?? null,
+      lastEditedAt: c.lastEditedAt ? new Date(c.lastEditedAt) : null,
+      facts: c.facts,
+      join: c.join ?? null,
+      contact: c.contact ?? null,
+      website: c.website ?? null,
+      address: c.address ?? null,
+      hours: c.hours ?? null,
     }))
   );
-  for (const o of ORGS) {
-    if (o.parentId) await db.update(orgsTable).set({ parentId: o.parentId }).where(eq(orgsTable.id, o.id));
-  }
 
-  console.log("Seeding org memberships...");
-  const membershipRows = ORGS.flatMap((o) => o.members.map((memberId) => ({ orgId: o.id, memberId })));
-  if (membershipRows.length > 0) await db.insert(orgMembers).values(membershipRows);
+  console.log("Seeding circle memberships...");
+  const membershipRows = CIRCLES.flatMap((c) => c.members.map((memberId) => ({ circleId: c.id, circleType: c.type, memberId })));
+  if (membershipRows.length > 0) await db.insert(circleMembers).values(membershipRows);
 
   console.log(`Seeding ${EVENTS.length} events...`);
   for (const e of EVENTS) await createEvent(e);

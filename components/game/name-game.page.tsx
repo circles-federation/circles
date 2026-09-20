@@ -17,7 +17,7 @@ interface NameGamePageProps {
    (GameRoundPage) or the end screen (GameResultsPage) once every round has
    been answered. */
 export function NameGamePage({ members, profile, onExit }: NameGamePageProps) {
-  const [rounds, setRounds] = useState<Round[]>(() => buildRounds(members, profile.neighborhood, profile.id));
+  const [rounds, setRounds] = useState<Round[]>(() => buildRounds(members, profile.homeCircleId, profile.id));
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
@@ -41,7 +41,7 @@ export function NameGamePage({ members, profile, onExit }: NameGamePageProps) {
   }
 
   function restart() {
-    setRounds(buildRounds(members, profile.neighborhood, profile.id));
+    setRounds(buildRounds(members, profile.homeCircleId, profile.id));
     setIdx(0);
     setPicked(null);
     setScore(0);
