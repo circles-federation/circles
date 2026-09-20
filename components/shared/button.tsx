@@ -5,7 +5,9 @@ import type { ComponentPropsWithoutRef } from "react";
 
 type ButtonAccent = "ink" | "flame" | "teal";
 type ButtonVariant = "primary" | "secondary" | "danger";
-type ButtonSize = "default" | "compact";
+// "inline" is short enough (30px) to sit beside a section's eyebrow label
+// without making that header row taller than the label itself
+type ButtonSize = "default" | "compact" | "inline";
 
 const PRIMARY_ACCENTS: Record<ButtonAccent, string> = {
   ink: "btn-invert btn-ink border-ink bg-ink text-paper",
@@ -21,6 +23,7 @@ const NON_PRIMARY_VARIANTS: Record<Exclude<ButtonVariant, "primary">, string> = 
 const SIZES: Record<ButtonSize, string> = {
   default: "py-3.25 px-6",
   compact: "py-2.5 px-3.75",
+  inline: "py-1.5 px-3",
 };
 
 interface ButtonProps extends ComponentPropsWithoutRef<"button"> {

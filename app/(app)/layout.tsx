@@ -6,6 +6,7 @@ import { ProfileModalProvider } from "@/components/providers/profile-modal-provi
 import { getCircles } from "@/lib/db/circles";
 import { getEvents } from "@/lib/db/events";
 import { getMembers } from "@/lib/db/members";
+import { getResourcesForMember } from "@/lib/db/resources";
 import { getCurrentUserId } from "@/lib/session";
 
 /* Everything that requires a logged-in member lives under this group.
@@ -19,7 +20,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const currentUserId = await getCurrentUserId();
   if (!currentUserId) redirect("/");
 
-  const [events, circles, members] = await Promise.all([getEvents(), getCircles(), getMembers()]);
+  // resources are members-only: only the signed-in member's own circles' are fetched
+  const [events, circles, members, resources] = await Promise.all([getEvents(), getCircles(), getMembers(), getResourcesForMember(currentUserId)]);
   // the signed-in member always resolves here: currentUserId comes from a
   // valid session, whose user is looked up back to a real member by email
   // (see lib/session.ts).
@@ -27,7 +29,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!profile) redirect("/");
 
   return (
-    <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialCircles={circles} initialMembers={members} initialProfile={profile}>
+    <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialCircles={circles} initialMembers={members} initialResources={resources} initialProfile={profile}>
       <ProfileModalProvider>
         <AppShell>{children}</AppShell>
       </ProfileModalProvider>

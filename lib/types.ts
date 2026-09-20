@@ -85,3 +85,17 @@ export interface Event {
   roles?: Role[];
   votes?: number[];
 }
+
+export type ResourceIcon = "folder" | "file";
+
+// a link a circle's members keep for themselves — a folder (a collection,
+// like a shared drive) or a file (a single document). Members-only: never a
+// field on Circle, since the circles array is sent to every signed-in member;
+// AppStateProvider's `resources` only ever holds the viewer's own circles'.
+export interface CircleResource {
+  id: string;
+  circleId: string;
+  title: string;
+  url: string;
+  icon: ResourceIcon;
+}

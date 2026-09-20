@@ -8,6 +8,13 @@
       "when": 1789926417317,
       "tag": "0000_circles_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789934290855,
+      "tag": "0001_pink_vindicator",
+      "breakpoints": true
     }
   ]
 }

@@ -159,6 +159,26 @@ export const roleMembers = pgTable(
   (t) => [primaryKey({ columns: [t.roleId, t.memberId] })]
 );
 
+/* Links a circle's members keep for themselves (a shared drive, a doc). Members-
+   only: the app only ever loads these for circles the viewer belongs to (see
+   lib/db/resources.ts). Deliberately a separate table, not a column on
+   circles — the circles array is sent to every signed-in member. */
+export const resourceIcon = pgEnum("resource_icon", ["folder", "file"]);
+
+export const circleResources = pgTable(
+  "circle_resources",
+  {
+    id: text("id").primaryKey(),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    icon: resourceIcon("icon").notNull(),
+    // display order: resources are shown in the order they were added
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("circle_resources_circle_id_idx").on(t.circleId)]
+);
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

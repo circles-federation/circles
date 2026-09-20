@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { Avatar, BackButton, Button, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
+import { ResourcesSection } from "./resources-section";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { CIRCLE_TYPE_LABEL, circleChildren, circleNeighborhood } from "@/lib/circles.util";
@@ -84,6 +85,13 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
       </div>
 
       <SectionGroup>
+        {/* members-only: a non-member gets nothing here, not even a placeholder */}
+        {isMember && (
+          <Section>
+            <ResourcesSection circleId={c.id} />
+          </Section>
+        )}
+
         <Section>
           <EyebrowGroup label="About">
             <p className="max-w-[40em] font-serif text-lg leading-[1.55]">{c.about}</p>

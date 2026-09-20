@@ -1,4 +1,4 @@
-import type { Circle, Event, Member } from "./types";
+import type { Circle, CircleResource, Event, Member } from "./types";
 
 /* ---------- roster across the Providence federation (home node: The 903) ---------- */
 export const MEMBERS: Member[] = [
@@ -407,6 +407,15 @@ export const CIRCLES: Circle[] = [
     address: "134 Mathewson St, Providence, RI",
     hours: [["Sat (biweekly)", "12:00pm"]],
   },
+];
+
+/* ---------- members-only resources ----------
+   links a circle's members keep for themselves; only Finance Council's members
+   (Priya, Felix, Mira) see these. example.com links — placeholders, not real
+   destinations. Shown in the order listed. */
+export const RESOURCES: CircleResource[] = [
+  { id: "res-finance-drive", circleId: "finance-council", title: "Shared drive", url: "https://drive.example.com/finance-council", icon: "folder" },
+  { id: "res-finance-budget", circleId: "finance-council", title: "Q3 budget", url: "https://docs.example.com/finance-council/q3-budget", icon: "file" },
 ];
 
 /* ---------- upcoming events across the federation ----------

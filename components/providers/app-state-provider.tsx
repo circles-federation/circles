@@ -5,17 +5,27 @@ import { useToast } from "@/components/shared";
 import { indexCircles } from "@/lib/circles.util";
 import {
   createEventAction as dbCreateEvent,
+  createResourceAction as dbCreateResource,
+  deleteResourceAction as dbDeleteResource,
   updateCircleAction as dbUpdateCircle,
   updateEventAction as dbUpdateEvent,
   updateMemberAction as dbUpdateMember,
+  updateResourceAction as dbUpdateResource,
 } from "@/lib/db/actions";
 import { isEventCircleMember, isExclusive } from "@/lib/governance.util";
-import type { Circle, Event, Member, Profile } from "@/lib/types";
+import type { ResourceInput } from "@/lib/resources.util";
+import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
+
+// what a resource mutator hands back: the form stays open and shows `error`
+// when the server refused it
+export type ResourceResult = { ok: true } | { ok: false; error: string };
 
 export interface AppStateValue {
   events: Event[];
   circles: Circle[];
   members: Member[];
+  // members-only: only the viewer's own circles' resources are ever loaded
+  resources: CircleResource[];
   rsvpState: Record<string, boolean>;
   voteState: Record<string, boolean>;
   profile: Profile;
@@ -26,6 +36,9 @@ export interface AppStateValue {
   toggleVote(eventId: string): void;
   saveCircle(id: string, patch: Partial<Circle>): void;
   saveProfile(next: Profile): void;
+  addResource(circleId: string, input: ResourceInput): Promise<ResourceResult>;
+  updateResource(id: string, input: ResourceInput): Promise<ResourceResult>;
+  removeResource(id: string): Promise<ResourceResult>;
 }
 
 /* Holds the app's runtime state — events, circles, members, the current
@@ -39,7 +52,10 @@ export interface AppStateValue {
    the calling route's job (it has the router; this provider shouldn't).
    Each mutator also calls the matching lib/db/ write (through
    lib/db/actions.ts's Server Actions), fire-and-forget — no rollback yet,
-   only a console.error on a rejected write. */
+   only a console.error on a rejected write. The resource mutators are the
+   exception: they await the server and update state only once it accepts,
+   because the server can now refuse (membership, validation) and generates
+   the id. */
 const AppStateContext = createContext<AppStateValue | null>(null);
 
 export function useAppState(): AppStateValue {
@@ -54,10 +70,11 @@ interface AppStateProviderProps {
   initialEvents: Event[];
   initialCircles: Circle[];
   initialMembers: Member[];
+  initialResources: CircleResource[];
   initialProfile: Member;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialProfile }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
@@ -66,6 +83,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // the roster, so names/avatars/home circles resolve from live data rather
   // than a static seed array; the signed-in member's own edits are mirrored in
   const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [resources, setResources] = useState<CircleResource[]>(initialResources);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
   const [rsvpState, setRsvpState] = useState<Record<string, boolean>>(() =>
     initialEvents.reduce<Record<string, boolean>>((acc, e) => {
@@ -225,6 +243,30 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
   }
 
+  async function addResource(circleId: string, input: ResourceInput): Promise<ResourceResult> {
+    const result = await dbCreateResource(circleId, input);
+    if (!result.ok) return result;
+    setResources((prev) => [...prev, result.value]);
+    showToast({ tone: "success", title: "Resource added", message: `${result.value.title} is now on this circle's page.` });
+    return { ok: true };
+  }
+
+  async function updateResource(id: string, input: ResourceInput): Promise<ResourceResult> {
+    const result = await dbUpdateResource(id, input);
+    if (!result.ok) return result;
+    setResources((prev) => prev.map((r) => (r.id === id ? result.value : r)));
+    showToast({ tone: "success", title: "Resource updated", message: "Your changes are saved." });
+    return { ok: true };
+  }
+
+  async function removeResource(id: string): Promise<ResourceResult> {
+    const result = await dbDeleteResource(id);
+    if (!result.ok) return result;
+    setResources((prev) => prev.filter((r) => r.id !== id));
+    showToast({ tone: "success", title: "Resource removed", message: "It's no longer on this circle's page." });
+    return { ok: true };
+  }
+
   // filtered here, at the single source every route reads events from, so the
   // rule applies everywhere at once (event lists, dashboards, and the
   // /events/[id] route, which 404s for an event filtered out here since it
@@ -244,9 +286,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events: visibleEvents, circles, members, rsvpState, voteState, profile,
+        events: visibleEvents, circles, members, resources, rsvpState, voteState, profile,
         toggleRsvp, toggleRoleSlot, createEvent, updateEventDetails, toggleVote,
-        saveCircle, saveProfile,
+        saveCircle, saveProfile, addResource, updateResource, removeResource,
       }}
     >
       {children}
