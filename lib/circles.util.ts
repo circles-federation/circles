@@ -27,6 +27,34 @@ export function isCircleMember(circle: Circle | undefined, memberId: number): bo
   return !!circle && circle.members.includes(memberId);
 }
 
+// the city root is the circle with no parent
+export function isRootCircle(circle: Circle): boolean {
+  return circle.parentId === null;
+}
+
+/* Who an EVENT in this circle is for: its members, plus — for the city root —
+   everyone, since everyone is implicitly in the city. This is deliberately not
+   isCircleMember: the implicit-root rule applies only to event visibility,
+   posting, RSVPs and votes. Rosters, resources, and avatar gating
+   (sharesCircleWith) use explicit membership, or every pair of people would
+   "share a circle" and un-gate every profile photo. lib/db/events.ts applies
+   the same rule in SQL for what a member is sent. */
+export function isCircleAudience(circle: Circle | undefined, memberId: number): boolean {
+  return !!circle && (isRootCircle(circle) || circle.members.includes(memberId));
+}
+
+// who an event in this circle is for, in words: "everyone" for the city,
+// otherwise "residents of The 903" / "members of Finance Council"
+export function audienceLabel(circle: Circle): string {
+  if (isRootCircle(circle)) return "everyone";
+  return `${circle.type === "neighborhood" ? "residents" : "members"} of ${circle.name}`;
+}
+
+// the circles a member can post an event in: their own, plus the city
+export function circlesForAudience(memberId: number, circles: Circle[]): Circle[] {
+  return circles.filter((c) => isCircleAudience(c, memberId));
+}
+
 // direct children only (one level down)
 export function circleChildren(circle: Circle, circles: Circle[]): Circle[] {
   return circles.filter((c) => c.parentId === circle.id);

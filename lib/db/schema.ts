@@ -100,10 +100,10 @@ export const events = pgTable("events", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   kind: text("kind").$type<EventKindKey>(),
-  // every event belongs to exactly one circle; organizer_id null means the
-  // circle itself hosts it (any member may edit it)
+  // every event belongs to exactly one circle — which decides who can see it
+  // — and is hosted by the member who created it
   circleId: text("circle_id").notNull().references(() => circles.id),
-  organizerId: integer("organizer_id").references(() => members.id),
+  organizerId: integer("organizer_id").notNull().references(() => members.id),
   // "YYYY-MM-DD"/"HH:MM" strings at the app boundary (see lib/format.util.ts) —
   // date/time mode:"string" keeps the DAL's row shape matching that exactly
   date: date("date", { mode: "string" }).notNull(),
@@ -114,7 +114,6 @@ export const events = pgTable("events", {
   end: time("end").notNull(),
   location: text("location").notNull(),
   description: text("description").notNull(),
-  membersOnly: boolean("members_only").notNull().default(false),
 });
 
 export const eventRsvps = pgTable(

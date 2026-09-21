@@ -6,29 +6,25 @@ interface RsvpButtonProps {
   count: number;
   onToggle: () => void;
   big?: boolean;
-  disabled?: boolean;
-  reason?: "past" | "membersOnly";
+  // an event that has already happened can no longer be RSVP'd to
+  past?: boolean;
 }
 
-export function RsvpButton({ going, count, onToggle, big, disabled, reason }: RsvpButtonProps) {
+export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProps) {
   const sizeClasses = big ? "py-3.25 px-6" : "py-2.5 px-3.75";
 
-  if (disabled) {
-    const title = reason === "membersOnly"
-      ? "Only members of the hosting organization can RSVP to this event"
-      : "This event has already happened";
+  if (past) {
     return (
       <div
-        title={title}
+        title="This event has already happened"
         className={clsx(
-          "inline-flex cursor-not-allowed items-center gap-2.5 border bg-paper font-sans text-xs font-bold tracking-wide whitespace-nowrap uppercase",
+          "inline-flex cursor-not-allowed items-center gap-2.5 border border-faint bg-paper font-sans text-xs font-bold tracking-wide whitespace-nowrap text-soft uppercase",
           sizeClasses,
-          reason === "membersOnly" ? "border-plum text-plum" : "border-faint text-soft",
         )}
       >
         <span className="inline-flex items-center gap-1">
           {going && <CheckIcon className="size-3" strokeWidth={3} />}
-          {reason === "membersOnly" ? "Members only" : (going ? "Went" : "Ended")}
+          {going ? "Went" : "Ended"}
         </span>
         <span className="font-extrabold opacity-70">{count}</span>
       </div>

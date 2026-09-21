@@ -64,24 +64,23 @@ export interface EventKindMeta {
   label: string;
 }
 
-// every event belongs to exactly one circle (its scope). `organizerId` is the
-// member who organized it; when absent, the circle itself hosts the event and
-// any of its members may edit it. `kind` is optional (ordinary by default),
-// and votes only exist on a meeting, which confirms at a majority of its
-// circle's members — see lib/governance.util.ts.
+// every event belongs to exactly one circle, which decides who can see it (and
+// who would be notified of it), and is always hosted by the member who created
+// it (`organizerId`) — the only one who can edit it. `kind` is optional
+// (ordinary by default), and votes only exist on a meeting, which confirms at a
+// majority of its circle's members — see lib/governance.util.ts.
 export interface Event {
   id: string;
   title: string;
   kind?: EventKindKey;
   circleId: string;
-  organizerId?: number;
+  organizerId: number;
   date: string;
   start: string;
   end: string;
   location: string;
   description: string;
   rsvps: number[];
-  membersOnly?: boolean;
   roles?: Role[];
   votes?: number[];
 }

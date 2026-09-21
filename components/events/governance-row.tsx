@@ -3,7 +3,6 @@
 import clsx from "clsx";
 import { EventRow } from "./event-row";
 import { Eyebrow } from "@/components/shared";
-import { eventHost } from "@/lib/events.util";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
 import { isConfirmed, kindOf, meetingThreshold, voteCount } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
@@ -20,7 +19,7 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
   const byId = useCirclesById();
   const memberById = useMemberById();
   const k = kindOf(e);
-  const h = eventHost(e, byId, memberById);
+  const host = memberById(e.organizerId);
   const confirmed = isConfirmed(e, byId);
   const past = isPastEvent(e);
   const accentKey = confirmed ? "leaf" : (past ? "soft" : "flame"); // fed to both DateTile and EventRow's own accent
@@ -39,7 +38,7 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
       washed={!past}
       title={e.title}
       titleMuted={past && !confirmed}
-      meta={`Proposed by ${h.label} · ${e.location}`}
+      meta={`Proposed by ${host?.name ?? ""} · ${byId[e.circleId]?.name ?? ""} · ${e.location}`}
       metaMuted={past}
       tags={
         <>

@@ -15,7 +15,6 @@
   --color-flame: #e1530b; /* accent for governance events still being proposed */
   --color-leaf: #2e7d32; /* accent for confirmed governance events */
   --color-teal: #0f7d77; /* the home neighborhood's chip color */
-  --color-plum: #6a3d9a; /* members-only (exclusive) events */
   --color-danger: #c0392b; /* destructive actions, error states */
   --color-folder: #b8860b; /* circle resources: the folder icon (a collection) */
   --color-file: #1f5fbf; /* circle resources: the file icon (a single document) */

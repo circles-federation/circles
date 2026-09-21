@@ -7,8 +7,6 @@ interface VoteButtonProps {
   threshold: number;
   onToggle: () => void;
   big?: boolean;
-  eligible?: boolean;
-  ineligibleNote?: string;
   past?: boolean;
 }
 
@@ -21,7 +19,7 @@ const SIZE: Record<"big" | "small", string> = { big: "text-eyebrow py-3.5 px-5",
    RSVPs in lockstep). Stays open even after quorum is met, since people
    can keep joining after confirmation — only closes once the event is
    past. Orange accent while proposed, green once confirmed. */
-export function VoteButton({ voted, count, threshold, onToggle, big, eligible = true, ineligibleNote, past }: VoteButtonProps) {
+export function VoteButton({ voted, count, threshold, onToggle, big, past }: VoteButtonProps) {
   const confirmed = count >= threshold;
   const size = SIZE[big ? "big" : "small"];
   const countBadge = <span className="font-extrabold opacity-85">{count}/{threshold}</span>;
@@ -37,14 +35,6 @@ export function VoteButton({ voted, count, threshold, onToggle, big, eligible = 
           {confirmed ? "Held" : "Lapsed"}
         </span>
         {countBadge}
-      </div>
-    );
-  }
-
-  if (!eligible) {
-    return (
-      <div title={ineligibleNote} className={clsx(BASE, size, "cursor-not-allowed border-faint bg-paper text-soft")}>
-        <span>{count}/{threshold} votes</span>
       </div>
     );
   }

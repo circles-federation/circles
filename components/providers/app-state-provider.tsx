@@ -2,23 +2,25 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useToast } from "@/components/shared";
-import { indexCircles } from "@/lib/circles.util";
 import {
   createEventAction as dbCreateEvent,
   createResourceAction as dbCreateResource,
   deleteResourceAction as dbDeleteResource,
+  setRsvpAction as dbSetRsvp,
+  setVoteAction as dbSetVote,
+  toggleRoleSlotAction as dbToggleRoleSlot,
   updateCircleAction as dbUpdateCircle,
-  updateEventAction as dbUpdateEvent,
+  updateEventDetailsAction as dbUpdateEventDetails,
   updateMemberAction as dbUpdateMember,
   updateResourceAction as dbUpdateResource,
 } from "@/lib/db/actions";
-import { isEventCircleMember, isExclusive } from "@/lib/governance.util";
+import type { EventDetails, EventDraft } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
 
-// what a resource mutator hands back: the form stays open and shows `error`
+// what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
-export type ResourceResult = { ok: true } | { ok: false; error: string };
+export type MutationResult = { ok: true } | { ok: false; error: string };
 
 export interface AppStateValue {
   events: Event[];
@@ -31,14 +33,14 @@ export interface AppStateValue {
   profile: Profile;
   toggleRsvp(eventId: string): void;
   toggleRoleSlot(eventId: string, roleKey: string): void;
-  createEvent(ev: Event): Event;
-  updateEventDetails(id: string, patch: Partial<Event>): void;
+  createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }>;
+  updateEventDetails(id: string, details: EventDetails): Promise<MutationResult>;
   toggleVote(eventId: string): void;
   saveCircle(id: string, patch: Partial<Circle>): void;
   saveProfile(next: Profile): void;
-  addResource(circleId: string, input: ResourceInput): Promise<ResourceResult>;
-  updateResource(id: string, input: ResourceInput): Promise<ResourceResult>;
-  removeResource(id: string): Promise<ResourceResult>;
+  addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
+  updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
+  removeResource(id: string): Promise<MutationResult>;
 }
 
 /* Holds the app's runtime state — events, circles, members, the current
@@ -52,10 +54,13 @@ export interface AppStateValue {
    the calling route's job (it has the router; this provider shouldn't).
    Each mutator also calls the matching lib/db/ write (through
    lib/db/actions.ts's Server Actions), fire-and-forget — no rollback yet,
-   only a console.error on a rejected write. The resource mutators are the
-   exception: they await the server and update state only once it accepts,
-   because the server can now refuse (membership, validation) and generates
-   the id. */
+   only a console.error on a rejected write. The event RSVP/vote/slot
+   toggles are optimistic too, but the server can refuse them (an event's
+   circle decides who may act on it), so they adopt the server's version of
+   the event on success and roll the change back with an error toast on
+   refusal. Creating/editing an event and the resource mutators await the
+   server and update state only once it accepts, because it generates ids and
+   validates. */
 const AppStateContext = createContext<AppStateValue | null>(null);
 
 export function useAppState(): AppStateValue {
@@ -106,8 +111,24 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     emailPublic: !!initialProfile.email, // they have an email shared by default
   }));
 
+  // runs a server event action: on success adopts the server's version of the
+  // event (so state can't drift from what was actually saved); if the server
+  // refuses, undoes the optimistic change and says why
+  async function syncEvent(eventId: string, run: () => Promise<{ ok: true; value: Event } | { ok: false; error: string }>, undo: () => void) {
+    const result = await run().catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (result.ok) {
+      setEvents((prev) => prev.map((e) => (e.id === eventId ? result.value : e)));
+      return;
+    }
+    undo();
+    showToast({ tone: "error", title: "Couldn't save that", message: result.error });
+  }
+
   function toggleRsvp(eventId: string) {
-    const willGo = !rsvpState[eventId];
+    const event = events.find((e) => e.id === eventId);
+    if (!event) return;
+    const wasGoing = !!rsvpState[eventId];
+    const willGo = !wasGoing;
     setRsvpState((prev) => {
       const next = { ...prev, [eventId]: willGo };
       if (!willGo) delete next[eventId];
@@ -115,18 +136,20 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     });
     // keep the event's rsvp list in sync immutably so counts & rosters agree
     // across views. Computed from `events` (already in scope) rather than
-    // inside the setEvents updater below — a value a functional updater
-    // assigns isn't available synchronously afterward (React doesn't run it
-    // inline), so reading it on the next line here would always see the
-    // updater's *initial* value, not what it computed. See saveCircle/
-    // saveProfile below for the same already-correct pattern.
-    const event = events.find((e) => e.id === eventId);
-    if (!event) return;
+    // inside a setEvents updater — a value a functional updater assigns isn't
+    // available synchronously afterward (React doesn't run it inline).
     const has = event.rsvps.includes(currentUserId);
     const nextRsvps =
       willGo && !has ? [...event.rsvps, currentUserId] : !willGo && has ? event.rsvps.filter((id) => id !== currentUserId) : event.rsvps;
     setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, rsvps: nextRsvps } : e)));
-    dbUpdateEvent(eventId, { rsvps: nextRsvps }).catch(console.error);
+    void syncEvent(eventId, () => dbSetRsvp(eventId, willGo), () => {
+      setRsvpState((prev) => {
+        const next = { ...prev, [eventId]: wasGoing };
+        if (!wasGoing) delete next[eventId];
+        return next;
+      });
+      setEvents((prev) => prev.map((e) => (e.id === eventId ? event : e)));
+    });
   }
 
   // join or leave a specific role slot on a slotted event (e.g. shift lead).
@@ -144,19 +167,21 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       return { ...r, members: r.members.filter((id) => id !== currentUserId) };
     });
     setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, roles: nextRoles } : e)));
-    dbUpdateEvent(eventId, { roles: nextRoles }).catch(console.error);
+    void syncEvent(eventId, () => dbToggleRoleSlot(eventId, roleKey), () => setEvents((prev) => prev.map((e) => (e.id === eventId ? event : e))));
   }
 
-  // returns the created event so the caller can navigate to it
-  function createEvent(ev: Event): Event {
+  // the server generates the id and decides the organizer (always the caller)
+  // and who starts out attending/voting, so this waits for it and returns the
+  // created event for the caller to navigate to
+  async function createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }> {
+    const result = await dbCreateEvent(draft);
+    if (!result.ok) return result;
+    const ev = result.value;
     setEvents((prev) => [...prev, ev]);
-    dbCreateEvent(ev).catch(console.error);
-    setRsvpState((prev) => ({ ...prev, [ev.id]: true })); // creator is attending
-    if (ev.votes && ev.votes.includes(currentUserId)) {
-      setVoteState((prev) => ({ ...prev, [ev.id]: true })); // proposer's first vote
-    }
+    if (ev.rsvps.includes(currentUserId)) setRsvpState((prev) => ({ ...prev, [ev.id]: true })); // creator is attending
+    if (ev.votes && ev.votes.includes(currentUserId)) setVoteState((prev) => ({ ...prev, [ev.id]: true })); // proposer's first vote
+    const circle = circles.find((c) => c.id === ev.circleId);
     if (ev.kind === "meeting") {
-      const circle = circles.find((c) => c.id === ev.circleId);
       // "residents" reads naturally for a neighborhood; any other circle just
       // has "members" — see lib/governance.util.ts's scopeNoun for the same
       // distinction.
@@ -167,29 +192,32 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         message: `Your meeting has been proposed. All ${circle ? `${noun} of ${circle.name}` : "members"} will be notified and can vote to confirm it.`,
       });
     } else {
-      // "RSVPs are open" would be wrong for a role-slotted event (see
-      // lib/roles.util.ts) — it's signups, not a plain RSVP list — so the
-      // message stays agnostic to which one this event actually uses.
+      // the circle is the audience: only its members (everyone, for the city)
+      // can see the event. "RSVPs are open" would be wrong for a role-slotted
+      // event (see lib/roles.util.ts), so the message stays agnostic to which
+      // one this event actually uses.
       showToast({
         tone: "success",
         title: "Event created",
-        message: `${ev.title} is on the calendar.`,
+        message: `${ev.title} is on the calendar for ${circle && circle.parentId !== null ? `members of ${circle.name}` : "everyone"}.`,
       });
     }
-    return ev;
+    return { ok: true, event: ev };
   }
 
-  // save edits to an event's own details (title/circle/date/location/etc.)
-  // from the edit-event form — deliberately doesn't touch governance state
-  // (votes/rsvps), which toggleVote/toggleRsvp own instead.
-  function updateEventDetails(id: string, patch: Partial<Event>) {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
-    dbUpdateEvent(id, patch).catch(console.error);
+  // save edits to an event's own details (title/date/location/slots/etc.) from
+  // the edit-event form — organizer only, enforced by the server; the circle,
+  // kind, rsvps and votes aren't editable here (toggleRsvp/toggleVote own those)
+  async function updateEventDetails(id: string, details: EventDetails): Promise<MutationResult> {
+    const result = await dbUpdateEventDetails(id, details);
+    if (!result.ok) return result;
+    setEvents((prev) => prev.map((e) => (e.id === id ? result.value : e)));
     showToast({
       tone: "success",
       title: "Changes saved",
-      message: "Your edits are now live for everyone to see.",
+      message: "Your edits are now live for everyone who can see this event.",
     });
+    return { ok: true };
   }
 
   // voting on a meeting and RSVPing to it are the same act — meetings are
@@ -199,20 +227,29 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   function toggleVote(eventId: string) {
     const event = events.find((e) => e.id === eventId);
     if (!event) return;
+    const wasVoted = !!voteState[eventId];
+    const wasGoing = !!rsvpState[eventId];
     const has = (event.votes || []).includes(currentUserId);
     const willAttend = !has;
     const votes = has ? (event.votes || []).filter((id) => id !== currentUserId) : [...(event.votes || []), currentUserId];
     const hasRsvp = event.rsvps.includes(currentUserId);
     const rsvps = willAttend ? (hasRsvp ? event.rsvps : [...event.rsvps, currentUserId]) : event.rsvps.filter((id) => id !== currentUserId);
-    const votedPatch: Partial<Event> = { votes, rsvps };
 
-    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, ...votedPatch } : ev)));
-    dbUpdateEvent(eventId, votedPatch).catch(console.error);
+    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, votes, rsvps } : ev)));
     setVoteState((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
     setRsvpState((prev) => {
       const next = { ...prev, [eventId]: willAttend };
       if (!willAttend) delete next[eventId];
       return next;
+    });
+    void syncEvent(eventId, () => dbSetVote(eventId, willAttend), () => {
+      setEvents((prev) => prev.map((e) => (e.id === eventId ? event : e)));
+      setVoteState((prev) => ({ ...prev, [eventId]: wasVoted }));
+      setRsvpState((prev) => {
+        const next = { ...prev, [eventId]: wasGoing };
+        if (!wasGoing) delete next[eventId];
+        return next;
+      });
     });
   }
 
@@ -243,7 +280,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
   }
 
-  async function addResource(circleId: string, input: ResourceInput): Promise<ResourceResult> {
+  async function addResource(circleId: string, input: ResourceInput): Promise<MutationResult> {
     const result = await dbCreateResource(circleId, input);
     if (!result.ok) return result;
     setResources((prev) => [...prev, result.value]);
@@ -251,7 +288,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
-  async function updateResource(id: string, input: ResourceInput): Promise<ResourceResult> {
+  async function updateResource(id: string, input: ResourceInput): Promise<MutationResult> {
     const result = await dbUpdateResource(id, input);
     if (!result.ok) return result;
     setResources((prev) => prev.map((r) => (r.id === id ? result.value : r)));
@@ -259,22 +296,13 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
-  async function removeResource(id: string): Promise<ResourceResult> {
+  async function removeResource(id: string): Promise<MutationResult> {
     const result = await dbDeleteResource(id);
     if (!result.ok) return result;
     setResources((prev) => prev.filter((r) => r.id !== id));
     showToast({ tone: "success", title: "Resource removed", message: "It's no longer on this circle's page." });
     return { ok: true };
   }
-
-  // filtered here, at the single source every route reads events from, so the
-  // rule applies everywhere at once (event lists, dashboards, and the
-  // /events/[id] route, which 404s for an event filtered out here since it
-  // reads from this same array): a members-only event is invisible to anyone
-  // outside its circle, not just un-RSVP-able — the circle's privacy is the
-  // point, not just its guest list
-  const circlesById = indexCircles(circles);
-  const visibleEvents = events.filter((e) => !(isExclusive(e) && !isEventCircleMember(e, profile, circlesById)));
 
   // circles aren't filtered by the viewer's own neighborhood — the Circles
   // page nests every neighborhood at the city root specifically so any
@@ -286,7 +314,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events: visibleEvents, circles, members, resources, rsvpState, voteState, profile,
+        events, circles, members, resources, rsvpState, voteState, profile,
         toggleRsvp, toggleRoleSlot, createEvent, updateEventDetails, toggleVote,
         saveCircle, saveProfile, addResource, updateResource, removeResource,
       }}

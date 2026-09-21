@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./client";
+import { UserFacingError } from "./errors";
 import { circleMembers, circleResources, circles } from "./schema";
 import { validateResourceInput, type ResourceInput } from "@/lib/resources.util";
 import type { CircleResource } from "@/lib/types";
@@ -12,7 +13,7 @@ import type { CircleResource } from "@/lib/types";
    actions.ts passes the signed-in member from the session). Kept free of any
    session/request access so it can be exercised directly. */
 
-export class ResourceError extends Error {}
+export class ResourceError extends UserFacingError {}
 
 type ResourceRow = typeof circleResources.$inferSelect;
 

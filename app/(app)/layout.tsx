@@ -4,7 +4,7 @@ import { AppShell } from "@/components/shared";
 import { AppStateProvider } from "@/components/providers/app-state-provider";
 import { ProfileModalProvider } from "@/components/providers/profile-modal-provider";
 import { getCircles } from "@/lib/db/circles";
-import { getEvents } from "@/lib/db/events";
+import { getEventsForMember } from "@/lib/db/events";
 import { getMembers } from "@/lib/db/members";
 import { getResourcesForMember } from "@/lib/db/resources";
 import { getCurrentUserId } from "@/lib/session";
@@ -20,8 +20,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const currentUserId = await getCurrentUserId();
   if (!currentUserId) redirect("/");
 
-  // resources are members-only: only the signed-in member's own circles' are fetched
-  const [events, circles, members, resources] = await Promise.all([getEvents(), getCircles(), getMembers(), getResourcesForMember(currentUserId)]);
+  // events and resources are both scoped to circles: only the ones the
+  // signed-in member may see are fetched, so nothing else reaches their browser
+  const [events, circles, members, resources] = await Promise.all([getEventsForMember(currentUserId), getCircles(), getMembers(), getResourcesForMember(currentUserId)]);
   // the signed-in member always resolves here: currentUserId comes from a
   // valid session, whose user is looked up back to a real member by email
   // (see lib/session.ts).

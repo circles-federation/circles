@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { MONTHS, WEEKDAYS, parseDay } from "@/lib/format.util";
 
-export type DateTileAccent = "ink" | "soft" | "flame" | "leaf" | "plum";
+export type DateTileAccent = "ink" | "soft" | "flame" | "leaf";
 
 // full literal class strings per key — Tailwind's static scan can't see
 // through a template-interpolated class name like `border-${accent}`
@@ -10,7 +10,6 @@ const ACCENT: Record<DateTileAccent, { border: string; bg: string }> = {
   soft: { border: "border-soft", bg: "bg-soft" },
   flame: { border: "border-flame", bg: "bg-flame" },
   leaf: { border: "border-leaf", bg: "bg-leaf" },
-  plum: { border: "border-plum", bg: "bg-plum" },
 };
 
 interface DateTileProps {

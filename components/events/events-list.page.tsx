@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Button, FloatingActionButton, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { EventFeed } from "./event-feed";
-import { eventHost } from "@/lib/events.util";
 import { isConfirmed, kindOf } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
@@ -34,8 +33,8 @@ export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps)
         if (status === "Proposed" && confirmed) return false;
       }
       if (!q) return true;
-      const host = eventHost(e, byId, memberById);
-      return [e.title, host.label, e.location].join(" ").toLowerCase().includes(q);
+      const host = memberById(e.organizerId);
+      return [e.title, host?.name ?? "", byId[e.circleId]?.name ?? "", e.location].join(" ").toLowerCase().includes(q);
     });
   }, [events, query, status, byId, memberById]);
 
@@ -73,7 +72,7 @@ export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps)
         className="min-[720px]:mt-5"
         query={query}
         onQuery={setQuery}
-        placeholder="Search a title, host, or location"
+        placeholder="Search a title, host, circle, or location"
         filters={[
           { label: "Status", options: ["Proposed", "Confirmed"], active: status, onFilter: (v) => setStatus(v as StatusFilter) },
         ]}

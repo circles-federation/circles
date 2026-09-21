@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { DateTile, type DateTileAccent } from "./date-tile";
 import type { Event } from "@/lib/types";
 
-type RowAccent = "transparent" | "soft" | "flame" | "leaf" | "plum";
+type RowAccent = "transparent" | "soft" | "flame" | "leaf";
 
 interface EventRowProps {
   e: Event;
@@ -25,16 +25,14 @@ interface EventRowProps {
 // through a template-interpolated class name. A row's own accent (its
 // left border + background wash) is a separate concept from DateTile's
 // own accent, even though callers often pass the same key to both — a
-// row is accented for governance state or exclusivity, DateTile for the
-// date tile's own look, and they don't always agree (see ordinary-row.jsx,
-// where a past-but-not-exclusive event tints its DateTile "soft" but
-// leaves the row's own border transparent).
+// row is accented for governance state, DateTile for the date tile's own
+// look, and they don't always agree (see ordinary-row.tsx, where a past
+// event tints its DateTile "soft" but leaves the row's own border transparent).
 const ROW_ACCENT: Record<RowAccent, { borderL: string; wash: string }> = {
   transparent: { borderL: "border-l-transparent", wash: "" },
   soft: { borderL: "border-l-soft", wash: "" },
   flame: { borderL: "border-l-flame", wash: "bg-flame/[3.5%]" },
   leaf: { borderL: "border-l-leaf", wash: "bg-leaf/5" },
-  plum: { borderL: "border-l-plum", wash: "bg-plum/4" },
 };
 
 /* Shared shell for one event-list row (see OrdinaryRow, GovernanceRow): a

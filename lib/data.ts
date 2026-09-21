@@ -419,8 +419,8 @@ export const RESOURCES: CircleResource[] = [
 ];
 
 /* ---------- upcoming events across the federation ----------
-   every event belongs to one circle (`circleId`); `organizerId` is the member
-   who organized it, omitted when the circle itself hosts it.
+   every event belongs to one circle (`circleId`) — which decides who can see
+   it — and is hosted by the member who created it (`organizerId`).
    `date` is an ISO day, `rsvps` is a list of member ids.
 
    Event dates are generated relative to the real current date via
@@ -441,6 +441,7 @@ export const EVENTS: Event[] = [
     id: "e1",
     title: "Thursday Supply Distribution",
     circleId: "coalition",
+    organizerId: 17,
     date: dayFromNow(-12), start: "16:00", end: "19:00",
     location: "The 903 community room + Dexter Park",
     description: "Weekly distribution of food, water, hygiene kits, and cold-weather gear alongside unhoused neighbors. Come pack bags, run a supply route, or staff the know-your-rights table. New volunteers always welcome — no experience needed.",
@@ -450,6 +451,7 @@ export const EVENTS: Event[] = [
     id: "e2",
     title: "Sunday Workday & Seed Swap",
     circleId: "ona-garden",
+    organizerId: 1,
     date: dayFromNow(-9), start: "09:00", end: "12:00",
     location: "Olneyville Community Garden, off Manton Ave",
     description: "Weeding, mulching, and getting the late-summer beds in. Bring seeds to trade for the swap table. Kids welcome. Coffee and bread from the free kitchen.",
@@ -459,6 +461,7 @@ export const EVENTS: Event[] = [
     id: "e3",
     title: "Open Repair Hours",
     circleId: "lefty-loosey",
+    organizerId: 2,
     date: dayFromNow(-7), start: "18:00", end: "21:00",
     location: "Lefty Loosey, 50 Sims Ave",
     description: "Stands, tools, and mechanics on hand to help you fix your own ride. Learn as you go — this is a teaching space, not a drop-off shop. Sliding scale for parts; nobody turned away.",
@@ -478,6 +481,7 @@ export const EVENTS: Event[] = [
     id: "e5",
     title: "Borrowing 101 at PVD Things",
     circleId: "pvd-things",
+    organizerId: 2,
     date: dayFromNow(-2), start: "11:00", end: "13:00",
     location: "PVD Things, 12 Library Ct, Olneyville",
     description: "New to the library of things? Tour the stacks, learn how membership and borrowing work, and check out your first tool. Walk through the workshop calendar and the wish list while you're here.",
@@ -487,6 +491,7 @@ export const EVENTS: Event[] = [
     id: "e10",
     title: "Open Hours — Saturday Shift",
     circleId: "pvd-things",
+    organizerId: 8,
     date: dayFromNow(4), start: "10:00", end: "14:00",
     location: "PVD Things, 12 Library Ct, Olneyville",
     description: "Our regular Saturday lending hours. The shift runs only if a shift lead is signed up — leads open and close, handle membership, and hold the keys. Librarians help patrons find and check out things; the more the merrier. Grab a slot below.",
@@ -502,11 +507,11 @@ export const EVENTS: Event[] = [
     id: "e12",
     title: "Member Potluck & Year Planning",
     circleId: "pvd-things",
-    membersOnly: true,
+    organizerId: 8,
     date: dayFromNow(1), start: "18:00", end: "20:30",
     location: "PVD Things, 12 Library Ct, Olneyville",
     description: "Members-only evening: bring a dish, hear where the library's budget stands, and help set priorities for the coming year — new tool categories, weekend hours, and the repair-cafe schedule. Bring ideas and an appetite.",
-    rsvps: [2, 18, 10],
+    rsvps: [2, 18, 10, 8],
   },
   {
     id: "e8",

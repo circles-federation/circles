@@ -1,5 +1,5 @@
 import { db } from "@/lib/db/client";
-import { createEvent } from "@/lib/db/events";
+import { insertEvent } from "@/lib/db/events";
 import { circleMembers, circleResources, circles as circlesTable, members as membersTable, user as userTable } from "@/lib/db/schema";
 import type { Circle, CircleResource, Event, Member } from "@/lib/types";
 
@@ -9,7 +9,7 @@ import type { Circle, CircleResource, Event, Member } from "@/lib/types";
 
    Exempt from the "no file outside lib/db/ imports Drizzle directly" rule —
    that rule is about app runtime code, not one-off setup tooling. Reuses
-   lib/db/events.ts's createEvent() for events (it already knows how to fan
+   lib/db/events.ts's insertEvent() for events (it already knows how to fan
    an Event out across events/event_rsvps/event_votes/roles/role_members);
    members/circles have no equivalent "create" DAL function (the app only
    ever edits one), so those go straight through the Drizzle client. */
@@ -57,7 +57,7 @@ export async function seedDatabase({ members, circles, events, resources = [] }:
   if (membershipRows.length > 0) await db.insert(circleMembers).values(membershipRows);
 
   console.log(`Seeding ${events.length} events...`);
-  for (const e of events) await createEvent(e);
+  for (const e of events) await insertEvent(e);
 
   console.log(`Seeding ${resources.length} resources...`);
   // one insert each, in order: rows of a single statement all share one

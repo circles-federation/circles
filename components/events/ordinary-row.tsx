@@ -4,9 +4,7 @@ import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { EventRow } from "./event-row";
 import { Eyebrow } from "@/components/shared";
-import { eventHost } from "@/lib/events.util";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
-import { isExclusive } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import { hasRoles, roleShort, shiftCancelled } from "@/lib/roles.util";
 import type { Event } from "@/lib/types";
@@ -21,9 +19,8 @@ interface OrdinaryRowProps {
 export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
   const byId = useCirclesById();
   const memberById = useMemberById();
-  const h = eventHost(e, byId, memberById);
+  const host = memberById(e.organizerId);
   const past = isPastEvent(e);
-  const exclusive = isExclusive(e);
   // slotted events don't use a plain RSVP list — count signups across roles instead
   const count = hasRoles(e) ? e.roles.reduce((sum, r) => sum + roleShort(r), 0) : e.rsvps.length;
   const cancelled = !past && hasRoles(e) && shiftCancelled(e);
@@ -32,19 +29,16 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
     <EventRow
       e={e}
       onOpenEvent={onOpenEvent}
-      dateAccent={past ? "soft" : (exclusive ? "plum" : undefined)}
-      rowAccent={exclusive ? "plum" : "transparent"}
-      washed={exclusive}
+      dateAccent={past ? "soft" : undefined}
       title={e.title}
       titleMuted={past}
-      meta={`Hosted by ${h.label} · ${e.location}`}
+      meta={`Hosted by ${host?.name ?? ""} · ${byId[e.circleId]?.name ?? ""} · ${e.location}`}
       metaMuted={past}
       tags={
         <>
           <Eyebrow className="text-soft">
             {fmtTime(e.start)}–{fmtTime(e.end)}
           </Eyebrow>
-          {exclusive && <Eyebrow className="text-plum">· Members only</Eyebrow>}
         </>
       }
       right={

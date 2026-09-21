@@ -4,7 +4,6 @@ import { AttendeesSection } from "./attendees-section";
 import { BackButton, PageContainer } from "@/components/shared";
 import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";
-import { ExclusiveNotice } from "./exclusive-notice";
 import { HostRsvpRow } from "./host-rsvp-row";
 import { MeetingVoteBanner } from "./meeting-vote-banner";
 import { RoleSlotsSection } from "./role-slots-section";
@@ -43,14 +42,13 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
       <EventMasthead event={e} profile={profile} onEdit={onEditEvent} />
 
       {gov && (
-        <MeetingVoteBanner event={e} profile={profile} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
+        <MeetingVoteBanner event={e} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
       )}
 
       <ShiftStatusBanner event={e} />
 
       <HostRsvpRow
         event={e}
-        profile={profile}
         going={rsvpState[e.id]}
         attendeeCount={e.rsvps.length}
         onOpenCircle={onOpenCircle}
@@ -58,9 +56,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
         onToggleRsvp={() => toggleRsvp(e.id)}
       />
 
-      <ExclusiveNotice event={e} />
-
-      <EventDetailsSection event={e} profile={profile} />
+      <EventDetailsSection event={e} />
 
       <RoleSlotsSection event={e} profile={profile} onToggleRoleSlot={onToggleRoleSlot} onOpenMember={onOpenMember} />
 

@@ -6,7 +6,7 @@ import { CircleCard } from "./circle-card";
 import { ResourcesSection } from "./resources-section";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
-import { CIRCLE_TYPE_LABEL, circleChildren, circleNeighborhood } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleChildren, circleNeighborhood, isCircleAudience } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, Event, Member } from "@/lib/types";
 
@@ -32,7 +32,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
   // events in this circle, soonest first (location is irrelevant)
-  const hostedEvents = [...events]
+  const circleEvents = [...events]
     .filter((e) => e.circleId === c.id)
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
 
@@ -104,16 +104,20 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
           </EyebrowGroup>
         </Section>
 
-        <Section>
-          <Eyebrow className="text-soft">Events they host</Eyebrow>
-          <div className="mt-4">
-            <EventFeed
-              events={hostedEvents}
-              onOpenEvent={onOpenEvent}
-              emptyText={`No upcoming events hosted by ${c.name}.`}
-            />
-          </div>
-        </Section>
+        {/* a circle's events are only ever sent to its own audience, so for
+            anyone else this section would be permanently (and misleadingly) empty */}
+        {isCircleAudience(c, profile.id) && (
+          <Section>
+            <Eyebrow className="text-soft">Events</Eyebrow>
+            <div className="mt-4">
+              <EventFeed
+                events={circleEvents}
+                onOpenEvent={onOpenEvent}
+                emptyText={`No upcoming events in ${c.name}.`}
+              />
+            </div>
+          </Section>
+        )}
 
         {childCircles.length > 0 && (
           <Section>

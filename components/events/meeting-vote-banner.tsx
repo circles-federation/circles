@@ -1,26 +1,24 @@
 import clsx from "clsx";
 import { VoteButton } from "./vote-button";
-import { isConfirmed, canVote, kindOf, meetingThreshold, scopeLabel, scopeNoun, voteCount } from "@/lib/governance.util";
+import { isConfirmed, kindOf, meetingThreshold, scopeLabel, scopeNoun, voteCount } from "@/lib/governance.util";
 import { isPastEvent } from "@/lib/format.util";
 import { useCirclesById } from "@/lib/hooks";
-import type { Event, Profile } from "@/lib/types";
+import type { Event } from "@/lib/types";
 
 interface MeetingVoteBannerProps {
   event: Event;
-  profile: Profile;
   voted?: boolean;
   onToggleVote: () => void;
 }
 
 /* Quorum banner for a circle's meeting — progress toward confirmation plus
    the combined vote+attend control. */
-export function MeetingVoteBanner({ event: e, profile, voted, onToggleVote }: MeetingVoteBannerProps) {
+export function MeetingVoteBanner({ event: e, voted, onToggleVote }: MeetingVoteBannerProps) {
   const byId = useCirclesById();
   const k = kindOf(e);
   const votes = voteCount(e);
   const threshold = meetingThreshold(e, byId);
   const confirmed = isConfirmed(e, byId);
-  const eligible = canVote(e, profile, byId);
   const past = isPastEvent(e);
 
   return (
@@ -38,11 +36,6 @@ export function MeetingVoteBanner({ event: e, profile, voted, onToggleVote }: Me
             style={{ width: `${Math.min(100, (votes / threshold) * 100)}%` }}
           />
         </div>
-        {!eligible && (
-          <p className="mt-2.5 font-sans text-xs leading-[1.4] tracking-[0.02em] text-soft">
-            Voting and attending is limited to {scopeNoun(e, byId)} of {scopeLabel(e, byId)}.
-          </p>
-        )}
       </div>
       <VoteButton
         voted={voted}
@@ -50,8 +43,6 @@ export function MeetingVoteBanner({ event: e, profile, voted, onToggleVote }: Me
         threshold={threshold}
         onToggle={onToggleVote}
         big
-        eligible={eligible}
-        ineligibleNote={`Only ${scopeNoun(e, byId)} of ${scopeLabel(e, byId)} can vote on this`}
         past={past}
       />
     </div>
