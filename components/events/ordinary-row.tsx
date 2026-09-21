@@ -20,6 +20,8 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
   const byId = useCirclesById();
   const memberById = useMemberById();
   const host = memberById(e.organizerId);
+  const circle = byId[e.circleId];
+  const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
   const past = isPastEvent(e);
   // slotted events don't use a plain RSVP list — count signups across roles instead
   const count = hasRoles(e) ? e.roles.reduce((sum, r) => sum + roleShort(r), 0) : e.rsvps.length;
@@ -32,7 +34,7 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
       dateAccent={past ? "soft" : undefined}
       title={e.title}
       titleMuted={past}
-      meta={`Hosted by ${host?.name ?? ""} · ${byId[e.circleId]?.name ?? ""} · ${e.location}`}
+      meta={[`Hosted by ${hostCircle?.name ?? host?.name ?? ""}`, hostCircle?.id !== circle?.id ? circle?.name : undefined, e.location].filter(Boolean).join(" · ")}
       metaMuted={past}
       tags={
         <>

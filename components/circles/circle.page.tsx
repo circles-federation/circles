@@ -31,9 +31,9 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   const hood = circleNeighborhood(c, byId);
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
-  // events in this circle, soonest first (location is irrelevant)
+  // events in this circle — shown to it, or hosted by it — soonest first (location is irrelevant)
   const circleEvents = [...events]
-    .filter((e) => e.circleId === c.id)
+    .filter((e) => e.circleId === c.id || e.hostCircleId === c.id)
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
 
   return (

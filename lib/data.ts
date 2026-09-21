@@ -514,6 +514,35 @@ export const EVENTS: Event[] = [
     rsvps: [2, 18, 10, 8],
   },
   {
+    id: "e13",
+    title: "Open Books: Where the Common Purse Goes",
+    // hosted by the Finance Council (approved by a majority of it) for the
+    // whole neighborhood — the host and the audience are different circles
+    circleId: "the-903",
+    hostCircleId: "finance-council",
+    organizerId: 15,
+    date: dayFromNow(4), start: "18:30", end: "20:00",
+    location: "The 903 community room",
+    description: "The Finance Council walks through this quarter's income, spending, and the dues ledger, then takes questions. Anyone in The 903 is welcome — bring your questions and a chair.",
+    rsvps: [15, 8, 17],
+    votes: [15, 8],
+  },
+  {
+    id: "e14",
+    title: "Greenhouse Glazing Workday",
+    // still a proposal: only the Grounds Council can see it until a majority
+    // of it approves, at which point it opens to all of The 903
+    circleId: "the-903",
+    hostCircleId: "grounds-council",
+    proposed: true,
+    organizerId: 16,
+    date: dayFromNow(9), start: "10:00", end: "15:00",
+    location: "The 903 greenhouse",
+    description: "Reglaze the north wall before the cold sets in. Tools and lunch provided; we'll need hands for scraping, cutting, and holding ladders.",
+    rsvps: [],
+    votes: [16],
+  },
+  {
     id: "e8",
     title: "The 903 Neighborhood Council Meeting",
     kind: "meeting",

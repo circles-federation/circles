@@ -97,6 +97,20 @@ export function circleDescendantIds(circle: Circle, circles: Circle[]): string[]
   return ids;
 }
 
+// whether `circleId` is `ancestorId` itself or anywhere below it in the tree —
+// taking a parent lookup rather than a Circle map so the server, which reads
+// bare (id, parentId) rows, can use the same rule as the event form. A circle
+// can host an event shown to itself or to a circle above it, never elsewhere.
+export function isWithinCircle(circleId: string, ancestorId: string, parentOf: (id: string) => string | null | undefined): boolean {
+  let current: string | null | undefined = circleId;
+  // bounded, so a corrupt parent cycle can't loop forever
+  for (let depth = 0; current && depth < 64; depth++) {
+    if (current === ancestorId) return true;
+    current = parentOf(current);
+  }
+  return false;
+}
+
 // every circle a member belongs to. Used by Home's "My circles" speed dial
 // and by the meeting-proposal form's "Propose for" picker.
 export function circlesForMember(memberId: number, circles: Circle[]): Circle[] {

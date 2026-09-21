@@ -2,7 +2,7 @@ import { RsvpButton } from "./rsvp-button";
 import { Avatar, Eyebrow } from "@/components/shared";
 import { audienceLabel } from "@/lib/circles.util";
 import { isPastEvent } from "@/lib/format.util";
-import { kindOf } from "@/lib/governance.util";
+import { isProposal, isVoting } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import { hasRoles, roleShort, shiftCancelled, shiftNeedsSlots } from "@/lib/roles.util";
 import type { Circle, Event, Member } from "@/lib/types";
@@ -16,17 +16,20 @@ interface HostRsvpRowProps {
   onToggleRsvp: () => void;
 }
 
-/* Who's hosting/proposing this event (always the person who created it) and
-   which circle it's for (who can see it), plus the right-side action: an RSVP
-   toggle for ordinary events, a signed-up count for role-slotted ones, or
-   nothing for a meeting — meetings vote to attend instead (see
-   MeetingVoteBanner), so they don't get a separate RSVP control here. */
+/* Who's hosting/proposing this event and which circle it's for (who can see
+   it), plus the right-side action: an RSVP toggle for ordinary events, a
+   signed-up count for role-slotted ones, or nothing for a meeting (those vote
+   to attend instead) or a proposal still awaiting its host circle's approval
+   — see VoteBanner, which owns the vote control. When a circle hosts, it's
+   named as the host and the person who created it as its proposer. */
 export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOpenMember, onToggleRsvp }: HostRsvpRowProps) {
   const byId = useCirclesById();
   const memberById = useMemberById();
   const host = memberById(e.organizerId);
   const circle = byId[e.circleId];
-  const gov = kindOf(e).governance;
+  const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
+  const voting = isVoting(e);
+  const proposal = isProposal(e);
   const isMeeting = e.kind === "meeting";
   const past = isPastEvent(e);
   const roleStatusClass = shiftCancelled(e) ? "text-soft" : (shiftNeedsSlots(e) ? "text-flame" : "text-leaf");
@@ -43,10 +46,22 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
           {/* text-micro omitted: Eyebrow's inline-style guard already dropped this
               sub-11px override in the original code, and a className override
               wouldn't be silenced the same way — see event-masthead.jsx. */}
-          <Eyebrow className="text-soft">{gov ? "Proposed by" : "Hosted by"}</Eyebrow>
-          {host && (
+          <Eyebrow className="text-soft">{voting || hostCircle ? (hostCircle ? "Hosted by" : "Proposed by") : "Hosted by"}</Eyebrow>
+          {hostCircle ? (
+            <button onClick={() => onOpenCircle(hostCircle)} className="block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
+              {hostCircle.name} →
+            </button>
+          ) : host && (
             <button onClick={() => onOpenMember(host)} className="block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
               {host.name} →
+            </button>
+          )}
+          {hostCircle && host && (
+            <button
+              onClick={() => onOpenMember(host)}
+              className="mt-0.5 block cursor-pointer border-none bg-transparent p-0 text-left font-serif text-sm text-soft underline underline-offset-2"
+            >
+              {proposal ? "proposed" : "organized"} by {host.name}
             </button>
           )}
           {circle && (
@@ -59,9 +74,10 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
           )}
         </div>
       </div>
-      {/* meetings have no separate RSVP — voting above is how you attend */}
-      {!hasRoles(e) && !isMeeting && <RsvpButton going={going} count={attendeeCount} onToggle={onToggleRsvp} big past={past} />}
-      {hasRoles(e) && (
+      {/* meetings have no separate RSVP — voting above is how you attend — and
+          a proposal opens for RSVPs only once approved */}
+      {!hasRoles(e) && !isMeeting && !proposal && <RsvpButton going={going} count={attendeeCount} onToggle={onToggleRsvp} big past={past} />}
+      {hasRoles(e) && !proposal && (
         <div className="text-right">
           <Eyebrow className={roleStatusClass}>{shiftCancelled(e) ? "Not running" : (shiftNeedsSlots(e) ? "Needs slots" : "Shift on")}</Eyebrow>
           <div className="font-sans text-base font-extrabold">{e.roles.reduce((n, r) => n + roleShort(r), 0)} signed up</div>

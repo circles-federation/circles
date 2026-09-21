@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   foreignKey,
   index,
@@ -96,25 +97,39 @@ export const circleMembers = pgTable(
   ]
 );
 
-export const events = pgTable("events", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  kind: text("kind").$type<EventKindKey>(),
-  // every event belongs to exactly one circle — which decides who can see it
-  // — and is hosted by the member who created it
-  circleId: text("circle_id").notNull().references(() => circles.id),
-  organizerId: integer("organizer_id").notNull().references(() => members.id),
-  // "YYYY-MM-DD"/"HH:MM" strings at the app boundary (see lib/format.util.ts) —
-  // date/time mode:"string" keeps the DAL's row shape matching that exactly
-  date: date("date", { mode: "string" }).notNull(),
-  // time has no mode option — it's always a plain string (JS has no
-  // time-only type to switch to). Postgres itself returns "HH:MM:SS";
-  // the DAL below normalizes that to the app's "HH:MM" on read.
-  start: time("start").notNull(),
-  end: time("end").notNull(),
-  location: text("location").notNull(),
-  description: text("description").notNull(),
-});
+export const events = pgTable(
+  "events",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    kind: text("kind").$type<EventKindKey>(),
+    // every event belongs to exactly one circle — which decides who can see it
+    // — and is organized by the member who created it
+    circleId: text("circle_id").notNull().references(() => circles.id),
+    // set when a circle hosts the event (the circle in circleId is then just who
+    // it's shown to). The host circle's members vote on it first: until
+    // approved_at is set it's a proposal only they can see. Approval is latched
+    // — it stays set even if votes are later withdrawn or the roster changes.
+    hostCircleId: text("host_circle_id").references(() => circles.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    organizerId: integer("organizer_id").notNull().references(() => members.id),
+    // "YYYY-MM-DD"/"HH:MM" strings at the app boundary (see lib/format.util.ts) —
+    // date/time mode:"string" keeps the DAL's row shape matching that exactly
+    date: date("date", { mode: "string" }).notNull(),
+    // time has no mode option — it's always a plain string (JS has no
+    // time-only type to switch to). Postgres itself returns "HH:MM:SS";
+    // the DAL below normalizes that to the app's "HH:MM" on read.
+    start: time("start").notNull(),
+    end: time("end").notNull(),
+    location: text("location").notNull(),
+    description: text("description").notNull(),
+  },
+  (t) => [
+    // an event with no host circle is hosted by its organizer and is live
+    // from the start; only a circle-hosted one can be awaiting approval
+    check("events_live_or_proposed", sql`${t.hostCircleId} is not null or ${t.approvedAt} is not null`),
+  ]
+);
 
 export const eventRsvps = pgTable(
   "event_rsvps",
@@ -125,7 +140,7 @@ export const eventRsvps = pgTable(
   (t) => [primaryKey({ columns: [t.eventId, t.memberId] })]
 );
 
-// meeting votes toward quorum
+// a meeting's votes toward quorum, or a circle-hosted event's approvals
 export const eventVotes = pgTable(
   "event_votes",
   {

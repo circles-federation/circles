@@ -23,7 +23,11 @@ export interface RoleDraft {
 export interface EventDraft {
   title: string;
   kind: EventKindKey;
+  // who it's shown to
   circleId: string;
+  // the circle hosting it, if not the person themselves — its members vote on
+  // it before it goes live (an ordinary event only)
+  hostCircleId?: string;
   date: string;
   start: string;
   end: string;
@@ -59,6 +63,7 @@ export function validateEventDraft(d: EventDraft): string | null {
   if (!d.location.trim()) return "Add a location.";
   if (d.location.trim().length > EVENT_LOCATION_MAX) return `Keep the location under ${EVENT_LOCATION_MAX} characters.`;
   if (d.description.length > EVENT_DESCRIPTION_MAX) return "That description is too long.";
+  if (d.hostCircleId && d.kind === "meeting") return "A meeting is proposed by you, not hosted by a circle.";
   const roles = d.roles ?? [];
   if (roles.length > 0 && d.kind === "meeting") return "A meeting can't have signup slots.";
   if (roles.length > MAX_ROLES) return `Keep it to ${MAX_ROLES} slots or fewer.`;

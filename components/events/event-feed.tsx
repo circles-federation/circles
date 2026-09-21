@@ -6,7 +6,7 @@ import { Button, Eyebrow } from "@/components/shared";
 import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
 import { isPastEvent, parseDay } from "@/lib/format.util";
-import { kindOf } from "@/lib/governance.util";
+import { isVoting } from "@/lib/governance.util";
 import type { Event } from "@/lib/types";
 
 interface EventFeedProps {
@@ -70,7 +70,7 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
                 <span className="h-px flex-1 bg-faint" />
               </div>
             )}
-            {kindOf(e).governance
+            {isVoting(e)
               ? <GovernanceRow e={e} onOpenEvent={onOpenEvent} />
               : <OrdinaryRow e={e} onOpenEvent={onOpenEvent} />}
           </Fragment>

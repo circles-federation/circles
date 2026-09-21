@@ -4,9 +4,9 @@ import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
-import { audienceLabel, circlesForAudience, indexCircles, isRootCircle } from "@/lib/circles.util";
+import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
-import { EVENT_KINDS } from "@/lib/governance.util";
+import { EVENT_KINDS, majority } from "@/lib/governance.util";
 import type { Circle, Event, EventKindKey, Profile } from "@/lib/types";
 
 const DEFAULT_START = "18:00";
@@ -56,8 +56,10 @@ type EventFormPageProps = CreateEventFormPageProps | EditEventFormPageProps;
    meeting): the tab for whichever kind the event ISN'T gets disabled rather
    than removed, so the tab bar's shape stays identical between the two
    modes. The circle is likewise locked once an event exists — moving it would
-   silently change who can see it. The host is always the person filling this
-   in, so there's no host field, only a read-only line saying so. */
+   silently change who can see it, and likewise the host. "Hosted by" is either
+   the person filling this in or one of their circles: a circle-hosted event is
+   a proposal its members vote on before it goes live, so the form flips to the
+   orange "propose" treatment the meeting tab already has. */
 export function EventFormPage(props: EventFormPageProps) {
   const { profile, circles, onCancel, mode } = props;
   const event = mode === "edit" ? props.event : null;
@@ -78,6 +80,7 @@ export function EventFormPage(props: EventFormPageProps) {
         type: (event.kind === "meeting" ? "meeting" : "ordinary") as EventKindKey,
         title: event.title,
         circleId: event.circleId,
+        hostCircleId: event.hostCircleId ?? "",
         date: event.date,
         start: event.start,
         end: event.end,
@@ -92,6 +95,7 @@ export function EventFormPage(props: EventFormPageProps) {
         type: "ordinary" as EventKindKey,
         title: "",
         circleId: postable[0]?.id ?? "",
+        hostCircleId: "",
         date: "",
         start: DEFAULT_START,
         end: DEFAULT_END,
@@ -104,6 +108,8 @@ export function EventFormPage(props: EventFormPageProps) {
   const [type, setType] = useState<EventKindKey>(initialValues.type);
   const [title, setTitle] = useState(initialValues.title);
   const [circleId, setCircleId] = useState(initialValues.circleId);
+  // "" means the person themselves hosts it
+  const [hostCircleId, setHostCircleId] = useState(initialValues.hostCircleId);
   const [date, setDate] = useState(initialValues.date);
   const [start, setStart] = useState(initialValues.start);
   const [end, setEnd] = useState(initialValues.end);
@@ -118,7 +124,10 @@ export function EventFormPage(props: EventFormPageProps) {
 
   const meta = EVENT_KINDS[type];
   const gov = meta.governance;
-  const accentKey = gov ? "flame" : "ink";
+  // a circle can host an ordinary event (a meeting is always proposed by the person)
+  const hostCircle = !gov ? byId[hostCircleId] : undefined;
+  const proposing = gov || !!hostCircle;
+  const accentKey = proposing ? "flame" : "ink";
   const accent = ACCENT[accentKey];
 
   // a meeting needs a roster to compute its majority, and the city's is
@@ -128,7 +137,19 @@ export function EventFormPage(props: EventFormPageProps) {
     : postable.filter((c) => !gov || !isRootCircle(c));
   const circle = byId[circleId];
   const circleOptions = circleChoices.map((c) => ({ id: c.id, label: isRootCircle(c) ? `${c.name} (Everyone)` : c.name }));
-  const meetingThresholdPreview = circle ? Math.floor(circle.members.length / 2) + 1 : 0;
+  const meetingThresholdPreview = circle ? majority(circle.members.length) : 0;
+  const hostThresholdPreview = hostCircle ? majority(hostCircle.members.length) : 0;
+  // a circle can only host if it has members of its own — the city's roster is
+  // implicit, so it isn't offered — and only an event shown to itself or to a
+  // circle it's part of, so the options follow the Circle chosen above
+  const parentOf = (id: string) => byId[id]?.parentId;
+  const hostChoices = mode === "edit"
+    ? (hostCircle ? [hostCircle] : [])
+    : circlesForMember(profile.id, circles).filter((c) => !isRootCircle(c) && isWithinCircle(c.id, circleId, parentOf));
+  const hostOptions = [
+    { id: "", label: `${profile.name} (you)` },
+    ...hostChoices.map((c) => ({ id: c.id, label: c.name })),
+  ];
 
   // true once something differs from where the form started — guards Back/
   // Cancel behind a confirmation. Switching the Event/Meeting tab alone
@@ -137,6 +158,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const dirty =
     title.trim() !== initialValues.title.trim() ||
     circleId !== initialValues.circleId ||
+    hostCircleId !== initialValues.hostCircleId ||
     date !== initialValues.date ||
     start !== initialValues.start ||
     end !== initialValues.end ||
@@ -145,9 +167,18 @@ export function EventFormPage(props: EventFormPageProps) {
     useSlots !== initialValues.useSlots ||
     JSON.stringify(slots) !== JSON.stringify(initialValues.slots);
 
+  // picking a different circle to show it to can leave the chosen host outside
+  // it, so drop back to hosting it yourself
+  function pickCircle(id: string) {
+    setCircleId(id);
+    if (hostCircleId && !isWithinCircle(hostCircleId, id, parentOf)) setHostCircleId("");
+  }
+
   function changeType(next: EventKindKey) {
     setType(next);
     setError("");
+    // a meeting is proposed by the person, not hosted by a circle
+    if (EVENT_KINDS[next].governance) setHostCircleId("");
     // the city can't hold a meeting, so step off it when switching to one
     if (EVENT_KINDS[next].governance && circle && isRootCircle(circle)) {
       setCircleId(postable.find((c) => !isRootCircle(c))?.id ?? "");
@@ -184,14 +215,14 @@ export function EventFormPage(props: EventFormPageProps) {
       roles,
     };
     // instant feedback only — the server re-validates and is the real check
-    const problem = validateEventDraft({ ...details, kind: type, circleId });
+    const problem = validateEventDraft({ ...details, kind: type, circleId, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}) });
     if (problem) return setError(problem);
 
     setError("");
     setBusy(true);
     const result = mode === "edit"
       ? await props.onSave(details)
-      : await props.onCreate({ ...details, kind: type, circleId, roles });
+      : await props.onCreate({ ...details, kind: type, circleId, roles, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}) });
     setBusy(false);
     if (!result.ok) setError(result.error);
   }
@@ -206,7 +237,7 @@ export function EventFormPage(props: EventFormPageProps) {
       <BackButton onClick={handleLeave}>{mode === "edit" ? initialValues.title : "All events"}</BackButton>
 
       <div className={clsx("mt-4 border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
-        <Eyebrow className={gov ? "text-flame" : "text-soft"}>{mode === "edit" ? "Edit" : (gov ? "Propose" : "Create")}</Eyebrow>
+        <Eyebrow className={proposing ? "text-flame" : "text-soft"}>{mode === "edit" ? "Edit" : (proposing ? "Propose" : "Create")}</Eyebrow>
         <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">
           {mode === "edit" ? initialValues.title : (type === "ordinary" ? "New event" : "New meeting")}
         </h1>
@@ -240,7 +271,7 @@ export function EventFormPage(props: EventFormPageProps) {
 
         <div>
           <Label htmlFor="circle">Circle</Label>
-          <Select id="circle" value={circleId} onChange={(e) => setCircleId(e.target.value)} disabled={mode === "edit"}>
+          <Select id="circle" value={circleId} onChange={(e) => pickCircle(e.target.value)} disabled={mode === "edit"}>
             {circleOptions.map((o) => (
               <option key={o.id} value={o.id}>{o.label}</option>
             ))}
@@ -248,20 +279,38 @@ export function EventFormPage(props: EventFormPageProps) {
           {circle && (
             <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
               {isRootCircle(circle)
-                ? "Everyone in the city can see this and RSVP."
-                : `Only ${audienceLabel(circle)} can see this, RSVP and be notified about it.`}
+                ? `${hostCircle ? "Once approved, everyone" : "Everyone"} in the city can see this and RSVP.`
+                : `${hostCircle ? "Once approved, only" : "Only"} ${audienceLabel(circle)} can see this, RSVP and be notified about it.`}
               {mode === "edit" && " The circle can't be changed once an event exists."}
             </p>
           )}
         </div>
 
-        <div>
-          <Label>{gov ? "Proposed by" : "Hosted by"}</Label>
-          <div className="flex items-center gap-2.5 border border-ink bg-paper px-3 py-2.75">
-            <Avatar member={profile} size={26} />
-            <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
+        {gov ? (
+          <div>
+            <Label>Proposed by</Label>
+            <div className="flex items-center gap-2.5 border border-ink bg-paper px-3 py-2.75">
+              <Avatar member={profile} size={26} />
+              <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div>
+            <Label htmlFor="host">Hosted by</Label>
+            <Select id="host" value={hostCircleId} onChange={(e) => setHostCircleId(e.target.value)} disabled={mode === "edit"}>
+              {hostOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </Select>
+            {hostCircle && circle && (
+              <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+                {mode === "edit"
+                  ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
+                  : `This is a proposal. It needs ${hostThresholdPreview} approving votes from ${hostCircle.type === "neighborhood" ? "residents" : "members"} of ${hostCircle.name}, and yours counts as the first. Until then only they can see it; once approved it opens to ${audienceLabel(circle)}.`}
+              </p>
+            )}
+          </div>
+        )}
 
         {!gov && (
             <div className={clsx("border px-4 py-3.5", useSlots ? "border-ink" : "border-faint")}>
@@ -380,7 +429,7 @@ export function EventFormPage(props: EventFormPageProps) {
 
         <div className="flex flex-wrap gap-3 border-t border-ink pt-5.5">
           <Button accent={accentKey} onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : mode === "edit" ? "Save changes" : (gov ? "Propose meeting" : "Create event")}
+            {busy ? "Saving…" : mode === "edit" ? "Save changes" : (gov ? "Propose meeting" : hostCircle ? "Propose event" : "Create event")}
           </Button>
           <Button variant="secondary" onClick={handleLeave}>
             Cancel

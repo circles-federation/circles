@@ -14,7 +14,9 @@ import {
   updateMemberAction as dbUpdateMember,
   updateResourceAction as dbUpdateResource,
 } from "@/lib/db/actions";
+import { audienceLabel, indexCircles } from "@/lib/circles.util";
 import type { EventDetails, EventDraft } from "@/lib/events.util";
+import { isProposal, voteThreshold } from "@/lib/governance.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
 
@@ -181,7 +183,16 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     if (ev.rsvps.includes(currentUserId)) setRsvpState((prev) => ({ ...prev, [ev.id]: true })); // creator is attending
     if (ev.votes && ev.votes.includes(currentUserId)) setVoteState((prev) => ({ ...prev, [ev.id]: true })); // proposer's first vote
     const circle = circles.find((c) => c.id === ev.circleId);
-    if (ev.kind === "meeting") {
+    const hostCircle = ev.hostCircleId ? circles.find((c) => c.id === ev.hostCircleId) : undefined;
+    if (isProposal(ev)) {
+      // only the host circle can see it until it's approved
+      const noun = hostCircle?.type === "neighborhood" ? "residents" : "members";
+      showToast({
+        tone: "success",
+        title: "Event proposed",
+        message: `Only ${noun} of ${hostCircle?.name ?? "the circle"} can see it for now. Once a majority approves it, it opens to ${circle ? audienceLabel(circle) : "its circle"}.`,
+      });
+    } else if (ev.kind === "meeting") {
       // "residents" reads naturally for a neighborhood; any other circle just
       // has "members" — see lib/governance.util.ts's scopeNoun for the same
       // distinction.
@@ -223,34 +234,53 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // voting on a meeting and RSVPing to it are the same act — meetings are
   // confirmed by member participation, so there's no "voted but not coming"
   // state. Kept as one function (not a separate toggleRsvp call alongside this
-  // one) so both arrays update atomically.
+  // one) so both arrays update atomically. A vote on a circle-hosted proposal
+  // is an approval only (attending opens once it's live), and the vote that
+  // reaches a majority flips it live — the server decides that for real; this
+  // just mirrors the same rule so the UI doesn't wait on it.
   function toggleVote(eventId: string) {
     const event = events.find((e) => e.id === eventId);
     if (!event) return;
+    const hosted = !!event.hostCircleId;
+    if (hosted && !isProposal(event)) return; // already approved — nothing left to vote on
     const wasVoted = !!voteState[eventId];
     const wasGoing = !!rsvpState[eventId];
     const has = (event.votes || []).includes(currentUserId);
-    const willAttend = !has;
+    const willVote = !has;
     const votes = has ? (event.votes || []).filter((id) => id !== currentUserId) : [...(event.votes || []), currentUserId];
+    // a meeting's vote is also your RSVP; a proposal's isn't
     const hasRsvp = event.rsvps.includes(currentUserId);
-    const rsvps = willAttend ? (hasRsvp ? event.rsvps : [...event.rsvps, currentUserId]) : event.rsvps.filter((id) => id !== currentUserId);
+    const rsvps = hosted ? event.rsvps : willVote ? (hasRsvp ? event.rsvps : [...event.rsvps, currentUserId]) : event.rsvps.filter((id) => id !== currentUserId);
+    const approvedNow = hosted && willVote && votes.length >= voteThreshold(event, indexCircles(circles));
 
-    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, votes, rsvps } : ev)));
+    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, votes, rsvps, ...(approvedNow ? { proposed: false } : {}) } : ev)));
     setVoteState((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
-    setRsvpState((prev) => {
-      const next = { ...prev, [eventId]: willAttend };
-      if (!willAttend) delete next[eventId];
-      return next;
-    });
-    void syncEvent(eventId, () => dbSetVote(eventId, willAttend), () => {
-      setEvents((prev) => prev.map((e) => (e.id === eventId ? event : e)));
-      setVoteState((prev) => ({ ...prev, [eventId]: wasVoted }));
+    if (!hosted) {
       setRsvpState((prev) => {
-        const next = { ...prev, [eventId]: wasGoing };
-        if (!wasGoing) delete next[eventId];
+        const next = { ...prev, [eventId]: willVote };
+        if (!willVote) delete next[eventId];
         return next;
       });
+    }
+    void syncEvent(eventId, () => dbSetVote(eventId, willVote), () => {
+      setEvents((prev) => prev.map((e) => (e.id === eventId ? event : e)));
+      setVoteState((prev) => ({ ...prev, [eventId]: wasVoted }));
+      if (!hosted) {
+        setRsvpState((prev) => {
+          const next = { ...prev, [eventId]: wasGoing };
+          if (!wasGoing) delete next[eventId];
+          return next;
+        });
+      }
     });
+    if (approvedNow) {
+      const audience = circles.find((c) => c.id === event.circleId);
+      showToast({
+        tone: "success",
+        title: "Event approved",
+        message: `${event.title} is now open to ${audience ? audienceLabel(audience) : "its circle"}.`,
+      });
+    }
   }
 
   // save edits to a circle and record who edited it and when

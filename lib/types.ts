@@ -65,15 +65,22 @@ export interface EventKindMeta {
 }
 
 // every event belongs to exactly one circle, which decides who can see it (and
-// who would be notified of it), and is always hosted by the member who created
-// it (`organizerId`) — the only one who can edit it. `kind` is optional
-// (ordinary by default), and votes only exist on a meeting, which confirms at a
-// majority of its circle's members — see lib/governance.util.ts.
+// who would be notified of it), and is always organized by the member who
+// created it (`organizerId`) — the only one who can edit it. It's hosted either
+// by that person or, when `hostCircleId` is set, by a circle — which is not
+// necessarily the circle it's shown to. A circle-hosted event starts as a
+// proposal (`proposed`): only the host circle's members can see it, and it goes
+// live for `circleId`'s audience once a majority of them vote to approve it.
+// `kind` is optional (ordinary by default); a meeting instead confirms at a
+// majority of its own circle's members — see lib/governance.util.ts.
 export interface Event {
   id: string;
   title: string;
   kind?: EventKindKey;
   circleId: string;
+  hostCircleId?: string;
+  // a circle-hosted event still awaiting its host circle's approval
+  proposed?: boolean;
   organizerId: number;
   date: string;
   start: string;

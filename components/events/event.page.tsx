@@ -5,10 +5,11 @@ import { BackButton, PageContainer } from "@/components/shared";
 import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";
 import { HostRsvpRow } from "./host-rsvp-row";
-import { MeetingVoteBanner } from "./meeting-vote-banner";
+
 import { RoleSlotsSection } from "./role-slots-section";
 import { ShiftStatusBanner } from "./shift-status-banner";
-import { kindOf } from "@/lib/governance.util";
+import { VoteBanner } from "./vote-banner";
+import { isVoting } from "@/lib/governance.util";
 import type { Circle, Event, Member, Profile } from "@/lib/types";
 
 interface EventPageProps {
@@ -33,7 +34,6 @@ interface EventPageProps {
    This shell only owns cross-cutting app state (rsvp/vote toggles) and the
    top-level "which panel applies to this event kind" decisions. */
 export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenCircle, onToggleRoleSlot, onEditEvent }: EventPageProps) {
-  const gov = kindOf(e).governance;
 
   return (
     <PageContainer size="normal">
@@ -41,8 +41,8 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
 
       <EventMasthead event={e} profile={profile} onEdit={onEditEvent} />
 
-      {gov && (
-        <MeetingVoteBanner event={e} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
+      {isVoting(e) && (
+        <VoteBanner event={e} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
       )}
 
       <ShiftStatusBanner event={e} />

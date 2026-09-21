@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { DateTile } from "./date-tile";
 import { Button, Chip, Eyebrow } from "@/components/shared";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
-import { isConfirmed, isEventOrganizer, kindOf } from "@/lib/governance.util";
+import { eventTypeLabel, isConfirmed, isEventOrganizer, isVoting } from "@/lib/governance.util";
 import { useCirclesById } from "@/lib/hooks";
 import type { Event, Profile } from "@/lib/types";
 
@@ -22,10 +22,12 @@ interface EventMastheadProps {
    above it. */
 export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps) {
   const byId = useCirclesById();
-  const k = kindOf(e);
   const isOrganizer = isEventOrganizer(e, profile);
   const circle = byId[e.circleId];
-  const gov = k.governance;
+  const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
+  // a meeting, or a circle-hosted event still awaiting its vote — an approved
+  // one is settled and reads like any other event
+  const gov = isVoting(e);
   const confirmed = isConfirmed(e, byId);
   const govAccent = confirmed ? "leaf" : "flame";
   const past = isPastEvent(e);
@@ -44,13 +46,14 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
           <div className="mb-2.5 flex flex-wrap items-center gap-2">
             {gov && (
               <>
-                <Eyebrow className={confirmed ? "text-leaf" : "text-flame"}>{k.label}</Eyebrow>
+                <Eyebrow className={confirmed ? "text-leaf" : "text-flame"}>{eventTypeLabel(e)}</Eyebrow>
                 <span className={clsx("border px-1.75 py-0.5 font-sans text-label font-bold uppercase tracking-[0.08em]", confirmed ? "border-leaf text-leaf" : "border-flame text-flame")}>
                   {confirmed ? "Confirmed" : "Proposed"}
                 </span>
               </>
             )}
             {circle && <Chip title="Who can see this event">{circle.name}</Chip>}
+            {hostCircle && <Chip title="The circle hosting this event">Hosted by {hostCircle.name}</Chip>}
           </div>
           <Eyebrow className="text-soft">
             {e.date && !isNaN(d.getTime())

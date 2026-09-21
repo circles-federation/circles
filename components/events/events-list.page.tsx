@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Button, FloatingActionButton, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { EventFeed } from "./event-feed";
-import { isConfirmed, kindOf } from "@/lib/governance.util";
+import { isConfirmed, isGoverned } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
@@ -25,16 +25,17 @@ export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps)
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
-      // status filter applies to governance events (meetings)
+      // status filter applies to events that go to a vote (meetings, and
+      // events a circle hosts)
       if (status) {
-        if (!kindOf(e).governance) return false;
+        if (!isGoverned(e)) return false;
         const confirmed = isConfirmed(e, byId);
         if (status === "Confirmed" && !confirmed) return false;
         if (status === "Proposed" && confirmed) return false;
       }
       if (!q) return true;
       const host = memberById(e.organizerId);
-      return [e.title, host?.name ?? "", byId[e.circleId]?.name ?? "", e.location].join(" ").toLowerCase().includes(q);
+      return [e.title, host?.name ?? "", byId[e.circleId]?.name ?? "", byId[e.hostCircleId ?? ""]?.name ?? "", e.location].join(" ").toLowerCase().includes(q);
     });
   }, [events, query, status, byId, memberById]);
 
