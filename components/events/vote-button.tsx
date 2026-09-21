@@ -56,7 +56,7 @@ export function VoteButton({ voted, count, threshold, onToggle, big, past, mode 
     >
       <span className="inline-flex items-center gap-1.5">
         {voted && <CheckIcon className="size-3" strokeWidth={3} />}
-        {approve ? (voted ? "Approved" : "Approve") : voted ? "Going" : "RSVP"}
+        {approve ? (voted ? "Approved" : "Approve") : voted ? "Attending" : "RSVP"}
       </span>
       {countBadge}
     </button>

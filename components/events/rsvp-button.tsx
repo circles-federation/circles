@@ -24,7 +24,7 @@ export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProp
       >
         <span className="inline-flex items-center gap-1">
           {going && <CheckIcon className="size-3" strokeWidth={3} />}
-          {going ? "Went" : "Ended"}
+          {going ? "Attended" : "Ended"}
         </span>
         <span className="font-extrabold opacity-70">{count}</span>
       </div>
@@ -41,7 +41,7 @@ export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProp
     >
       <span className="inline-flex items-center gap-1">
         {going && <CheckIcon className="size-3" strokeWidth={3} />}
-        {going ? "Going" : "RSVP"}
+        {going ? "Attending" : "RSVP"}
       </span>
       <span className="font-extrabold opacity-70">{count}</span>
     </button>

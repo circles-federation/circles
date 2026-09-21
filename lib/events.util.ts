@@ -1,4 +1,4 @@
-import type { EventKindKey } from "./types";
+import type { Event, EventKindKey } from "./types";
 
 /* What a person submits to create an event, and the checks on it — shared by
    the event form (instant feedback) and lib/db/events.ts (the authoritative
@@ -79,4 +79,11 @@ export function validateEventDraft(d: EventDraft): string | null {
     keys.add(key);
   }
   return null;
+}
+
+// whether a member is going to an event: on its RSVP list — which is also where
+// a meeting's voters land — or holding one of its slots (a slotted event has no
+// plain RSVP list, so signing up for a slot is how you attend it)
+export function isAttending(e: Event, memberId: number): boolean {
+  return e.rsvps.includes(memberId) || (e.roles ?? []).some((r) => r.members.includes(memberId));
 }

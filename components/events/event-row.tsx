@@ -37,8 +37,8 @@ const ROW_ACCENT: Record<RowAccent, { borderL: string; wash: string }> = {
 
 /* Shared shell for one event-list row (see OrdinaryRow, GovernanceRow): a
    DateTile, an eyebrow/tag row, a title, a meta line, and a right-aligned
-   count block, wrapped in a bordered row that opens the event on click.
-   Each caller supplies its own tag/count content and title/meta text —
+   status block, wrapped in a bordered row that opens the event on click.
+   Each caller supplies its own tag/status content and title/meta text —
    this only owns the shape and the accent/wash treatment. */
 export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent", washed = false, tags, title, titleMuted = false, meta, metaMuted = false, right }: EventRowProps) {
   const accent = ROW_ACCENT[rowAccent];

@@ -2,9 +2,12 @@
 
 import clsx from "clsx";
 import { EventRow } from "./event-row";
+import { ParticipationBadge } from "./participation-badge";
 import { Eyebrow } from "@/components/shared";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
 import { isApproved, isProposal, voteCount, voteThreshold } from "@/lib/governance.util";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { isAttending } from "@/lib/events.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
@@ -19,6 +22,7 @@ interface GovernanceRowProps {
 export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
   const byId = useCirclesById();
   const memberById = useMemberById();
+  const { profile } = useAppState();
   const host = memberById(e.organizerId);
   const proposal = isProposal(e);
   const circle = byId[e.circleId];
@@ -56,9 +60,12 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
         </>
       }
       right={
-        <div className={clsx("font-sans text-sm font-extrabold whitespace-nowrap", approved ? "text-leaf" : (past ? "text-soft" : "text-ink"))}>
-          {votes}/{threshold} {proposal ? "Votes" : past ? "Went" : "Going"}
-        </div>
+        // where the viewer stands: once it's approved, whether they're attending;
+        // until then, whether they've voted to approve it (for a meeting that vote
+        // is also their RSVP, but it's the approval that's still in question)
+        approved
+          ? isAttending(e, profile.id) && <ParticipationBadge kind="attending" past={past} className="text-leaf" />
+          : (e.votes ?? []).includes(profile.id) && <ParticipationBadge kind="approved" past={past} />
       }
     />
   );
