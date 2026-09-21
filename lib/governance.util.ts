@@ -89,12 +89,12 @@ export function eventTypeLabel(e: Event): string {
   return kindOf(e).label;
 }
 // the name of whoever's vote this is — "The 903", "Finance Council" — pairs
-// with scopeNoun below to read as e.g. "residents of The 903".
-export function scopeLabel(e: Event, byId: CirclesById): string {
+// with votingMemberNoun below to read as e.g. "residents of The 903".
+export function votingCircleName(e: Event, byId: CirclesById): string {
   return votingCircle(e, byId)?.name ?? "";
 }
 // "residents" reads naturally for a neighborhood, whose membership literally
 // is residency; every other circle just has "members" in the usual sense.
-export function scopeNoun(e: Event, byId: CirclesById): string {
+export function votingMemberNoun(e: Event, byId: CirclesById): string {
   return votingCircle(e, byId)?.type === "neighborhood" ? "residents" : "members";
 }

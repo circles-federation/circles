@@ -126,7 +126,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
             {/* the grid's own border-t is the header rule — same as Members below */}
             <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">
               {childCircles.map((child) => (
-                <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showScopeChip={false} />
+                <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />
               ))}
             </div>
           </Section>

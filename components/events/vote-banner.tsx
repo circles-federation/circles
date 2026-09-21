@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { VoteButton } from "./vote-button";
 import { audienceLabel } from "@/lib/circles.util";
-import { eventTypeLabel, isApproved, isProposal, scopeLabel, scopeNoun, voteCount, voteThreshold } from "@/lib/governance.util";
+import { eventTypeLabel, isApproved, isProposal, votingCircleName, votingMemberNoun, voteCount, voteThreshold } from "@/lib/governance.util";
 import { isPastEvent } from "@/lib/format.util";
 import { useCirclesById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
@@ -30,10 +30,10 @@ export function VoteBanner({ event: e, voted, onToggleVote }: VoteBannerProps) {
       <div className="min-w-55 flex-1">
         <p className="m-0 font-serif text-base leading-[1.45] text-[#222]">
           {proposal
-            ? <>Only {scopeNoun(e, byId)} of {scopeLabel(e, byId)} can see this proposal. It needs <strong>{threshold}</strong> approving votes, then it opens to {audience ? audienceLabel(audience) : "its circle"}. <span className="font-bold text-flame">{threshold - votes} more</span> to approve.</>
+            ? <>Only {votingMemberNoun(e, byId)} of {votingCircleName(e, byId)} can see this proposal. It needs <strong>{threshold}</strong> approving votes, then it opens to {audience ? audienceLabel(audience) : "its circle"}. <span className="font-bold text-flame">{threshold - votes} more</span> to approve.</>
             : approved
-              ? <>Quorum met — this meeting is <span className="font-bold text-leaf">approved</span> for {scopeLabel(e, byId)}.</>
-              : <>This {eventTypeLabel(e).toLowerCase()} needs <strong>{threshold}</strong> votes from {scopeNoun(e, byId)} of {scopeLabel(e, byId)} to be held. <span className="font-bold text-flame">{threshold - votes} more</span> to approve.</>}
+              ? <>Quorum met — this meeting is <span className="font-bold text-leaf">approved</span> for {votingCircleName(e, byId)}.</>
+              : <>This {eventTypeLabel(e).toLowerCase()} needs <strong>{threshold}</strong> votes from {votingMemberNoun(e, byId)} of {votingCircleName(e, byId)} to be held. <span className="font-bold text-flame">{threshold - votes} more</span> to approve.</>}
         </p>
         {/* progress rail */}
         <div className="mt-3 h-1.5 bg-faint">

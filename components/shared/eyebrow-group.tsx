@@ -15,7 +15,7 @@ interface EyebrowGroupProps {
    item and only spaces *between* groups; a fragment's children get gapped
    individually too, which doubled the label-to-content spacing on top of
    this component's own mt-3.5. Not a fit for a header that also carries a
-   count or a scope chip alongside the label (see AttendeesSection,
+   count or a neighborhood chip alongside the label (see AttendeesSection,
    circle.page.tsx's facts grid) — those stay bespoke. */
 export function EyebrowGroup({ label, children }: EyebrowGroupProps) {
   return (

@@ -197,7 +197,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       });
     } else if (ev.kind === "meeting") {
       // "residents" reads naturally for a neighborhood; any other circle just
-      // has "members" — see lib/governance.util.ts's scopeNoun for the same
+      // has "members" — see lib/governance.util.ts's votingMemberNoun for the same
       // distinction.
       const noun = circle?.type === "neighborhood" ? "residents" : "members";
       showToast({

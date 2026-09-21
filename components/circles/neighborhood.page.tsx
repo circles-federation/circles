@@ -39,8 +39,8 @@ interface NeighborhoodPageProps {
    its residents (its explicit members) as files. Search flattens the whole
    subtree rather than just one level.
 
-   Every card here shares this page's own scope (the neighborhood being
-   browsed), so CircleCard/MemberCard's scope chips remain off throughout —
+   Every card here shares this page's own neighborhood (the one being
+   browsed), so CircleCard/MemberCard's neighborhood chips remain off throughout —
    unlike CirclesRootPage, where cards span multiple neighborhoods and the
    chip is what tells them apart. */
 export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenRoot, onOpenMember, initialTypeFilter }: NeighborhoodPageProps) {
@@ -126,7 +126,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
               label="Councils"
               items={councilFolders}
               minWidth={300}
-              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showScopeChip={false} showKindEyebrow={false} />}
+              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />}
             />
           )}
           {otherFolders.length > 0 && (
@@ -134,7 +134,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
               label="Organizations"
               items={otherFolders}
               minWidth={300}
-              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showScopeChip={false} />}
+              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />}
             />
           )}
           {peopleFiles.length > 0 && (
@@ -142,7 +142,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
               label="People"
               items={peopleFiles}
               minWidth={230}
-              renderItem={(m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showScopeChip={false} />}
+              renderItem={(m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showNeighborhoodChip={false} />}
             />
           )}
         </div>

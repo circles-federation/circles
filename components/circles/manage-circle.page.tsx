@@ -51,9 +51,9 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
   // neighborhoods first (sorted), then the city root last — only
   // neighborhoods and the root are offered as a parent for now — general
   // reparenting under any circle is future work. The root circle itself has
-  // no parent, so the Scope field below is hidden for it.
+  // no parent, so the Parent Circle field below is hidden for it.
   const root = circles.find((c) => c.parentId === null);
-  const scopeOptions: { id: string; label: string }[] = circles
+  const parentOptions: { id: string; label: string }[] = circles
     .filter((c) => c.type === "neighborhood" && c.id !== o.id)
     .map((c) => ({ id: c.id, label: c.name }))
     .sort((a, b) => a.label.localeCompare(b.label))
@@ -174,10 +174,10 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
       <SectionGroup>
         {o.parentId !== null && (
           <Section>
-            <Label htmlFor="circle-scope">Scope</Label>
-            <Select id="circle-scope" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="max-w-90">
-              {scopeOptions.map((s) => (
-                <option key={s.id} value={s.id}>{s.label}</option>
+            <Label htmlFor="circle-parent">Parent Circle</Label>
+            <Select id="circle-parent" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="max-w-90">
+              {parentOptions.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
               ))}
             </Select>
             <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">

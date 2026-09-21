@@ -9,19 +9,19 @@ import type { Circle } from "@/lib/types";
 interface CircleCardProps {
   c: Circle;
   onOpenCircle: (c: Circle) => void;
-  showScopeChip?: boolean;
+  showNeighborhoodChip?: boolean;
   showKindEyebrow?: boolean;
 }
 
 /* Reusable circle card — used in the Circles directory and the Home
    dashboard's "my circles" speed dial, so they look identical. A
-   neighborhood displays differently from every other circle: no scope chip
-   (it IS the scope, so showing one would be redundant). The viewer's own
+   neighborhood displays differently from every other circle: no neighborhood chip
+   (it IS the neighborhood, so showing one would be redundant). The viewer's own
    home neighborhood card also gets a small teal home icon next to its title
    (matching NeighborhoodPage's page-title treatment when browsing inside
    that same folder).
 
-   showScopeChip defaults on for flat/mixed-scope lists (Home's "my circles"
+   showNeighborhoodChip defaults on for flat lists that mix neighborhoods (Home's "my circles"
    speed dial, CirclesRootPage) but callers rendering a single circle's own
    children (NeighborhoodPage, CirclePage's Sub-circles) pass false — every
    card in such a list structurally shares that folder's own neighborhood, so
@@ -34,7 +34,7 @@ interface CircleCardProps {
    "Councils" is right there in the section header; Home's speed dial passes
    true for its neighborhood card, since that's a single flat, mixed-type list
    with no grid label to lean on. */
-export function CircleCard({ c, onOpenCircle, showScopeChip = true, showKindEyebrow = c.type !== "neighborhood" }: CircleCardProps) {
+export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showKindEyebrow = c.type !== "neighborhood" }: CircleCardProps) {
   const { profile } = useAppState();
   const byId = useCirclesById();
   const memberById = useMemberById();
@@ -50,7 +50,7 @@ export function CircleCard({ c, onOpenCircle, showScopeChip = true, showKindEyeb
       {showKindEyebrow && (
         <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
           <Eyebrow className="text-soft">{CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
-          {!isNeighborhood && showScopeChip && hood !== null && (
+          {!isNeighborhood && showNeighborhoodChip && hood !== null && (
             <Chip title={hood.id === profile.homeCircleId ? "Local to this neighborhood" : "Across the federation"}>{hood.name}</Chip>
           )}
         </div>
