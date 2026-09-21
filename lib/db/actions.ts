@@ -74,7 +74,11 @@ export async function setRsvpAction(id: string, going: boolean) {
 }
 
 export async function setVoteAction(id: string, voting: boolean) {
-  return asMember((memberId) => events.setVote(memberId, id, voting));
+  const result = await asMember((memberId) => events.setVote(memberId, id, voting));
+  // a circle-hosted event that's no longer a proposal was just approved by
+  // this vote (further votes are refused), and setVote queued its emails
+  if (result.ok && result.value.hostCircleId && !result.value.proposed) after(() => deliverEventNotifications());
+  return result;
 }
 
 export async function toggleRoleSlotAction(id: string, roleKey: string) {

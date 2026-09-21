@@ -4,7 +4,7 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circles, eventRsvps, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
-import { enqueueEventNotifications } from "./notifications";
+import { enqueueApprovalNotifications, enqueueEventNotifications } from "./notifications";
 import { isWithinCircle } from "@/lib/circles.util";
 import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
 import { majority } from "@/lib/governance.util";
@@ -355,7 +355,12 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
       tx.select().from(eventVotes).where(eq(eventVotes.eventId, id)),
       tx.select().from(circleMembers).where(eq(circleMembers.circleId, hostCircleId)),
     ]);
-    if (votes.length >= majority(members.length)) await tx.update(events).set({ approvedAt: new Date() }).where(eq(events.id, id));
+    if (votes.length >= majority(members.length)) {
+      await tx.update(events).set({ approvedAt: new Date() }).where(eq(events.id, id));
+      // approving is what makes it visible to its circle, so tell them — in
+      // this same transaction, so an approval can't happen without its emails
+      await enqueueApprovalNotifications(tx, locked, memberId);
+    }
   });
   return loadFull(id);
 }

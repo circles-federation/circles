@@ -11,7 +11,7 @@ export function parseDay(iso: string): Date {
 }
 // an event is "past" once its day is before today. events with no set date
 // (e.g. a just-convened council, date TBD) are never past.
-export function isPastEvent(e: Event): boolean {
+export function isPastEvent(e: Pick<Event, "date">): boolean {
   if (!e.date) return false;
   const d = parseDay(e.date);
   if (isNaN(d.getTime())) return false;

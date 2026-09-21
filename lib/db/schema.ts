@@ -17,7 +17,7 @@ import {
   uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import type { EventKindKey } from "@/lib/types";
+import type { EventKindKey, NotificationKind } from "@/lib/types";
 
 /* Drizzle table definitions — the only file besides lib/db/client.ts and
    lib/better-auth.ts that lib/db/*.ts may import from directly (see the
@@ -131,7 +131,7 @@ export const events = pgTable(
   ]
 );
 
-/* The email owed to each member about a new event: one row per (event, member),
+/* An email owed to a member about an event: one row per (event, member, kind),
    written in the same transaction as the event so an event is never created
    without its notifications queued (or queued without the event). A worker
    (lib/notify.ts) drains the unsent ones. `attempts`/`last_attempt_at` make a
@@ -144,6 +144,7 @@ export const eventNotifications = pgTable(
   {
     eventId: text("event_id").notNull().references(() => events.id),
     memberId: integer("member_id").notNull().references(() => members.id),
+    kind: text("kind").$type<NotificationKind>().notNull().default("new"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     attempts: integer("attempts").notNull().default(0),
@@ -151,7 +152,7 @@ export const eventNotifications = pgTable(
     lastError: text("last_error"),
   },
   (t) => [
-    primaryKey({ columns: [t.eventId, t.memberId] }),
+    primaryKey({ columns: [t.eventId, t.memberId, t.kind] }),
     index("event_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
   ]
 );

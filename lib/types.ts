@@ -105,3 +105,9 @@ export interface CircleResource {
   url: string;
   icon: ResourceIcon;
 }
+
+// which email an event_notifications row is: the announcement of an event a
+// person hosts ("new"), the request to vote on a circle-hosted proposal
+// ("proposed"), or the news that a proposal was approved ("approved") — one
+// member can be owed more than one of these for the same event
+export type NotificationKind = "new" | "proposed" | "approved";

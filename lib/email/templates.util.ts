@@ -1,6 +1,6 @@
 import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtTime, parseDay } from "@/lib/format.util";
-import type { EventKindKey } from "@/lib/types";
+import type { EventKindKey, NotificationKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
    Each returns everything but the recipient, so the caller (which knows who
@@ -24,6 +24,7 @@ const INK = "#0a0a0a";
 const SOFT = "#6b6b6b";
 const FAINT = "#e4e4e4";
 const FLAME = "#e1530b"; // governance events, as in the app
+const LEAF = "#2e7d32"; // confirmed ones
 const SANS = `'Helvetica Neue',Helvetica,Arial,sans-serif`;
 const SERIF = `Georgia,'Times New Roman',serif`;
 
@@ -65,6 +66,8 @@ export function loginCodeEmail(code: string): Body {
 }
 
 export interface EventNotificationData {
+  // which email this is — see NotificationKind
+  notice: NotificationKind;
   title: string;
   kind: EventKindKey;
   date: string;
@@ -74,8 +77,7 @@ export interface EventNotificationData {
   description: string;
   // the circle the event is shown to
   circleName: string;
-  // set when a circle hosts it. Whoever this is sent to is then a member of
-  // this circle (not of circleName) — see lib/db/notifications.ts.
+  // set when a circle hosts it
   hostCircleName?: string;
   // a circle-hosted event still awaiting its host circle's vote, and how many
   // approving votes that takes
@@ -97,45 +99,64 @@ function whenLabel(d: Pick<EventNotificationData, "date" | "start" | "end">): st
 
 export function eventNotificationEmail(n: EventNotificationData): Body {
   const meeting = n.kind === "meeting";
-  // three flavors: a proposal its host circle is being asked to approve; an
-  // event a circle hosts (a proposal approved before the email went out, or
-  // told to the host circle afterward); and a plain event or meeting
-  const proposal = n.proposed && !!n.hostCircleName;
-  const voting = proposal || meeting;
-  // whose member the reader is: the host circle's for anything a circle hosts
-  const because = n.hostCircleName ?? n.circleName;
-  const noun = proposal ? "proposed event" : meeting ? "meeting" : "event";
+  // four flavors:
+  // - approved: a circle-hosted event was just confirmed, told to the circle it
+  //   is now open to;
+  // - proposal: a circle-hosted event asks its host circle's members to vote;
+  // - hosted: that same email going out after the vote already passed (it
+  //   isn't a request for votes any more);
+  // - plain: an event or meeting a person hosts.
+  const approved = n.notice === "approved";
+  const proposal = n.notice === "proposed" && n.proposed && !!n.hostCircleName;
+  const voting = proposal || (!approved && meeting);
+  // whose member the reader is: the host circle's for what's sent to voters
+  const because = n.notice === "proposed" ? (n.hostCircleName ?? n.circleName) : n.circleName;
+  const noun = approved ? "confirmed event" : proposal ? "proposed event" : meeting ? "meeting" : "event";
   const accent = voting ? FLAME : INK;
+  const tone = approved ? LEAF : voting ? FLAME : SOFT;
   const when = whenLabel(n);
   const excerpt = n.description.length > EXCERPT_CHARS ? `${n.description.slice(0, EXCERPT_CHARS).trimEnd()}…` : n.description;
   const action = voting ? "View and vote" : "View event";
   const why = `You're getting this because you're a member of ${because}.`;
+  const noteBorder = approved ? LEAF : FLAME;
   const note = proposal
     ? `${n.organizerName} proposed this for ${n.circleName}. It needs ${n.votesNeeded} approving vote${n.votesNeeded === 1 ? "" : "s"} from ${because} members before it opens up to ${n.circleName}.`
-    : "";
-  const subject = proposal ? `New proposal in ${because}: ${n.title}` : `New ${noun} in ${because}: ${n.title}`;
+    : approved
+      ? `${n.hostCircleName ?? "A circle"} approved this event, so it's now open to everyone in ${n.circleName}.`
+      : "";
+  const subject = proposal
+    ? `New proposal in ${because}: ${n.title}`
+    : approved
+      ? `New event in ${because}: ${n.title}`
+      : `New ${noun} in ${because}: ${n.title}`;
   const detail = (label: string, value: string) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
-  const hostLabel = proposal ? "Proposed by" : "Hosted by";
+  // a circle-hosted event is hosted by its circle, with the person who put it
+  // forward named as its proposer
+  const people: [string, string][] =
+    approved && n.hostCircleName
+      ? [["Hosted by", n.hostCircleName], ["Proposed by", n.organizerName]]
+      : [[proposal ? "Proposed by" : "Hosted by", n.organizerName]];
   return {
     subject,
     text:
       `New ${noun} in ${because}\n\n${n.title}\n\n` +
       (note ? `${note}\n\n` : "") +
-      `When: ${when}\nWhere: ${n.location}\n${hostLabel}: ${n.organizerName}\n\n${excerpt}\n\n${action}: ${n.url}\n\n${why}`,
+      `When: ${when}\nWhere: ${n.location}\n${people.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n${excerpt}\n\n${action}: ${n.url}\n\n${why}`,
     html: shell(
       `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
-        eyebrow(`New ${noun} · ${esc(because)}`, voting ? FLAME : SOFT) +
+        eyebrow(`New ${noun} · ${esc(because)}`, tone) +
         `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
         `</td></tr>` +
-        // the app's orange-ruled note, for what a proposal needs from the reader
+        // the app's colored-rule note: orange for what a proposal needs from
+        // the reader, green for what's been decided
         (note
-          ? `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${FLAME};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}</div></td></tr>`
+          ? `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${noteBorder};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}</div></td></tr>`
           : "") +
         `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
         detail("When", when) +
         detail("Where", n.location) +
-        detail(hostLabel, n.organizerName) +
+        people.map(([l, v]) => detail(l, v)).join("") +
         `</table></td></tr>` +
         (excerpt
           ? `<tr><td style="font-family:${SERIF};font-size:16px;line-height:1.55;color:#222222;padding-bottom:24px">${esc(excerpt).replace(/\n/g, "<br>")}</td></tr>`

@@ -35,10 +35,10 @@ export async function deliverEventNotifications(): Promise<void> {
         for (const n of batch) {
           try {
             await sendEmail({ to: n.email, ...eventNotificationEmail({ ...n, url: eventUrl(n.eventId) }) });
-            await markNotificationSent(n.eventId, n.memberId);
+            await markNotificationSent(n);
           } catch (err) {
             console.error(`Couldn't email event ${n.eventId} to member ${n.memberId}:`, err);
-            await markNotificationFailed(n.eventId, n.memberId, err instanceof Error ? err.message : String(err));
+            await markNotificationFailed(n, err instanceof Error ? err.message : String(err));
           }
         }
       }
