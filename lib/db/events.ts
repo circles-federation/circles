@@ -4,7 +4,7 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circles, eventRsvps, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
-import { enqueueApprovalNotifications, enqueueEventNotifications } from "./notifications";
+import { enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications } from "./notifications";
 import { isWithinCircle } from "@/lib/circles.util";
 import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
 import { majority } from "@/lib/governance.util";
@@ -331,9 +331,20 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
   const row = await loadVisible(memberId, id);
   if (row.kind === "meeting") {
     await db.transaction(async (tx) => {
+      // serialize votes on this meeting, so the vote that reaches the
+      // threshold is seen as the one that did (see enqueueMeetingApprovalNotifications)
+      await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
       if (voting) {
         await tx.insert(eventVotes).values({ eventId: id, memberId }).onConflictDoNothing();
         await tx.insert(eventRsvps).values({ eventId: id, memberId }).onConflictDoNothing();
+        // a meeting's approval is recomputed from its votes (not stored),
+        // so the moment to announce it is the vote that lands exactly on the
+        // majority of its circle
+        const [votes, circleMembersRows] = await Promise.all([
+          tx.select().from(eventVotes).where(eq(eventVotes.eventId, id)),
+          tx.select().from(circleMembers).where(eq(circleMembers.circleId, row.circleId)),
+        ]);
+        if (votes.length === majority(circleMembersRows.length)) await enqueueMeetingApprovalNotifications(tx, row, memberId);
       } else {
         await tx.delete(eventVotes).where(and(eq(eventVotes.eventId, id), eq(eventVotes.memberId, memberId)));
         await tx.delete(eventRsvps).where(and(eq(eventRsvps.eventId, id), eq(eventRsvps.memberId, memberId)));
@@ -359,7 +370,7 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
       await tx.update(events).set({ approvedAt: new Date() }).where(eq(events.id, id));
       // approving is what makes it visible to its circle, so tell them — in
       // this same transaction, so an approval can't happen without its emails
-      await enqueueApprovalNotifications(tx, locked, memberId);
+      await enqueueProposalApprovalNotifications(tx, locked, memberId);
     }
   });
   return loadFull(id);

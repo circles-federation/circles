@@ -75,9 +75,12 @@ export async function setRsvpAction(id: string, going: boolean) {
 
 export async function setVoteAction(id: string, voting: boolean) {
   const result = await asMember((memberId) => events.setVote(memberId, id, voting));
-  // a circle-hosted event that's no longer a proposal was just approved by
-  // this vote (further votes are refused), and setVote queued its emails
-  if (result.ok && result.value.hostCircleId && !result.value.proposed) after(() => deliverEventNotifications());
+  // this vote may have queued emails: it approved a circle-hosted event (which
+  // is no longer a proposal — further votes are refused), or it may have
+  // approved a meeting
+  if (result.ok && (result.value.kind === "meeting" || (result.value.hostCircleId && !result.value.proposed))) {
+    after(() => deliverEventNotifications());
+  }
   return result;
 }
 

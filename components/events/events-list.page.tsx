@@ -4,11 +4,11 @@ import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Button, FloatingActionButton, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { EventFeed } from "./event-feed";
-import { isConfirmed, isGoverned } from "@/lib/governance.util";
+import { isApproved, isGoverned } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
-type StatusFilter = "Proposed" | "Confirmed" | null;
+type StatusFilter = "Proposed" | "Approved" | null;
 
 interface EventsListProps {
   events: Event[];
@@ -20,7 +20,7 @@ export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps)
   const byId = useCirclesById();
   const memberById = useMemberById();
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusFilter>(null); // null | "Proposed" | "Confirmed"
+  const [status, setStatus] = useState<StatusFilter>(null); // null | "Proposed" | "Approved"
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -29,9 +29,9 @@ export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps)
       // events a circle hosts)
       if (status) {
         if (!isGoverned(e)) return false;
-        const confirmed = isConfirmed(e, byId);
-        if (status === "Confirmed" && !confirmed) return false;
-        if (status === "Proposed" && confirmed) return false;
+        const approved = isApproved(e, byId);
+        if (status === "Approved" && !approved) return false;
+        if (status === "Proposed" && approved) return false;
       }
       if (!q) return true;
       const host = memberById(e.organizerId);
@@ -75,7 +75,7 @@ export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps)
         onQuery={setQuery}
         placeholder="Search a title, host, circle, or location"
         filters={[
-          { label: "Status", options: ["Proposed", "Confirmed"], active: status, onFilter: (v) => setStatus(v as StatusFilter) },
+          { label: "Status", options: ["Proposed", "Approved"], active: status, onFilter: (v) => setStatus(v as StatusFilter) },
         ]}
       />
 

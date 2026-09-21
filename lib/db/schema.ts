@@ -145,6 +145,9 @@ export const eventNotifications = pgTable(
     eventId: text("event_id").notNull().references(() => events.id),
     memberId: integer("member_id").notNull().references(() => members.id),
     kind: text("kind").$type<NotificationKind>().notNull().default("new"),
+    // delivered as a line in the member's daily digest rather than an email of
+    // its own — for circles too big to email about each event one at a time
+    digest: boolean("digest").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     attempts: integer("attempts").notNull().default(0),

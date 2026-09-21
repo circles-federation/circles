@@ -71,7 +71,7 @@ export interface EventKindMeta {
 // necessarily the circle it's shown to. A circle-hosted event starts as a
 // proposal (`proposed`): only the host circle's members can see it, and it goes
 // live for `circleId`'s audience once a majority of them vote to approve it.
-// `kind` is optional (ordinary by default); a meeting instead confirms at a
+// `kind` is optional (ordinary by default); a meeting instead is approved at a
 // majority of its own circle's members — see lib/governance.util.ts.
 export interface Event {
   id: string;
@@ -106,8 +106,10 @@ export interface CircleResource {
   icon: ResourceIcon;
 }
 
-// which email an event_notifications row is: the announcement of an event a
-// person hosts ("new"), the request to vote on a circle-hosted proposal
-// ("proposed"), or the news that a proposal was approved ("approved") — one
-// member can be owed more than one of these for the same event
+// what an event_notifications row is telling a member: an event or meeting a
+// person hosts ("new"), a circle-hosted proposal they're asked to vote on
+// ("proposed"), or that a proposal or meeting was approved ("approved" — a
+// meeting when it reaches its vote threshold). Separate from *how* it's delivered
+// (an email of its own, or a line in the daily digest), and one member can be
+// owed more than one of these for the same event.
 export type NotificationKind = "new" | "proposed" | "approved";

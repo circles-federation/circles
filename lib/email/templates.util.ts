@@ -1,6 +1,6 @@
 import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtTime, parseDay } from "@/lib/format.util";
-import type { EventKindKey, NotificationKind } from "@/lib/types";
+import type { CircleType, EventKindKey, NotificationKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
    Each returns everything but the recipient, so the caller (which knows who
@@ -24,7 +24,7 @@ const INK = "#0a0a0a";
 const SOFT = "#6b6b6b";
 const FAINT = "#e4e4e4";
 const FLAME = "#e1530b"; // governance events, as in the app
-const LEAF = "#2e7d32"; // confirmed ones
+const LEAF = "#2e7d32"; // approved ones
 const SANS = `'Helvetica Neue',Helvetica,Arial,sans-serif`;
 const SERIF = `Georgia,'Times New Roman',serif`;
 
@@ -77,6 +77,7 @@ export interface EventNotificationData {
   description: string;
   // the circle the event is shown to
   circleName: string;
+  circleType: CircleType;
   // set when a circle hosts it
   hostCircleName?: string;
   // a circle-hosted event still awaiting its host circle's vote, and how many
@@ -99,34 +100,52 @@ function whenLabel(d: Pick<EventNotificationData, "date" | "start" | "end">): st
 
 export function eventNotificationEmail(n: EventNotificationData): Body {
   const meeting = n.kind === "meeting";
-  // four flavors:
-  // - approved: a circle-hosted event was just confirmed, told to the circle it
-  //   is now open to;
+  // five flavors:
+  // - approved meeting: it just reached the votes it needed, told to its circle;
+  // - approved event: a circle-hosted event was just approved, told to the
+  //   circle it is now open to;
   // - proposal: a circle-hosted event asks its host circle's members to vote;
   // - hosted: that same email going out after the vote already passed (it
   //   isn't a request for votes any more);
   // - plain: an event or meeting a person hosts.
-  const approved = n.notice === "approved";
+  const decided = n.notice === "approved";
+  const approvedMeeting = decided && meeting;
+  const approvedEvent = decided && !meeting;
   const proposal = n.notice === "proposed" && n.proposed && !!n.hostCircleName;
-  const voting = proposal || (!approved && meeting);
+  const voting = proposal || (!decided && meeting);
   // whose member the reader is: the host circle's for what's sent to voters
   const because = n.notice === "proposed" ? (n.hostCircleName ?? n.circleName) : n.circleName;
-  const noun = approved ? "confirmed event" : proposal ? "proposed event" : meeting ? "meeting" : "event";
+  const noun = approvedEvent ? "approved event" : approvedMeeting ? "approved meeting" : proposal ? "proposed event" : meeting ? "meeting" : "event";
+  // what's been decided reads as "Approved meeting", not "New approved meeting"
+  const lead = decided ? noun : `new ${noun}`;
+  const Lead = lead.charAt(0).toUpperCase() + lead.slice(1);
   const accent = voting ? FLAME : INK;
-  const tone = approved ? LEAF : voting ? FLAME : SOFT;
+  const tone = decided ? LEAF : voting ? FLAME : SOFT;
   const when = whenLabel(n);
   const excerpt = n.description.length > EXCERPT_CHARS ? `${n.description.slice(0, EXCERPT_CHARS).trimEnd()}…` : n.description;
   const action = voting ? "View and vote" : "View event";
   const why = `You're getting this because you're a member of ${because}.`;
-  const noteBorder = approved ? LEAF : FLAME;
-  const note = proposal
-    ? `${n.organizerName} proposed this for ${n.circleName}. It needs ${n.votesNeeded} approving vote${n.votesNeeded === 1 ? "" : "s"} from ${because} members before it opens up to ${n.circleName}.`
-    : approved
-      ? `${n.hostCircleName ?? "A circle"} approved this event, so it's now open to everyone in ${n.circleName}.`
+  const noteBorder = decided ? LEAF : FLAME;
+  // what a meeting asks of its circle, in the app's own words ("residents" of a
+  // neighborhood, "members" of anything else) — voting is also the RSVP
+  const voters = n.circleType === "neighborhood" ? "residents" : "members";
+  const meetingNote =
+    meeting && n.notice === "new"
+      ? `${n.organizerName} proposed this meeting for ${n.circleName}. It needs ${n.votesNeeded} vote${n.votesNeeded === 1 ? "" : "s"} from ${voters} of ${n.circleName} to be held — voting is also how you RSVP.`
       : "";
+  const note = meetingNote ||
+    (approvedMeeting
+      ? `${n.circleName} has the ${n.votesNeeded} vote${n.votesNeeded === 1 ? "" : "s"} this meeting needed, so it's approved.`
+      : proposal
+    ? `${n.organizerName} proposed this for ${n.circleName}. It needs ${n.votesNeeded} approving vote${n.votesNeeded === 1 ? "" : "s"} from ${because} members before it opens up to ${n.circleName}.`
+    : approvedEvent
+      ? `${n.hostCircleName ?? "A circle"} approved this event, so it's now open to everyone in ${n.circleName}.`
+      : "");
   const subject = proposal
     ? `New proposal in ${because}: ${n.title}`
-    : approved
+    : approvedMeeting
+      ? `Meeting approved in ${because}: ${n.title}`
+      : approvedEvent
       ? `New event in ${because}: ${n.title}`
       : `New ${noun} in ${because}: ${n.title}`;
   const detail = (label: string, value: string) =>
@@ -134,18 +153,18 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
   // a circle-hosted event is hosted by its circle, with the person who put it
   // forward named as its proposer
   const people: [string, string][] =
-    approved && n.hostCircleName
+    approvedEvent && n.hostCircleName
       ? [["Hosted by", n.hostCircleName], ["Proposed by", n.organizerName]]
-      : [[proposal ? "Proposed by" : "Hosted by", n.organizerName]];
+      : [[proposal || meeting ? "Proposed by" : "Hosted by", n.organizerName]];
   return {
     subject,
     text:
-      `New ${noun} in ${because}\n\n${n.title}\n\n` +
+      `${Lead} in ${because}\n\n${n.title}\n\n` +
       (note ? `${note}\n\n` : "") +
       `When: ${when}\nWhere: ${n.location}\n${people.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n${excerpt}\n\n${action}: ${n.url}\n\n${why}`,
     html: shell(
       `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
-        eyebrow(`New ${noun} · ${esc(because)}`, tone) +
+        eyebrow(`${Lead} · ${esc(because)}`, tone) +
         `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
         `</td></tr>` +
         // the app's colored-rule note: orange for what a proposal needs from
@@ -162,6 +181,114 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
           ? `<tr><td style="font-family:${SERIF};font-size:16px;line-height:1.55;color:#222222;padding-bottom:24px">${esc(excerpt).replace(/\n/g, "<br>")}</td></tr>`
           : "") +
         `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${accent};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">${action}</a></td></tr>` +
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+    ),
+  };
+}
+
+export interface DigestEventData {
+  // why it's in the digest: a new event or meeting, a proposal to vote on, or
+  // a meeting that just got its votes
+  notice: NotificationKind;
+  title: string;
+  kind: EventKindKey;
+  date: string;
+  start: string;
+  end: string;
+  location: string;
+  // the circle it's shown to; hostCircleName is set for a circle-hosted event
+  circleName: string;
+  hostCircleName?: string;
+  organizerName: string;
+  url: string;
+}
+
+const dateBox = (iso: string) => {
+  const day = parseDay(iso);
+  if (isNaN(day.getTime())) return "";
+  // the app's DateTile: month over day in a hard-edged box
+  return (
+    `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${INK};width:56px"><tr><td align="center" style="padding:6px 0 0;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${SOFT}">${MONTHS[day.getMonth()]}</td></tr>` +
+    `<tr><td align="center" style="padding:0 0 6px;font-family:${SANS};font-size:24px;font-weight:800;line-height:1.1;color:${INK}">${day.getDate()}</td></tr></table>`
+  );
+};
+
+/* The once-a-day digest: what's new, since the last one, in the circles this
+   member belongs to that are too big to email about one event at a time (they
+   have sub-circles) — new events and meetings, proposals waiting on their
+   vote, and meetings that just got their votes. Grouped by the circle the
+   reader belongs to (for a proposal, the host circle that votes on it),
+   soonest first. The caller passes only what's still to come, one entry per
+   event. */
+export function eventDigestEmail(events: DigestEventData[]): Body {
+  const count = events.length;
+  const groupOf = (e: DigestEventData) => (e.notice === "proposed" ? (e.hostCircleName ?? e.circleName) : e.circleName);
+  const groups = new Map<string, DigestEventData[]>();
+  for (const e of [...events].sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))) {
+    groups.set(groupOf(e), [...(groups.get(groupOf(e)) ?? []), e]);
+  }
+  const circleNames = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+  // "3 new events" while that's all it is; "3 updates" once it mixes in votes to
+  // cast or meetings approved
+  const allNew = events.every((e) => e.notice === "new");
+  const heading = allNew ? `${count} new event${count === 1 ? "" : "s"}` : `${count} update${count === 1 ? "" : "s"}`;
+  const meta = (e: DigestEventData) => `${whenLabel(e)} · ${e.location}`;
+  const by = (e: DigestEventData) =>
+    e.notice === "proposed" ? `Proposed by ${e.organizerName} for ${e.circleName}` : `${e.kind === "meeting" ? "Proposed" : "Hosted"} by ${e.organizerName}`;
+  // the label over a line, and the color it's drawn in
+  const label = (e: DigestEventData): { text: string; color: string } | null =>
+    e.notice === "proposed"
+      ? { text: "Event · Vote to Approve", color: FLAME }
+      : e.notice === "approved"
+        ? { text: "Meeting Approved", color: LEAF }
+        : e.kind === "meeting"
+          ? { text: "Meeting · Vote to Approve", color: FLAME }
+          : null;
+  const openAll = `${events[0]?.url.replace(/\/events\/.*$/, "") ?? ""}/events`;
+  const why = `You're getting this because you're a member of ${circleNames.join(", ")}.`;
+
+  const text =
+    `Your Circles digest — ${heading}\n\n` +
+    circleNames
+      .map((c) =>
+        `${c.toUpperCase()}\n` +
+        groups
+          .get(c)!
+          .map((e) => `- ${e.title}${label(e) ? ` (${label(e)!.text.toLowerCase()})` : ""}\n  ${meta(e)}\n  ${by(e)}\n  ${e.url}`)
+          .join("\n\n")
+      )
+      .join("\n\n") +
+    `\n\nSee all events: ${openAll}\n\n${why}`;
+
+  const row = (e: DigestEventData) => {
+    const l = label(e);
+    return (
+      `<tr><td style="padding:0 0 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>` +
+      `<td width="56" valign="top" style="width:56px">${dateBox(e.date)}</td>` +
+      `<td valign="top" style="padding-left:14px">` +
+      (l ? `${eyebrow(l.text, l.color)}<div style="height:3px"></div>` : "") +
+      `<a href="${esc(e.url)}" style="font-family:${SANS};font-size:18px;font-weight:700;line-height:1.25;color:${INK};text-decoration:underline">${esc(e.title)}</a>` +
+      `<div style="margin-top:3px;font-family:${SERIF};font-size:15px;line-height:1.45;color:${SOFT}">${esc(meta(e))}<br>${esc(by(e))}</div>` +
+      `</td></tr></table></td></tr>`
+    );
+  };
+
+  return {
+    subject: `Circles digest: ${heading}`,
+    text,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
+        eyebrow("Your daily digest") +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${heading}</div>` +
+        `</td></tr>` +
+        circleNames
+          .map(
+            (c) =>
+              `<tr><td style="padding-top:26px"><div style="border-bottom:1px solid ${INK};padding-bottom:8px;margin-bottom:16px">${eyebrow(esc(c))}</div></td></tr>` +
+              groups.get(c)!.map(row).join("")
+          )
+          .join("") +
+        `<tr><td style="padding:10px 0 28px"><a href="${esc(openAll)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">See all events</a></td></tr>` +
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };

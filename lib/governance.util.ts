@@ -6,7 +6,7 @@ import type { Circle, Event, EventKindKey, EventKindMeta, Member } from "./types
    things put an event to a vote, and in both a circle's own members are the
    voters (lib/db/events.ts enforces who can see and vote on the server):
 
-   - a meeting, held by one circle for its own members, is confirmed by a
+   - a meeting, held by one circle for its own members, is approved by a
      majority of that circle's members — attending and voting are one act;
    - a circle-hosted event starts as a proposal: only the host circle's
      members can see it, and it goes live for the circle it's shown to once a
@@ -16,7 +16,7 @@ import type { Circle, Event, EventKindKey, EventKindMeta, Member } from "./types
 
 /* event kinds. ordinary events are scheduled instantly by their organizer
    (unless a circle hosts them — see above); a meeting is *proposed* for a
-   circle and needs a quorum of that circle's members to be confirmed — see
+   circle and needs a quorum of that circle's members to be approved — see
    voteThreshold() below. For the prototype, proposing adds it to the list
    right away. Any circle can hold one. */
 export const EVENT_KINDS: Record<EventKindKey, EventKindMeta> = {
@@ -72,9 +72,9 @@ export function voteThreshold(e: Event, byId: CirclesById): number {
   if (!circle) return Infinity;
   return majority(circle.members.length);
 }
-// a meeting is confirmed when its votes meet the threshold; a circle-hosted
-// event once it has been approved; a plain event has nothing to confirm.
-export function isConfirmed(e: Event, byId: CirclesById): boolean {
+// a meeting is approved when its votes meet the threshold; a circle-hosted
+// event once it has been approved; a plain event has nothing to approve.
+export function isApproved(e: Event, byId: CirclesById): boolean {
   if (isMeeting(e)) return voteCount(e) >= voteThreshold(e, byId);
   return isCircleHosted(e) && !e.proposed;
 }

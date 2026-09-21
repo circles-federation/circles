@@ -259,7 +259,7 @@ export function EventFormPage(props: EventFormPageProps) {
       >
       {gov && circle && (
         <p className="mb-1 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
-          This is a governance meeting for <strong>{circle.name}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {circle.type === "neighborhood" ? "residents" : "members"}</strong> to be confirmed. Your proposal counts as the first vote.
+          This is a governance meeting for <strong>{circle.name}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {circle.type === "neighborhood" ? "residents" : "members"}</strong> to be approved. Your proposal counts as the first vote.
         </p>
       )}
 

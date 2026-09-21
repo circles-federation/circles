@@ -19,23 +19,23 @@ const SIZE: Record<"big" | "small", string> = { big: "text-eyebrow py-3.5 px-5",
    the meeting is how you indicate you'll be there, so there's only one
    action (see toggleVote in app-state-provider.jsx, which keeps votes and
    RSVPs in lockstep). Stays open even after quorum is met, since people
-   can keep joining after confirmation — only closes once the event is
-   past. Orange accent while proposed, green once confirmed. */
+   can keep joining after approval — only closes once the event is
+   past. Orange accent while proposed, green once approved. */
 export function VoteButton({ voted, count, threshold, onToggle, big, past, mode = "attend" }: VoteButtonProps) {
   const approve = mode === "approve";
-  const confirmed = count >= threshold;
+  const quorumMet = count >= threshold;
   const size = SIZE[big ? "big" : "small"];
   const countBadge = <span className="font-extrabold opacity-85">{count}/{threshold}</span>;
 
   if (past) {
     return (
       <div
-        title={confirmed ? "This meeting was held" : approve ? "This proposal was never approved" : "This proposal did not reach quorum"}
-        className={clsx(BASE, size, "cursor-default bg-paper", confirmed ? "border-leaf text-leaf" : "border-faint text-soft")}
+        title={quorumMet ? "This meeting was held" : "This was never approved"}
+        className={clsx(BASE, size, "cursor-default bg-paper", quorumMet ? "border-leaf text-leaf" : "border-faint text-soft")}
       >
         <span className="inline-flex items-center gap-1.5">
-          {confirmed && <CheckIcon className="size-3" strokeWidth={3} />}
-          {confirmed ? "Held" : "Lapsed"}
+          {quorumMet && <CheckIcon className="size-3" strokeWidth={3} />}
+          {quorumMet ? "Held" : "Lapsed"}
         </span>
         {countBadge}
       </div>
@@ -45,11 +45,11 @@ export function VoteButton({ voted, count, threshold, onToggle, big, past, mode 
   return (
     <button
       onClick={onToggle}
-      title={confirmed ? "Quorum met — you can still join" : `${threshold - count} more vote${threshold - count === 1 ? "" : "s"} to ${approve ? "approve" : "confirm"}`}
+      title={quorumMet ? "Quorum met — you can still join" : `${threshold - count} more vote${threshold - count === 1 ? "" : "s"} to approve`}
       className={clsx(
         BASE, size, "cursor-pointer",
-        confirmed ? "border-leaf" : "border-flame",
-        confirmed
+        quorumMet ? "border-leaf" : "border-flame",
+        quorumMet
           ? (voted ? "bg-leaf text-paper" : "bg-paper text-leaf")
           : (voted ? "bg-flame text-paper" : "bg-paper text-flame"),
       )}

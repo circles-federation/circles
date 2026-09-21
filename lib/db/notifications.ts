@@ -1,8 +1,8 @@
-import { and, eq, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
 import { circleMembers, circles, eventNotifications, members, events } from "./schema";
-import type { EventNotificationData } from "@/lib/email/templates.util";
+import type { DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import type { Event, NotificationKind } from "@/lib/types";
@@ -19,18 +19,23 @@ const RETRY_AFTER = sql`interval '5 minutes'`;
 // email addresses are optional on a member; nobody without one can be told
 const hasEmail = isNotNull(members.email);
 
-/* Queue an email of `kind` to the members of `circleId`, except `exceptId` —
-   the person whose own action set this off, who needn't be told about it. The
-   city root has no explicit roster (everyone is in it), so it means every
-   member. `leafOnly` holds the email back when the circle has sub-circles: a
-   bigger, looser audience meant for a different, later rule. */
-async function queueFor(tx: Tx, eventId: string, kind: NotificationKind, circleId: string, exceptId: number, leafOnly: boolean): Promise<number> {
-  if (leafOnly) {
-    const [subCircle] = await tx.select({ id: circles.id }).from(circles).where(eq(circles.parentId, circleId)).limit(1);
-    if (subCircle) return 0;
-  }
+async function hasSubCircle(tx: Tx, circleId: string): Promise<boolean> {
+  const [subCircle] = await tx.select({ id: circles.id }).from(circles).where(eq(circles.parentId, circleId)).limit(1);
+  return !!subCircle;
+}
+
+/* Queue a notification of `kind` for the members of `circleId`, except
+   `exceptId` — the person whose own action set this off, who needn't be told
+   about it. The city root has no explicit roster (everyone is in it), so it
+   means every member. How it's delivered depends on the circle: a circle with
+   no sub-circles is small enough for an email of its own, right away; one with
+   sub-circles — a neighborhood, the city — becomes a line in each member's
+   once-a-day digest instead (lib/notify.ts's deliverDigests). `immediate`
+   overrides that, for news that shouldn't wait a day. */
+async function queueFor(tx: Tx, eventId: string, kind: NotificationKind, circleId: string, exceptId: number, immediate = false): Promise<number> {
   const [circle] = await tx.select({ parentId: circles.parentId }).from(circles).where(eq(circles.id, circleId));
   if (!circle) return 0;
+  const digest = !immediate && (await hasSubCircle(tx, circleId));
   const recipients =
     circle.parentId === null
       ? await tx.select({ id: members.id }).from(members).where(and(hasEmail, ne(members.id, exceptId)))
@@ -40,43 +45,54 @@ async function queueFor(tx: Tx, eventId: string, kind: NotificationKind, circleI
           .innerJoin(members, eq(members.id, circleMembers.memberId))
           .where(and(eq(circleMembers.circleId, circleId), hasEmail, ne(members.id, exceptId)));
   if (recipients.length === 0) return 0;
-  await tx.insert(eventNotifications).values(recipients.map((r) => ({ eventId, memberId: r.id, kind }))).onConflictDoNothing();
+  await tx.insert(eventNotifications).values(recipients.map((r) => ({ eventId, memberId: r.id, kind, digest }))).onConflictDoNothing();
   return recipients.length;
 }
 
-/* Queue the emails for a just-created event — inside the transaction that
-   creates it. Who hears, by case:
+/* Queue the notifications for a just-created event — inside the transaction
+   that creates it. Who's told, by case:
 
-   - An event hosted by a person: the members of the circle it's shown to, if
-     that circle has no sub-circles.
-   - A circle-hosted proposal: the members of the *host* circle (the only ones
-     who can see it or vote on it), if that circle has no sub-circles. The
-     circle it will be shown to hears nothing until it's approved.
+   - An event or meeting hosted by a person ("new"): the members of the circle
+     it's shown to.
+   - A circle-hosted proposal ("proposed"): the members of the *host* circle —
+     the only ones who can see it or vote on it. The circle it will be shown
+     to hears nothing until it's approved.
    - A circle-hosted event approved the moment it's created (a host circle of
      one): announced to the circle it's shown to, as for any approval below.
 
-   The person who created it is never emailed about it, and neither is anyone
-   for an event that's already over. Circles with sub-circles are left for a
-   later rule. Returns how many were queued. */
+   In each, the circle's size decides delivery (see queueFor). The person who
+   created it is never told about it, and neither is anyone for an event that's
+   already over. Returns how many were queued. */
 export async function enqueueEventNotifications(tx: Tx, event: Event): Promise<number> {
   if (isPastEvent(event)) return 0;
-  if (event.hostCircleId && event.proposed) return queueFor(tx, event.id, "proposed", event.hostCircleId, event.organizerId, true);
-  if (event.hostCircleId) return enqueueApprovalNotifications(tx, event, event.organizerId);
-  return queueFor(tx, event.id, "new", event.circleId, event.organizerId, true);
+  if (event.hostCircleId && event.proposed) return queueFor(tx, event.id, "proposed", event.hostCircleId, event.organizerId);
+  if (event.hostCircleId) return enqueueProposalApprovalNotifications(tx, event, event.organizerId);
+  return queueFor(tx, event.id, "new", event.circleId, event.organizerId);
 }
 
 /* A proposal was approved, so the event is now live for its circle: tell
-   everyone in that circle — no sub-circle condition, since a circle-hosted
-   event's audience is typically a larger circle like a whole neighborhood,
-   which always has sub-circles. `actorId` is whoever's action approved it (the
-   vote that reached a majority), who already knows. Anyone still waiting to be
-   asked to vote is dropped: it's decided. Runs in the approving transaction. */
-export async function enqueueApprovalNotifications(tx: Tx, event: Pick<Event, "id" | "circleId" | "date">, actorId: number): Promise<number> {
+   everyone in that circle. `actorId` is whoever's action approved it (the vote
+   that reached a majority), who already knows. Anyone still waiting to be
+   asked to vote on it — by email or in a digest — is dropped: it's decided.
+   Runs in the approving transaction. */
+export async function enqueueProposalApprovalNotifications(tx: Tx, event: Pick<Event, "id" | "circleId" | "date">, actorId: number): Promise<number> {
   await tx
     .delete(eventNotifications)
     .where(and(eq(eventNotifications.eventId, event.id), eq(eventNotifications.kind, "proposed"), isNull(eventNotifications.sentAt)));
   if (isPastEvent(event)) return 0;
-  return queueFor(tx, event.id, "approved", event.circleId, actorId, false);
+  // always an email of its own, even to a big circle: this is what opens the
+  // event up to them at all
+  return queueFor(tx, event.id, "approved", event.circleId, actorId, true);
+}
+
+/* A meeting just reached its vote threshold: tell its circle it's approved.
+   Called only by the vote that tips it over, and `actorId` (that voter)
+   already knows. A meeting's approval is recomputed from its live votes
+   rather than latched, so if votes are withdrawn and it's approved again the
+   same member isn't told twice (one row per member and kind). */
+export async function enqueueMeetingApprovalNotifications(tx: Tx, meeting: Pick<Event, "id" | "circleId" | "date">, actorId: number): Promise<number> {
+  if (isPastEvent(meeting)) return 0;
+  return queueFor(tx, meeting.id, "approved", meeting.circleId, actorId);
 }
 
 export type PendingEventNotification = Omit<EventNotificationData, "url"> & {
@@ -98,6 +114,8 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       .from(eventNotifications)
       .where(
         and(
+          // digest rows wait for their daily send (claimDigests)
+          eq(eventNotifications.digest, false),
           isNull(eventNotifications.sentAt),
           lt(eventNotifications.attempts, MAX_ATTEMPTS),
           or(isNull(eventNotifications.lastAttemptAt), lt(eventNotifications.lastAttemptAt, sql`now() - ${RETRY_AFTER}`))
@@ -128,9 +146,11 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
         location: events.location,
         description: events.description,
         circleName: circles.name,
+        circleType: circles.type,
         hostCircleName: hostCircle.name,
         approvedAt: events.approvedAt,
         hostSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.hostCircleId})`,
+        circleSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.circleId})`,
         organizerName: organizer.name,
       })
       .from(eventNotifications)
@@ -140,7 +160,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       .innerJoin(organizer, eq(organizer.id, events.organizerId))
       .leftJoin(hostCircle, eq(hostCircle.id, events.hostCircleId))
       .where(isDue);
-    return rows.flatMap(({ approvedAt, hostSize, hostCircleName, ...r }) =>
+    return rows.flatMap(({ approvedAt, hostSize, circleSize, hostCircleName, ...r }) =>
       r.email
         ? [
             {
@@ -152,7 +172,8 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
               ...(hostCircleName ? { hostCircleName } : {}),
               // read now, not when queued: it may have been approved since
               proposed: !!hostCircleName && approvedAt === null,
-              votesNeeded: majority(hostSize),
+              // a proposal is voted on by its host circle, a meeting by its own
+              votesNeeded: majority(hostCircleName ? hostSize : circleSize),
             },
           ]
         : []
@@ -169,4 +190,99 @@ export async function markNotificationSent(n: { eventId: string; memberId: numbe
 
 export async function markNotificationFailed(n: { eventId: string; memberId: number; notice: NotificationKind }, error: string): Promise<void> {
   await db.update(eventNotifications).set({ lastError: error.slice(0, 500) }).where(isRow(n));
+}
+
+export type DigestKey = { eventId: string; memberId: number; notice: NotificationKind };
+
+export interface PendingDigest {
+  memberId: number;
+  email: string;
+  // every queue row this digest covers — marked sent (or failed) together
+  keys: DigestKey[];
+  events: (Omit<DigestEventData, "url"> & { id: string })[];
+}
+
+/* Take up to `limit` members' worth of due digest rows. A digest row is due
+   once it was queued at or before `cutoff` (the most recent daily send time —
+   see lib/notify.ts), so something that happened after this morning's send
+   waits for tomorrow's. All of one member's due rows are taken together, so
+   they get one email, not several. Rows are stamped as attempted and only
+   retried after the usual delay. */
+export async function claimDigests(cutoff: Date, limit: number): Promise<PendingDigest[]> {
+  const organizer = alias(members, "organizer");
+  const hostCircle = alias(circles, "host_circle");
+  return db.transaction(async (tx) => {
+    const due = and(
+      eq(eventNotifications.digest, true),
+      isNull(eventNotifications.sentAt),
+      lt(eventNotifications.attempts, MAX_ATTEMPTS),
+      lte(eventNotifications.createdAt, cutoff),
+      or(isNull(eventNotifications.lastAttemptAt), lt(eventNotifications.lastAttemptAt, sql`now() - ${RETRY_AFTER}`))
+    );
+    const dueMembers = await tx.selectDistinct({ memberId: eventNotifications.memberId }).from(eventNotifications).where(due).orderBy(eventNotifications.memberId).limit(limit);
+    if (dueMembers.length === 0) return [];
+    const taken = await tx
+      .select({ eventId: eventNotifications.eventId, memberId: eventNotifications.memberId, kind: eventNotifications.kind })
+      .from(eventNotifications)
+      .where(and(due, inArray(eventNotifications.memberId, dueMembers.map((m) => m.memberId))))
+      .for("update", { skipLocked: true });
+    if (taken.length === 0) return [];
+    const isTaken = and(
+      eq(eventNotifications.digest, true),
+      sql`(${eventNotifications.eventId}, ${eventNotifications.memberId}, ${eventNotifications.kind}) in (${sql.join(taken.map((t) => sql`(${t.eventId}, ${t.memberId}, ${t.kind})`), sql`, `)})`
+    );
+    await tx.update(eventNotifications).set({ attempts: sql`${eventNotifications.attempts} + 1`, lastAttemptAt: sql`now()` }).where(isTaken);
+    const rows = await tx
+      .select({
+        eventId: events.id,
+        memberId: members.id,
+        notice: eventNotifications.kind,
+        email: members.email,
+        title: events.title,
+        kind: events.kind,
+        date: events.date,
+        start: events.start,
+        end: events.end,
+        location: events.location,
+        circleName: circles.name,
+        hostCircleName: hostCircle.name,
+        organizerName: organizer.name,
+      })
+      .from(eventNotifications)
+      .innerJoin(events, eq(events.id, eventNotifications.eventId))
+      .innerJoin(circles, eq(circles.id, events.circleId))
+      .innerJoin(members, eq(members.id, eventNotifications.memberId))
+      .innerJoin(organizer, eq(organizer.id, events.organizerId))
+      .leftJoin(hostCircle, eq(hostCircle.id, events.hostCircleId))
+      .where(isTaken);
+    const byMember = new Map<number, PendingDigest>();
+    for (const t of taken) {
+      const key: DigestKey = { eventId: t.eventId, memberId: t.memberId, notice: t.kind };
+      const digest = byMember.get(t.memberId);
+      if (digest) digest.keys.push(key);
+      else byMember.set(t.memberId, { memberId: t.memberId, email: "", keys: [key], events: [] });
+    }
+    for (const { hostCircleName, ...r } of rows) {
+      const digest = byMember.get(r.memberId);
+      if (!digest) continue;
+      digest.email = r.email ?? "";
+      digest.events.push({
+        ...r,
+        id: r.eventId,
+        kind: r.kind ?? "ordinary",
+        start: r.start.slice(0, 5),
+        end: r.end.slice(0, 5),
+        ...(hostCircleName ? { hostCircleName } : {}),
+      });
+    }
+    return [...byMember.values()];
+  });
+}
+
+export async function markDigestSent(keys: DigestKey[]): Promise<void> {
+  for (const k of keys) await markNotificationSent(k);
+}
+
+export async function markDigestFailed(keys: DigestKey[], error: string): Promise<void> {
+  for (const k of keys) await markNotificationFailed(k, error);
 }

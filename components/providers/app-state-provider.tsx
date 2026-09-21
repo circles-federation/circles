@@ -200,7 +200,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       showToast({
         tone: "success",
         title: "Meeting proposed",
-        message: `Your meeting has been proposed. All ${circle ? `${noun} of ${circle.name}` : "members"} will be notified and can vote to confirm it.`,
+        message: `Your meeting has been proposed. All ${circle ? `${noun} of ${circle.name}` : "members"} will be notified and can vote to approve it.`,
       });
     } else {
       // the circle is the audience: only its members (everyone, for the city)
@@ -232,7 +232,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   }
 
   // voting on a meeting and RSVPing to it are the same act — meetings are
-  // confirmed by member participation, so there's no "voted but not coming"
+  // approved by member participation, so there's no "voted but not coming"
   // state. Kept as one function (not a separate toggleRsvp call alongside this
   // one) so both arrays update atomically. A vote on a circle-hosted proposal
   // is an approval only (attending opens once it's live), and the vote that

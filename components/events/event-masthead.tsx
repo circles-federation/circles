@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { DateTile } from "./date-tile";
 import { Button, Chip, Eyebrow } from "@/components/shared";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
-import { isConfirmed, isEventOrganizer, isVoting } from "@/lib/governance.util";
+import { isApproved, isEventOrganizer, isVoting } from "@/lib/governance.util";
 import { useCirclesById } from "@/lib/hooks";
 import type { Event, Profile } from "@/lib/types";
 
@@ -27,12 +27,12 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
   // a meeting, or a circle-hosted event still awaiting its vote — an approved
   // one is settled and reads like any other event
   const gov = isVoting(e);
-  const confirmed = isConfirmed(e, byId);
-  const govAccent = confirmed ? "leaf" : "flame";
+  const approved = isApproved(e, byId);
+  const govAccent = approved ? "leaf" : "flame";
   const past = isPastEvent(e);
   const d = parseDay(e.date);
   const topBorderClass = gov
-    ? (past && !confirmed ? "border-t-soft" : (confirmed ? "border-t-leaf" : "border-t-flame"))
+    ? (past && !approved ? "border-t-soft" : (approved ? "border-t-leaf" : "border-t-flame"))
     : (past ? "border-t-soft" : "border-t-ink");
 
   return (
@@ -43,7 +43,7 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
           {/* the circle is who can see this event — shown as a place chip, so
               it reads the same as everywhere else a circle's name appears */}
           <div className="mb-2.5 flex flex-wrap items-center gap-2">
-            {gov && <Eyebrow className={confirmed ? "text-leaf" : "text-flame"}>{confirmed ? "Confirmed" : "Proposed"}</Eyebrow>}
+            {gov && <Eyebrow className={approved ? "text-leaf" : "text-flame"}>{approved ? "Approved" : "Proposed"}</Eyebrow>}
             {circle && <Chip title="Who can see this event">{circle.name}</Chip>}
           </div>
           <Eyebrow className="text-soft">
