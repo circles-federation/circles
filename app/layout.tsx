@@ -4,7 +4,7 @@ import "./globals.css";
 import { ToastProvider } from "@/components/shared";
 
 export const metadata: Metadata = {
-  title: "Convene",
+  title: "Circles",
   description: "A federated coordination tool for neighborhoods and organizations.",
 };
 

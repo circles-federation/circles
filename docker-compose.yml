@@ -6,13 +6,13 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: convene
-      POSTGRES_PASSWORD: convene
-      POSTGRES_DB: convene
+      POSTGRES_USER: circles
+      POSTGRES_PASSWORD: circles
+      POSTGRES_DB: circles
     ports:
       - "5432:5432"
     volumes:
-      - convene_postgres_data:/var/lib/postgresql/data
+      - circles_postgres_data:/var/lib/postgresql/data
 
 volumes:
-  convene_postgres_data:
+  circles_postgres_data:
