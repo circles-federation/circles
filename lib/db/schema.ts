@@ -208,6 +208,24 @@ export const roleMembers = pgTable(
    circles — the circles array is sent to every signed-in member. */
 export const resourceIcon = pgEnum("resource_icon", ["folder", "file"]);
 
+// A role a member holds in a circle (see lib/circle-roles.util.ts). A circle's
+// rows are only ever rewritten as a whole, by lib/db/circle-roles.ts, so
+// identity is the (case-insensitive) name and `position` is just display
+// order. The built-in roles are written too once a circle saves its roles, but
+// a circle with none saved still shows them, empty.
+export const circleRoles = pgTable(
+  "circle_roles",
+  {
+    id: text("id").primaryKey(),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    builtin: boolean("builtin").notNull().default(false),
+    memberId: integer("member_id").references(() => members.id),
+    position: integer("position").notNull(),
+  },
+  (t) => [uniqueIndex("circle_roles_circle_label_unique").on(t.circleId, sql`lower(${t.label})`)]
+);
+
 export const circleResources = pgTable(
   "circle_resources",
   {

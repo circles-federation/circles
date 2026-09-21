@@ -57,6 +57,13 @@
       "when": 1790001409421,
       "tag": "0007_merge_confirmed_into_approved",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790004423232,
+      "tag": "0008_outgoing_victor_mancha",
+      "breakpoints": true
     }
   ]
 }

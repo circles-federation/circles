@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db/client";
 import { insertEvent } from "@/lib/db/events";
-import { circleMembers, circleResources, circles as circlesTable, members as membersTable, user as userTable } from "@/lib/db/schema";
+import { circleMembers, circleResources, circleRoles, circles as circlesTable, members as membersTable, user as userTable } from "@/lib/db/schema";
 import type { Circle, CircleResource, Event, Member } from "@/lib/types";
 
 /* The insert logic shared by every seed script (scripts/seed.ts for demo data,
@@ -55,6 +56,16 @@ export async function seedDatabase({ members, circles, events, resources = [] }:
   console.log("Seeding circle memberships...");
   const membershipRows = circles.flatMap((c) => c.members.map((memberId) => ({ circleId: c.id, circleType: c.type, memberId })));
   if (membershipRows.length > 0) await db.insert(circleMembers).values(membershipRows);
+
+  // roles: only the ones with a holder, plus any the circle added itself — the
+  // built-in ones show up empty on their own
+  const roleRows = circles.flatMap((c) =>
+    (c.roles ?? []).filter((r) => r.memberId !== null || !r.builtin).map((r, position) => ({ id: randomUUID(), circleId: c.id, label: r.label, builtin: r.builtin, memberId: r.memberId, position }))
+  );
+  if (roleRows.length > 0) {
+    console.log(`Seeding ${roleRows.length} circle roles...`);
+    await db.insert(circleRoles).values(roleRows);
+  }
 
   console.log(`Seeding ${events.length} events...`);
   for (const e of events) await insertEvent(e);

@@ -78,6 +78,11 @@ body {
 .ink-press:active { background: var(--color-ink) !important; color: var(--color-paper) !important; }
 .ink-press:active * { color: var(--color-paper) !important; border-color: var(--color-paper) !important; }
 .ink-press:active span[style*="background"] { background: transparent !important; }
+/* A hollow badge (white, black text) inside a card keeps its white fill when the
+   card turns black on press, so the blanket white-text rule above would leave
+   white text on white. This makes it invert against the card instead: a white
+   badge with black text. More specific than that rule, so it wins. */
+.ink-press:active .ink-press-badge { color: var(--color-ink) !important; }
 .btn-invert { transition: background 0.08s, color 0.08s; }
 .btn-ink:active { background: var(--color-paper) !important; color: var(--color-ink) !important; }
 .btn-teal:active { background: var(--color-paper) !important; color: var(--color-teal) !important; }

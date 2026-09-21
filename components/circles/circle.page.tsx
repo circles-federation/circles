@@ -6,6 +6,7 @@ import { CircleCard } from "./circle-card";
 import { ResourcesSection } from "./resources-section";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
+import { rolesHeldBy } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL, circleChildren, circleNeighborhood, isCircleAudience } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, Event, Member } from "@/lib/types";
@@ -145,9 +146,21 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                   <div className="min-w-0">
                     <div className="font-sans text-sm font-bold">{m.name}</div>
                     <Eyebrow className="text-soft">{m.role}</Eyebrow>
-                    <div className="mt-1.5">
-                      {m.homeCircleId && byId[m.homeCircleId] && <Chip title={`Neighborhood: ${byId[m.homeCircleId]!.name}`}>{byId[m.homeCircleId]!.name}</Chip>}
-                    </div>
+                    {/* everyone here belongs to this circle, so no neighborhood chip —
+                        a role they hold in it takes that spot, as an outlined badge */}
+                    {rolesHeldBy(c, m.id).length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {rolesHeldBy(c, m.id).map((role) => (
+                          <span
+                            key={role}
+                            title={`Role in ${c.name}`}
+                            className="ink-press-badge inline-flex items-center whitespace-nowrap border border-ink bg-paper px-2.25 py-1 font-sans text-label font-bold uppercase tracking-[0.08em] text-ink"
+                          >
+                            {role}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}

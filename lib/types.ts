@@ -27,6 +27,15 @@ export interface Member {
 // signed-in member's own record)
 export type Profile = Member & { emailPublic: boolean };
 
+// a role a member can hold in a circle (Secretary, Leader, ...) — see
+// lib/circle-roles.util.ts. `builtin` roles exist on every circle that can have
+// roles and can't be removed; the others are the circle's own.
+export interface CircleRole {
+  label: string;
+  builtin: boolean;
+  memberId: number | null;
+}
+
 export interface Circle {
   id: string;
   type: CircleType;
@@ -38,6 +47,9 @@ export interface Circle {
   offers: string[];
   // member ids — explicit membership rows, for every circle type
   members: number[];
+  // only on circles that can have roles (not a neighborhood or the city): every
+  // built-in role, then the circle's own, each with its holder if it has one
+  roles?: CircleRole[];
   lastEditedBy?: number;
   lastEditedAt?: string;
   facts: [string, string][];

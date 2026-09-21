@@ -11,8 +11,8 @@
     "about": "The standing council for Maple Street — proposes and votes on neighborhood meetings."
   },
   "people": [
-    { "name": "Ada", "lastName": "Example", "pronouns": "she/her", "role": "Organizer", "email": "ada@example.com", "bio": "Short bio shown on their profile.", "skills": ["Facilitation"], "interests": ["Gardening"], "inCouncil": true },
-    { "name": "Ben", "pronouns": "he/him", "role": "Treasurer", "email": "ben@example.com", "bio": "", "skills": [], "interests": [], "inCouncil": true },
+    { "name": "Ada", "lastName": "Example", "pronouns": "she/her", "role": "Organizer", "email": "ada@example.com", "bio": "Short bio shown on their profile.", "skills": ["Facilitation"], "interests": ["Gardening"], "inCouncil": true, "councilRoles": ["Leader", "Facilitator"] },
+    { "name": "Ben", "pronouns": "he/him", "role": "Treasurer", "email": "ben@example.com", "bio": "", "skills": [], "interests": [], "inCouncil": true, "councilRoles": ["Secretary"] },
     { "name": "Cy", "pronouns": "they/them", "role": "Neighbor", "email": "cy@example.com", "bio": "", "skills": [], "interests": [], "inCouncil": false },
     { "name": "Dee", "role": "Neighbor", "email": "dee@example.com", "inCouncil": false },
     { "name": "Eli", "role": "Neighbor", "email": "eli@example.com", "inCouncil": false }

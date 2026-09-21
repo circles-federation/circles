@@ -1,12 +1,13 @@
 import { eq, inArray } from "drizzle-orm";
 import { db } from "./client";
-import { circleMembers, circles } from "./schema";
+import { circleMembers, circleRoles, circles } from "./schema";
 import { groupBy } from "./util";
+import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { Circle } from "@/lib/types";
 
 type CircleRow = typeof circles.$inferSelect;
 
-function toCircle(row: CircleRow, memberIds: number[]): Circle {
+function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDraft[]): Circle {
   return {
     id: row.id,
     type: row.type,
@@ -16,6 +17,7 @@ function toCircle(row: CircleRow, memberIds: number[]): Circle {
     about: row.about,
     offers: row.offers,
     members: memberIds,
+    ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds) } : {}),
     lastEditedBy: row.lastEditedBy ?? undefined,
     lastEditedAt: row.lastEditedAt ? row.lastEditedAt.toISOString() : undefined,
     facts: row.facts,
@@ -29,9 +31,13 @@ function toCircle(row: CircleRow, memberIds: number[]): Circle {
 
 async function attachMembers(rows: CircleRow[]): Promise<Circle[]> {
   if (rows.length === 0) return [];
-  const memberRows = await db.select().from(circleMembers);
+  const [memberRows, roleRows] = await Promise.all([
+    db.select().from(circleMembers),
+    db.select().from(circleRoles).orderBy(circleRoles.position),
+  ]);
   const membersByCircle = groupBy(memberRows, (r) => r.circleId, (r) => r.memberId);
-  return rows.map((row) => toCircle(row, membersByCircle.get(row.id) || []));
+  const rolesByCircle = groupBy(roleRows, (r) => r.circleId, (r): CircleRoleDraft => ({ label: r.label, memberId: r.memberId }));
+  return rows.map((row) => toCircle(row, membersByCircle.get(row.id) || [], rolesByCircle.get(row.id) || []));
 }
 
 export async function getCircles(): Promise<Circle[]> {
@@ -56,6 +62,8 @@ export async function getCirclesByMember(memberId: number): Promise<Circle[]> {
 
 export async function updateCircle(id: string, patch: Partial<Circle>): Promise<Circle | null> {
   const { members: memberPatch, lastEditedAt, ...columnPatch } = patch;
+  // roles have their own authorized write (lib/db/circle-roles.ts) — never through this one
+  delete columnPatch.roles;
   await db.transaction(async (tx) => {
     if (Object.keys(columnPatch).length > 0 || lastEditedAt !== undefined) {
       await tx

@@ -1,6 +1,7 @@
 "use server";
 
 import { after } from "next/server";
+import * as circleRoles from "./circle-roles";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
 import * as events from "./events";
@@ -8,6 +9,7 @@ import * as members from "./members";
 import * as resources from "./resources";
 import { deliverEventNotifications } from "@/lib/notify";
 import { getCurrentUserId } from "@/lib/session";
+import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { EventDetails, EventDraft } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { Circle, Member } from "@/lib/types";
@@ -43,6 +45,10 @@ async function asMember<T>(run: (memberId: number) => Promise<T>): Promise<{ ok:
     console.error(err);
     return { ok: false, error: "Something went wrong — try again." };
   }
+}
+
+export async function saveCircleRolesAction(circleId: string, drafts: CircleRoleDraft[]) {
+  return asMember((memberId) => circleRoles.setCircleRoles(memberId, circleId, drafts));
 }
 
 export async function createResourceAction(circleId: string, input: ResourceInput) {

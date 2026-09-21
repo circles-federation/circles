@@ -9,12 +9,14 @@ import {
   setRsvpAction as dbSetRsvp,
   setVoteAction as dbSetVote,
   toggleRoleSlotAction as dbToggleRoleSlot,
+  saveCircleRolesAction as dbSaveCircleRoles,
   updateCircleAction as dbUpdateCircle,
   updateEventDetailsAction as dbUpdateEventDetails,
   updateMemberAction as dbUpdateMember,
   updateResourceAction as dbUpdateResource,
 } from "@/lib/db/actions";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
+import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { EventDetails, EventDraft } from "@/lib/events.util";
 import { isProposal, voteThreshold } from "@/lib/governance.util";
 import type { ResourceInput } from "@/lib/resources.util";
@@ -39,6 +41,7 @@ export interface AppStateValue {
   updateEventDetails(id: string, details: EventDetails): Promise<MutationResult>;
   toggleVote(eventId: string): void;
   saveCircle(id: string, patch: Partial<Circle>): void;
+  saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult>;
   saveProfile(next: Profile): void;
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
@@ -283,6 +286,16 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     }
   }
 
+  // replace a circle's roles. Awaits the server, which checks the caller is a
+  // member of the circle and decides the final list, then adopts what it saved;
+  // no toast, since it's saved along with the rest of the Manage form
+  async function saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult> {
+    const result = await dbSaveCircleRoles(circleId, roles);
+    if (!result.ok) return result;
+    setCircles((prev) => prev.map((c) => (c.id === circleId ? { ...c, roles: result.value } : c)));
+    return { ok: true };
+  }
+
   // save edits to a circle and record who edited it and when
   function saveCircle(id: string, patch: Partial<Circle>) {
     const fullPatch: Partial<Circle> = { ...patch, lastEditedBy: currentUserId, lastEditedAt: new Date().toISOString() };
@@ -346,7 +359,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       value={{
         events, circles, members, resources, rsvpState, voteState, profile,
         toggleRsvp, toggleRoleSlot, createEvent, updateEventDetails, toggleVote,
-        saveCircle, saveProfile, addResource, updateResource, removeResource,
+        saveCircle, saveCircleRoles, saveProfile, addResource, updateResource, removeResource,
       }}
     >
       {children}

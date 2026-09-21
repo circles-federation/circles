@@ -111,6 +111,12 @@ export const CIRCLES: Circle[] = [
     about: "The 903's standing council for shared finances — the dues ledger, mutual-aid fund, and small grants that keep neighborhood projects running. Meets monthly to review the books in the open and vote on requests from other groups on the block.",
     offers: ["Dues ledger", "Mutual-aid fund", "Small grants", "Budget review", "Open books", "Grant requests"],
     members: [15, 8, 1],
+    // the built-in roles, held by its members (the rest of a circle's roles are optional)
+    roles: [
+      { label: "Secretary", builtin: true, memberId: 15 },
+      { label: "Leader", builtin: true, memberId: 8 },
+      { label: "Facilitator", builtin: true, memberId: 1 },
+    ],
     lastEditedBy: 15, lastEditedAt: "2026-06-02T00:00:00.000Z",
     facts: [["Founded", "2023"], ["Meets", "Monthly"], ["Fund", "Open to all"], ["Books", "Public"]],
     join: "Come to a monthly meeting — the books are open to any resident of The 903.",

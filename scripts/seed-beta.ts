@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { count } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { members as membersTable } from "@/lib/db/schema";
+import { assembleCircleRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { Circle, Member } from "@/lib/types";
 import { seedDatabase } from "./seed-core";
 
@@ -14,7 +15,9 @@ import { seedDatabase } from "./seed-core";
      npm run db:seed:beta -- path/to/file.json
 
    Every person becomes a resident of the neighborhood (their home circle),
-   and everyone marked "inCouncil" is a member of the council. Every person
+   and everyone marked "inCouncil" is a member of the council (who may also
+   hold roles there, via "councilRoles": Secretary, Leader and Facilitator, or
+   any name you like). Every person
    also gets a login (a Better Auth user for their email) — sign-up is off,
    so this is the only way anyone can sign in. Refuses to run against a
    database that already has members, rather than mixing real and existing
@@ -36,6 +39,8 @@ interface BetaPerson {
   skills?: string[];
   interests?: string[];
   inCouncil?: boolean;
+  // roles this person holds on the council — one holder per role
+  councilRoles?: string[];
 }
 
 interface BetaFile {
@@ -46,6 +51,11 @@ interface BetaFile {
 }
 
 const slug = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+// each named role and the person (by their member id, i + 1) who holds it
+function councilRoleDrafts(f: BetaFile): CircleRoleDraft[] {
+  return (f.people ?? []).flatMap((p, i) => (Array.isArray(p?.councilRoles) ? p.councilRoles.map((label) => ({ label, memberId: i + 1 })) : []));
+}
 
 function validate(f: BetaFile): string[] {
   const errors: string[] = [];
@@ -67,7 +77,14 @@ function validate(f: BetaFile): string[] {
     if (!text(p?.email) || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p.email)) errors.push(`${label}: a valid email is required — it's how they sign in`);
     else if (seen.has(p.email.trim().toLowerCase())) errors.push(`${label}: duplicate email`);
     else seen.add(p.email.trim().toLowerCase());
+    if (p?.councilRoles !== undefined && (!Array.isArray(p.councilRoles) || p.councilRoles.some((r) => typeof r !== "string"))) {
+      errors.push(`${label}: councilRoles must be a list of role names`);
+    } else if (p?.councilRoles?.length && !p.inCouncil) {
+      errors.push(`${label}: councilRoles only makes sense for someone who is "inCouncil"`);
+    }
   });
+  const roleProblem = validateCircleRoles(councilRoleDrafts(f), f.people.map((_, i) => i + 1));
+  if (roleProblem) errors.push(`councilRoles: ${roleProblem}`);
   if (!f.people.some((p) => p?.inCouncil)) errors.push('at least one person needs "inCouncil": true');
   return errors;
 }
@@ -111,7 +128,7 @@ async function seedBeta() {
   const circles: Circle[] = [
     { ...base, id: cityId, type: "other", name: file.city.name.trim(), parentId: null, tagline: `${file.city.name.trim()}, together.`, about: "The root circle — every neighborhood and citywide group sits inside it.", members: [] },
     { ...base, id: hoodId, type: "neighborhood", name: file.neighborhood.name.trim(), parentId: cityId, tagline: file.neighborhood.tagline, about: file.neighborhood.about, members: members.map((m) => m.id) },
-    { ...base, id: councilId, type: "council", name: file.council.name.trim(), parentId: hoodId, tagline: file.council.tagline, about: file.council.about, members: councilMemberIds },
+    { ...base, id: councilId, type: "council", name: file.council.name.trim(), parentId: hoodId, tagline: file.council.tagline, about: file.council.about, members: councilMemberIds, roles: assembleCircleRoles(councilRoleDrafts(file), councilMemberIds) },
   ];
 
   await seedDatabase({ members, circles, events: [] });
