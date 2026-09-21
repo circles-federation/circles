@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { EventRow } from "./event-row";
 import { Eyebrow } from "@/components/shared";
 import { isPastEvent, fmtTime } from "@/lib/format.util";
-import { eventTypeLabel, isConfirmed, isProposal, voteCount, voteThreshold } from "@/lib/governance.util";
+import { isConfirmed, isProposal, voteCount, voteThreshold } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
@@ -48,11 +48,8 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
       tags={
         <>
           <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
-          <Eyebrow className={accentKey === "leaf" ? "text-leaf" : accentKey === "flame" ? "text-flame" : "text-soft"}>
-            · {eventTypeLabel(e)}
-          </Eyebrow>
           {statusText && (
-            <span className={clsx("font-sans text-label font-bold tracking-[0.08em] uppercase", confirmed ? "text-leaf" : "text-soft")}>
+            <span className={clsx("font-sans text-label font-bold tracking-[0.08em] uppercase", confirmed ? "text-leaf" : past ? "text-soft" : "text-flame")}>
               {statusText}
             </span>
           )}
