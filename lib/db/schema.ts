@@ -131,6 +131,31 @@ export const events = pgTable(
   ]
 );
 
+/* The email owed to each member about a new event: one row per (event, member),
+   written in the same transaction as the event so an event is never created
+   without its notifications queued (or queued without the event). A worker
+   (lib/notify.ts) drains the unsent ones. `attempts`/`last_attempt_at` make a
+   row claimable again only after a retry delay, which is also what stops two
+   drains from sending the same email at once. Kept as a table of "who has
+   already been told" rather than a generic outbox, so a later digest can skip
+   what was already emailed individually. */
+export const eventNotifications = pgTable(
+  "event_notifications",
+  {
+    eventId: text("event_id").notNull().references(() => events.id),
+    memberId: integer("member_id").notNull().references(() => members.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastError: text("last_error"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.eventId, t.memberId] }),
+    index("event_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
+  ]
+);
+
 export const eventRsvps = pgTable(
   "event_rsvps",
   {

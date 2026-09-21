@@ -6,3 +6,6 @@ import * as schema from "./schema";
    other file in the app reaches data through lib/db/members.ts/circles.ts/
    events.ts's plain async functions, same as before this was a real DB. */
 export const db = drizzle(process.env.DATABASE_URL!, { schema });
+
+// the handle a db.transaction callback receives — for helpers that run inside one
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

@@ -1,10 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
 import * as events from "./events";
 import * as members from "./members";
 import * as resources from "./resources";
+import { deliverEventNotifications } from "@/lib/notify";
 import { getCurrentUserId } from "@/lib/session";
 import type { EventDetails, EventDraft } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
@@ -56,7 +58,11 @@ export async function deleteResourceAction(id: string) {
 }
 
 export async function createEventAction(draft: EventDraft) {
-  return asMember((memberId) => events.createEvent(memberId, draft));
+  const result = await asMember((memberId) => events.createEvent(memberId, draft));
+  // createEvent has already queued the emails (if this event earns any);
+  // sending them after the response keeps the form from waiting on SMTP
+  if (result.ok) after(() => deliverEventNotifications());
+  return result;
 }
 
 export async function updateEventDetailsAction(id: string, details: EventDetails) {

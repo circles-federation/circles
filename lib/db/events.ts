@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNotNull, isNull, or, sql, type Column, type SQL } from "drizzle-orm";
-import { db } from "./client";
+import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circles, eventRsvps, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
+import { enqueueEventNotifications } from "./notifications";
 import { isWithinCircle } from "@/lib/circles.util";
 import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
 import { majority } from "@/lib/governance.util";
@@ -24,7 +25,6 @@ import type { Event, Role } from "@/lib/types";
 export class EventError extends UserFacingError {}
 
 type EventRow = typeof events.$inferSelect;
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Postgres always formats a `time` column as "HH:MM:SS" on read, regardless
 // of input precision — lib/format.util.ts's fmtTime/eventDateTime assume the
@@ -214,7 +214,7 @@ async function writeRoles(tx: Tx, eventId: string, eventRoles: Role[]) {
 /* The raw, trusted insert — no authorization, no validation. Only for callers
    that already hold a complete, vetted Event: createEvent below, and the seed
    script (whose fixtures carry their own ids, rsvps, and votes). */
-export async function insertEvent(event: Event): Promise<Event> {
+export async function insertEvent(event: Event, options: { notifyMembers?: boolean } = {}): Promise<Event> {
   await db.transaction(async (tx) => {
     await tx.insert(events).values({
       id: event.id,
@@ -239,6 +239,7 @@ export async function insertEvent(event: Event): Promise<Event> {
     if (event.roles && event.roles.length > 0) {
       await writeRoles(tx, event.id, event.roles);
     }
+    if (options.notifyMembers) await enqueueEventNotifications(tx, event);
   });
   return event;
 }
@@ -279,7 +280,7 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
     // a meeting or proposal starts with its proposer's vote
     ...(isMeeting || hosted ? { votes: [memberId] } : {}),
     ...(eventRoles.length > 0 ? { roles: eventRoles } : {}),
-  });
+  }, { notifyMembers: true });
 }
 
 /* Edit an event's own details — organizer only. Deliberately can't change its
