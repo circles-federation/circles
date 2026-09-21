@@ -4,6 +4,7 @@ import { db, type Tx } from "./client";
 import { circleMembers, circles, eventNotifications, members, events } from "./schema";
 import type { EventNotificationData } from "@/lib/email/templates.util";
 import { isPastEvent } from "@/lib/format.util";
+import { majority } from "@/lib/governance.util";
 import type { Event } from "@/lib/types";
 
 /* The queue behind "email a circle's members about a new event". Deciding who
@@ -16,21 +17,30 @@ const MAX_ATTEMPTS = 5;
 const RETRY_AFTER = sql`interval '5 minutes'`;
 
 /* Queue the emails for a just-created event — inside the transaction that
-   creates it. Today's one rule: an event whose circle has no sub-circles goes
-   straight to every member of that circle who has an email, except whoever
-   created it. A circle with sub-circles is a bigger, looser audience and is
-   meant for a different, later rule; so is a circle-hosted event, whose
-   proposal stage has its own audience — both queue nothing here. Nor does an
-   event that's already over. Returns how many were queued. */
+   creates it. Two cases, one rule: pick the circle whose members are being
+   told, and if it has no sub-circles, email every one of its members who has
+   an email address, except whoever created the event.
+
+   - An event hosted by a person: the circle it's shown to (`circleId`).
+   - A circle-hosted proposal: the *host* circle — its members are the only
+     ones who can see it or vote on it. The circle it will eventually be shown
+     to hears nothing until it's approved (a later case, not built).
+
+   A circle with sub-circles is a bigger, looser audience meant for a different,
+   later rule, and queues nothing; nor does an event that's already over, or a
+   circle-hosted event that was approved on creation (its host circle has no
+   one else to tell). Returns how many were queued. */
 export async function enqueueEventNotifications(tx: Tx, event: Event): Promise<number> {
-  if (event.hostCircleId || event.proposed || isPastEvent(event)) return 0;
-  const [subCircle] = await tx.select({ id: circles.id }).from(circles).where(eq(circles.parentId, event.circleId)).limit(1);
+  if (isPastEvent(event)) return 0;
+  if (event.hostCircleId && !event.proposed) return 0;
+  const toldCircleId = event.hostCircleId ?? event.circleId;
+  const [subCircle] = await tx.select({ id: circles.id }).from(circles).where(eq(circles.parentId, toldCircleId)).limit(1);
   if (subCircle) return 0;
   const recipients = await tx
     .select({ id: members.id })
     .from(circleMembers)
     .innerJoin(members, eq(members.id, circleMembers.memberId))
-    .where(and(eq(circleMembers.circleId, event.circleId), isNotNull(members.email), ne(members.id, event.organizerId)));
+    .where(and(eq(circleMembers.circleId, toldCircleId), isNotNull(members.email), ne(members.id, event.organizerId)));
   if (recipients.length === 0) return 0;
   await tx.insert(eventNotifications).values(recipients.map((r) => ({ eventId: event.id, memberId: r.id }))).onConflictDoNothing();
   return recipients.length;
@@ -48,6 +58,7 @@ export type PendingEventNotification = Omit<EventNotificationData, "url"> & {
 // drain, another server — get different rows rather than the same ones.
 export async function claimEventNotifications(limit: number): Promise<PendingEventNotification[]> {
   const organizer = alias(members, "organizer");
+  const hostCircle = alias(circles, "host_circle");
   return db.transaction(async (tx) => {
     const due = await tx
       .select({ eventId: eventNotifications.eventId, memberId: eventNotifications.memberId })
@@ -81,6 +92,9 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
         location: events.location,
         description: events.description,
         circleName: circles.name,
+        hostCircleName: hostCircle.name,
+        approvedAt: events.approvedAt,
+        hostSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.hostCircleId})`,
         organizerName: organizer.name,
       })
       .from(eventNotifications)
@@ -88,10 +102,23 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       .innerJoin(circles, eq(circles.id, events.circleId))
       .innerJoin(members, eq(members.id, eventNotifications.memberId))
       .innerJoin(organizer, eq(organizer.id, events.organizerId))
+      .leftJoin(hostCircle, eq(hostCircle.id, events.hostCircleId))
       .where(isDue);
-    return rows.flatMap((r) =>
+    return rows.flatMap(({ approvedAt, hostSize, hostCircleName, ...r }) =>
       r.email
-        ? [{ ...r, email: r.email, kind: r.kind ?? "ordinary", start: r.start.slice(0, 5), end: r.end.slice(0, 5) }]
+        ? [
+            {
+              ...r,
+              email: r.email,
+              kind: r.kind ?? "ordinary",
+              start: r.start.slice(0, 5),
+              end: r.end.slice(0, 5),
+              ...(hostCircleName ? { hostCircleName } : {}),
+              // read now, not when queued: it may have been approved since
+              proposed: !!hostCircleName && approvedAt === null,
+              votesNeeded: majority(hostSize),
+            },
+          ]
         : []
     );
   });

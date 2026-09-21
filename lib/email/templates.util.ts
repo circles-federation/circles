@@ -72,7 +72,15 @@ export interface EventNotificationData {
   end: string;
   location: string;
   description: string;
+  // the circle the event is shown to
   circleName: string;
+  // set when a circle hosts it. Whoever this is sent to is then a member of
+  // this circle (not of circleName) — see lib/db/notifications.ts.
+  hostCircleName?: string;
+  // a circle-hosted event still awaiting its host circle's vote, and how many
+  // approving votes that takes
+  proposed: boolean;
+  votesNeeded: number;
   organizerName: string;
   // where to open it in the app
   url: string;
@@ -89,27 +97,45 @@ function whenLabel(d: Pick<EventNotificationData, "date" | "start" | "end">): st
 
 export function eventNotificationEmail(n: EventNotificationData): Body {
   const meeting = n.kind === "meeting";
-  const noun = meeting ? "meeting" : "event";
-  const accent = meeting ? FLAME : INK;
+  // three flavors: a proposal its host circle is being asked to approve; an
+  // event a circle hosts (a proposal approved before the email went out, or
+  // told to the host circle afterward); and a plain event or meeting
+  const proposal = n.proposed && !!n.hostCircleName;
+  const voting = proposal || meeting;
+  // whose member the reader is: the host circle's for anything a circle hosts
+  const because = n.hostCircleName ?? n.circleName;
+  const noun = proposal ? "proposed event" : meeting ? "meeting" : "event";
+  const accent = voting ? FLAME : INK;
   const when = whenLabel(n);
   const excerpt = n.description.length > EXCERPT_CHARS ? `${n.description.slice(0, EXCERPT_CHARS).trimEnd()}…` : n.description;
-  const action = meeting ? "View and vote" : "View event";
-  const why = `You're getting this because you're a member of ${n.circleName}.`;
+  const action = voting ? "View and vote" : "View event";
+  const why = `You're getting this because you're a member of ${because}.`;
+  const note = proposal
+    ? `${n.organizerName} proposed this for ${n.circleName}. It needs ${n.votesNeeded} approving vote${n.votesNeeded === 1 ? "" : "s"} from ${because} members before it opens up to ${n.circleName}.`
+    : "";
+  const subject = proposal ? `New proposal in ${because}: ${n.title}` : `New ${noun} in ${because}: ${n.title}`;
   const detail = (label: string, value: string) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
+  const hostLabel = proposal ? "Proposed by" : "Hosted by";
   return {
-    subject: `New ${noun} in ${n.circleName}: ${n.title}`,
+    subject,
     text:
-      `New ${noun} in ${n.circleName}\n\n${n.title}\n\nWhen: ${when}\nWhere: ${n.location}\nHosted by: ${n.organizerName}\n\n${excerpt}\n\n${action}: ${n.url}\n\n${why}`,
+      `New ${noun} in ${because}\n\n${n.title}\n\n` +
+      (note ? `${note}\n\n` : "") +
+      `When: ${when}\nWhere: ${n.location}\n${hostLabel}: ${n.organizerName}\n\n${excerpt}\n\n${action}: ${n.url}\n\n${why}`,
     html: shell(
       `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
-        eyebrow(`New ${noun} · ${esc(n.circleName)}`, meeting ? FLAME : SOFT) +
+        eyebrow(`New ${noun} · ${esc(because)}`, voting ? FLAME : SOFT) +
         `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
         `</td></tr>` +
+        // the app's orange-ruled note, for what a proposal needs from the reader
+        (note
+          ? `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${FLAME};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}</div></td></tr>`
+          : "") +
         `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
         detail("When", when) +
         detail("Where", n.location) +
-        detail("Hosted by", n.organizerName) +
+        detail(hostLabel, n.organizerName) +
         `</table></td></tr>` +
         (excerpt
           ? `<tr><td style="font-family:${SERIF};font-size:16px;line-height:1.55;color:#222222;padding-bottom:24px">${esc(excerpt).replace(/\n/g, "<br>")}</td></tr>`
