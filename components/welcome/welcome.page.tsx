@@ -17,8 +17,8 @@ interface WelcomePageProps {
 }
 
 /* The unauthenticated welcome page — passwordless email + one-time-code
-   login. No real email provider yet, so requestLoginCode() hands the code
-   straight back and it's shown here as an explicit "dev mode" hint; the
+   login. The code is emailed; outside production requestLoginCode() also
+   hands it straight back, shown here as an explicit "dev mode" hint; the
    Server Actions themselves never navigate (matching this app's existing
    convention that mutators are pure state, callers do the routing) — this
    form calls router.push() itself once verifyLoginCode() succeeds.
@@ -116,7 +116,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
             </p>
             {devCode && (
               <div className="mb-4 border border-dashed border-soft px-3 py-2.5 font-sans text-sm text-soft">
-                Dev mode — there&apos;s no real email provider yet, so here&apos;s your code:{" "}
+                Dev mode — here&apos;s your code (production only emails it):{" "}
                 <strong className="tracking-[0.08em] text-ink">{devCode}</strong>
               </div>
             )}

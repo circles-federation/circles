@@ -3,6 +3,8 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/better-auth";
 import { getMemberByEmail } from "@/lib/db/members";
+import { sendEmail } from "@/lib/email";
+import { loginCodeEmail } from "@/lib/email/templates.util";
 
 interface AuthResult {
   ok: boolean;
@@ -10,16 +12,27 @@ interface AuthResult {
 }
 
 interface RequestCodeResult extends AuthResult {
+  // only ever set outside production — see requestLoginCode
   code?: string;
 }
 
+// one code per address per minute: the address is a member's real inbox, so
+// without this anyone could flood it. In memory, so per server process — fine
+// for a single instance; move it to the database if this ever scales out.
+const RESEND_COOLDOWN_MS = 60_000;
+const lastSent = new Map<string, number>();
+
 /* Real auth now — Better Auth's email-otp plugin, see lib/better-auth.ts —
    wrapped behind this file's existing exports so no call site changes
-   (welcome.page.tsx, app/(app)/layout.tsx via lib/session.ts). There's still
-   no real email provider, so requestLoginCode() reads the OTP straight back
-   out via auth.api.getVerificationOTP() (a Better Auth endpoint marked
-   serverOnly — never exposed over HTTP) instead of actually emailing it; the
-   welcome page still shows it as an explicit "dev mode" hint, same as before.
+   (welcome.page.tsx, app/(app)/layout.tsx via lib/session.ts). Better Auth
+   creates and stores the code; requestLoginCode() reads it back out via
+   auth.api.getVerificationOTP() (a Better Auth endpoint marked serverOnly —
+   never exposed over HTTP) and emails it itself through lib/email, rather than
+   from Better Auth's sendVerificationOTP hook, which swallows errors (see
+   lib/better-auth.ts). Outside production the code is also returned so the
+   welcome page can show it as an explicit "dev mode" hint; in production it
+   is never returned to the browser, since the email is the whole proof of
+   owning the address.
 
    getMemberByEmail() gates requestLoginCode() the same way it always did:
    Better Auth's own disableSignUp option silently no-ops (returns success)
@@ -32,9 +45,23 @@ export async function requestLoginCode(email: string): Promise<RequestCodeResult
   if (!member) {
     return { ok: false, error: "We don't recognize that email yet." };
   }
-  await auth.api.sendVerificationOTP({ body: { email, type: "sign-in" } });
-  const { otp } = await auth.api.getVerificationOTP({ query: { email, type: "sign-in" } });
-  return { ok: true, code: otp ?? undefined };
+  const key = email.trim().toLowerCase();
+  const wait = RESEND_COOLDOWN_MS - (Date.now() - (lastSent.get(key) ?? 0));
+  if (wait > 0) {
+    return { ok: false, error: `A code was just sent — check your inbox, or try again in ${Math.ceil(wait / 1000)} seconds.` };
+  }
+  let otp: string | null;
+  try {
+    await auth.api.sendVerificationOTP({ body: { email, type: "sign-in" } });
+    ({ otp } = await auth.api.getVerificationOTP({ query: { email, type: "sign-in" } }));
+    if (!otp) throw new Error("no code was stored");
+    await sendEmail({ to: email, ...loginCodeEmail(otp) });
+  } catch (err) {
+    console.error("Couldn't send a login code:", err);
+    return { ok: false, error: "We couldn't send your code — try again in a moment." };
+  }
+  lastSent.set(key, Date.now());
+  return process.env.NODE_ENV === "production" ? { ok: true } : { ok: true, code: otp };
 }
 
 export async function verifyLoginCode(email: string, code: string): Promise<AuthResult> {

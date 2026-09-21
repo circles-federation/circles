@@ -4,6 +4,7 @@ import { emailOTP } from "better-auth/plugins/email-otp";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "./db/client";
 import * as schema from "./db/schema";
+import { LOGIN_CODE_MINUTES } from "./email/templates.util";
 
 /* The only file that imports "better-auth" — lib/auth.ts/lib/session.ts wrap
    this behind the app's existing requestLoginCode/verifyLoginCode/logout/
@@ -14,9 +15,12 @@ import * as schema from "./db/schema";
    disableSignUp because this app doesn't create accounts on sign-in; a
    member without a matching seeded email should get the same "we don't
    recognize that email yet" rejection the old mock auth gave, not a new
-   account. otpLength/expiresIn match the mock's old 6-digit/10-minute code.
-   sendVerificationOTP preserves the existing "no real email provider yet"
-   dev-mode-hint behavior — see lib/auth.ts's requestLoginCode. */
+   account. The code is 6 digits and lives LOGIN_CODE_MINUTES (the email says
+   so too); Better Auth's own default of 3 wrong tries per code stays.
+   sendVerificationOTP does nothing on purpose: Better Auth runs it as a
+   background task and swallows any error from it, so a failed send would look
+   like success. lib/auth.ts's requestLoginCode() emails the code itself and
+   can report a failure. */
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -28,14 +32,9 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       otpLength: 6,
-      expiresIn: 600,
+      expiresIn: LOGIN_CODE_MINUTES * 60,
       disableSignUp: true,
-      async sendVerificationOTP({ otp }) {
-        // no real email provider — lib/auth.ts's requestLoginCode() reads
-        // the OTP back out via getVerificationOTP() and hands it to the
-        // welcome page as an explicit dev-mode hint, same as the old mock
-        void otp;
-      },
+      async sendVerificationOTP() {},
     }),
     // must be last — forwards Set-Cookie headers from auth.api.* calls made
     // inside a Next.js Server Action via next/headers' cookies(), which is

@@ -1,4 +1,4 @@
-# Local Postgres for development. No managed service, no vendor lock-in —
+# Local Postgres and a mail catcher for development. No managed service, no vendor lock-in —
 # `docker compose up -d` to start, `docker compose down -v` to wipe it clean
 # (drops the named volume too, so the next start is a truly fresh database).
 services:
@@ -13,6 +13,15 @@ services:
       - "5432:5432"
     volumes:
       - circles_postgres_data:/var/lib/postgresql/data
+
+  # Catches every email the app sends in development (SMTP on 1025) and shows
+  # them in a web inbox at http://localhost:8025 — nothing is ever delivered.
+  mailpit:
+    image: axllent/mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   circles_postgres_data:
