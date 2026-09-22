@@ -1,11 +1,14 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "./client";
+import { UserFacingError } from "./errors";
 import { circleMembers, circleRoles, circles } from "./schema";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { Circle } from "@/lib/types";
 
 type CircleRow = typeof circles.$inferSelect;
+
+export class CircleError extends UserFacingError {}
 
 function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDraft[]): Circle {
   return {
@@ -60,30 +63,28 @@ export async function getCirclesByMember(memberId: number): Promise<Circle[]> {
   return attachMembers(rows);
 }
 
-export async function updateCircle(id: string, patch: Partial<Circle>): Promise<Circle | null> {
-  const { members: memberPatch, lastEditedAt, ...columnPatch } = patch;
-  // roles have their own authorized write (lib/db/circle-roles.ts) — never through this one
-  delete columnPatch.roles;
-  await db.transaction(async (tx) => {
-    if (Object.keys(columnPatch).length > 0 || lastEditedAt !== undefined) {
-      await tx
-        .update(circles)
-        .set({
-          ...columnPatch,
-          ...(lastEditedAt !== undefined ? { lastEditedAt: new Date(lastEditedAt) } : {}),
-        })
-        .where(eq(circles.id, id));
-    }
-    if (memberPatch !== undefined) {
-      // membership rows carry their circle's type (see circle_members' composite FK)
-      const [circle] = await tx.select({ type: circles.type }).from(circles).where(eq(circles.id, id));
-      if (circle) {
-        await tx.delete(circleMembers).where(eq(circleMembers.circleId, id));
-        if (memberPatch.length > 0) {
-          await tx.insert(circleMembers).values(memberPatch.map((memberId) => ({ circleId: id, circleType: circle.type, memberId })));
-        }
-      }
-    }
-  });
+/* Edit a circle's own page — member-gated, the same right `lib/db/circle-
+   roles.ts`'s setCircleRoles already requires: `memberId` must belong to the
+   circle being edited. Membership itself isn't editable through this generic
+   patch — a client-supplied `members` key is silently dropped, same as
+   `roles` — both have their own authorized write path (circle-roles.ts for
+   roles; there is no membership-editing UI yet, so that door simply doesn't
+   exist here). */
+export async function updateCircle(memberId: number, id: string, patch: Partial<Circle>): Promise<Circle | null> {
+  const [circle] = await db.select().from(circles).where(eq(circles.id, id));
+  if (!circle) throw new CircleError("That circle doesn't exist.");
+  const [membership] = await db.select().from(circleMembers).where(and(eq(circleMembers.circleId, id), eq(circleMembers.memberId, memberId))).limit(1);
+  if (!membership) throw new CircleError(`Only members of ${circle.name} can edit its page.`);
+
+  const { members: _members, roles: _roles, lastEditedAt, ...columnPatch } = patch;
+  if (Object.keys(columnPatch).length > 0 || lastEditedAt !== undefined) {
+    await db
+      .update(circles)
+      .set({
+        ...columnPatch,
+        ...(lastEditedAt !== undefined ? { lastEditedAt: new Date(lastEditedAt) } : {}),
+      })
+      .where(eq(circles.id, id));
+  }
   return getCircleById(id);
 }

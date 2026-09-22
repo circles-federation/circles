@@ -51,7 +51,12 @@ export async function getMemberByEmail(email: string): Promise<Member | null> {
 /* Only the member's own columns are written — a caller may hand this a whole
    Profile (AppStateProvider.saveProfile does), which carries fields that
    aren't columns (emailPublic, homeCircleId). Changing a member's home circle
-   is a membership change, not a column edit. */
+   is a membership change, not a column edit.
+
+   `id` is always the acting member: lib/db/actions.ts's updateMemberAction
+   takes no id from the client at all and supplies the session's own, so
+   there's no id to check here — a member can only ever reach their own row.
+   Reads (getMemberById) stay open to any id; only the write is narrowed. */
 export async function updateMember(id: number, patch: Partial<Member>): Promise<Member | null> {
   const { name, lastName, pronouns, role, skills, interests, bio, email } = patch;
   const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, email };

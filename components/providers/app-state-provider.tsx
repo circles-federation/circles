@@ -300,7 +300,13 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   function saveCircle(id: string, patch: Partial<Circle>) {
     const fullPatch: Partial<Circle> = { ...patch, lastEditedBy: currentUserId, lastEditedAt: new Date().toISOString() };
     setCircles((prev) => prev.map((c) => (c.id === id ? { ...c, ...fullPatch } : c)));
-    dbUpdateCircle(id, fullPatch).catch(console.error);
+    // asMember (lib/db/actions.ts) never rejects — a refusal (not a member,
+    // signed out) comes back as { ok: false }, not a throw — so this checks
+    // the result rather than relying on .catch(), which would otherwise never
+    // fire and let a refusal disappear silently
+    dbUpdateCircle(id, fullPatch).then((result) => {
+      if (!result.ok) console.error(result.error);
+    });
     const circle = circles.find((c) => c.id === id);
     showToast({
       tone: "success",
@@ -319,7 +325,11 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
           : m
       )
     );
-    dbUpdateMember(currentUserId, next).catch(console.error);
+    // see saveCircle above — asMember never rejects, so the result is what
+    // tells us whether it actually saved
+    dbUpdateMember(next).then((result) => {
+      if (!result.ok) console.error(result.error);
+    });
     showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
   }
 

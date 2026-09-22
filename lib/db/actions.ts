@@ -20,12 +20,16 @@ import type { Circle, Member } from "@/lib/types";
    lib/auth.ts already uses. Reads don't need this: app/(app)/layout.tsx is
    already a Server Component and imports lib/db/*.ts directly. */
 
-export async function updateMemberAction(id: number, patch: Partial<Member>) {
-  return members.updateMember(id, patch);
+/* Both authorized against the session like every other write below —
+   updateMemberAction never takes an id at all, so there's no id a caller
+   could substitute someone else's for; updateCircleAction requires the
+   session member to belong to the circle (lib/db/circles.ts). */
+export async function updateMemberAction(patch: Partial<Member>) {
+  return asMember((memberId) => members.updateMember(memberId, patch));
 }
 
 export async function updateCircleAction(id: string, patch: Partial<Circle>) {
-  return circles.updateCircle(id, patch);
+  return asMember((memberId) => circles.updateCircle(memberId, id, patch));
 }
 
 
