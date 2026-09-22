@@ -18,8 +18,10 @@ interface ParticipationBadgeProps {
 export function ParticipationBadge({ kind, past, className }: ParticipationBadgeProps) {
   return (
     <div className={clsx("inline-flex items-center gap-1.5 font-sans text-sm font-extrabold whitespace-nowrap", past ? "text-soft" : "text-ink", className)}>
-      <CheckCircleIcon className="size-4" strokeWidth={2} />
-      {kind === "approved" ? "Approved" : past ? "Attended" : "Attending"}
+      <CheckCircleIcon className="size-5 min-[720px]:size-4" strokeWidth={2} />
+      <span className="hidden min-[720px]:inline">
+        {kind === "approved" ? "Approved" : past ? "Attended" : "Attending"}
+      </span>
     </div>
   );
 }

@@ -33,8 +33,9 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
   const votes = voteCount(e);
   const threshold = voteThreshold(e, byId);
   const statusText = past
-    ? (approved ? "· Held" : "· Lapsed")
+    ? (approved ? "" : "· Lapsed")
     : (approved ? "" : `· Proposed — ${threshold - votes} more to approve`);
+  const hideOnMobile = !past && !approved;
   // a proposal names the circle proposing it and the one it would be shown to
   const where = hostCircle && circle && hostCircle.id !== circle.id ? `${hostCircle.name} for ${circle.name}` : (hostCircle ?? circle)?.name ?? "";
 
@@ -46,14 +47,14 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
       rowAccent={accentKey}
       washed={!past}
       title={e.title}
-      titleMuted={past && !approved}
+      titleMuted={past}
       meta={`Proposed by ${host?.name ?? ""} · ${where} · ${e.location}`}
       metaMuted={past}
       tags={
         <>
           <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
           {statusText && (
-            <span className={clsx("font-sans text-label font-bold tracking-[0.08em] uppercase", approved ? "text-leaf" : past ? "text-soft" : "text-flame")}>
+            <span className={clsx("font-sans text-label font-bold tracking-[0.08em] uppercase", hideOnMobile && "hidden min-[720px]:inline", approved ? "text-leaf" : past ? "text-soft" : "text-flame")}>
               {statusText}
             </span>
           )}
