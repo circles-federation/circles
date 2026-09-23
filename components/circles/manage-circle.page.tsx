@@ -58,6 +58,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     .map((c) => ({ id: c.id, label: c.name }))
     .sort((a, b) => a.label.localeCompare(b.label))
     .concat(root && root.id !== o.id ? [{ id: root.id, label: root.name }] : []);
+  const [tagline, setTagline] = useState(o.tagline);
   const [about, setAbout] = useState(o.about);
   const [offers, setOffers] = useState([...o.offers]);
   const [facts, setFacts] = useState<FactDraft[]>(() =>
@@ -98,6 +99,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
   const pageDirty =
     parentId !== (o.parentId ?? null) ||
+    tagline.trim() !== o.tagline ||
     about !== o.about ||
     offers.join("\u0000") !== o.offers.join("\u0000") ||
     JSON.stringify(factPairs) !== JSON.stringify(o.facts) ||
@@ -151,7 +153,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     }
     // only touch the page (and who last edited it) if its own fields changed
     if (pageDirty) {
-      onSave({ parentId, about: about.trim(), offers, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
+      onSave({ parentId, tagline: tagline.trim(), about: about.trim(), offers, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
     }
     onBack();
   }
@@ -176,6 +178,15 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
       </div>
 
       <SectionGroup>
+        <Section>
+          <Label>Tagline</Label>
+          <Input
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            placeholder="A short line under the name"
+          />
+        </Section>
+
         {o.parentId !== null && (
           <Section>
             <Label htmlFor="circle-parent">Parent Circle</Label>
