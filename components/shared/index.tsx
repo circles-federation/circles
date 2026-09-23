@@ -24,6 +24,7 @@ export { SearchWithFilter } from "./search-with-filter";
 export { Section } from "./section";
 export { SectionGroup } from "./section-group";
 export { Select } from "./select";
+export { SimpleTabs } from "./simple-tabs";
 export { TabbedPanel } from "./tabbed-panel";
 export { Tag } from "./tag";
 export { TextArea } from "./text-area";

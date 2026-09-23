@@ -3,8 +3,9 @@
 import { useRef, useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, TextArea } from "@/components/shared";
+import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, SimpleTabs, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
+import { ResourcesSection } from "./resources-section";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { CIRCLE_ROLE_LABEL_MAX, circleHasRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL } from "@/lib/circles.util";
@@ -122,6 +123,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     JSON.stringify(hoursPairs) !== JSON.stringify(o.hours || []);
   const dirty = pageDirty || rolesDirty;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [activeTab, setActiveTab] = useState<"wiki" | "resources" | "circle">("wiki");
 
   function updateFact(i: number, key: keyof FactDraft, value: string) {
     setFacts((prev) => prev.map((f, j) => (j === i ? { ...f, [key]: value } : f)));
@@ -157,11 +159,17 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     if (rolesDirty) {
       // instant feedback only — the server re-validates and is the real check
       const problem = validateCircleRoles(rolePairs, o.members);
-      if (problem) return setRolesError(problem);
+      if (problem) {
+        setActiveTab("circle");
+        return setRolesError(problem);
+      }
       setSaving(true);
       const result = await onSaveRoles(rolePairs);
       setSaving(false);
-      if (!result.ok) return setRolesError(result.error);
+      if (!result.ok) {
+        setActiveTab("circle");
+        return setRolesError(result.error);
+      }
     }
     // only touch the page (and who last edited it) if its own fields changed
     if (pageDirty) {
@@ -189,231 +197,252 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
         </p>
       </div>
 
-      <SectionGroup>
-        <Section>
-          <div className="flex flex-col gap-5.5">
-            {o.parentId !== null && (
-              <div>
-                <Label htmlFor="circle-parent">Parent Circle</Label>
-                <Select id="circle-parent" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="min-[720px]:max-w-90">
-                  {parentOptions.map((p) => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                </Select>
-                <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-                  Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
-                </p>
-              </div>
-            )}
+      <SimpleTabs
+        className="mt-6"
+        tabs={[{ key: "wiki", label: "Wiki" }, { key: "resources", label: "Resources" }, { key: "circle", label: "Circle" }]}
+        active={activeTab}
+        onChange={(key) => setActiveTab(key as "wiki" | "resources" | "circle")}
+      />
 
-            {o.type !== "neighborhood" && (
-              <div>
-                <Label htmlFor="circle-type">Type</Label>
-                <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} className="min-[720px]:max-w-90">
-                  {CIRCLE_TYPE_OPTIONS.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </Select>
-              </div>
-            )}
-
-            <div>
-              <Label>Name</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Organization name"
-              />
-            </div>
-
-            <div>
-              <Label>Tagline</Label>
-              <Input
-                value={tagline}
-                onChange={(e) => setTagline(e.target.value)}
-                placeholder="A short line under the name"
-              />
-            </div>
-          </div>
-        </Section>
-
-        <Section>
-          <Label>Quick facts</Label>
-          <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border border-ink">
-            {facts.map((f, i) => (
-              <div
-                key={i}
-                className={clsx(
-                  "p-3.5",
-                  i < facts.length - 1 && "border-b min-[720px]:border-b-0 min-[720px]:border-r border-faint",
-                )}
-              >
-                <input
-                  value={f.label}
-                  onChange={(e) => updateFact(i, "label", e.target.value)}
-                  placeholder="Label"
-                  className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink"
-                />
-                <input
-                  value={f.value}
-                  onChange={(e) => updateFact(i, "value", e.target.value)}
-                  placeholder="Value"
-                  className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
-                />
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        <Section>
-          <Label>About</Label>
-          <TextArea
-            value={about}
-            onChange={(e) => setAbout(e.target.value)}
-            placeholder="Write a short description of your organization, its purpose, and what it does."
-            rows={5}
-          />
-        </Section>
-
-        <Section>
-          <Label>What we offer</Label>
-          <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
-        </Section>
-
-        {showRoles && (
+      {activeTab === "resources" && (
+        <SectionGroup>
           <Section>
-            <Label>Roles</Label>
-            <p className="mb-3 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-              Optional. Pick who fills each role in {o.name}; a member with a role shows it on their card here instead of their occupation. Secretary, Leader and Facilitator are always listed — leave any empty — and you can add your own.
-            </p>
-            <div className="border border-ink">
-              <div className="hidden border-b border-ink px-3.5 py-2 min-[720px]:grid min-[720px]:grid-cols-2 min-[720px]:gap-3.5">
-                <Eyebrow className="text-soft">Role</Eyebrow>
-                <Eyebrow className="text-soft">Member</Eyebrow>
+            <ResourcesSection circleId={o.id} />
+          </Section>
+        </SectionGroup>
+      )}
+
+      {activeTab === "wiki" && (
+        <SectionGroup>
+          <Section>
+            <Label>Quick facts</Label>
+            <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border border-ink">
+              {facts.map((f, i) => (
+                <div
+                  key={i}
+                  className={clsx(
+                    "p-3.5",
+                    i < facts.length - 1 && "border-b min-[720px]:border-b-0 min-[720px]:border-r border-faint",
+                  )}
+                >
+                  <input
+                    value={f.label}
+                    onChange={(e) => updateFact(i, "label", e.target.value)}
+                    placeholder="Label"
+                    className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink"
+                  />
+                  <input
+                    value={f.value}
+                    onChange={(e) => updateFact(i, "value", e.target.value)}
+                    placeholder="Value"
+                    className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
+                  />
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          <Section>
+            <Label>About</Label>
+            <TextArea
+              value={about}
+              onChange={(e) => setAbout(e.target.value)}
+              placeholder="Write a short description of your organization, its purpose, and what it does."
+              rows={5}
+            />
+          </Section>
+
+          <Section>
+            <Label>What we offer</Label>
+            <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
+          </Section>
+
+          <Section>
+            <div className="flex flex-col gap-5.5">
+              <div>
+                <Label>Website</Label>
+                <Input
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="yourorg.coop"
+                />
               </div>
-              {roleRows.map((r) => (
-                <div key={r.key} className="grid grid-cols-1 gap-2 border-b border-faint px-3.5 py-3 last:border-b-0 min-[720px]:grid-cols-2 min-[720px]:items-center min-[720px]:gap-3.5">
-                  {r.builtin ? (
-                    <div className="font-sans text-sm font-bold">{r.label}</div>
-                  ) : (
-                    <div className="flex items-center gap-2">
+
+              <div>
+                <Label>Address</Label>
+                <Input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="123 Main St, Providence, RI"
+                />
+              </div>
+
+              <div>
+                <Label>Open hours</Label>
+                <div className="flex flex-col gap-2.5">
+                  {hours.map((h, i) => (
+                    <div key={i} className="flex items-stretch border border-ink">
                       <input
-                        value={r.label}
-                        onChange={(e) => updateRole(r.key, { label: e.target.value })}
-                        maxLength={CIRCLE_ROLE_LABEL_MAX}
-                        placeholder="Role name"
-                        aria-label="Role name"
-                        className="min-w-0 flex-1 border border-faint bg-paper px-2.5 py-2 font-sans text-sm font-bold outline-none focus:border-ink"
+                        value={h.day}
+                        onChange={(e) => updateHour(i, "day", e.target.value)}
+                        placeholder="Day (e.g. Tue or Mon–Fri)"
+                        className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
+                      />
+                      <input
+                        value={h.time}
+                        onChange={(e) => updateHour(i, "time", e.target.value)}
+                        placeholder="Hours (e.g. 4–8pm)"
+                        className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
                       />
                       <button
-                        onClick={() => removeRole(r.key)}
-                        aria-label={`Remove ${r.label || "role"}`}
-                        className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-soft hover:text-ink"
+                        onClick={() => removeHourRow(i)}
+                        aria-label="Remove"
+                        className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-paper px-3.5 text-soft"
                       >
                         <XMarkIcon className="size-3.5" strokeWidth={2.5} />
                       </button>
                     </div>
-                  )}
-                  <Select
-                    value={r.memberId ?? ""}
-                    onChange={(e) => updateRole(r.key, { memberId: e.target.value === "" ? null : Number(e.target.value) })}
-                    aria-label={`Member for ${r.label || "new role"}`}
-                    className="w-full"
-                  >
-                    <option value="">Unassigned</option>
-                    {roleMembers.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                  <Button variant="secondary" size="compact" onClick={addHourRow} className="self-start">
+                    <PlusIcon className="size-3.5" strokeWidth={2.5} />
+                    Add hours
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          <Section>
+            <div className="flex flex-col gap-5.5">
+              <div>
+                <Label>How to join</Label>
+                <TextArea
+                  value={join}
+                  onChange={(e) => setJoin(e.target.value)}
+                  placeholder="How does someone become part of this organization?"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label>Get in touch</Label>
+                <Input
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value)}
+                  placeholder="hello@yourorg.coop"
+                />
+              </div>
+            </div>
+          </Section>
+        </SectionGroup>
+      )}
+
+      {activeTab === "circle" && (
+        <SectionGroup>
+          <Section>
+            <div className="flex flex-col gap-5.5">
+              {o.parentId !== null && (
+                <div>
+                  <Label htmlFor="circle-parent">Parent Circle</Label>
+                  <Select id="circle-parent" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="min-[720px]:max-w-90">
+                    {parentOptions.map((p) => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </Select>
+                  <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
+                    Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
+                  </p>
+                </div>
+              )}
+
+              {o.type !== "neighborhood" && (
+                <div>
+                  <Label htmlFor="circle-type">Type</Label>
+                  <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} className="min-[720px]:max-w-90">
+                    {CIRCLE_TYPE_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
                     ))}
                   </Select>
                 </div>
-              ))}
-            </div>
-            <Button variant="secondary" size="compact" onClick={addRole} className="mt-3">
-              <PlusIcon className="size-3.5" strokeWidth={2.5} />
-              Add role
-            </Button>
-            {rolesError && <p className="mt-3 font-sans text-sm font-bold text-danger">{rolesError}</p>}
-          </Section>
-        )}
+              )}
 
-        <Section>
-          <div className="flex flex-col gap-5.5">
-            <div>
-              <Label>Website</Label>
-              <Input
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                placeholder="yourorg.coop"
-              />
-            </div>
+              <div>
+                <Label>Name</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Organization name"
+                />
+              </div>
 
-            <div>
-              <Label>Address</Label>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="123 Main St, Providence, RI"
-              />
-            </div>
-
-            <div>
-              <Label>Open hours</Label>
-              <div className="flex flex-col gap-2.5">
-                {hours.map((h, i) => (
-                  <div key={i} className="flex items-stretch border border-ink">
-                    <input
-                      value={h.day}
-                      onChange={(e) => updateHour(i, "day", e.target.value)}
-                      placeholder="Day (e.g. Tue or Mon–Fri)"
-                      className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
-                    />
-                    <input
-                      value={h.time}
-                      onChange={(e) => updateHour(i, "time", e.target.value)}
-                      placeholder="Hours (e.g. 4–8pm)"
-                      className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
-                    />
-                    <button
-                      onClick={() => removeHourRow(i)}
-                      aria-label="Remove"
-                      className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-paper px-3.5 text-soft"
-                    >
-                      <XMarkIcon className="size-3.5" strokeWidth={2.5} />
-                    </button>
-                  </div>
-                ))}
-                <Button variant="secondary" size="compact" onClick={addHourRow} className="self-start">
-                  <PlusIcon className="size-3.5" strokeWidth={2.5} />
-                  Add hours
-                </Button>
+              <div>
+                <Label>Tagline</Label>
+                <Input
+                  value={tagline}
+                  onChange={(e) => setTagline(e.target.value)}
+                  placeholder="A short line under the name"
+                />
               </div>
             </div>
-          </div>
-        </Section>
+          </Section>
 
-        <Section>
-          <div className="flex flex-col gap-5.5">
-            <div>
-              <Label>How to join</Label>
-              <TextArea
-                value={join}
-                onChange={(e) => setJoin(e.target.value)}
-                placeholder="How does someone become part of this organization?"
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Label>Get in touch</Label>
-              <Input
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                placeholder="hello@yourorg.coop"
-              />
-            </div>
-          </div>
-        </Section>
-      </SectionGroup>
+          {showRoles && (
+            <Section>
+              <Label>Roles</Label>
+              <p className="mb-3 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
+                Optional. Pick who fills each role in {o.name}; a member with a role shows it on their card here instead of their occupation. Secretary, Leader and Facilitator are always listed — leave any empty — and you can add your own.
+              </p>
+              <div className="border border-ink">
+                <div className="hidden border-b border-ink px-3.5 py-2 min-[720px]:grid min-[720px]:grid-cols-2 min-[720px]:gap-3.5">
+                  <Eyebrow className="text-soft">Role</Eyebrow>
+                  <Eyebrow className="text-soft">Member</Eyebrow>
+                </div>
+                {roleRows.map((r) => (
+                  <div key={r.key} className="grid grid-cols-1 gap-2 border-b border-faint px-3.5 py-3 last:border-b-0 min-[720px]:grid-cols-2 min-[720px]:items-center min-[720px]:gap-3.5">
+                    {r.builtin ? (
+                      <div className="font-sans text-sm font-bold">{r.label}</div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={r.label}
+                          onChange={(e) => updateRole(r.key, { label: e.target.value })}
+                          maxLength={CIRCLE_ROLE_LABEL_MAX}
+                          placeholder="Role name"
+                          aria-label="Role name"
+                          className="min-w-0 flex-1 border border-faint bg-paper px-2.5 py-2 font-sans text-sm font-bold outline-none focus:border-ink"
+                        />
+                        <button
+                          onClick={() => removeRole(r.key)}
+                          aria-label={`Remove ${r.label || "role"}`}
+                          className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-soft hover:text-ink"
+                        >
+                          <XMarkIcon className="size-3.5" strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    )}
+                    <Select
+                      value={r.memberId ?? ""}
+                      onChange={(e) => updateRole(r.key, { memberId: e.target.value === "" ? null : Number(e.target.value) })}
+                      aria-label={`Member for ${r.label || "new role"}`}
+                      className="w-full"
+                    >
+                      <option value="">Unassigned</option>
+                      {roleMembers.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </Select>
+                  </div>
+                ))}
+              </div>
+              <Button variant="secondary" size="compact" onClick={addRole} className="mt-3">
+                <PlusIcon className="size-3.5" strokeWidth={2.5} />
+                Add role
+              </Button>
+              {rolesError && <p className="mt-3 font-sans text-sm font-bold text-danger">{rolesError}</p>}
+            </Section>
+          )}
+        </SectionGroup>
+      )}
 
       <div className="mt-7 flex flex-wrap gap-3">
         <Button onClick={handleSave} disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</Button>
