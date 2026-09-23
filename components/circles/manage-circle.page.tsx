@@ -7,8 +7,16 @@ import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer,
 import { EditableTags } from "@/components/profile/editable-tags";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { CIRCLE_ROLE_LABEL_MAX, circleHasRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
+import { CIRCLE_TYPE_LABEL } from "@/lib/circles.util";
 import { useMemberById } from "@/lib/hooks";
-import type { Circle, Member } from "@/lib/types";
+import type { Circle, CircleType, Member } from "@/lib/types";
+
+// neighborhood isn't offered here for now — its type carries real behavior
+// (home circles, the folder view, no roles) that switching into or out of
+// isn't safe to do from this generic form yet.
+const CIRCLE_TYPE_OPTIONS = (Object.entries(CIRCLE_TYPE_LABEL) as [CircleType, string][]).filter(
+  ([value]) => value !== "neighborhood"
+);
 
 // matches circle.page.tsx's read-only facts grid (label above a bold value,
 // evenly split columns) — kept fixed at 4 slots since that's what the
@@ -58,6 +66,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     .map((c) => ({ id: c.id, label: c.name }))
     .sort((a, b) => a.label.localeCompare(b.label))
     .concat(root && root.id !== o.id ? [{ id: root.id, label: root.name }] : []);
+  const [type, setType] = useState<CircleType>(o.type);
   const [name, setName] = useState(o.name);
   const [tagline, setTagline] = useState(o.tagline);
   const [about, setAbout] = useState(o.about);
@@ -100,6 +109,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
   const pageDirty =
     parentId !== (o.parentId ?? null) ||
+    type !== o.type ||
     name.trim() !== o.name ||
     tagline.trim() !== o.tagline ||
     about !== o.about ||
@@ -155,7 +165,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     }
     // only touch the page (and who last edited it) if its own fields changed
     if (pageDirty) {
-      onSave({ parentId, name: name.trim(), tagline: tagline.trim(), about: about.trim(), offers, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
+      onSave({ parentId, type, name: name.trim(), tagline: tagline.trim(), about: about.trim(), offers, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
     }
     onBack();
   }
@@ -185,7 +195,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
             {o.parentId !== null && (
               <div>
                 <Label htmlFor="circle-parent">Parent Circle</Label>
-                <Select id="circle-parent" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="max-w-90">
+                <Select id="circle-parent" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="min-[720px]:max-w-90">
                   {parentOptions.map((p) => (
                     <option key={p.id} value={p.id}>{p.label}</option>
                   ))}
@@ -193,6 +203,17 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                 <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
                   Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
                 </p>
+              </div>
+            )}
+
+            {o.type !== "neighborhood" && (
+              <div>
+                <Label htmlFor="circle-type">Type</Label>
+                <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} className="min-[720px]:max-w-90">
+                  {CIRCLE_TYPE_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </Select>
               </div>
             )}
 
