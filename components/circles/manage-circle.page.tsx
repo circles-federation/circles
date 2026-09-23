@@ -73,6 +73,8 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
   const factPairs = facts
     .map((f): [string, string] => [f.label.trim(), f.value.trim()])
     .filter(([label, value]) => label || value);
+  const [join, setJoin] = useState(o.join || "");
+  const [contact, setContact] = useState(o.contact || "");
   const [website, setWebsite] = useState(o.website || "");
   const [address, setAddress] = useState(o.address || "");
   const [hours, setHours] = useState<HourDraft[]>(() => (o.hours || []).map(([day, time]) => ({ day, time })));
@@ -99,6 +101,8 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     about !== o.about ||
     offers.join("\u0000") !== o.offers.join("\u0000") ||
     JSON.stringify(factPairs) !== JSON.stringify(o.facts) ||
+    join.trim() !== (o.join || "") ||
+    contact.trim() !== (o.contact || "") ||
     website.trim() !== (o.website || "") ||
     address.trim() !== (o.address || "") ||
     JSON.stringify(hoursPairs) !== JSON.stringify(o.hours || []);
@@ -147,7 +151,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     }
     // only touch the page (and who last edited it) if its own fields changed
     if (pageDirty) {
-      onSave({ parentId, about: about.trim(), offers, facts: factPairs, website: website.trim(), address: address.trim(), hours: hoursPairs });
+      onSave({ parentId, about: about.trim(), offers, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
     }
     onBack();
   }
@@ -336,6 +340,29 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                   Add hours
                 </Button>
               </div>
+            </div>
+          </div>
+        </Section>
+
+        <Section>
+          <div className="flex flex-col gap-5.5">
+            <div>
+              <Label>How to join</Label>
+              <TextArea
+                value={join}
+                onChange={(e) => setJoin(e.target.value)}
+                placeholder="How does someone become part of this organization?"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label>Get in touch</Label>
+              <Input
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+                placeholder="hello@yourorg.coop"
+              />
             </div>
           </div>
         </Section>
