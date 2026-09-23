@@ -58,6 +58,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     .map((c) => ({ id: c.id, label: c.name }))
     .sort((a, b) => a.label.localeCompare(b.label))
     .concat(root && root.id !== o.id ? [{ id: root.id, label: root.name }] : []);
+  const [name, setName] = useState(o.name);
   const [tagline, setTagline] = useState(o.tagline);
   const [about, setAbout] = useState(o.about);
   const [offers, setOffers] = useState([...o.offers]);
@@ -99,6 +100,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
   const pageDirty =
     parentId !== (o.parentId ?? null) ||
+    name.trim() !== o.name ||
     tagline.trim() !== o.tagline ||
     about !== o.about ||
     offers.join("\u0000") !== o.offers.join("\u0000") ||
@@ -153,7 +155,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     }
     // only touch the page (and who last edited it) if its own fields changed
     if (pageDirty) {
-      onSave({ parentId, tagline: tagline.trim(), about: about.trim(), offers, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
+      onSave({ parentId, name: name.trim(), tagline: tagline.trim(), about: about.trim(), offers, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
     }
     onBack();
   }
@@ -179,27 +181,40 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
       <SectionGroup>
         <Section>
-          <Label>Tagline</Label>
-          <Input
-            value={tagline}
-            onChange={(e) => setTagline(e.target.value)}
-            placeholder="A short line under the name"
-          />
-        </Section>
+          <div className="flex flex-col gap-5.5">
+            {o.parentId !== null && (
+              <div>
+                <Label htmlFor="circle-parent">Parent Circle</Label>
+                <Select id="circle-parent" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="max-w-90">
+                  {parentOptions.map((p) => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </Select>
+                <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
+                  Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
+                </p>
+              </div>
+            )}
 
-        {o.parentId !== null && (
-          <Section>
-            <Label htmlFor="circle-parent">Parent Circle</Label>
-            <Select id="circle-parent" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="max-w-90">
-              {parentOptions.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </Select>
-            <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-              Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
-            </p>
-          </Section>
-        )}
+            <div>
+              <Label>Name</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Organization name"
+              />
+            </div>
+
+            <div>
+              <Label>Tagline</Label>
+              <Input
+                value={tagline}
+                onChange={(e) => setTagline(e.target.value)}
+                placeholder="A short line under the name"
+              />
+            </div>
+          </div>
+        </Section>
 
         <Section>
           <Label>Quick facts</Label>
