@@ -5,7 +5,6 @@ import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, SimpleTabs, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
-import { ResourcesSection } from "./resources-section";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { CIRCLE_ROLE_LABEL_MAX, circleHasRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL } from "@/lib/circles.util";
@@ -123,7 +122,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     JSON.stringify(hoursPairs) !== JSON.stringify(o.hours || []);
   const dirty = pageDirty || rolesDirty;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  const [activeTab, setActiveTab] = useState<"wiki" | "resources" | "circle">("wiki");
+  const [activeTab, setActiveTab] = useState<"wiki" | "circle">("wiki");
 
   function updateFact(i: number, key: keyof FactDraft, value: string) {
     setFacts((prev) => prev.map((f, j) => (j === i ? { ...f, [key]: value } : f)));
@@ -208,18 +207,10 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
       <SimpleTabs
         className="mt-6"
-        tabs={[{ key: "wiki", label: "Wiki" }, { key: "resources", label: "Resources" }, { key: "circle", label: "Circle" }]}
+        tabs={[{ key: "wiki", label: "Wiki" }, { key: "circle", label: "Circle" }]}
         active={activeTab}
-        onChange={(key) => setActiveTab(key as "wiki" | "resources" | "circle")}
+        onChange={(key) => setActiveTab(key as "wiki" | "circle")}
       />
-
-      {activeTab === "resources" && (
-        <SectionGroup>
-          <Section>
-            <ResourcesSection circleId={o.id} />
-          </Section>
-        </SectionGroup>
-      )}
 
       {activeTab === "wiki" && (
         <SectionGroup>

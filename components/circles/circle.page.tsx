@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, BackButton, Button, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
+import { Avatar, BackButton, Button, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { ResourcesSection } from "./resources-section";
@@ -36,6 +37,8 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   const circleEvents = [...events]
     .filter((e) => e.circleId === c.id || e.hostCircleId === c.id)
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
+  const [tab, setTab] = useState<"wiki" | "resources">("wiki");
+  const activeTab = isMember ? tab : "wiki";
 
   return (
     <PageContainer size="normal">
@@ -85,174 +88,190 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         ))}
       </div>
 
-      <SectionGroup>
-        {/* members-only: a non-member gets nothing here, not even a placeholder */}
-        {isMember && (
+      {/* resources are members-only: a non-member gets no tabs at all, not
+          even a hint that a Resources tab exists */}
+      {isMember && (
+        <SimpleTabs
+          className="mt-6"
+          tabs={[{ key: "wiki", label: "Wiki" }, { key: "resources", label: "Resources" }]}
+          active={activeTab}
+          onChange={(key) => setTab(key as "wiki" | "resources")}
+        />
+      )}
+
+      {activeTab === "resources" && (
+        <SectionGroup>
           <Section>
-            <ResourcesSection circleId={c.id} editable={false} />
+            <ResourcesSection circleId={c.id} />
           </Section>
-        )}
+        </SectionGroup>
+      )}
 
-        <Section>
-          <EyebrowGroup label="About">
-            <p className="max-w-[40em] font-serif text-lg leading-[1.55]">{c.about}</p>
-          </EyebrowGroup>
-        </Section>
+      {activeTab === "wiki" && (
+        <>
+          <SectionGroup>
+            <Section>
+              <EyebrowGroup label="About">
+                <p className="max-w-[40em] font-serif text-lg leading-[1.55]">{c.about}</p>
+              </EyebrowGroup>
+            </Section>
 
-        {c.offers.length > 0 && (
-          <Section>
-            <EyebrowGroup label="What they offer">
-              {c.offers.map((s) => <Tag key={s}>{s}</Tag>)}
-            </EyebrowGroup>
-          </Section>
-        )}
-
-        {/* a circle's events are only ever sent to its own audience, so for
-            anyone else this section would be permanently (and misleadingly) empty */}
-        {isCircleAudience(c, profile.id) && (
-          <Section>
-            <Eyebrow className="text-soft">Events</Eyebrow>
-            <div className="mt-4">
-              <EventFeed
-                events={circleEvents}
-                onOpenEvent={onOpenEvent}
-                emptyText={`No upcoming events in ${c.name}.`}
-              />
-            </div>
-          </Section>
-        )}
-
-        {childCircles.length > 0 && (
-          <Section>
-            <Eyebrow className="text-soft">Sub-circles</Eyebrow>
-            {/* the grid's own border-t is the header rule — same as Members below */}
-            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">
-              {childCircles.map((child) => (
-                <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        <Section>
-          <Eyebrow className="text-soft">Members</Eyebrow>
-          {members.length > 0 ? (
-            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
-              {members.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => onOpenMember(m)}
-                  className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-3.5 text-left"
-                >
-                  <Avatar member={m} size={44} />
-                  <div className="min-w-0">
-                    <div className="font-sans text-sm font-bold">{m.name}</div>
-                    <Eyebrow className="text-soft">{m.role}</Eyebrow>
-                    {/* everyone here belongs to this circle, so no neighborhood chip —
-                        a role they hold in it takes that spot, as an outlined badge */}
-                    {rolesHeldBy(c, m.id).length > 0 && (
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {rolesHeldBy(c, m.id).map((role) => (
-                          <span
-                            key={role}
-                            title={`Role in ${c.name}`}
-                            className="ink-press-badge inline-flex items-center whitespace-nowrap border border-ink bg-paper px-2.25 py-1 font-sans text-label font-bold uppercase tracking-[0.08em] text-ink"
-                          >
-                            {role}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-4 font-serif text-base text-soft">
-              No members of {c.name} are listed here yet.
-            </p>
-          )}
-        </Section>
-
-        {(c.website || c.address || (c.hours && c.hours.length > 0)) && (
-          <Section>
-            <Eyebrow className="text-soft">Visit</Eyebrow>
-            {/* the box's own border is the header rule here, fainter than the
-                ink one above since it's framing a box rather than a card grid */}
-            <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] border border-faint">
-              <div className="border-r border-b border-faint px-4.5 py-4">
-                <Eyebrow className="text-soft">Website</Eyebrow>
-                <div className="mt-2">
-                  {c.website
-                    ? (
-                      <a
-                        href={`https://${c.website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-sans text-sm font-bold text-ink underline underline-offset-2 break-all"
-                      >
-                        {c.website}
-                        <ArrowTopRightOnSquareIcon className="size-3.5" strokeWidth={2.5} />
-                      </a>
-                    )
-                    : <span className="font-serif text-sm text-soft">—</span>}
-                </div>
-              </div>
-              <div className="border-r border-b border-faint px-4.5 py-4">
-                <Eyebrow className="text-soft">Address</Eyebrow>
-                <div className="mt-2">
-                  {c.address
-                    ? c.address.split(",").map((line, i) => (
-                        <div key={i} className="font-serif text-sm leading-[1.4] text-[#222]">{line.trim()}</div>
-                      ))
-                    : <span className="font-serif text-sm text-soft">—</span>}
-                </div>
-              </div>
-              <div className="border-b border-faint px-4.5 py-4">
-                <Eyebrow className="text-soft">Open hours</Eyebrow>
-                <div className="mt-2">
-                  {c.hours && c.hours.length > 0
-                    ? c.hours.map(([d, t]) => (
-                        <div key={d} className="flex justify-between gap-3 py-px font-serif text-sm text-[#222]">
-                          <span className="text-soft">{d}</span>
-                          <span>{t}</span>
-                        </div>
-                      ))
-                    : <span className="font-serif text-sm text-soft">—</span>}
-                </div>
-              </div>
-            </div>
-          </Section>
-        )}
-      </SectionGroup>
-
-      {(c.join || c.contact) && (
-        <section className="pt-8">
-          <div
-            className={clsx(
-              "grid grid-cols-1 border border-ink",
-              c.join && c.contact && "min-[720px]:grid-cols-2",
+            {c.offers.length > 0 && (
+              <Section>
+                <EyebrowGroup label="What they offer">
+                  {c.offers.map((s) => <Tag key={s}>{s}</Tag>)}
+                </EyebrowGroup>
+              </Section>
             )}
-          >
-            {c.join && (
+
+            {/* a circle's events are only ever sent to its own audience, so for
+                anyone else this section would be permanently (and misleadingly) empty */}
+            {isCircleAudience(c, profile.id) && (
+              <Section>
+                <Eyebrow className="text-soft">Events</Eyebrow>
+                <div className="mt-4">
+                  <EventFeed
+                    events={circleEvents}
+                    onOpenEvent={onOpenEvent}
+                    emptyText={`No upcoming events in ${c.name}.`}
+                  />
+                </div>
+              </Section>
+            )}
+
+            {childCircles.length > 0 && (
+              <Section>
+                <Eyebrow className="text-soft">Sub-circles</Eyebrow>
+                {/* the grid's own border-t is the header rule — same as Members below */}
+                <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">
+                  {childCircles.map((child) => (
+                    <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            <Section>
+              <Eyebrow className="text-soft">Members</Eyebrow>
+              {members.length > 0 ? (
+                <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
+                  {members.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => onOpenMember(m)}
+                      className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-3.5 text-left"
+                    >
+                      <Avatar member={m} size={44} />
+                      <div className="min-w-0">
+                        <div className="font-sans text-sm font-bold">{m.name}</div>
+                        <Eyebrow className="text-soft">{m.role}</Eyebrow>
+                        {/* everyone here belongs to this circle, so no neighborhood chip —
+                            a role they hold in it takes that spot, as an outlined badge */}
+                        {rolesHeldBy(c, m.id).length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {rolesHeldBy(c, m.id).map((role) => (
+                              <span
+                                key={role}
+                                title={`Role in ${c.name}`}
+                                className="ink-press-badge inline-flex items-center whitespace-nowrap border border-ink bg-paper px-2.25 py-1 font-sans text-label font-bold uppercase tracking-[0.08em] text-ink"
+                              >
+                                {role}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 font-serif text-base text-soft">
+                  No members of {c.name} are listed here yet.
+                </p>
+              )}
+            </Section>
+
+            {(c.website || c.address || (c.hours && c.hours.length > 0)) && (
+              <Section>
+                <Eyebrow className="text-soft">Visit</Eyebrow>
+                {/* the box's own border is the header rule here, fainter than the
+                    ink one above since it's framing a box rather than a card grid */}
+                <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] border border-faint">
+                  <div className="border-r border-b border-faint px-4.5 py-4">
+                    <Eyebrow className="text-soft">Website</Eyebrow>
+                    <div className="mt-2">
+                      {c.website
+                        ? (
+                          <a
+                            href={`https://${c.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 font-sans text-sm font-bold text-ink underline underline-offset-2 break-all"
+                          >
+                            {c.website}
+                            <ArrowTopRightOnSquareIcon className="size-3.5" strokeWidth={2.5} />
+                          </a>
+                        )
+                        : <span className="font-serif text-sm text-soft">—</span>}
+                    </div>
+                  </div>
+                  <div className="border-r border-b border-faint px-4.5 py-4">
+                    <Eyebrow className="text-soft">Address</Eyebrow>
+                    <div className="mt-2">
+                      {c.address
+                        ? c.address.split(",").map((line, i) => (
+                            <div key={i} className="font-serif text-sm leading-[1.4] text-[#222]">{line.trim()}</div>
+                          ))
+                        : <span className="font-serif text-sm text-soft">—</span>}
+                    </div>
+                  </div>
+                  <div className="border-b border-faint px-4.5 py-4">
+                    <Eyebrow className="text-soft">Open hours</Eyebrow>
+                    <div className="mt-2">
+                      {c.hours && c.hours.length > 0
+                        ? c.hours.map(([d, t]) => (
+                            <div key={d} className="flex justify-between gap-3 py-px font-serif text-sm text-[#222]">
+                              <span className="text-soft">{d}</span>
+                              <span>{t}</span>
+                            </div>
+                          ))
+                        : <span className="font-serif text-sm text-soft">—</span>}
+                    </div>
+                  </div>
+                </div>
+              </Section>
+            )}
+          </SectionGroup>
+
+          {(c.join || c.contact) && (
+            <section className="pt-8">
               <div
                 className={clsx(
-                  "p-6",
-                  c.contact && "border-b border-ink min-[720px]:border-r min-[720px]:border-b-0",
+                  "grid grid-cols-1 border border-ink",
+                  c.join && c.contact && "min-[720px]:grid-cols-2",
                 )}
               >
-                <Eyebrow className="text-soft">How to join</Eyebrow>
-                <p className="mt-3 font-serif text-base leading-normal">{c.join}</p>
+                {c.join && (
+                  <div
+                    className={clsx(
+                      "p-6",
+                      c.contact && "border-b border-ink min-[720px]:border-r min-[720px]:border-b-0",
+                    )}
+                  >
+                    <Eyebrow className="text-soft">How to join</Eyebrow>
+                    <p className="mt-3 font-serif text-base leading-normal">{c.join}</p>
+                  </div>
+                )}
+                {c.contact && (
+                  <div className="bg-ink p-6 text-paper">
+                    <Eyebrow className="text-[#bdbdbd]">Get in touch</Eyebrow>
+                    <p className="mt-3 font-sans text-lg font-bold wrap-break-word">{c.contact}</p>
+                  </div>
+                )}
               </div>
-            )}
-            {c.contact && (
-              <div className="bg-ink p-6 text-paper">
-                <Eyebrow className="text-[#bdbdbd]">Get in touch</Eyebrow>
-                <p className="mt-3 font-sans text-lg font-bold wrap-break-word">{c.contact}</p>
-              </div>
-            )}
-          </div>
-        </section>
+            </section>
+          )}
+        </>
       )}
     </PageContainer>
   );
