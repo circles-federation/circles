@@ -226,18 +226,34 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         )}
       </SectionGroup>
 
-      <section className="pt-8">
-        <div className="grid grid-cols-1 border border-ink min-[720px]:grid-cols-2">
-          <div className="border-b border-ink p-6 min-[720px]:border-r min-[720px]:border-b-0">
-            <Eyebrow className="text-soft">How to join</Eyebrow>
-            <p className="mt-3 font-serif text-base leading-normal">{c.join}</p>
+      {(c.join || c.contact) && (
+        <section className="pt-8">
+          <div
+            className={clsx(
+              "grid grid-cols-1 border border-ink",
+              c.join && c.contact && "min-[720px]:grid-cols-2",
+            )}
+          >
+            {c.join && (
+              <div
+                className={clsx(
+                  "p-6",
+                  c.contact && "border-b border-ink min-[720px]:border-r min-[720px]:border-b-0",
+                )}
+              >
+                <Eyebrow className="text-soft">How to join</Eyebrow>
+                <p className="mt-3 font-serif text-base leading-normal">{c.join}</p>
+              </div>
+            )}
+            {c.contact && (
+              <div className="bg-ink p-6 text-paper">
+                <Eyebrow className="text-[#bdbdbd]">Get in touch</Eyebrow>
+                <p className="mt-3 font-sans text-lg font-bold wrap-break-word">{c.contact}</p>
+              </div>
+            )}
           </div>
-          <div className="bg-ink p-6 text-paper">
-            <Eyebrow className="text-[#bdbdbd]">Get in touch</Eyebrow>
-            <p className="mt-3 font-sans text-lg font-bold wrap-break-word">{c.contact}</p>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
     </PageContainer>
   );
 }
