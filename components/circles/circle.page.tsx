@@ -99,11 +99,13 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
           </EyebrowGroup>
         </Section>
 
-        <Section>
-          <EyebrowGroup label="What they offer">
-            {c.offers.map((s) => <Tag key={s}>{s}</Tag>)}
-          </EyebrowGroup>
-        </Section>
+        {c.offers.length > 0 && (
+          <Section>
+            <EyebrowGroup label="What they offer">
+              {c.offers.map((s) => <Tag key={s}>{s}</Tag>)}
+            </EyebrowGroup>
+          </Section>
+        )}
 
         {/* a circle's events are only ever sent to its own audience, so for
             anyone else this section would be permanently (and misleadingly) empty */}
