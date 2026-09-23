@@ -35,7 +35,7 @@ function CircleRoute() {
         circles={circles}
         members={members}
         profile={profile}
-        onOpenCircle={nav.openCircle}
+        onOpenCircle={(c) => nav.openCircle(c, circle.name)}
         onOpenRoot={() => router.push("/circles")}
         onOpenMember={open}
         initialTypeFilter={searchParams.get("types")?.split(",")}
