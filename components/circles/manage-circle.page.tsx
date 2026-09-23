@@ -189,12 +189,21 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     <PageContainer size="normal">
       <BackButton onClick={handleLeave}>{o.name}</BackButton>
 
-      <div className="mt-4 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5">
-        <Eyebrow className="text-soft">Manage circle</Eyebrow>
-        <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{o.name}</h1>
-        <p className="mt-3 max-w-[42em] font-serif text-sm leading-normal text-soft">
-          You’re editing this page as a member. Changes are visible to everyone, and your name will show as the last editor.
-        </p>
+      <div className="mt-4 flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
+        <div className="min-w-0 flex-1">
+          <Eyebrow className="text-soft">Manage circle</Eyebrow>
+          <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{o.name}</h1>
+          <p className="mt-3 max-w-[42em] font-serif text-sm leading-normal text-soft">
+            You’re editing this page as a member. Changes are visible to everyone, and your name will show as the last editor.
+          </p>
+        </div>
+        <Button
+          onClick={handleSave}
+          disabled={!dirty || saving}
+          className={clsx("w-full self-stretch", "min-[720px]:w-auto min-[720px]:self-start")}
+        >
+          {saving ? "Saving…" : "Save"}
+        </Button>
       </div>
 
       <SimpleTabs
@@ -443,11 +452,6 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
           )}
         </SectionGroup>
       )}
-
-      <div className="mt-7 flex flex-wrap gap-3">
-        <Button onClick={handleSave} disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</Button>
-        <Button variant="secondary" onClick={handleLeave}>Cancel</Button>
-      </div>
 
       {confirmingDiscard && (
         <ConfirmModal

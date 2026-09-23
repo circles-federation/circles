@@ -28,8 +28,11 @@ const ICON_OPTIONS: { key: ResourceIcon; label: string; hint: string }[] = [
    for a member; the data itself is members-only too — AppState's `resources`
    only ever holds the viewer's own circles' (see lib/db/resources.ts), so
    this never has to filter anyone out. Adding, editing, and removing save
-   immediately, each as its own change rather than part of the Manage form. */
-export function ResourcesSection({ circleId }: { circleId: string }) {
+   immediately, each as its own change rather than part of the Manage form.
+   `editable` (default true) toggles those controls off entirely — CirclePage
+   renders this read-only now that the Manage page's Resources tab is the one
+   place to add/edit/remove. */
+export function ResourcesSection({ circleId, editable = true }: { circleId: string; editable?: boolean }) {
   const { resources, removeResource } = useAppState();
   const mine = resources.filter((r) => r.circleId === circleId);
   const [editing, setEditing] = useState<CircleResource | "new" | null>(null);
@@ -37,20 +40,13 @@ export function ResourcesSection({ circleId }: { circleId: string }) {
 
   return (
     <div>
-      {/* the button's -my-1.5 cancels the height it adds over the label, so
-          this row is exactly one label tall and "Resources" sits where every
-          other section's label does (a taller row would push it down) */}
-      <div className="flex items-center justify-between gap-3">
-        <Eyebrow className="text-soft">Resources</Eyebrow>
-        <Button variant="secondary" size="inline" className="-my-1.5" onClick={() => setEditing("new")}>
-          <PlusIcon className="size-3.5" strokeWidth={2.5} />
-          Add resource
-        </Button>
-      </div>
+      <Eyebrow className="text-soft">Resources</Eyebrow>
 
       <div className="mt-3.5 border-t border-ink">
         {mine.length === 0 && (
-          <p className="pt-4 font-serif text-base text-soft">No resources yet — add a link your circle uses, like a shared drive.</p>
+          <p className="pt-4 font-serif text-base text-soft">
+            {editable ? "No resources yet — add a link your circle uses, like a shared drive." : "No resources yet."}
+          </p>
         )}
         {mine.map((r) => {
           const Icon = ICONS[r.icon];
@@ -68,32 +64,43 @@ export function ResourcesSection({ circleId }: { circleId: string }) {
                   <span className="block truncate font-serif text-sm text-soft">{resourceHost(r.url)}</span>
                 </span>
               </a>
-              <button
-                onClick={() => setEditing(r)}
-                title="Edit resource"
-                aria-label={`Edit ${r.title}`}
-                className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink"
-              >
-                <PencilIcon className="size-4" strokeWidth={2} />
-              </button>
-              <button
-                onClick={() => setRemoving(r)}
-                title="Remove resource"
-                aria-label={`Remove ${r.title}`}
-                className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink"
-              >
-                <XMarkIcon className="size-4" strokeWidth={2} />
-              </button>
+              {editable && (
+                <>
+                  <button
+                    onClick={() => setEditing(r)}
+                    title="Edit resource"
+                    aria-label={`Edit ${r.title}`}
+                    className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink"
+                  >
+                    <PencilIcon className="size-4" strokeWidth={2} />
+                  </button>
+                  <button
+                    onClick={() => setRemoving(r)}
+                    title="Remove resource"
+                    aria-label={`Remove ${r.title}`}
+                    className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink"
+                  >
+                    <XMarkIcon className="size-4" strokeWidth={2} />
+                  </button>
+                </>
+              )}
             </div>
           );
         })}
       </div>
 
-      {editing && (
+      {editable && (
+        <Button variant="secondary" size="compact" onClick={() => setEditing("new")} className="mt-3">
+          <PlusIcon className="size-3.5" strokeWidth={2.5} />
+          Add resource
+        </Button>
+      )}
+
+      {editable && editing && (
         <ResourceForm circleId={circleId} resource={editing === "new" ? null : editing} onClose={() => setEditing(null)} />
       )}
 
-      {removing && (
+      {editable && removing && (
         <ConfirmModal
           title="Remove this resource?"
           message={`“${removing.title}” will be removed for everyone in this circle. The link itself isn't affected.`}

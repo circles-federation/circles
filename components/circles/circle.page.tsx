@@ -89,7 +89,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         {/* members-only: a non-member gets nothing here, not even a placeholder */}
         {isMember && (
           <Section>
-            <ResourcesSection circleId={c.id} />
+            <ResourcesSection circleId={c.id} editable={false} />
           </Section>
         )}
 
