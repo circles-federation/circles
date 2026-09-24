@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject, type UIEvent } from "react";
+import { usePathname } from "next/navigation";
 import { BottomNav } from "./bottom-nav";
 import { TopBar } from "./top-bar";
 
@@ -12,15 +13,67 @@ import { TopBar } from "./top-bar";
 
    The side padding keeps content clear of a landscape phone's notch, and the
    bottom padding clears BottomNav plus the home indicator beneath it (both
-   zero outside an installed app or on a phone without them). */
+   zero outside an installed app or on a phone without them).
+
+   Installed as an app, the page no longer scrolls: <main> does, beneath a
+   TopBar that stays put while the content bounces (see `standalone` in
+   app/globals.css). In a browser tab <main> is an ordinary block and the
+   document scrolls as usual. */
 export function AppShell({ children }: { children: ReactNode }) {
+  const mainRef = useRef<HTMLElement>(null);
+  const onScroll = useScrollRestoration(mainRef);
+
   return (
-    <div className="min-h-dvh bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink max-[719px]:pb-[calc(4.6875rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-dvh bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink standalone:flex standalone:h-dvh standalone:flex-col">
       <TopBar />
 
-      {children}
+      <main
+        ref={mainRef}
+        onScroll={onScroll}
+        className="max-[719px]:pb-[calc(4.6875rem+env(safe-area-inset-bottom))] standalone:flex-1 standalone:overflow-y-auto"
+      >
+        {children}
+      </main>
 
       <BottomNav />
     </div>
   );
+}
+
+/* The browser remembers where the document was scrolled for Back and
+   Forward, but not an element like the installed app's <main>, so this does
+   it for <main>: each page's position is kept as it scrolls, put back when
+   Back or Forward returns to it, and a newly opened page starts at the top.
+   In a browser tab <main> doesn't scroll, so none of it has any effect there
+   and the browser's own restoring applies. */
+function useScrollRestoration(ref: RefObject<HTMLElement | null>) {
+  const pathname = usePathname();
+  const [positions] = useState(() => new Map<string, number>());
+  const renderedPath = useRef<string | null>(null);
+  const pendingTraversal = useRef(false);
+
+  /* React renders a Back or Forward synchronously inside the popstate event
+     when it can, from Next's own listener — which runs before this one when
+     AppShell mounted after the router did (signing in, say). So the restoring
+     below also recognizes that it's running inside that event, and this only
+     marks a traversal that hasn't been rendered yet. Marking one that has
+     would leave the next ordinary navigation restoring instead of starting at
+     the top. */
+  useEffect(() => {
+    const onPopState = () => {
+      if (location.pathname !== renderedPath.current) pendingTraversal.current = true;
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // a layout effect, so the page is never painted at the previous page's offset
+  useLayoutEffect(() => {
+    const traversal = pendingTraversal.current || window.event?.type === "popstate";
+    pendingTraversal.current = false;
+    renderedPath.current = pathname;
+    if (ref.current) ref.current.scrollTop = traversal ? (positions.get(pathname) ?? 0) : 0;
+  }, [pathname, positions, ref]);
+
+  return (e: UIEvent<HTMLElement>) => positions.set(pathname, e.currentTarget.scrollTop);
 }

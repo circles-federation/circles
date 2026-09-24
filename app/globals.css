@@ -58,10 +58,14 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Installed as an app, the page doesn't bounce past its ends: iOS's rubber
-   band stretches the whole document, so the sticky TopBar would be dragged
-   down with it instead of staying put like a native app's bar. Only when
-   installed, so a browser tab keeps its own pull-to-refresh. */
+/* Installed as an app (`standalone:`), AppShell scrolls its content in a box
+   of its own below TopBar, as a native app does: iOS's rubber band would
+   otherwise stretch the whole document and drag the bar down with it. The
+   document itself never bounces; the content box still does. Only when
+   installed, since in a browser tab an inner scroller would stop Safari's
+   toolbar collapsing and lose the tab's own pull-to-refresh. */
+@custom-variant standalone (@media (display-mode: standalone));
+
 @media (display-mode: standalone) {
   html,
   body {
