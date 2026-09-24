@@ -30,7 +30,7 @@ export function ProfileModal({ member: m, onClose, onOpenCircle }: ProfileModalP
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto bg-ink/55 px-5 pt-15"
+      className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto overscroll-contain bg-ink/55 px-5 pt-15"
     >
       <div
         onClick={(e) => e.stopPropagation()}

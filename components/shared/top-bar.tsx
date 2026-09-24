@@ -47,7 +47,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[]): string
   return "Home";
 }
 
-export function TopBar() {
+export function TopBar({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { circles, events, profile } = useAppState();
@@ -82,7 +82,7 @@ export function TopBar() {
   }
 
   return (
-    <div className="sticky top-0 z-50 bg-paper pt-[env(safe-area-inset-top)] shadow-[0_2px_6px_rgba(10,10,10,0.08)]">
+    <div className="app-chrome sticky top-0 z-50 bg-paper pt-[env(safe-area-inset-top)] shadow-[0_2px_6px_rgba(10,10,10,0.08)]">
       <div className="mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1">
           {!isTabRoot && (
@@ -119,6 +119,12 @@ export function TopBar() {
             <Link
               key={href}
               href={href}
+              // like BottomNav: the tab already showing goes back to its top
+              onClick={(e) => {
+                if (pathname !== href) return;
+                e.preventDefault();
+                onReselect();
+              }}
               className={clsx(NAV_LINK, isActive(href) ? "border-b-ink" : "border-b-transparent")}
             >
               {label}

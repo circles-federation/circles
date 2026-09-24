@@ -75,6 +75,20 @@ body {
    toolbar collapsing and lose the tab's own pull-to-refresh. */
 @custom-variant standalone (@media (display-mode: standalone));
 
+/* For app chrome (TopBar, BottomNav): a long press on a tab or button does
+   nothing, as in a native app, instead of selecting its label or opening
+   iOS's link preview. */
+@utility app-chrome {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* A touchscreen (`touch:`). iOS zooms the whole page in on any field under
+   16px as it's focused, so a field styled smaller than that goes up to 16px
+   here, keeping its desktop look elsewhere. */
+@custom-variant touch (@media (pointer: coarse));
+
 @media (display-mode: standalone) {
   html,
   body {

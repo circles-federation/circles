@@ -43,6 +43,7 @@ function SearchField({ query, onQuery, placeholder }: { query: string; onQuery: 
         value={query}
         onChange={(e) => onQuery(e.target.value)}
         placeholder={placeholder}
+        enterKeyHint="search"
         className="min-w-0 flex-1 border-none bg-paper py-3 pr-3.5 pl-2 font-serif text-base outline-none"
       />
       {query && (

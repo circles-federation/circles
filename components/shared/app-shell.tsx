@@ -23,9 +23,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const mainRef = useRef<HTMLElement>(null);
   const onScroll = useScrollRestoration(mainRef);
 
+  // a tab tapped again while its page is showing: back to the top, whichever
+  // of the document or <main> is what scrolls
+  function scrollToTop() {
+    mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <div className="min-h-dvh bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink standalone:flex standalone:h-dvh standalone:flex-col">
-      <TopBar />
+      <TopBar onReselect={scrollToTop} />
 
       <main
         ref={mainRef}
@@ -35,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <BottomNav />
+      <BottomNav onReselect={scrollToTop} />
     </div>
   );
 }

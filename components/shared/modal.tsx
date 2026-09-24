@@ -16,12 +16,16 @@ interface ModalProps {
    box doesn't propagate. `className` sets the box's own width (e.g.
    `max-w-110`) — required, not defaulted, since a caller-supplied max-w-*
    class can't reliably beat one already baked in here without
-   tailwind-merge (see FloatingActionButton's own note on this). */
+   tailwind-merge (see FloatingActionButton's own note on this).
+   overscroll-contain keeps a scroll that reaches the overlay's end from
+   carrying on into the page behind it, which in the installed app is
+   AppShell's <main>, the modal's own ancestor. ConfirmModal and ProfileModal
+   do the same. */
 export function Modal({ onClose, className, children }: ModalProps) {
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto bg-ink/55 px-5 pt-15"
+      className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto overscroll-contain bg-ink/55 px-5 pt-15"
     >
       <div
         onClick={(e) => e.stopPropagation()}

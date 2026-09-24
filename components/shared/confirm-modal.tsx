@@ -26,7 +26,7 @@ export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConf
   return (
     <div
       onClick={onCancel}
-      className="fixed inset-0 z-100 flex items-center justify-center bg-ink/55 px-5"
+      className="fixed inset-0 z-100 flex items-center justify-center overflow-y-auto overscroll-contain bg-ink/55 px-5"
     >
       <div
         onClick={(e) => e.stopPropagation()}

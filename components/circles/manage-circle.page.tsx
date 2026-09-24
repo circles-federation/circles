@@ -229,7 +229,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                     value={f.label}
                     onChange={(e) => updateFact(i, "label", e.target.value)}
                     placeholder="Label"
-                    className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink"
+                    className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink touch:text-base touch:tracking-[0.06em]"
                   />
                   <input
                     value={f.value}
@@ -409,7 +409,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                           maxLength={CIRCLE_ROLE_LABEL_MAX}
                           placeholder="Role name"
                           aria-label="Role name"
-                          className="min-w-0 flex-1 border border-faint bg-paper px-2.5 py-2 font-sans text-sm font-bold outline-none focus:border-ink"
+                          className="min-w-0 flex-1 border border-faint bg-paper px-2.5 py-2 font-sans text-sm font-bold outline-none focus:border-ink touch:text-base"
                         />
                         <button
                           onClick={() => removeRole(r.key)}

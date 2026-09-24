@@ -103,6 +103,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@duck.com"
               autoComplete="email"
+              enterKeyHint="send"
               autoFocus
               required
             />
@@ -132,6 +133,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
               inputMode="numeric"
               // iOS offers the emailed code above the keyboard
               autoComplete="one-time-code"
+              enterKeyHint="go"
               required
             />
             <Button type="submit" disabled={busy || code.trim().length !== 6} className="mt-4 w-full">
