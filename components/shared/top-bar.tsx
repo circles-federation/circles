@@ -8,6 +8,7 @@ import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useRunBackHandler } from "@/components/providers/back-handler-provider";
 import type { Circle, Event } from "@/lib/types";
+import { OfflineBanner } from "./offline-banner";
 
 const TABS: [string, string][] = [
   ["/home", "Home"],
@@ -132,6 +133,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
           ))}
         </nav>
       </div>
+      <OfflineBanner />
     </div>
   );
 }

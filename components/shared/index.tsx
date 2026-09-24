@@ -17,6 +17,7 @@ export { ForwardLink } from "./forward-link";
 export { Input } from "./input";
 export { Label } from "./label";
 export { Modal } from "./modal";
+export { OfflineBanner } from "./offline-banner";
 export { PageContainer } from "./page-container";
 export { PageLoading } from "./page-loading";
 export { SearchWithFilter } from "./search-with-filter";

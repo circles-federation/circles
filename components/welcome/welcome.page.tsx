@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, useToast } from "@/components/shared";
+import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, OfflineBanner, useToast } from "@/components/shared";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
 import type { Member } from "@/lib/types";
 
@@ -82,6 +82,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-paper px-6 py-16">
+      <OfflineBanner className="fixed inset-x-0 top-0 z-50 pt-[calc(0.5rem+env(safe-area-inset-top))]" />
       <div className="w-full max-w-md">
         <div className="border-t-[3px] border-t-ink pt-4.5">
           <Eyebrow className="text-soft">Welcome to</Eyebrow>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { indexCircles, type CirclesById } from "./circles.util";
@@ -39,6 +39,23 @@ export function useCirclesById(): CirclesById {
    window.innerWidth during the initial render instead would make the
    client's first paint disagree with the server's on any actually-mobile
    viewport, which React reports as a hydration mismatch. */
+function subscribeToConnection(onChange: () => void) {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+}
+
+/* Whether the device has a network connection, as the browser reports it:
+   reliable for "none at all" (airplane mode, no signal), blind to a
+   connection that's up but not reaching anything. Online on the server and
+   the first paint, so an offline device just shows it a moment later. */
+export function useOnline(): boolean {
+  return useSyncExternalStore(subscribeToConnection, () => navigator.onLine, () => true);
+}
+
 export function useIsMobile(breakpoint = 720): boolean {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
