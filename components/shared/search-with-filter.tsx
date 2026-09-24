@@ -171,8 +171,6 @@ interface SearchWithFilterProps {
   onFilter?: (value: string | null) => void;
   // spacing above this component is the caller's job, not a built-in
   // default — how much (if any) depends on what, if anything, sits above it
-  // on a given page (see city-directory.page.jsx and events-list.page.jsx,
-  // where that varies by breakpoint since their PageHeader hides on mobile).
   className?: string;
 }
 

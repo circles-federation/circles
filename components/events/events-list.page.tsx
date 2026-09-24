@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import { Button, FloatingActionButton, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
+import { FloatingActionButton, PageContainer, SearchWithFilter } from "@/components/shared";
 import { EventFeed } from "./event-feed";
 import { isApproved, isGoverned } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
@@ -41,22 +41,8 @@ export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps)
 
   return (
     <PageContainer size="wide">
-      {/* the top bar already shows "Events" as the mobile section name (see
-          top-bar.tsx), so this exact-duplicate title — and the "New Event"
-          button beside it, already redundant with the FloatingActionButton
-          below — is hidden rather than removed, so both still show at
-          720px+ where the top bar reverts to the brand link and the FAB
-          disappears. */}
-      <div className="hidden min-[720px]:block">
-        <PageHeader title="Events">
-          <Button size="compact" onClick={onNewEvent}>
-            <PlusIcon className="size-3.5" strokeWidth={2.5} />
-            New Event
-          </Button>
-        </PageHeader>
-      </div>
-
-      {/* bottom clears BottomNav (app/(app) layout only), which the welcome
+      {/* mobile only: at 720px+ New Event is in the top bar's nav instead.
+          bottom clears BottomNav (app/(app) layout only), which the welcome
           page's default offset doesn't need to account for */}
       <FloatingActionButton
         onClick={onNewEvent}
@@ -66,11 +52,7 @@ export function EventsList({ events, onOpenEvent, onNewEvent }: EventsListProps)
         className="min-[720px]:hidden"
       />
 
-      {/* mt-5 only once there's something above it to space away from — at
-          mobile, with PageHeader hidden, this is the top of the page, and
-          PageContainer's own pt-6 already provides the right gap on its own. */}
       <SearchWithFilter
-        className="min-[720px]:mt-5"
         query={query}
         onQuery={setQuery}
         placeholder="Search a title, host, circle, or location"

@@ -28,12 +28,7 @@ interface PageContainerProps {
 
    pt-6 is flat, not per-page — Playwright measurements confirmed a 24px gap
    from the top bar everywhere, matching px-6, regardless of whether a page's
-   first element is a masthead or a SearchWithFilter. A page whose own
-   PageHeader hides below 720px (Circles root, Events list) doesn't need
-   special-casing here either: PageHeader just occupies its own space when
-   visible, and SearchWithFilter carries its own conditional margin above it
-   (see city-directory.page.jsx and events-list.page.jsx) rather than this
-   component trying to account for what's above the fold on a per-page basis.
+   first element is a masthead or a SearchWithFilter.
 
    pb is a flat pb-20 for the same reason pt no longer varies — Playwright
    showed a page's own bottom padding is invisible in practice on mobile

@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HomeIcon } from "@heroicons/react/24/outline";
-import { FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageContainer, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
 import { circleChildren, circleDescendantIds, indexCircles } from "@/lib/circles.util";
@@ -76,8 +75,6 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [searching, directFiles, subtreeCircleIds, circlesById, members, q]);
 
-  const isHome = circle.id === profile.homeCircleId;
-
   // no types selected means no filter applied (show everything) — folders/
   // files above still do the query narrowing, this just decides which of
   // the three grids below are eligible to render at all. Any combination of
@@ -93,21 +90,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
 
   return (
     <PageContainer size="wide">
-      <PageHeader
-        title={
-          isHome ? (
-            <span className="inline-flex items-center gap-2">
-              {circle.name}
-              <HomeIcon className="size-6 shrink-0 text-teal" strokeWidth={2} />
-            </span>
-          ) : (
-            circle.name
-          )
-        }
-      />
-
       <SearchWithFilter
-        className="mt-5"
         query={query}
         onQuery={setQuery}
         placeholder={`Search within ${circle.name}`}

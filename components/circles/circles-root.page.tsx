@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageContainer, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { CIRCLE_TYPE_LABEL } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
@@ -55,19 +55,7 @@ export function CirclesRootPage({ circles, onOpenCircle }: CirclesRootPageProps)
 
   return (
     <PageContainer size="wide">
-      {/* the top bar already shows "Circles" as the mobile section name
-          (see top-bar.tsx), so this exact-duplicate title is redundant below
-          that breakpoint — hidden there rather than removed, so it still
-          shows at 720px+ where the top bar reverts to the brand link. */}
-      <div className="hidden min-[720px]:block">
-        <PageHeader title="Circles" />
-      </div>
-
-      {/* mt-5 only once there's something above it to space away from — at
-          mobile, with PageHeader hidden, this is the top of the page, and
-          PageContainer's own pt-6 already provides the right gap on its own. */}
       <SearchWithFilter
-        className="min-[720px]:mt-5"
         query={query}
         onQuery={setQuery}
         placeholder="Search a name, type, or what they offer"
