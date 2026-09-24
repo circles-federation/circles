@@ -8,7 +8,7 @@ import { isPastEvent, fmtTime } from "@/lib/format.util";
 import { isApproved, isProposal, voteCount, voteThreshold } from "@/lib/governance.util";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending } from "@/lib/events.util";
-import { useCirclesById, useMemberById } from "@/lib/hooks";
+import { useCirclesById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
 interface GovernanceRowProps {
@@ -21,9 +21,7 @@ interface GovernanceRowProps {
    just shows the vote count. */
 export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
   const byId = useCirclesById();
-  const memberById = useMemberById();
   const { profile } = useAppState();
-  const host = memberById(e.organizerId);
   const proposal = isProposal(e);
   const circle = byId[e.circleId];
   const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
@@ -36,8 +34,9 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
     ? (approved ? "" : "· Lapsed")
     : (approved ? "" : `· Proposed — ${threshold - votes} more to approve`);
   const hideOnMobile = !past && !approved;
-  // a proposal names the circle proposing it and the one it would be shown to
-  const where = hostCircle && circle && hostCircle.id !== circle.id ? `${hostCircle.name} for ${circle.name}` : (hostCircle ?? circle)?.name ?? "";
+  // the host: a proposal's host circle, or for a meeting the circle holding it
+  // (see OrdinaryRow for why that's all the row says)
+  const hostName = (hostCircle ?? circle)?.name ?? "";
 
   return (
     <EventRow
@@ -48,7 +47,7 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
       washed={!past}
       title={e.title}
       titleMuted={past}
-      meta={`Proposed by ${host?.name ?? ""} · ${where} · ${e.location}`}
+      meta={hostName}
       metaMuted={past}
       tags={
         <>

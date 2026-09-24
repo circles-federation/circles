@@ -24,7 +24,6 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
   const memberById = useMemberById();
   const { profile } = useAppState();
   const host = memberById(e.organizerId);
-  const circle = byId[e.circleId];
   const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
   const past = isPastEvent(e);
   const attending = isAttending(e, profile.id);
@@ -37,7 +36,9 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
       dateAccent={past ? "soft" : undefined}
       title={e.title}
       titleMuted={past}
-      meta={[`Hosted by ${hostCircle?.name ?? host?.name ?? ""}`, hostCircle?.id !== circle?.id ? circle?.name : undefined, e.location].filter(Boolean).join(" · ")}
+      // just the host, so the row stays short on a phone — the event's own
+      // page has its circle and location
+      meta={hostCircle?.name ?? host?.name ?? ""}
       metaMuted={past}
       tags={
         <>
