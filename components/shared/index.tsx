@@ -18,6 +18,7 @@ export { Input } from "./input";
 export { Label } from "./label";
 export { Modal } from "./modal";
 export { PageContainer } from "./page-container";
+export { PageLoading } from "./page-loading";
 export { SearchWithFilter } from "./search-with-filter";
 export { Section } from "./section";
 export { SectionGroup } from "./section-group";

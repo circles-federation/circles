@@ -40,6 +40,15 @@
   /* display headings share tight negative tracking; eyebrows share wide tracking */
   --tracking-tight: -0.03em;
   --tracking-wide: 0.1em;
+
+  /* for something that should only appear if a wait is long enough to
+     notice (PageLoading's spinner): invisible for its first second */
+  --animate-fade-in-late: fade-in 0.2s ease-out 1s both;
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
 }
 
 html,
