@@ -11,6 +11,7 @@ interface CircleCardProps {
   onOpenCircle: (c: Circle) => void;
   showNeighborhoodChip?: boolean;
   showKindEyebrow?: boolean;
+  showMembers?: boolean;
 }
 
 /* Reusable circle card — used in the Circles directory and the Home
@@ -33,8 +34,12 @@ interface CircleCardProps {
    the eyebrow would: NeighborhoodPage's Councils grid passes false, since
    "Councils" is right there in the section header; Home's speed dial passes
    true for its neighborhood card, since that's a single flat, mixed-type list
-   with no grid label to lean on. */
-export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showKindEyebrow = c.type !== "neighborhood" }: CircleCardProps) {
+   with no grid label to lean on.
+
+   showMembers drops the avatar row for a more compact card — CirclePage's
+   "Part of" card, which is context above the page's own content rather than
+   something to browse. */
+export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showKindEyebrow = c.type !== "neighborhood", showMembers = true }: CircleCardProps) {
   const { profile } = useAppState();
   const byId = useCirclesById();
   const memberById = useMemberById();
@@ -60,15 +65,17 @@ export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showK
         {isHome && <HomeIcon className="size-5 shrink-0 text-teal" strokeWidth={2} />}
       </div>
       <p className="mt-2.5 font-serif text-sm leading-[1.4] text-[#222]">{c.tagline}</p>
-      <div className="mt-auto flex items-center justify-between pt-4">
-        <span className="flex">
-          {/* member ids on a circle always resolve — internal seed-data
-              invariant, not a runtime possibility to guard */}
-          {c.members.slice(0, 8).map((id, i) => (
-            <Avatar key={id} member={memberById(id)!} size={26} className={clsx(i !== 0 && "-ml-2")} />
-          ))}
-        </span>
-      </div>
+      {showMembers && (
+        <div className="mt-auto flex items-center justify-between pt-4">
+          <span className="flex">
+            {/* member ids on a circle always resolve — internal seed-data
+                invariant, not a runtime possibility to guard */}
+            {c.members.slice(0, 8).map((id, i) => (
+              <Avatar key={id} member={memberById(id)!} size={26} className={clsx(i !== 0 && "-ml-2")} />
+            ))}
+          </span>
+        </div>
+      )}
     </button>
   );
 }

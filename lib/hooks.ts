@@ -77,10 +77,11 @@ export function useAppNav() {
     // filter via a ?types= query param (comma-joined) — e.g. Home's
     // "Neighbors"/"Local circles" stat cards land pre-filtered instead of
     // dumping the visitor on the unfiltered folder and making them filter by
-    // hand.
+    // hand. The city root's own view is the Circles browser's top level, not
+    // a /circles/[id] page of its own.
     openCircle: (c: Circle, entityTypes?: string[]) => {
       const qs = entityTypes && entityTypes.length > 0 ? `?types=${entityTypes.join(",")}` : "";
-      router.push(`/circles/${c.id}${qs}`);
+      router.push(c.parentId === null ? "/circles" : `/circles/${c.id}${qs}`);
     },
   };
 }

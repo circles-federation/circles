@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { FolderGrid, PageContainer, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
+import { ParentCircle } from "./parent-circle";
 import { circleChildren, circleDescendantIds, indexCircles } from "@/lib/circles.util";
 import type { Circle, Member, Profile } from "@/lib/types";
 
@@ -99,36 +100,41 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
         ]}
       />
 
-      {anySections ? (
-        <div className="mt-7 flex flex-col gap-7">
-          {councilFolders.length > 0 && (
-            <FolderGrid
-              label="Councils"
-              items={councilFolders}
-              minWidth={300}
-              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />}
-            />
-          )}
-          {otherFolders.length > 0 && (
-            <FolderGrid
-              label="Organizations"
-              items={otherFolders}
-              minWidth={300}
-              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />}
-            />
-          )}
-          {peopleFiles.length > 0 && (
-            <FolderGrid
-              label="People"
-              items={peopleFiles}
-              minWidth={230}
-              renderItem={(m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showNeighborhoodChip={false} />}
-            />
-          )}
-        </div>
-      ) : (
-        <p className="mt-7 font-serif text-sm text-soft">Nothing here yet.</p>
-      )}
+      <div className="mt-7 flex flex-col gap-7">
+        {/* not something search or the Type filter can match, so it steps
+            aside while either is narrowing the view */}
+        {!searching && typeFilter.length === 0 && <ParentCircle circle={circle} onOpenCircle={onOpenCircle} />}
+        {anySections ? (
+          <>
+            {councilFolders.length > 0 && (
+              <FolderGrid
+                label="Councils"
+                items={councilFolders}
+                minWidth={300}
+                renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />}
+              />
+            )}
+            {otherFolders.length > 0 && (
+              <FolderGrid
+                label="Organizations"
+                items={otherFolders}
+                minWidth={300}
+                renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />}
+              />
+            )}
+            {peopleFiles.length > 0 && (
+              <FolderGrid
+                label="People"
+                items={peopleFiles}
+                minWidth={230}
+                renderItem={(m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showNeighborhoodChip={false} />}
+              />
+            )}
+          </>
+        ) : (
+          <p className="font-serif text-sm text-soft">Nothing here yet.</p>
+        )}
+      </div>
     </PageContainer>
   );
 }
