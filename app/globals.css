@@ -75,6 +75,12 @@ body {
    toolbar collapsing and lose the tab's own pull-to-refresh. */
 @custom-variant standalone (@media (display-mode: standalone));
 
+/* TopBar's height, which it keeps up to date itself once it's measured; this
+   is only its usual height (h-14.5 plus the status bar), for the first paint */
+:root {
+  --top-bar-height: calc(3.625rem + env(safe-area-inset-top));
+}
+
 /* For app chrome (TopBar, BottomNav): a long press on a tab or button does
    nothing, as in a native app, instead of selecting its label or opening
    iOS's link preview. */

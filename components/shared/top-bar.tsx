@@ -82,8 +82,30 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  // Installed as an app, the bar lies over AppShell's scrolling <main> instead
+  // of above it, so the page scrolls up under its see-through lower edge as in
+  // a native app; <main> is padded down by the bar's height, published here
+  // as --top-bar-height since it changes (the offline banner, a landscape
+  // notch). In a browser tab it's sticky over the scrolling page to the same
+  // effect, and the variable goes unused.
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() => root.style.setProperty("--top-bar-height", `${bar.offsetHeight}px`));
+    observer.observe(bar);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--top-bar-height");
+    };
+  }, []);
+
   return (
-    <div className="app-chrome sticky top-0 z-50 bg-paper pt-[env(safe-area-inset-top)] shadow-[0_2px_6px_rgba(10,10,10,0.08)]">
+    <div
+      ref={barRef}
+      className="app-chrome sticky top-0 z-50 bg-linear-to-t from-paper/85 to-paper pt-[env(safe-area-inset-top)] backdrop-blur-md shadow-[0_2px_6px_rgba(10,10,10,0.08)] standalone:absolute standalone:inset-x-0"
+    >
       <div className="mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1">
           {!isTabRoot && (
