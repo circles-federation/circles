@@ -72,18 +72,6 @@ export function circleNeighborhood(circle: Circle, byId: CirclesById): Circle | 
   return null;
 }
 
-// root-to-leaf chain of ancestors (not including the circle itself), for
-// breadcrumbs.
-export function circleAncestors(circle: Circle, byId: CirclesById): Circle[] {
-  const chain: Circle[] = [];
-  let current: Circle | undefined = circle.parentId ? byId[circle.parentId] : undefined;
-  while (current) {
-    chain.unshift(current);
-    current = current.parentId ? byId[current.parentId] : undefined;
-  }
-  return chain;
-}
-
 // every circle anywhere below `circle` in the tree (not including itself),
 // for flattening a subtree search
 export function circleDescendantIds(circle: Circle, circles: Circle[]): string[] {

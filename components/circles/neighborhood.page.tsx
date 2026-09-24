@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
+import { BackButton, FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
-import { circleAncestors, circleChildren, circleDescendantIds, indexCircles } from "@/lib/circles.util";
+import { circleChildren, circleDescendantIds, indexCircles } from "@/lib/circles.util";
 import type { Circle, Member, Profile } from "@/lib/types";
 
 const ENTITY_TYPES = ["Councils", "Organizations", "People"] as const;
@@ -21,7 +21,8 @@ interface NeighborhoodPageProps {
   members: Member[];
   profile: Profile;
   onOpenCircle: (c: Circle) => void;
-  onOpenRoot: () => void;
+  onBack: () => void;
+  backLabel?: string;
   onOpenMember: (m: Member) => void;
   // seeds the Type filter — e.g. Home's "Neighbors"/"Local circles" stat
   // cards land here pre-filtered rather than on the unfiltered folder view.
@@ -43,7 +44,7 @@ interface NeighborhoodPageProps {
    browsed), so CircleCard/MemberCard's neighborhood chips remain off throughout —
    unlike CirclesRootPage, where cards span multiple neighborhoods and the
    chip is what tells them apart. */
-export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenRoot, onOpenMember, initialTypeFilter }: NeighborhoodPageProps) {
+export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onBack, backLabel, onOpenMember, initialTypeFilter }: NeighborhoodPageProps) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<EntityType[]>(() => (initialTypeFilter || []).filter(isEntityType));
   const circlesById = useMemo(() => indexCircles(circles), [circles]);
@@ -94,7 +95,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
 
   return (
     <PageContainer size="wide">
-      <Breadcrumbs trail={circleAncestors(circle, circlesById).filter((c) => c.parentId !== null)} current={circle} onOpenRoot={onOpenRoot} onOpenCircle={onOpenCircle} />
+      <BackButton onClick={onBack} className="mb-4">{backLabel || "All circles"}</BackButton>
 
       <PageHeader
         title={
@@ -150,38 +151,5 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
         <p className="mt-7 font-serif text-sm text-soft">Nothing here yet.</p>
       )}
     </PageContainer>
-  );
-}
-
-interface BreadcrumbsProps {
-  trail: Circle[];
-  current: Circle;
-  onOpenRoot: () => void;
-  onOpenCircle: (c: Circle) => void;
-}
-
-function Breadcrumbs({ trail, current, onOpenRoot, onOpenCircle }: BreadcrumbsProps) {
-  return (
-    <div className="mb-3 flex flex-wrap items-center gap-1.5">
-      <button
-        onClick={onOpenRoot}
-        className="cursor-pointer border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase hover:text-ink"
-      >
-        Providence
-      </button>
-      {trail.map((b) => (
-        <span key={b.id} className="flex items-center gap-1.5">
-          <span className="text-soft">/</span>
-          <button
-            onClick={() => onOpenCircle(b)}
-            className="cursor-pointer border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase hover:text-ink"
-          >
-            {b.name}
-          </button>
-        </span>
-      ))}
-      <span className="text-soft">/</span>
-      <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-ink uppercase">{current.name}</span>
-    </div>
   );
 }
