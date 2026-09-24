@@ -39,7 +39,9 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="flex min-[720px]:hidden fixed bottom-0 inset-x-0 z-50 border-t border-faint bg-paper shadow-[0_-2px_6px_rgba(10,10,10,0.08)]">
+    // padded past the home indicator and a landscape notch, with the nav's own
+    // paper background running underneath them
+    <nav className="flex min-[720px]:hidden fixed bottom-0 inset-x-0 z-50 border-t border-faint bg-paper pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] shadow-[0_-2px_6px_rgba(10,10,10,0.08)]">
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
         const active = isActive(href);
         const Icon = active ? Solid : Outline;

@@ -23,6 +23,9 @@ export function proxy(request: NextRequest) {
   }
 }
 
+// the manifest and app icons are skipped too: a browser fetches them without
+// cookies, so gating them would hand it the welcome page instead and quietly
+// break installing the app
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|manifest\\.webmanifest|icons/|icon\\.svg|apple-icon\\.png).*)"],
 };

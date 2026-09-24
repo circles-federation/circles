@@ -76,7 +76,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed top-0 right-0 left-0 z-1000 flex w-full max-w-full flex-col gap-2.5 p-2.5 min-[720px]:top-4 min-[720px]:right-4 min-[720px]:left-auto min-[720px]:w-auto min-[720px]:max-w-95 min-[720px]:p-0"
+        className="pointer-events-none fixed top-0 right-0 left-0 z-1000 flex w-full max-w-full flex-col gap-2.5 p-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] min-[720px]:top-4 min-[720px]:right-4 min-[720px]:left-auto min-[720px]:w-auto min-[720px]:max-w-95 min-[720px]:p-0"
       >
         {toasts.map((t) => {
           const tone = TOAST_TONES[t.tone] || TOAST_TONES.info;

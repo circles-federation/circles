@@ -82,7 +82,7 @@ export function TopBar() {
   }
 
   return (
-    <div className="sticky top-0 z-50 bg-paper shadow-[0_2px_6px_rgba(10,10,10,0.08)]">
+    <div className="sticky top-0 z-50 bg-paper pt-[env(safe-area-inset-top)] shadow-[0_2px_6px_rgba(10,10,10,0.08)]">
       <div className="mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1">
           {!isTabRoot && (

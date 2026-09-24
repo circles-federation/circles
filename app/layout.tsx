@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { ToastProvider } from "@/components/shared";
@@ -6,6 +6,17 @@ import { ToastProvider } from "@/components/shared";
 export const metadata: Metadata = {
   title: "Circles",
   description: "A federated coordination tool for neighborhoods and organizations.",
+  // iOS still reads these rather than the manifest when added to the Home
+  // Screen. "default" keeps a white status bar above the page, like the top bar.
+  appleWebApp: { capable: true, title: "Circles", statusBarStyle: "default" },
+};
+
+// viewportFit "cover" draws under the home indicator and a landscape notch, so
+// the app's edges pad themselves with env(safe-area-inset-*) — see AppShell,
+// TopBar, BottomNav and FloatingActionButton
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+  viewportFit: "cover",
 };
 
 // AppStateProvider/ProfileModalProvider/AppShell live in app/(app)/layout.jsx

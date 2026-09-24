@@ -81,7 +81,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-paper px-6 py-16">
+    <div className="flex min-h-dvh items-center justify-center bg-paper px-6 py-16">
       <div className="w-full max-w-md">
         <div className="border-t-[3px] border-t-ink pt-4.5">
           <Eyebrow className="text-soft">Welcome to</Eyebrow>

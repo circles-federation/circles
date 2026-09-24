@@ -53,6 +53,9 @@ body {
      viewport, not body. overflow-x:clip blocks the same horizontal
      scroll without creating a scroll container. */
   overflow-x: clip;
+  /* the press styles below are the tap feedback; mobile browsers' own grey
+     flash on top of them reads as a web page, not an app */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* @layer base, not a bare rule: unlayered CSS beats every Tailwind utility
