@@ -1,6 +1,7 @@
 "use server";
 
 import { after } from "next/server";
+import { getAppStateForMember, type AppStateData } from "./app-state";
 import * as circleRoles from "./circle-roles";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
@@ -33,6 +34,15 @@ export async function updateMemberAction(patch: Partial<Member>) {
 export async function updateMemberPhotoAction(form: FormData) {
   const photo = form.get("photo");
   return asMember((memberId) => members.setMemberPhoto(memberId, photo instanceof Blob ? photo : new Blob()));
+}
+
+// AppStateProvider's refresh when the app returns to the foreground: the same
+// data the (app) layout loaded, fresh. A lapsed session says so, so the app
+// can send them to sign in again rather than keep showing what it had.
+export async function loadAppStateAction(): Promise<{ ok: true; value: AppStateData } | { ok: false; signedOut: boolean }> {
+  const memberId = await getCurrentUserId();
+  const state = memberId ? await getAppStateForMember(memberId) : null;
+  return state ? { ok: true, value: state } : { ok: false, signedOut: true };
 }
 
 export async function updateCircleAction(id: string, patch: Partial<Circle>) {

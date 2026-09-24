@@ -4,10 +4,7 @@ import { AppShell } from "@/components/shared";
 import { AppStateProvider } from "@/components/providers/app-state-provider";
 import { BackHandlerProvider } from "@/components/providers/back-handler-provider";
 import { ProfileModalProvider } from "@/components/providers/profile-modal-provider";
-import { getCircles } from "@/lib/db/circles";
-import { getEventsForMember } from "@/lib/db/events";
-import { getMembers } from "@/lib/db/members";
-import { getResourcesForMember } from "@/lib/db/resources";
+import { getAppStateForMember } from "@/lib/db/app-state";
 import { getCurrentUserId } from "@/lib/session";
 
 /* Everything that requires a logged-in member lives under this group.
@@ -21,14 +18,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const currentUserId = await getCurrentUserId();
   if (!currentUserId) redirect("/");
 
-  // events and resources are both scoped to circles: only the ones the
-  // signed-in member may see are fetched, so nothing else reaches their browser
-  const [events, circles, members, resources] = await Promise.all([getEventsForMember(currentUserId), getCircles(), getMembers(), getResourcesForMember(currentUserId)]);
   // the signed-in member always resolves here: currentUserId comes from a
   // valid session, whose user is looked up back to a real member by email
   // (see lib/session.ts).
-  const profile = members.find((m) => m.id === currentUserId);
-  if (!profile) redirect("/");
+  const state = await getAppStateForMember(currentUserId);
+  if (!state) redirect("/");
+  const { events, circles, members, resources, profile } = state;
 
   return (
     <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialCircles={circles} initialMembers={members} initialResources={resources} initialProfile={profile}>

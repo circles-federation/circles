@@ -1,11 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { useToast } from "@/components/shared";
+import { isOutdatedVersion } from "@/lib/app-version";
 import {
   createEventAction as dbCreateEvent,
   createResourceAction as dbCreateResource,
   deleteResourceAction as dbDeleteResource,
+  loadAppStateAction as dbLoadAppState,
   setRsvpAction as dbSetRsvp,
   setVoteAction as dbSetVote,
   toggleRoleSlotAction as dbToggleRoleSlot,
@@ -70,6 +72,18 @@ export interface AppStateValue {
    validates. */
 const AppStateContext = createContext<AppStateValue | null>(null);
 
+// how long the app has to have been in the background before coming back
+// reloads its data
+const STALE_AFTER_MS = 60_000;
+// a refresh started this soon after a change is dropped, in case it read the
+// database before that change landed
+const RECENT_WRITE_MS = 10_000;
+
+// { [eventId]: true } for the events the current user has RSVPed to, voted on, ...
+function ownFlags(events: Event[], has: (e: Event) => boolean): Record<string, boolean> {
+  return Object.fromEntries(events.filter(has).map((e) => [e.id, true]));
+}
+
 export function useAppState(): AppStateValue {
   const ctx = useContext(AppStateContext);
   if (!ctx) throw new Error("useAppState must be used within AppStateProvider");
@@ -97,19 +111,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [resources, setResources] = useState<CircleResource[]>(initialResources);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
-  const [rsvpState, setRsvpState] = useState<Record<string, boolean>>(() =>
-    initialEvents.reduce<Record<string, boolean>>((acc, e) => {
-      if (e.rsvps.includes(currentUserId)) acc[e.id] = true;
-      return acc;
-    }, {})
-  );
+  const [rsvpState, setRsvpState] = useState<Record<string, boolean>>(() => ownFlags(initialEvents, (e) => e.rsvps.includes(currentUserId)));
   // voteState: { [eventId]: true } — the current user's votes on meetings
-  const [voteState, setVoteState] = useState<Record<string, boolean>>(() =>
-    initialEvents.reduce<Record<string, boolean>>((acc, e) => {
-      if (e.votes && e.votes.includes(currentUserId)) acc[e.id] = true;
-      return acc;
-    }, {})
-  );
+  const [voteState, setVoteState] = useState<Record<string, boolean>>(() => ownFlags(initialEvents, (e) => !!e.votes?.includes(currentUserId)));
   // the current user's own editable profile (seeded from their member record)
   const [profile, setProfile] = useState<Profile>(() => ({
     ...initialProfile,
@@ -117,6 +121,63 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     interests: [...initialProfile.interests],
     emailPublic: !!initialProfile.email, // they have an email shared by default
   }));
+
+  // when this session last changed anything, so a refresh that might predate
+  // the change doesn't overwrite it (see refresh)
+  const lastWrite = useRef(0);
+  const tracked = <A extends unknown[], R>(mutate: (...args: A) => R) => (...args: A) => {
+    lastWrite.current = Date.now();
+    return mutate(...args);
+  };
+
+  /* The installed app can sit suspended for days, and everything here was
+     loaded once, when the (app) layout rendered, so coming back to it after a
+     while reloads it all. First, though, it checks that this is still the
+     version of the app the server is running — after a deploy, this copy's
+     Server Actions no longer exist on the server, so every save would fail —
+     and reloads the page instead if not, which brings fresh data too. */
+  const onForeground = useEffectEvent(async () => {
+    if (await isOutdatedVersion()) {
+      window.location.reload();
+      return;
+    }
+    const startedAt = Date.now();
+    // unreachable (offline, say): keep showing what we have
+    const result = await dbLoadAppState().catch(() => null);
+    if (!result) return;
+    if (!result.ok) {
+      // signed out: a full load, not router.push, so none of what they'd
+      // loaded stays in memory behind the welcome page
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/");
+      return;
+    }
+    // a change made just before or while this ran may be missing from what came back
+    if (lastWrite.current >= startedAt - RECENT_WRITE_MS) return;
+    const fresh = result.value;
+    setEvents(fresh.events);
+    setCircles(fresh.circles);
+    setMembers(fresh.members);
+    setResources(fresh.resources);
+    setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
+    setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
+    // whether their email shows isn't stored on the server
+    setProfile((p) => ({ ...fresh.profile, emailPublic: p.emailPublic }));
+  });
+
+  useEffect(() => {
+    let hiddenAt: number | null = null;
+    function onVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (hiddenAt !== null && Date.now() - hiddenAt >= STALE_AFTER_MS) onForeground();
+      hiddenAt = null;
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
 
   // runs a server event action: on success adopts the server's version of the
   // event (so state can't drift from what was actually saved); if the server
@@ -386,8 +447,18 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     <AppStateContext.Provider
       value={{
         events, circles, members, resources, rsvpState, voteState, profile,
-        toggleRsvp, toggleRoleSlot, createEvent, updateEventDetails, toggleVote,
-        saveCircle, saveCircleRoles, saveProfile, savePhoto, addResource, updateResource, removeResource,
+        toggleRsvp: tracked(toggleRsvp),
+        toggleRoleSlot: tracked(toggleRoleSlot),
+        createEvent: tracked(createEvent),
+        updateEventDetails: tracked(updateEventDetails),
+        toggleVote: tracked(toggleVote),
+        saveCircle: tracked(saveCircle),
+        saveCircleRoles: tracked(saveCircleRoles),
+        saveProfile: tracked(saveProfile),
+        savePhoto: tracked(savePhoto),
+        addResource: tracked(addResource),
+        updateResource: tracked(updateResource),
+        removeResource: tracked(removeResource),
       }}
     >
       {children}
