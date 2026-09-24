@@ -97,7 +97,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
         {/* my neighborhood — one compact panel of stats */}
         <Section>
           <EyebrowGroup label="My neighborhood">
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,160px),1fr))] gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min((100%-1rem)/2,160px),1fr))] gap-4">
               <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
               <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalCircles} />
               <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
