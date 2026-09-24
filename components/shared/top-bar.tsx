@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeftIcon, HomeIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, HomeIcon, PlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useRunBackHandler } from "@/components/providers/back-handler-provider";
@@ -17,6 +17,12 @@ const TABS: [string, string][] = [
 ];
 
 const NAV_LINK = "border-b-2 py-1 font-sans text-xs font-semibold tracking-wide text-ink uppercase no-underline";
+
+// a page's own primary action, shown in the bar while that page is: a + on
+// the right on mobile, a text link before the tabs on desktop
+const PAGE_ACTIONS: Record<string, { href: string; label: string }> = {
+  "/events": { href: "/events/new", label: "Create Event" },
+};
 
 // where Back goes when there's no in-app history to pop (the page was opened
 // directly, from a link or a reload): one URL segment up, except for pages
@@ -59,6 +65,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // changes tells us whether router.back() would stay inside the app or leave
   // it for whatever site linked here.
   const isTabRoot = TABS.some(([href]) => pathname === href);
+  const action = PAGE_ACTIONS[pathname];
   const navigations = useRef(-1);
   useEffect(() => {
     navigations.current += 1;
@@ -124,16 +131,24 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
           {isHomeNeighborhood && <HomeIcon className="ml-1 size-5 shrink-0 text-teal" strokeWidth={2} aria-label="Your neighborhood" />}
         </div>
 
+        {action && (
+          <Link
+            href={action.href}
+            aria-label={action.label}
+            className="-mr-2.5 flex size-11 shrink-0 items-center justify-center text-ink min-[720px]:hidden"
+          >
+            <PlusIcon className="size-6" strokeWidth={2} />
+          </Link>
+        )}
+
         {/* on mobile, these three destinations live in BottomNav instead —
             hidden via CSS breakpoint (not useIsMobile) so this never has to
             reconcile a server/client mismatch on the first paint. */}
         <nav className="hidden shrink-0 items-center gap-6 pl-6 min-[720px]:flex">
-          {/* the Events page's own action, on desktop only — mobile has the
-              list's floating button instead */}
-          {pathname === "/events" && (
+          {action && (
             <>
-              <Link href="/events/new" className={clsx(NAV_LINK, "border-b-transparent")}>
-                Create Event
+              <Link href={action.href} className={clsx(NAV_LINK, "border-b-transparent")}>
+                {action.label}
               </Link>
               <div className="h-4 w-px bg-faint" />
             </>
