@@ -107,6 +107,25 @@ body {
     color: inherit;
     text-decoration: none;
   }
+
+  /* iOS draws date and time fields as native controls with a minimum width
+     of their own, which ignores width: 100% — on a narrow phone they spill
+     past their container's padding (the event form's Date, Start and End).
+     Without the native look they size like any other field; the rest puts
+     back what it took with it: the height, left-aligned text like the other
+     fields, and ink rather than iOS's blue accent for the value. */
+  input[type="date"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    min-height: 3rem;
+    color: inherit;
+    -webkit-text-fill-color: currentColor;
+  }
+  input::-webkit-date-and-time-value {
+    text-align: left;
+  }
 }
 
 /* ============================================================
