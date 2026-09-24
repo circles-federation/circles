@@ -1,6 +1,6 @@
 "use client";
 
-import { BackButton, Eyebrow, PageContainer } from "@/components/shared";
+import { Eyebrow, PageContainer } from "@/components/shared";
 
 interface GameResultsPageProps {
   score: number;
@@ -18,8 +18,7 @@ export function GameResultsPage({ score, roundsLength, onRestart, onExit }: Game
 
   return (
     <PageContainer size="compact">
-      <BackButton onClick={onExit}>Home</BackButton>
-      <Eyebrow className="mt-7 block text-soft">Round complete</Eyebrow>
+      <Eyebrow className="block text-soft">Round complete</Eyebrow>
       <div className="mt-3.5 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
         {score}<span className="text-faint">/{roundsLength}</span>
       </div>

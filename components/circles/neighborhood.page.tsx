@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { BackButton, FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageContainer, PageHeader, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
 import { circleChildren, circleDescendantIds, indexCircles } from "@/lib/circles.util";
@@ -21,8 +21,6 @@ interface NeighborhoodPageProps {
   members: Member[];
   profile: Profile;
   onOpenCircle: (c: Circle) => void;
-  onBack: () => void;
-  backLabel?: string;
   onOpenMember: (m: Member) => void;
   // seeds the Type filter — e.g. Home's "Neighbors"/"Local circles" stat
   // cards land here pre-filtered rather than on the unfiltered folder view.
@@ -44,7 +42,7 @@ interface NeighborhoodPageProps {
    browsed), so CircleCard/MemberCard's neighborhood chips remain off throughout —
    unlike CirclesRootPage, where cards span multiple neighborhoods and the
    chip is what tells them apart. */
-export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onBack, backLabel, onOpenMember, initialTypeFilter }: NeighborhoodPageProps) {
+export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenMember, initialTypeFilter }: NeighborhoodPageProps) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<EntityType[]>(() => (initialTypeFilter || []).filter(isEntityType));
   const circlesById = useMemo(() => indexCircles(circles), [circles]);
@@ -95,8 +93,6 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
 
   return (
     <PageContainer size="wide">
-      <BackButton onClick={onBack} className="mb-4">{backLabel || "All circles"}</BackButton>
-
       <PageHeader
         title={
           isHome ? (

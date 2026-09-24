@@ -35,9 +35,7 @@ function CircleRoute() {
         circles={circles}
         members={members}
         profile={profile}
-        onOpenCircle={(c) => nav.openCircle(c, circle.name)}
-        onBack={() => router.back()}
-        backLabel={searchParams.get("from") || undefined}
+        onOpenCircle={(c) => nav.openCircle(c)}
         onOpenMember={open}
         initialTypeFilter={searchParams.get("types")?.split(",")}
       />
@@ -51,11 +49,9 @@ function CircleRoute() {
       lastEditor={circle.lastEditedBy ? memberById(circle.lastEditedBy) || null : null}
       lastEditedAt={circle.lastEditedAt}
       events={events}
-      onBack={() => router.back()}
-      backLabel={searchParams.get("from") || undefined}
       onOpenMember={open}
-      onOpenCircle={(c) => nav.openCircle(c, circle.name)}
-      onOpenEvent={(e) => nav.openEvent(e, circle.name)}
+      onOpenCircle={(c) => nav.openCircle(c)}
+      onOpenEvent={(e) => nav.openEvent(e)}
       onManage={() => router.push(`/circles/${circle.id}/manage`)}
     />
   );

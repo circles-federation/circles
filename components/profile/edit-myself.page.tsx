@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { EyeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, Button, ConfirmModal, Eyebrow, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
+import { useBackHandler } from "@/components/providers/back-handler-provider";
+import { Button, ConfirmModal, Eyebrow, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
 import { EditableTags } from "./editable-tags";
 import type { Profile } from "@/lib/types";
 
@@ -31,8 +32,9 @@ export function EditMyselfPage({ profile, onSave, onBack }: EditMyselfPageProps)
     onBack();
   }
 
-  // shared by the top BackButton and the bottom Cancel button — both leave
-  // the form the same way, so both need the same unsaved-changes guard.
+  // the top bar's Back and the bottom Cancel button both leave the form, so
+  // both get the same unsaved-changes guard
+  useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
   function handleLeave() {
     if (dirty) setConfirmingDiscard(true);
     else onBack();
@@ -40,9 +42,7 @@ export function EditMyselfPage({ profile, onSave, onBack }: EditMyselfPageProps)
 
   return (
     <PageContainer size="normal">
-      <BackButton onClick={handleLeave}>Home</BackButton>
-
-      <div className="mt-4 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-4.5">
+      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-4.5">
         <Eyebrow className="text-soft">Edit</Eyebrow>
         <h1 className="mt-3 font-sans text-heading leading-none font-extrabold tracking-tight">Edit my details</h1>
       </div>

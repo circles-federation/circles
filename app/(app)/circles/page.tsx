@@ -8,7 +8,5 @@ export default function Page() {
   const { circles } = useAppState();
   const nav = useAppNav();
 
-  const root = circles.find((c) => c.parentId === null);
-
-  return <CirclesRootPage circles={circles} onOpenCircle={(c) => nav.openCircle(c, root?.name)} />;
+  return <CirclesRootPage circles={circles} onOpenCircle={(c) => nav.openCircle(c)} />;
 }

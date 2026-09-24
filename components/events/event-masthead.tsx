@@ -36,7 +36,7 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
     : (past ? "border-t-soft" : "border-t-ink");
 
   return (
-    <div className={clsx("mt-4 flex flex-col items-stretch gap-4.5 border-t-[3px] border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5.5", topBorderClass)}>
+    <div className={clsx("flex flex-col items-stretch gap-4.5 border-t-[3px] border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5.5", topBorderClass)}>
       <div className="flex flex-1 items-start gap-5.5">
         <DateTile iso={e.date} large accent={gov ? govAccent : undefined} />
         <div className="flex-1">

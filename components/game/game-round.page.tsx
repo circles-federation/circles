@@ -2,7 +2,7 @@
 
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, Button, Eyebrow, PageContainer } from "@/components/shared";
+import { Button, Eyebrow, PageContainer } from "@/components/shared";
 import { avatarFor } from "@/lib/members.util";
 import type { Round } from "@/lib/game.util";
 
@@ -15,17 +15,15 @@ interface GameRoundPageProps {
   answered: boolean;
   onChoose: (name: string) => void;
   onNext: () => void;
-  onExit: () => void;
 }
 
 /* One round of the name game: a neighbor's photo, four name options, and
    (once answered) the correct answer plus a Next/See score button. */
-export function GameRoundPage({ round, idx, roundsLength, score, picked, answered, onChoose, onNext, onExit }: GameRoundPageProps) {
+export function GameRoundPage({ round, idx, roundsLength, score, picked, answered, onChoose, onNext }: GameRoundPageProps) {
   const m = round.person;
 
   return (
     <PageContainer size="compact">
-      <BackButton onClick={onExit} className="mb-4">Home</BackButton>
       <div className="flex items-baseline justify-between border-b border-ink pb-2.75">
         <Eyebrow>Who is this?</Eyebrow>
         <span className="font-sans text-xs font-extrabold tracking-[0.08em]">

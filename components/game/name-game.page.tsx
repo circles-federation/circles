@@ -62,7 +62,6 @@ export function NameGamePage({ members, profile, onExit }: NameGamePageProps) {
       answered={answered}
       onChoose={choose}
       onNext={next}
-      onExit={onExit}
     />
   );
 }

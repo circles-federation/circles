@@ -30,12 +30,12 @@ export default function Page() {
       events={events}
       circles={circles}
       rsvpState={rsvpState}
-      onOpenEvent={(e) => nav.openEvent(e, "Home")}
+      onOpenEvent={(e) => nav.openEvent(e)}
       setView={nav.setView}
-      onOpenNeighbors={() => myNeighborhood && nav.openCircle(myNeighborhood, "Home", ["People"])}
-      onOpenLocalCircles={() => myNeighborhood && nav.openCircle(myNeighborhood, "Home", ["Councils", "Organizations"])}
+      onOpenNeighbors={() => myNeighborhood && nav.openCircle(myNeighborhood, ["People"])}
+      onOpenLocalCircles={() => myNeighborhood && nav.openCircle(myNeighborhood, ["Councils", "Organizations"])}
       onPlayGame={() => nav.setView("game")}
-      onOpenCircle={(c) => nav.openCircle(c, "Home")}
+      onOpenCircle={(c) => nav.openCircle(c)}
       onEditProfile={() => nav.setView("editMyself")}
       onLogout={handleLogout}
     />

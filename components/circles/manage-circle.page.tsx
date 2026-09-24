@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, SimpleTabs, TextArea } from "@/components/shared";
+import { useBackHandler } from "@/components/providers/back-handler-provider";
+import { Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, SimpleTabs, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { CIRCLE_ROLE_LABEL_MAX, circleHasRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
@@ -177,8 +178,9 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     onBack();
   }
 
-  // shared by the top BackButton and the bottom Cancel button — both leave
-  // the form the same way, so both need the same unsaved-changes guard.
+  // the top bar's Back and the bottom Cancel button both leave the form, so
+  // both get the same unsaved-changes guard
+  useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
   function handleLeave() {
     if (dirty) setConfirmingDiscard(true);
     else onBack();
@@ -186,9 +188,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
   return (
     <PageContainer size="normal">
-      <BackButton onClick={handleLeave}>{o.name}</BackButton>
-
-      <div className="mt-4 flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
+      <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="min-w-0 flex-1">
           <Eyebrow className="text-soft">Manage circle</Eyebrow>
           <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{o.name}</h1>

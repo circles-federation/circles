@@ -1,7 +1,7 @@
 "use client";
 
 import { AttendeesSection } from "./attendees-section";
-import { BackButton, PageContainer } from "@/components/shared";
+import { PageContainer } from "@/components/shared";
 import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";
 import { HostRsvpRow } from "./host-rsvp-row";
@@ -19,8 +19,6 @@ interface EventPageProps {
   toggleRsvp: (eventId: string) => void;
   voteState: Record<string, boolean>;
   toggleVote: (eventId: string) => void;
-  onBack: () => void;
-  backLabel?: string;
   onOpenMember: (m: Member) => void;
   onOpenCircle: (c: Circle) => void;
   onToggleRoleSlot: (eventId: string, roleKey: string) => void;
@@ -33,12 +31,10 @@ interface EventPageProps {
    lib/roles.util rather than taking a dozen precomputed booleans as props).
    This shell only owns cross-cutting app state (rsvp/vote toggles) and the
    top-level "which panel applies to this event kind" decisions. */
-export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState, toggleVote, onBack, backLabel, onOpenMember, onOpenCircle, onToggleRoleSlot, onEditEvent }: EventPageProps) {
+export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState, toggleVote, onOpenMember, onOpenCircle, onToggleRoleSlot, onEditEvent }: EventPageProps) {
 
   return (
     <PageContainer size="normal">
-      <BackButton onClick={onBack}>{backLabel || "All events"}</BackButton>
-
       <EventMasthead event={e} profile={profile} onEdit={onEditEvent} />
 
       {isVoting(e) && (

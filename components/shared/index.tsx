@@ -5,7 +5,6 @@
 // this is just a shorter option for new code.
 export { AppShell } from "./app-shell";
 export { Avatar } from "./avatar";
-export { BackButton } from "./back-button";
 export { BottomNav } from "./bottom-nav";
 export { Button } from "./button";
 export { Chip } from "./chip";

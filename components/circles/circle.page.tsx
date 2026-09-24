@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, BackButton, Button, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
+import { Avatar, Button, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { ResourcesSection } from "./resources-section";
@@ -18,15 +18,13 @@ interface CirclePageProps {
   lastEditor: Member | null;
   lastEditedAt?: string;
   events: Event[];
-  onBack: () => void;
-  backLabel?: string;
   onOpenMember: (m: Member) => void;
   onOpenCircle: (c: Circle) => void;
   onOpenEvent: (e: Event) => void;
   onManage: () => void;
 }
 
-export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onBack, backLabel, onOpenMember, onOpenCircle, onOpenEvent, onManage }: CirclePageProps) {
+export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onManage }: CirclePageProps) {
   const { profile, circles } = useAppState();
   const byId = useCirclesById();
   const memberById = useMemberById();
@@ -42,9 +40,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
 
   return (
     <PageContainer size="normal">
-      <BackButton onClick={onBack}>{backLabel || "All circles"}</BackButton>
-
-      <div className="mt-4 flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
+      <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
             <Eyebrow className="text-soft">{CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>

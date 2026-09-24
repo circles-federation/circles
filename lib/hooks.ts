@@ -68,11 +68,7 @@ export function useAppNav() {
   const router = useRouter();
   return {
     setView: (key: string) => router.push(VIEW_ROUTES[key] || `/${key}`),
-    // backLabel, when given, becomes the detail page's back-button text (via
-    // its ?from= query param) — so "back" reads correctly for wherever this
-    // link was actually clicked from, instead of a hardcoded destination
-    // that's only right when linked from the plain list view.
-    openEvent: (e: Event, backLabel?: string) => router.push(`/events/${e.id}${backLabel ? `?from=${encodeURIComponent(backLabel)}` : ""}`),
+    openEvent: (e: Event) => router.push(`/events/${e.id}`),
     // every circle lives at /circles/[id], keyed by its own stable id rather
     // than its position in the tree — a neighborhood renders as the folder
     // view there, everything else as its own detail page (see
@@ -82,12 +78,9 @@ export function useAppNav() {
     // "Neighbors"/"Local circles" stat cards land pre-filtered instead of
     // dumping the visitor on the unfiltered folder and making them filter by
     // hand.
-    openCircle: (c: Circle, backLabel?: string, entityTypes?: string[]) => {
-      const params = new URLSearchParams();
-      if (backLabel) params.set("from", backLabel);
-      if (entityTypes && entityTypes.length > 0) params.set("types", entityTypes.join(","));
-      const qs = params.toString();
-      router.push(`/circles/${c.id}${qs ? `?${qs}` : ""}`);
+    openCircle: (c: Circle, entityTypes?: string[]) => {
+      const qs = entityTypes && entityTypes.length > 0 ? `?types=${entityTypes.join(",")}` : "";
+      router.push(`/circles/${c.id}${qs}`);
     },
   };
 }

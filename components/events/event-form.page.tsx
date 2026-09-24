@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, BackButton, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
+import { useBackHandler } from "@/components/providers/back-handler-provider";
+import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
 import { EVENT_KINDS, majority } from "@/lib/governance.util";
@@ -185,8 +186,9 @@ export function EventFormPage(props: EventFormPageProps) {
     }
   }
 
-  // shared by the top BackButton and the bottom Cancel button — both leave
-  // the form the same way, so both need the same unsaved-changes guard.
+  // the top bar's Back and the bottom Cancel button both leave the form, so
+  // both get the same unsaved-changes guard
+  useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
   function handleLeave() {
     if (dirty) setConfirmingDiscard(true);
     else onCancel();
@@ -234,9 +236,7 @@ export function EventFormPage(props: EventFormPageProps) {
 
   return (
     <PageContainer size="compact">
-      <BackButton onClick={handleLeave}>{mode === "edit" ? initialValues.title : "All events"}</BackButton>
-
-      <div className={clsx("mt-4 border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
+      <div className={clsx("border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
         <Eyebrow className={proposing ? "text-flame" : "text-soft"}>{mode === "edit" ? "Edit" : (proposing ? "Propose" : "Create")}</Eyebrow>
         <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">
           {mode === "edit" ? initialValues.title : (type === "ordinary" ? "New event" : "New meeting")}
