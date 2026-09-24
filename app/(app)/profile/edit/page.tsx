@@ -6,12 +6,13 @@ import { useAppState } from "@/components/providers/app-state-provider";
 
 export default function Page() {
   const router = useRouter();
-  const { profile, saveProfile } = useAppState();
+  const { profile, saveProfile, savePhoto } = useAppState();
 
   return (
     <EditMyselfPage
       profile={profile}
       onSave={saveProfile}
+      onSavePhoto={savePhoto}
       onBack={() => router.push("/home")}
     />
   );

@@ -5,21 +5,28 @@ import { EyeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { Button, ConfirmModal, Eyebrow, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
+import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
+import { PhotoPicker } from "./photo-picker";
 import type { Profile } from "@/lib/types";
 
 interface EditMyselfPageProps {
   profile: Profile;
   onSave: (next: Profile) => void;
+  onSavePhoto: (photo: Blob) => Promise<MutationResult>;
   onBack: () => void;
 }
 
 /* Edit Myself — the editing form, reached from the Myself page's Edit button.
    Saves back to the profile and returns to the view. */
-export function EditMyselfPage({ profile, onSave, onBack }: EditMyselfPageProps) {
+export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMyselfPageProps) {
   const [draft, setDraft] = useState<Profile>({ ...profile, skills: [...profile.skills], interests: [...profile.interests] });
   const set = (patch: Partial<Profile>) => setDraft((p) => ({ ...p, ...patch }));
+  const [photo, setPhoto] = useState<Blob | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const dirty =
+    photo !== null ||
     draft.bio !== profile.bio ||
     (draft.email || "") !== (profile.email || "") ||
     draft.emailPublic !== profile.emailPublic ||
@@ -27,7 +34,18 @@ export function EditMyselfPage({ profile, onSave, onBack }: EditMyselfPageProps)
     draft.interests.join(" ") !== profile.interests.join(" ");
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
-  function handleSave() {
+  // the photo goes first and is awaited: if the server refuses it, nothing
+  // else has been saved yet and the form stays open to say why
+  async function handleSave() {
+    if (photo) {
+      setSaving(true);
+      const result = await onSavePhoto(photo);
+      setSaving(false);
+      if (!result.ok) {
+        setPhotoError(result.error);
+        return;
+      }
+    }
     onSave(draft);
     onBack();
   }
@@ -48,6 +66,18 @@ export function EditMyselfPage({ profile, onSave, onBack }: EditMyselfPageProps)
       </div>
 
       <SectionGroup>
+        <Section>
+          <Label>Photo</Label>
+          <PhotoPicker
+            member={profile}
+            onChange={(p) => {
+              setPhoto(p);
+              setPhotoError(null);
+            }}
+          />
+          {photoError && <p className="mt-2.5 font-sans text-xs font-bold text-danger">{photoError}</p>}
+        </Section>
+
         {/* bio */}
         <Section>
           <Label htmlFor="bio">Bio</Label>
@@ -111,8 +141,8 @@ export function EditMyselfPage({ profile, onSave, onBack }: EditMyselfPageProps)
       </SectionGroup>
 
       <div className="mt-7 flex flex-wrap gap-3">
-        <Button onClick={handleSave}>Save changes</Button>
-        <Button variant="secondary" onClick={handleLeave}>Cancel</Button>
+        <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button>
+        <Button variant="secondary" onClick={handleLeave} disabled={saving}>Cancel</Button>
       </div>
 
       {confirmingDiscard && (

@@ -1,11 +1,15 @@
 import { and, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
-import { circleMembers, members } from "./schema";
+import { UserFacingError } from "./errors";
+import { circleMembers, memberPhotos, members } from "./schema";
 import type { Member } from "@/lib/types";
+
+export class MemberError extends UserFacingError {}
 
 type MemberRow = typeof members.$inferSelect;
 
-function toMember(row: MemberRow, homeCircleId: string | null): Member {
+function toMember(row: MemberRow, homeCircleId: string | null, photoUpdatedAt: Date | null): Member {
   return {
     id: row.id,
     name: row.name,
@@ -17,6 +21,7 @@ function toMember(row: MemberRow, homeCircleId: string | null): Member {
     interests: row.interests,
     bio: row.bio,
     email: row.email ?? undefined,
+    photoVersion: photoUpdatedAt?.getTime(),
   };
 }
 
@@ -24,34 +29,36 @@ function toMember(row: MemberRow, homeCircleId: string | null): Member {
 // see circle_members' partial unique index
 const homeJoin = and(eq(circleMembers.memberId, members.id), eq(circleMembers.circleType, "neighborhood"));
 
+// only the photo's timestamp — never its bytes, which getMemberPhoto serves
+function selectMembers() {
+  return db
+    .select({ member: members, homeCircleId: circleMembers.circleId, photoUpdatedAt: memberPhotos.updatedAt })
+    .from(members)
+    .leftJoin(circleMembers, homeJoin)
+    .leftJoin(memberPhotos, eq(memberPhotos.memberId, members.id));
+}
+
 export async function getMembers(): Promise<Member[]> {
-  const rows = await db.select({ member: members, homeCircleId: circleMembers.circleId }).from(members).leftJoin(circleMembers, homeJoin);
-  return rows.map((r) => toMember(r.member, r.homeCircleId));
+  const rows = await selectMembers();
+  return rows.map((r) => toMember(r.member, r.homeCircleId, r.photoUpdatedAt));
 }
 
 export async function getMemberById(id: number): Promise<Member | null> {
-  const [row] = await db
-    .select({ member: members, homeCircleId: circleMembers.circleId })
-    .from(members)
-    .leftJoin(circleMembers, homeJoin)
-    .where(eq(members.id, id));
-  return row ? toMember(row.member, row.homeCircleId) : null;
+  const [row] = await selectMembers().where(eq(members.id, id));
+  return row ? toMember(row.member, row.homeCircleId, row.photoUpdatedAt) : null;
 }
 
 export async function getMemberByEmail(email: string): Promise<Member | null> {
   const normalized = email.trim().toLowerCase();
-  const [row] = await db
-    .select({ member: members, homeCircleId: circleMembers.circleId })
-    .from(members)
-    .leftJoin(circleMembers, homeJoin)
-    .where(eq(sql`lower(${members.email})`, normalized));
-  return row ? toMember(row.member, row.homeCircleId) : null;
+  const [row] = await selectMembers().where(eq(sql`lower(${members.email})`, normalized));
+  return row ? toMember(row.member, row.homeCircleId, row.photoUpdatedAt) : null;
 }
 
 /* Only the member's own columns are written — a caller may hand this a whole
    Profile (AppStateProvider.saveProfile does), which carries fields that
-   aren't columns (emailPublic, homeCircleId). Changing a member's home circle
-   is a membership change, not a column edit.
+   aren't columns (emailPublic, homeCircleId, photoVersion). Changing a
+   member's home circle is a membership change, not a column edit, and their
+   photo goes through setMemberPhoto.
 
    `id` is always the acting member: lib/db/actions.ts's updateMemberAction
    takes no id from the client at all and supplies the session's own, so
@@ -64,4 +71,56 @@ export async function updateMember(id: number, patch: Partial<Member>): Promise<
     await db.update(members).set(columnPatch).where(eq(members.id, id));
   }
   return getMemberById(id);
+}
+
+export const MAX_PHOTO_BYTES = 1024 * 1024;
+
+// the image type the file's own bytes say it is — its declared type is
+// whatever the browser (or a hand-built request) claims
+function sniffImageType(bytes: Buffer): string | null {
+  if (bytes.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return "image/jpeg";
+  if (bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+  if (bytes.subarray(0, 4).toString("latin1") === "RIFF" && bytes.subarray(8, 12).toString("latin1") === "WEBP") return "image/webp";
+  return null;
+}
+
+/* Replaces the member's photo — there's no removing one (see memberPhotos in
+   schema.ts). Like updateMember, `id` is always the acting member. Returns the
+   new photoVersion. */
+export async function setMemberPhoto(id: number, file: Blob): Promise<number> {
+  if (file.size === 0) throw new MemberError("Choose a photo to upload.");
+  if (file.size > MAX_PHOTO_BYTES) throw new MemberError("That photo is too large — choose one under 1 MB.");
+  const data = Buffer.from(await file.arrayBuffer());
+  const contentType = sniffImageType(data);
+  if (!contentType) throw new MemberError("That file isn't a JPEG, PNG or WebP image.");
+  const updatedAt = new Date();
+  await db
+    .insert(memberPhotos)
+    .values({ memberId: id, data, contentType, updatedAt })
+    .onConflictDoUpdate({ target: memberPhotos.memberId, set: { data, contentType, updatedAt } });
+  return updatedAt.getTime();
+}
+
+const viewerMembership = alias(circleMembers, "viewer_membership");
+
+/* A member's photo, for a viewer allowed to see it: themself, or someone who
+   shares a circle with them — the same rule sharesCircleWith in
+   lib/circles.util.ts applies in the UI (components/shared/avatar.tsx), here
+   enforced where the bytes are actually served. Null for anyone else, and for
+   a member who hasn't uploaded one. */
+export async function getMemberPhoto(viewerId: number, memberId: number): Promise<{ data: Buffer; contentType: string } | null> {
+  if (viewerId !== memberId) {
+    const [shared] = await db
+      .select({ circleId: circleMembers.circleId })
+      .from(circleMembers)
+      .innerJoin(viewerMembership, eq(viewerMembership.circleId, circleMembers.circleId))
+      .where(and(eq(circleMembers.memberId, memberId), eq(viewerMembership.memberId, viewerId)))
+      .limit(1);
+    if (!shared) return null;
+  }
+  const [row] = await db
+    .select({ data: memberPhotos.data, contentType: memberPhotos.contentType })
+    .from(memberPhotos)
+    .where(eq(memberPhotos.memberId, memberId));
+  return row ?? null;
 }

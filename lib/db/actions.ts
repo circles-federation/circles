@@ -28,6 +28,13 @@ export async function updateMemberAction(patch: Partial<Member>) {
   return asMember((memberId) => members.updateMember(memberId, patch));
 }
 
+// like updateMemberAction, always the session member's own photo; the file
+// comes as FormData since that's how a Server Action takes a Blob
+export async function updateMemberPhotoAction(form: FormData) {
+  const photo = form.get("photo");
+  return asMember((memberId) => members.setMemberPhoto(memberId, photo instanceof Blob ? photo : new Blob()));
+}
+
 export async function updateCircleAction(id: string, patch: Partial<Circle>) {
   return asMember((memberId) => circles.updateCircle(memberId, id, patch));
 }

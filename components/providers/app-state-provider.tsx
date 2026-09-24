@@ -13,6 +13,7 @@ import {
   updateCircleAction as dbUpdateCircle,
   updateEventDetailsAction as dbUpdateEventDetails,
   updateMemberAction as dbUpdateMember,
+  updateMemberPhotoAction as dbUpdateMemberPhoto,
   updateResourceAction as dbUpdateResource,
 } from "@/lib/db/actions";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
@@ -43,6 +44,7 @@ export interface AppStateValue {
   saveCircle(id: string, patch: Partial<Circle>): void;
   saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult>;
   saveProfile(next: Profile): void;
+  savePhoto(photo: Blob): Promise<MutationResult>;
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
   removeResource(id: string): Promise<MutationResult>;
@@ -317,7 +319,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
 
   // save edits from the Edit Myself page back to the profile
   function saveProfile(next: Profile) {
-    setProfile(next);
+    // the photo isn't part of this save (see savePhoto), and may have just
+    // changed since the form's draft was copied
+    setProfile((p) => ({ ...next, photoVersion: p.photoVersion }));
     setMembers((prev) =>
       prev.map((m) =>
         m.id === next.id
@@ -331,6 +335,20 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       if (!result.ok) console.error(result.error);
     });
     showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
+  }
+
+  // await-then-update, like the resources below: the server can refuse the
+  // file, and the new photo's URL depends on the version it assigns. No toast
+  // of its own — the Edit Myself page follows it with saveProfile's.
+  async function savePhoto(photo: Blob): Promise<MutationResult> {
+    const form = new FormData();
+    form.set("photo", photo);
+    const result = await dbUpdateMemberPhoto(form).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    const photoVersion = result.value;
+    setProfile((p) => ({ ...p, photoVersion }));
+    setMembers((prev) => prev.map((m) => (m.id === profile.id ? { ...m, photoVersion } : m)));
+    return { ok: true };
   }
 
   async function addResource(circleId: string, input: ResourceInput): Promise<MutationResult> {
@@ -369,7 +387,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       value={{
         events, circles, members, resources, rsvpState, voteState, profile,
         toggleRsvp, toggleRoleSlot, createEvent, updateEventDetails, toggleVote,
-        saveCircle, saveCircleRoles, saveProfile, addResource, updateResource, removeResource,
+        saveCircle, saveCircleRoles, saveProfile, savePhoto, addResource, updateResource, removeResource,
       }}
     >
       {children}

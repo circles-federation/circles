@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  customType,
   date,
   foreignKey,
   index,
@@ -43,6 +44,22 @@ export const members = pgTable("members", {
   interests: text("interests").array().notNull().default(sql`'{}'::text[]`),
   bio: text("bio").notNull(),
   email: text("email").unique(),
+});
+
+const bytea = customType<{ data: Buffer }>({
+  dataType: () => "bytea",
+});
+
+/* A member's uploaded profile photo, in its own table so getMembers (which
+   every page load runs) never reads the image bytes. There's deliberately no
+   way to delete a row — a member can replace their photo but not remove it. */
+export const memberPhotos = pgTable("member_photos", {
+  memberId: integer("member_id")
+    .primaryKey()
+    .references(() => members.id, { onDelete: "cascade" }),
+  data: bytea("data").notNull(),
+  contentType: text("content_type").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /* Everything that scopes something is a circle — see lib/types.ts. */

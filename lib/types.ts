@@ -20,6 +20,9 @@ export interface Member {
   interests: string[];
   bio: string;
   email?: string;
+  // set once they've uploaded a photo (its upload time, in ms) — part of the
+  // photo's URL, so a replaced photo is never served from a stale cache
+  photoVersion?: number;
 }
 
 // the current user's own editable profile — a Member plus whether their
