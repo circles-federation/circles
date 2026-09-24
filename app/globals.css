@@ -58,6 +58,17 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Installed as an app, the page doesn't bounce past its ends: iOS's rubber
+   band stretches the whole document, so the sticky TopBar would be dragged
+   down with it instead of staying put like a native app's bar. Only when
+   installed, so a browser tab keeps its own pull-to-refresh. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+}
+
 /* @layer base, not a bare rule: unlayered CSS beats every Tailwind utility
    class regardless of specificity, which silently defeated `underline` on
    any Tailwind-styled <a> (the cascade doesn't care that .underline is more
