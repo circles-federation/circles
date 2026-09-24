@@ -2,7 +2,7 @@ import { PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
 import { Button, Chip, Eyebrow } from "@/components/shared";
-import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
+import { fmtTime, isPastEvent } from "@/lib/format.util";
 import { isApproved, isEventOrganizer, isVoting } from "@/lib/governance.util";
 import { useCirclesById } from "@/lib/hooks";
 import type { Event, Profile } from "@/lib/types";
@@ -30,7 +30,6 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
   const approved = isApproved(e, byId);
   const govAccent = approved ? "leaf" : "flame";
   const past = isPastEvent(e);
-  const d = parseDay(e.date);
   const topBorderClass = gov
     ? (past && !approved ? "border-t-soft" : (approved ? "border-t-leaf" : "border-t-flame"))
     : (past ? "border-t-soft" : "border-t-ink");
@@ -46,11 +45,9 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
             {gov && <Eyebrow className={approved ? "text-leaf" : "text-flame"}>{approved ? "Approved" : "Proposed"}</Eyebrow>}
             {circle && <Chip title="Who can see this event">{circle.name}</Chip>}
           </div>
-          <Eyebrow className="text-soft">
-            {e.date && !isNaN(d.getTime())
-              ? <>{WEEKDAYS[d.getDay()]}, {MONTHS[d.getMonth()]} {d.getDate()} · {fmtTime(e.start)}–{fmtTime(e.end)}</>
-              : <>Date to be set · {fmtTime(e.start)}–{fmtTime(e.end)}</>}
-          </Eyebrow>
+          {/* just the time: the date tile beside it already gives the date and
+              weekday (or TBD) */}
+          <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
           <h1 className="mt-3 font-sans text-heading min-[720px]:text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{e.title}</h1>
           <p className="mt-3 font-serif text-lg text-[#222]">{e.location}</p>
         </div>
