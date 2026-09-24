@@ -42,13 +42,16 @@ export function BottomNav({ onReselect }: { onReselect: () => void }) {
   }
 
   return (
-    // padded past the home indicator and a landscape notch, with the nav's own
-    // paper background running underneath them
-    <nav className="app-chrome flex min-[720px]:hidden fixed bottom-0 inset-x-0 z-50 border-t border-faint bg-paper pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] shadow-[0_-2px_6px_rgba(10,10,10,0.08)]">
+    // floats over the page, like iOS's tab bar (a pill, an exception to
+    // the app's square corners) but ink: clear of the screen's
+    // edges, the home indicator and a landscape notch, with the page scrolling
+    // on underneath it (AppShell's bottom padding clears it at the end). The
+    // blur keeps the labels readable over what shows through.
+    <nav className="app-chrome flex min-[720px]:hidden fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-[0_6px_20px_rgba(10,10,10,0.28)]">
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
         const active = isActive(href);
         const Icon = active ? Solid : Outline;
-        const color = active ? "text-ink" : "text-soft";
+        const color = active ? "text-paper" : "text-paper/60";
         return (
           <Link
             key={href}
@@ -59,7 +62,7 @@ export function BottomNav({ onReselect }: { onReselect: () => void }) {
               e.preventDefault();
               onReselect();
             }}
-            className="flex-1 flex flex-col items-center justify-center gap-1 py-4"
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5"
           >
             <Icon className={clsx("size-6", color)} />
             <span className={clsx("font-sans text-micro tracking-wide uppercase font-bold", color)}>{label}</span>

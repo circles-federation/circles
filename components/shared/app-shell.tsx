@@ -12,8 +12,9 @@ import { TopBar } from "./top-bar";
    unauthenticated welcome page needs them too and sits outside this tree.
 
    The side padding keeps content clear of a landscape phone's notch, and the
-   bottom padding clears BottomNav plus the home indicator beneath it (both
-   zero outside an installed app or on a phone without them).
+   bottom padding lets the end of the page scroll clear of the floating
+   BottomNav and the home indicator beneath it (the insets are zero outside
+   an installed app or on a phone without them).
 
    Installed as an app, the page no longer scrolls: <main> does, beneath a
    TopBar that stays put while the content bounces (see `standalone` in
@@ -37,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main
         ref={mainRef}
         onScroll={onScroll}
-        className="max-[719px]:pb-[calc(4.6875rem+env(safe-area-inset-bottom))] standalone:flex-1 standalone:overflow-y-auto"
+        className="max-[719px]:pb-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] standalone:flex-1 standalone:overflow-y-auto"
       >
         {children}
       </main>
