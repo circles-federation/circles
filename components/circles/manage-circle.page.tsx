@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
+import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, SimpleTabs, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -181,6 +182,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
   // the top bar's Back and the bottom Cancel button both leave the form, so
   // both get the same unsaved-changes guard
   useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
+  useTopBarAction({ label: saving ? "Saving" : "Save", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving });
   function handleLeave() {
     if (dirty) setConfirmingDiscard(true);
     else onBack();
@@ -196,13 +198,13 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
             You’re editing this page as a member. Changes are visible to everyone, and your name will show as the last editor.
           </p>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={!dirty || saving}
-          className={clsx("w-full self-stretch", "min-[720px]:w-auto min-[720px]:self-start")}
-        >
-          {saving ? "Saving…" : "Save"}
-        </Button>
+        {/* desktop only: on mobile, Save is the top bar's check (see the
+            useTopBarAction call above) */}
+        <div className="hidden min-[720px]:block min-[720px]:self-start">
+          <Button onClick={handleSave} disabled={!dirty || saving}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
       </div>
 
       <SimpleTabs

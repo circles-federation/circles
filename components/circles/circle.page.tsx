@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowTopRightOnSquareIcon, PencilIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, Button, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
@@ -57,15 +57,15 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
             </div>
           )}
         </div>
+        {/* desktop only: on mobile, Manage is the top bar's cog (see
+            TopBar's pageAction) */}
         {isMember && (
-          <Button
-            variant="secondary"
-            onClick={onManage}
-            className={clsx("w-full self-stretch", "min-[720px]:w-auto min-[720px]:self-start")}
-          >
-            <PencilIcon className="size-3.5" strokeWidth={2.5} />
-            Manage
-          </Button>
+          <div className="hidden min-[720px]:block min-[720px]:self-start">
+            <Button variant="secondary" onClick={onManage}>
+              <Cog6ToothIcon className="size-3.5" strokeWidth={2.5} />
+              Manage
+            </Button>
+          </div>
         )}
       </div>
 

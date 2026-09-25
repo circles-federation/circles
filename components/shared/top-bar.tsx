@@ -2,11 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeftIcon, HomeIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { usePathname } from "next/navigation";
+import { ArrowLeftIcon, Cog6ToothIcon, HomeIcon, PlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { useRunBackHandler } from "@/components/providers/back-handler-provider";
+import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
+import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-provider";
+import { isCircleMember } from "@/lib/circles.util";
 import type { Circle, Event } from "@/lib/types";
 import { OfflineBanner } from "./offline-banner";
 
@@ -18,19 +20,29 @@ const TABS: [string, string][] = [
 
 const NAV_LINK = "border-b-2 py-1 font-sans text-xs font-semibold tracking-wide text-ink uppercase no-underline";
 
-// a page's own primary action, shown in the bar while that page is: a + on
-// the right on mobile, a text link before the tabs on desktop
-const PAGE_ACTIONS: Record<string, { href: string; label: string }> = {
-  "/events": { href: "/events/new", label: "Create Event" },
-};
+interface PageAction {
+  href: string;
+  label: string;
+  icon: typeof PlusIcon;
+  // also shown on desktop, as a text link before the tabs — otherwise the
+  // page has its own control there (a circle's masthead Manage button)
+  desktop: boolean;
+}
 
-// where Back goes when there's no in-app history to pop (the page was opened
-// directly, from a link or a reload): one URL segment up, except for pages
-// that only Home links to, whose own parent segment isn't a route
-function parentRoute(pathname: string): string {
-  const parent = pathname.replace(/\/[^/]+\/?$/, "");
-  if (parent === "" || parent === "/profile") return "/home";
-  return parent;
+// a page's own primary action, shown in the bar while that page is: an icon
+// on the right on mobile
+function pageAction(pathname: string, circles: Circle[], memberId: number): PageAction | null {
+  if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon, desktop: true };
+  const [section, id, sub] = pathname.split("/").slice(1);
+  if (section === "circles" && id && !sub) {
+    // a circle's own page, which only its members can manage (a
+    // neighborhood's folder view has nothing to manage)
+    const circle = circles.find((c) => c.id === id);
+    if (circle && circle.type !== "neighborhood" && isCircleMember(circle, memberId)) {
+      return { href: `/circles/${id}/manage`, label: "Manage circle", icon: Cog6ToothIcon, desktop: false };
+    }
+  }
+  return null;
 }
 
 // the title for every route under app/(app)/. A circle or event page is titled
@@ -56,27 +68,21 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[]): string
 
 export function TopBar({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { circles, events, profile } = useAppState();
   const isHomeNeighborhood = profile.homeCircleId !== null && pathname === `/circles/${profile.homeCircleId}`;
 
   // Like Flutter's automatic leading back button: shown on every route except
-  // the tab roots. TopBar is mounted once in AppShell, so counting pathname
-  // changes tells us whether router.back() would stay inside the app or leave
-  // it for whatever site linked here.
+  // the tab roots. A page with unsaved changes can intercept it; otherwise it
+  // goes back without ever leaving the app (see useGoBack).
   const isTabRoot = TABS.some(([href]) => pathname === href);
-  const action = PAGE_ACTIONS[pathname];
-  const navigations = useRef(-1);
-  useEffect(() => {
-    navigations.current += 1;
-  }, [pathname]);
-
+  const action = pageAction(pathname, circles, profile.id);
+  const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
   const runBackHandler = useRunBackHandler();
+  const goBackInApp = useGoBack();
 
   function goBack() {
     if (runBackHandler()) return;
-    if (navigations.current > 0) router.back();
-    else router.push(parentRoute(pathname));
+    goBackInApp();
   }
 
   // a tab is "active" if the current route is it or a nested route beneath
@@ -131,13 +137,25 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
           {isHomeNeighborhood && <HomeIcon className="ml-1 size-5 shrink-0 text-teal" strokeWidth={2} aria-label="Your neighborhood" />}
         </div>
 
-        {action && (
+        {/* a page's own action (see useTopBarAction) takes the slot over a
+            link-style one */}
+        {pageOwn ? (
+          <button
+            type="button"
+            onClick={runPageOwn}
+            disabled={pageOwn.disabled}
+            aria-label={pageOwn.label}
+            className="-mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink disabled:cursor-default disabled:text-faint min-[720px]:hidden"
+          >
+            <pageOwn.icon className="size-6" strokeWidth={2} />
+          </button>
+        ) : action && (
           <Link
             href={action.href}
             aria-label={action.label}
             className="-mr-2.5 flex size-11 shrink-0 items-center justify-center text-ink min-[720px]:hidden"
           >
-            <PlusIcon className="size-6" strokeWidth={2} />
+            <action.icon className="size-6" strokeWidth={2} />
           </Link>
         )}
 
@@ -145,7 +163,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
             hidden via CSS breakpoint (not useIsMobile) so this never has to
             reconcile a server/client mismatch on the first paint. */}
         <nav className="hidden shrink-0 items-center gap-6 pl-6 min-[720px]:flex">
-          {action && (
+          {action?.desktop && (
             <>
               <Link href={action.href} className={clsx(NAV_LINK, "border-b-transparent")}>
                 {action.label}

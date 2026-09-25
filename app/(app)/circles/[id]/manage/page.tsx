@@ -1,13 +1,16 @@
 "use client";
 
-import { notFound, useParams, useRouter } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { ManageCirclePage } from "@/components/circles/manage-circle.page";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { useGoBack } from "@/components/providers/back-handler-provider";
 import { isCircleMember } from "@/lib/circles.util";
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
+  // after saving or cancelling: back where they came from, or up to the
+  // circle's own page if they opened this directly (never out of the app)
+  const goBack = useGoBack();
   const { circles, profile, saveCircle, saveCircleRoles } = useAppState();
 
   // only a member can manage a circle's page (the server enforces this too —
@@ -23,7 +26,7 @@ export default function Page() {
       circles={circles}
       onSave={(patch) => saveCircle(circle.id, patch)}
       onSaveRoles={(roles) => saveCircleRoles(circle.id, roles)}
-      onBack={() => router.back()}
+      onBack={goBack}
     />
   );
 }
