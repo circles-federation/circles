@@ -25,6 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const mainRef = useRef<HTMLElement>(null);
   const onScroll = useScrollRestoration(mainRef);
   useBlockEdgeSwipe();
+  useBlockPinchZoom();
 
   // a tab tapped again while its page is showing: back to the top, whichever
   // of the document or <main> is what scrolls
@@ -50,6 +51,30 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+// running from the home screen rather than in a browser tab (iOS's own flag
+// covers home-screen apps that predate display-mode support)
+function isInstalled(): boolean {
+  return matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
+/* Installed as an app, pinching doesn't zoom, as in a native app. The CSS
+   touch-action on html (app/globals.css) is the main way; this cancels
+   Safari's own pinch gesture events too, for an iOS that doesn't honor that
+   alone. Only when installed: a browser tab keeps its zoom. */
+function useBlockPinchZoom() {
+  useEffect(() => {
+    if (!isInstalled()) return;
+    const cancel = (e: Event) => e.preventDefault();
+    // Safari-only events, so not in the DOM's typed event map
+    document.addEventListener("gesturestart", cancel, { passive: false });
+    document.addEventListener("gesturechange", cancel, { passive: false });
+    return () => {
+      document.removeEventListener("gesturestart", cancel);
+      document.removeEventListener("gesturechange", cancel);
+    };
+  }, []);
+}
+
 // how far in from the screen's left or right edge a touch starts iOS's
 // swipe-back (or swipe-forward) gesture
 const EDGE_SWIPE_PX = 20;
@@ -63,8 +88,7 @@ const EDGE_SWIPE_PX = 20;
    The cost is that a tap starting that close to the edge does nothing. */
 function useBlockEdgeSwipe() {
   useEffect(() => {
-    const installed = matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (!installed) return;
+    if (!isInstalled()) return;
     function onTouchStart(e: TouchEvent) {
       const x = e.touches[0]?.clientX;
       if (x !== undefined && (x < EDGE_SWIPE_PX || x > window.innerWidth - EDGE_SWIPE_PX)) e.preventDefault();

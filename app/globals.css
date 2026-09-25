@@ -103,6 +103,11 @@ body {
   html,
   body {
     overscroll-behavior: none;
+    /* installed, it behaves like an app: scrolling only, so no pinch or
+       double-tap zoom (iOS ignores the viewport's user-scalable=no, and a
+       browser tab keeps its zoom). AppShell's useBlockPinchZoom backs this
+       up on iOS. */
+    touch-action: pan-x pan-y;
   }
 }
 
