@@ -12,6 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/home",
     scope: "/",
     display: "standalone",
+    // honoured by Android's installed apps; iOS ignores it and still rotates
+    orientation: "portrait",
     // paper, like the top bar, so the splash screen and status bar run into it seamlessly
     background_color: "#ffffff",
     theme_color: "#ffffff",
