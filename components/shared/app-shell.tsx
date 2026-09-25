@@ -24,6 +24,7 @@ import { TopBar } from "./top-bar";
 export function AppShell({ children }: { children: ReactNode }) {
   const mainRef = useRef<HTMLElement>(null);
   const onScroll = useScrollRestoration(mainRef);
+  useBlockEdgeSwipe();
 
   // a tab tapped again while its page is showing: back to the top, whichever
   // of the document or <main> is what scrolls
@@ -47,6 +48,31 @@ export function AppShell({ children }: { children: ReactNode }) {
       <BottomNav onReselect={scrollToTop} />
     </div>
   );
+}
+
+// how far in from the screen's left or right edge a touch starts iOS's
+// swipe-back (or swipe-forward) gesture
+const EDGE_SWIPE_PX = 20;
+
+/* Installed as an app, iOS still offers its swipe-from-the-edge Back, but it
+   slides a snapshot of the whole screen, TopBar and BottomNav included,
+   rather than just the page as a native app does. Until there's a gesture of
+   our own that moves only the content, it's turned off: a touch that starts
+   at either edge is cancelled before iOS can take it as the gesture. Only
+   when installed, since in a browser tab the swipe is the browser's own Back.
+   The cost is that a tap starting that close to the edge does nothing. */
+function useBlockEdgeSwipe() {
+  useEffect(() => {
+    const installed = matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    if (!installed) return;
+    function onTouchStart(e: TouchEvent) {
+      const x = e.touches[0]?.clientX;
+      if (x !== undefined && (x < EDGE_SWIPE_PX || x > window.innerWidth - EDGE_SWIPE_PX)) e.preventDefault();
+    }
+    // not passive: a passive listener can't cancel the touch
+    document.addEventListener("touchstart", onTouchStart, { passive: false });
+    return () => document.removeEventListener("touchstart", onTouchStart);
+  }, []);
 }
 
 /* The browser remembers where the document was scrolled for Back and
