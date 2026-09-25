@@ -33,9 +33,9 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
 
   return (
     <div className={clsx("flex flex-col items-stretch gap-4.5 border-t-[3px] border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5.5", topBorderClass)}>
-      <div className="flex flex-1 items-start gap-5.5">
+      <div className="flex min-w-0 flex-1 items-start gap-5.5">
         <DateTile iso={e.date} large accent={gov ? govAccent : undefined} />
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           {/* the circle is who can see this event — shown as a place chip, so
               it reads the same as everywhere else a circle's name appears */}
           <div className="mb-2.5 flex flex-wrap items-center gap-2">
