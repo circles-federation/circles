@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { notFound, useParams, useRouter } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { EventPage } from "@/components/events/event.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useProfileModal } from "@/components/providers/profile-modal-provider";
@@ -9,7 +9,6 @@ import { useAppNav } from "@/lib/hooks";
 
 function EventDetail() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const {
     events, rsvpState, toggleRsvp, voteState, toggleVote,
     toggleRoleSlot, profile,
@@ -31,7 +30,6 @@ function EventDetail() {
       onOpenMember={open}
       onOpenCircle={(c) => nav.openCircle(c)}
       onToggleRoleSlot={toggleRoleSlot}
-      onEditEvent={() => router.push(`/events/${event.id}/edit`)}
     />
   );
 }

@@ -5,7 +5,7 @@ import { CheckIcon, EyeIcon, LockClosedIcon } from "@heroicons/react/24/outline"
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { Button, ConfirmModal, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
+import { ConfirmModal, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
 import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
 import { PhotoPicker } from "./photo-picker";
@@ -51,15 +51,10 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
     onBack();
   }
 
-  // the top bar's Back and the bottom Cancel button both leave the form, so
-  // both get the same unsaved-changes guard
+  // leaving is the top bar's Back, which asks before discarding changes
   useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
-  // on mobile, saving is the top bar's check; disabled until there's a change
+  // saving is the top bar's check, disabled until there's a change
   useTopBarAction({ label: saving ? "Saving" : "Save changes", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving, variant: "primary" });
-  function handleLeave() {
-    if (dirty) setConfirmingDiscard(true);
-    else onBack();
-  }
 
   return (
     <PageContainer size="normal">
@@ -139,13 +134,6 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
           <EditableTags values={draft.interests} onChange={(v) => set({ interests: v })} placeholder="Add an interest and press Enter" />
         </Section>
       </SectionGroup>
-
-      {/* desktop only: on mobile, saving is the top bar's check and leaving is
-          its Back */}
-      <div className="mt-7 hidden flex-wrap gap-3 min-[720px]:flex">
-        <Button onClick={handleSave} disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</Button>
-        <Button variant="secondary" onClick={handleLeave} disabled={saving}>Cancel</Button>
-      </div>
 
       {confirmingDiscard && (
         <ConfirmModal

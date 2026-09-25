@@ -179,14 +179,9 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     onBack();
   }
 
-  // the top bar's Back and the bottom Cancel button both leave the form, so
-  // both get the same unsaved-changes guard
+  // leaving is the top bar's Back, which asks before discarding changes
   useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
   useTopBarAction({ label: saving ? "Saving" : "Save", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving, variant: "primary" });
-  function handleLeave() {
-    if (dirty) setConfirmingDiscard(true);
-    else onBack();
-  }
 
   return (
     <PageContainer size="normal">
@@ -197,13 +192,6 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
           <p className="mt-3 max-w-[42em] font-serif text-sm leading-normal text-soft">
             You’re editing this page as a member. Changes are visible to everyone, and your name will show as the last editor.
           </p>
-        </div>
-        {/* desktop only: on mobile, Save is the top bar's check (see the
-            useTopBarAction call above) */}
-        <div className="hidden min-[720px]:block min-[720px]:self-start">
-          <Button onClick={handleSave} disabled={!dirty || saving}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
         </div>
       </div>
 

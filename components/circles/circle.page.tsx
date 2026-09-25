@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ArrowTopRightOnSquareIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, Button, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { ParentCircle } from "./parent-circle";
@@ -22,10 +22,9 @@ interface CirclePageProps {
   onOpenMember: (m: Member) => void;
   onOpenCircle: (c: Circle) => void;
   onOpenEvent: (e: Event) => void;
-  onManage: () => void;
 }
 
-export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onManage }: CirclePageProps) {
+export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent }: CirclePageProps) {
   const { profile, circles } = useAppState();
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
@@ -57,16 +56,6 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
             </div>
           )}
         </div>
-        {/* desktop only: on mobile, Manage is the top bar's cog (see
-            TopBar's pageAction) */}
-        {isMember && (
-          <div className="hidden min-[720px]:block min-[720px]:self-start">
-            <Button variant="secondary" onClick={onManage}>
-              <Cog6ToothIcon className="size-3.5" strokeWidth={2.5} />
-              Manage
-            </Button>
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-1 min-[480px]:grid-cols-2 min-[720px]:grid-cols-4 gap-px bg-faint border-b border-ink">

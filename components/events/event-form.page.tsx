@@ -192,13 +192,8 @@ export function EventFormPage(props: EventFormPageProps) {
     }
   }
 
-  // the top bar's Back and the bottom Cancel button both leave the form, so
-  // both get the same unsaved-changes guard
+  // leaving is the top bar's Back, which asks before discarding changes
   useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
-  function handleLeave() {
-    if (dirty) setConfirmingDiscard(true);
-    else onCancel();
-  }
 
   // the event as it would be submitted, and the first thing wrong with it if
   // anything is — worked out on every render, so the submit buttons stay
@@ -472,16 +467,6 @@ export function EventFormPage(props: EventFormPageProps) {
           </div>
         )}
 
-        {/* desktop only: on mobile, submitting is the top bar's check (see
-            the useTopBarAction call above), and leaving is its Back */}
-        <div className="hidden flex-wrap gap-3 border-t border-ink pt-5.5 min-[720px]:flex">
-          <Button accent={accentKey} onClick={submit} disabled={!canSubmit}>
-            {busy ? "Saving…" : submitLabel}
-          </Button>
-          <Button variant="secondary" onClick={handleLeave}>
-            Cancel
-          </Button>
-        </div>
       </div>
       </TabbedPanel>
 

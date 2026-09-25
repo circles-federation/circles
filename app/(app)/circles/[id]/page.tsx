@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { notFound, useParams, useRouter, useSearchParams } from "next/navigation";
+import { notFound, useParams, useSearchParams } from "next/navigation";
 import { CirclePage } from "@/components/circles/circle.page";
 import { NeighborhoodPage } from "@/components/circles/neighborhood.page";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -17,7 +17,6 @@ import { useAppNav, useMemberById, useMembers } from "@/lib/hooks";
 // page) never changes its URL.
 function CircleRoute() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { circles, events, profile } = useAppState();
   const { open } = useProfileModal();
@@ -52,7 +51,6 @@ function CircleRoute() {
       onOpenMember={open}
       onOpenCircle={(c) => nav.openCircle(c)}
       onOpenEvent={(e) => nav.openEvent(e)}
-      onManage={() => router.push(`/circles/${circle.id}/manage`)}
     />
   );
 }

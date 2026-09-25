@@ -1,25 +1,20 @@
-import { PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
-import { Button, Chip, Eyebrow } from "@/components/shared";
+import { Chip, Eyebrow } from "@/components/shared";
 import { fmtTime, isPastEvent } from "@/lib/format.util";
-import { isApproved, isEventOrganizer, isVoting } from "@/lib/governance.util";
+import { isApproved, isVoting } from "@/lib/governance.util";
 import { useCirclesById } from "@/lib/hooks";
-import type { Event, Profile } from "@/lib/types";
+import type { Event } from "@/lib/types";
 
 interface EventMastheadProps {
   event: Event;
-  profile: Profile;
-  onEdit: () => void;
 }
 
 /* Date tile, kind/exclusivity badges, title, and location — the header
-   block every event detail page opens with. The organizer (the person
-   hosting the event) gets an Edit Event button beside the date tile / title
-   column on desktop; on mobile it's the top bar's pencil instead. */
-export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps) {
+   block every event detail page opens with. Editing it is the top bar's
+   pencil, for its organizer (see TopBar's pageAction). */
+export function EventMasthead({ event: e }: EventMastheadProps) {
   const byId = useCirclesById();
-  const isOrganizer = isEventOrganizer(e, profile);
   const circle = byId[e.circleId];
   // a meeting, or a circle-hosted event still awaiting its vote — an approved
   // one is settled and reads like any other event
@@ -49,16 +44,6 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
           <p className="mt-3 font-serif text-lg text-[#222]">{e.location}</p>
         </div>
       </div>
-      {/* desktop only: on mobile, editing is the top bar's pencil (see
-          TopBar's pageAction) */}
-      {isOrganizer && !e.cancelled && (
-        <div className="hidden min-[720px]:block min-[720px]:self-start">
-          <Button variant="secondary" onClick={onEdit}>
-            <PencilIcon className="size-3.5" strokeWidth={2.5} />
-            Edit Event
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

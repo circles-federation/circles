@@ -15,9 +15,9 @@ export interface TopBarAction {
 
 type Shown = Omit<TopBarAction, "onAction">;
 
-/* A page's own action for TopBar's right-hand slot on mobile, where it
-   replaces the page's own button (Manage circle's Save, whose button is
-   desktop-only). Unlike TopBar's pageAction, which links somewhere, this runs
+/* A page's own action for TopBar's right-hand slot, on every screen size:
+   a form's Save lives there rather than on the page (Manage circle, the event
+   form, Edit profile). Unlike TopBar's pageAction, which links somewhere, this runs
    the page's own code and reflects its state — disabled until there's
    something to save — so the page registers it with useTopBarAction. What's
    shown is state, so the bar re-renders when it changes; the handler is a

@@ -23,8 +23,8 @@ const NAV_LINK = "border-b-2 py-1 font-sans text-xs font-semibold tracking-wide 
 
 // the right-hand slot for an icon button: its 44px tap area, with the 40px
 // circle inside so the bar is no taller; -mr-0.5 lines the circle's edge up
-// with the page's padding. Mobile only.
-const ICON_BUTTON_SLOT = "group -mr-0.5 flex size-11 shrink-0 items-center justify-center min-[720px]:hidden";
+// with the page's padding. The same on every screen size.
+const ICON_BUTTON_SLOT = "group -mr-0.5 flex size-11 shrink-0 items-center justify-center";
 
 // primary is the page's main job, in blue (Manage circle's Save); secondary
 // is the rest, in ink (Create Event, Manage circle, Edit event). A press
@@ -55,22 +55,18 @@ interface PageAction {
   href: string;
   label: string;
   icon: typeof PlusIcon;
-  // also shown on desktop, as a text link before the tabs — otherwise the
-  // page has its own control there (a circle's masthead Manage button, an
-  // event's Edit Event)
-  desktop: boolean;
 }
 
 // a page's own primary action, shown in the bar while that page is: an icon
-// on the right on mobile
+// button on the right, on every screen size
 function pageAction(pathname: string, circles: Circle[], events: Event[], profile: Profile): PageAction | null {
-  if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon, desktop: true };
+  if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon };
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section === "events" && id && id !== "new" && !sub) {
     // an event's own page, which only its organizer can edit
     const event = events.find((e) => e.id === id);
     if (event && isEventOrganizer(event, profile) && !event.cancelled) {
-      return { href: `/events/${id}/edit`, label: "Edit event", icon: PencilIcon, desktop: false };
+      return { href: `/events/${id}/edit`, label: "Edit event", icon: PencilIcon };
     }
   }
   if (section === "circles" && id && !sub) {
@@ -78,7 +74,7 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
     // neighborhood's folder view has nothing to manage)
     const circle = circles.find((c) => c.id === id);
     if (circle && circle.type !== "neighborhood" && isCircleMember(circle, profile.id)) {
-      return { href: `/circles/${id}/manage`, label: "Manage circle", icon: Cog6ToothIcon, desktop: false };
+      return { href: `/circles/${id}/manage`, label: "Manage circle", icon: Cog6ToothIcon };
     }
   }
   return null;
@@ -158,8 +154,11 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
       ref={barRef}
       className="app-chrome sticky top-0 z-50 bg-linear-to-t from-paper/85 to-paper pt-[env(safe-area-inset-top)] backdrop-blur-md shadow-[0_2px_6px_rgba(10,10,10,0.08)] standalone:absolute standalone:inset-x-0"
     >
-      <div className="mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
-        <div className="flex min-w-0 items-center gap-1">
+      {/* the title on the left, the page's action on the right, and on desktop the
+          tabs centred on the bar itself (not between the two), so a long title
+          can't push them off-centre: it stops short of them instead */}
+      <div className="relative mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
+        <div className="flex min-w-0 items-center gap-1 min-[720px]:max-w-[calc(50%-9rem)]">
           {!isTabRoot && (
             <button
               type="button"
@@ -198,7 +197,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
             onClick={runPageOwn}
             disabled={pageOwn.disabled}
             aria-label={pageOwn.label}
-            className="-mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink disabled:cursor-default disabled:text-faint min-[720px]:hidden"
+            className="-mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink disabled:cursor-default disabled:text-faint"
           >
             <pageOwn.icon className="size-6" strokeWidth={2} />
           </button>
@@ -211,15 +210,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         {/* on mobile, these three destinations live in BottomNav instead —
             hidden via CSS breakpoint (not a JS width check) so this never has to
             reconcile a server/client mismatch on the first paint. */}
-        <nav className="hidden shrink-0 items-center gap-6 pl-6 min-[720px]:flex">
-          {action?.desktop && (
-            <>
-              <Link href={action.href} className={clsx(NAV_LINK, "border-b-transparent")}>
-                {action.label}
-              </Link>
-              <div className="h-4 w-px bg-faint" />
-            </>
-          )}
+        <nav className="absolute top-1/2 left-1/2 hidden -translate-1/2 items-center gap-6 min-[720px]:flex">
           {TABS.map(([href, label]) => (
             <Link
               key={href}
