@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import { ToastProvider } from "@/components/shared";
+import { PressFeedback, ToastProvider } from "@/components/shared";
 
 export const metadata: Metadata = {
   title: "Circles",
@@ -30,6 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <ToastProvider>{children}</ToastProvider>
+        <PressFeedback />
       </body>
     </html>
   );

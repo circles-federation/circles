@@ -20,6 +20,7 @@ export { Modal } from "./modal";
 export { OfflineBanner } from "./offline-banner";
 export { PageContainer } from "./page-container";
 export { PageLoading } from "./page-loading";
+export { PressFeedback } from "./press-feedback";
 export { SearchWithFilter } from "./search-with-filter";
 export { Section } from "./section";
 export { SectionGroup } from "./section-group";

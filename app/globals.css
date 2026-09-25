@@ -142,21 +142,23 @@ body {
    Button press interaction styles. Global (not scoped to AppShell)
    because the welcome page at "/" sits outside the (app) route
    group's layout — where AppShell lives — and still needs these
-   classes on its own login form buttons.
+   classes on its own login form buttons. Keyed off data-pressed, not
+   :active: PressFeedback (components/shared/press-feedback.tsx) sets it
+   only for a deliberate press, so the start of a scroll doesn't flash.
    ============================================================ */
 .ink-press { transition: background 0.08s, color 0.08s; }
-.ink-press:active { background: var(--color-ink) !important; color: var(--color-paper) !important; }
-.ink-press:active * { color: var(--color-paper) !important; border-color: var(--color-paper) !important; }
-.ink-press:active span[style*="background"] { background: transparent !important; }
+.ink-press[data-pressed] { background: var(--color-ink) !important; color: var(--color-paper) !important; }
+.ink-press[data-pressed] * { color: var(--color-paper) !important; border-color: var(--color-paper) !important; }
+.ink-press[data-pressed] span[style*="background"] { background: transparent !important; }
 /* A hollow badge (white, black text) inside a card keeps its white fill when the
    card turns black on press, so the blanket white-text rule above would leave
    white text on white. This makes it invert against the card instead: a white
    badge with black text. More specific than that rule, so it wins. */
-.ink-press:active .ink-press-badge { color: var(--color-ink) !important; }
+.ink-press[data-pressed] .ink-press-badge { color: var(--color-ink) !important; }
 .btn-invert { transition: background 0.08s, color 0.08s; }
-.btn-ink:active { background: var(--color-paper) !important; color: var(--color-ink) !important; }
-.btn-teal:active { background: var(--color-paper) !important; color: var(--color-teal) !important; }
-.btn-teal:active * { color: var(--color-teal) !important; }
-.btn-flame:active { background: var(--color-paper) !important; color: var(--color-flame) !important; }
-.btn-flame:active * { color: var(--color-flame) !important; }
+.btn-ink[data-pressed] { background: var(--color-paper) !important; color: var(--color-ink) !important; }
+.btn-teal[data-pressed] { background: var(--color-paper) !important; color: var(--color-teal) !important; }
+.btn-teal[data-pressed] * { color: var(--color-teal) !important; }
+.btn-flame[data-pressed] { background: var(--color-paper) !important; color: var(--color-flame) !important; }
+.btn-flame[data-pressed] * { color: var(--color-flame) !important; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
