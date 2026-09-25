@@ -72,9 +72,13 @@ export interface AppStateValue {
    validates. */
 const AppStateContext = createContext<AppStateValue | null>(null);
 
-// how long the app has to have been in the background before coming back
-// reloads its data
-const STALE_AFTER_MS = 60_000;
+// how often the data is refreshed while the app is on screen
+const REFRESH_EVERY_MS = 60_000;
+// refreshes closer together than this are skipped, however they're prompted
+const MIN_REFRESH_GAP_MS = 15_000;
+// how long the app has to have been away before coming back to it also
+// checks it's still the version the server is running (see refresh)
+const AWAY_LONG_MS = 60_000;
 // a refresh started this soon after a change is dropped, in case it read the
 // database before that change landed
 const RECENT_WRITE_MS = 10_000;
@@ -130,53 +134,85 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return mutate(...args);
   };
 
-  /* The installed app can sit suspended for days, and everything here was
-     loaded once, when the (app) layout rendered, so coming back to it after a
-     while reloads it all. First, though, it checks that this is still the
-     version of the app the server is running — after a deploy, this copy's
-     Server Actions no longer exist on the server, so every save would fail —
-     and reloads the page instead if not, which brings fresh data too. */
-  const onForeground = useEffectEvent(async () => {
-    if (await isOutdatedVersion()) {
-      window.location.reload();
-      return;
+  // when the data was last loaded (by the (app) layout, at first), and
+  // whether a refresh is on its way now
+  const lastRefresh = useRef(0);
+  const refreshing = useRef(false);
+
+  /* Everything here is loaded once, when the (app) layout renders, and pages
+     render from it without fetching, so it's reloaded as a whole: on every
+     return to the app, every REFRESH_EVERY_MS while it's on screen, and when
+     the connection comes back — so what someone else did shows up within
+     about a minute, and at once on coming back.
+
+     After a deploy, this copy of the app is out of date: its Server Actions
+     no longer exist on the server, so saves fail (and so does this refresh,
+     quietly). Reloading the page fixes that, but could throw away a form
+     someone is partway through, so it's only checked for (checkVersion) on
+     coming back after a while away; otherwise the next navigation does it,
+     since Next's router reloads the page itself on meeting a newer build. */
+  const refresh = useEffectEvent(async (checkVersion: boolean) => {
+    if (refreshing.current || !navigator.onLine || Date.now() - lastRefresh.current < MIN_REFRESH_GAP_MS) return;
+    refreshing.current = true;
+    lastRefresh.current = Date.now();
+    try {
+      if (checkVersion && (await isOutdatedVersion())) {
+        window.location.reload();
+        return;
+      }
+      const startedAt = Date.now();
+      // unreachable (offline, say), or out of date: keep showing what we have
+      const result = await dbLoadAppState().catch(() => null);
+      if (!result) return;
+      if (!result.ok) {
+        // signed out: a full load, not router.push, so none of what they'd
+        // loaded stays in memory behind the welcome page
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign("/");
+        return;
+      }
+      // a change made just before or while this ran may be missing from what came back
+      if (lastWrite.current >= startedAt - RECENT_WRITE_MS) return;
+      const fresh = result.value;
+      setEvents(fresh.events);
+      setCircles(fresh.circles);
+      setMembers(fresh.members);
+      setResources(fresh.resources);
+      setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
+      setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
+      // whether their email shows isn't stored on the server
+      setProfile((p) => ({ ...fresh.profile, emailPublic: p.emailPublic }));
+    } finally {
+      refreshing.current = false;
     }
-    const startedAt = Date.now();
-    // unreachable (offline, say): keep showing what we have
-    const result = await dbLoadAppState().catch(() => null);
-    if (!result) return;
-    if (!result.ok) {
-      // signed out: a full load, not router.push, so none of what they'd
-      // loaded stays in memory behind the welcome page
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign("/");
-      return;
-    }
-    // a change made just before or while this ran may be missing from what came back
-    if (lastWrite.current >= startedAt - RECENT_WRITE_MS) return;
-    const fresh = result.value;
-    setEvents(fresh.events);
-    setCircles(fresh.circles);
-    setMembers(fresh.members);
-    setResources(fresh.resources);
-    setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
-    setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
-    // whether their email shows isn't stored on the server
-    setProfile((p) => ({ ...fresh.profile, emailPublic: p.emailPublic }));
   });
 
   useEffect(() => {
+    lastRefresh.current = Date.now();
     let hiddenAt: number | null = null;
     function onVisibilityChange() {
       if (document.visibilityState === "hidden") {
         hiddenAt = Date.now();
         return;
       }
-      if (hiddenAt !== null && Date.now() - hiddenAt >= STALE_AFTER_MS) onForeground();
+      refresh(hiddenAt !== null && Date.now() - hiddenAt >= AWAY_LONG_MS);
       hiddenAt = null;
     }
+    function onOnline() {
+      refresh(false);
+    }
+    // an interval rather than a timeout chain: a refresh skipped for being too
+    // soon after another just waits for the next tick
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") refresh(false);
+    }, REFRESH_EVERY_MS);
     document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("online", onOnline);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("online", onOnline);
+    };
   }, []);
 
   // runs a server event action: on success adopts the server's version of the

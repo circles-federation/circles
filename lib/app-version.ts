@@ -5,7 +5,7 @@
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "";
 
 // whether the server has been deployed since this copy of the app loaded —
-// see AppStateProvider's onForeground. Any failure to find out counts as no.
+// see AppStateProvider's refresh. Any failure to find out counts as no.
 export async function isOutdatedVersion(): Promise<boolean> {
   if (!APP_VERSION) return false;
   try {
