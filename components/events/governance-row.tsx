@@ -44,7 +44,6 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
       onOpenEvent={onOpenEvent}
       dateAccent={accentKey}
       rowAccent={accentKey}
-      washed={!past}
       title={e.title}
       titleMuted={past}
       meta={hostName}

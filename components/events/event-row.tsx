@@ -12,7 +12,6 @@ interface EventRowProps {
   onOpenEvent: (e: Event) => void;
   dateAccent?: DateTileAccent;
   rowAccent?: RowAccent;
-  washed?: boolean;
   tags?: ReactNode;
   title: ReactNode;
   titleMuted?: boolean;
@@ -23,33 +22,34 @@ interface EventRowProps {
 
 // full literal class strings per key — Tailwind's static scan can't see
 // through a template-interpolated class name. A row's own accent (its
-// left border + background wash) is a separate concept from DateTile's
+// left border) is a separate concept from DateTile's
 // own accent, even though callers often pass the same key to both — a
 // row is accented for governance state, DateTile for the date tile's own
 // look, and they don't always agree (see ordinary-row.tsx, where a past
 // event tints its DateTile "soft" but leaves the row's own border transparent).
-const ROW_ACCENT: Record<RowAccent, { borderL: string; wash: string }> = {
-  transparent: { borderL: "border-l-transparent", wash: "" },
-  soft: { borderL: "border-l-soft", wash: "" },
-  flame: { borderL: "border-l-flame", wash: "bg-flame/[3.5%]" },
-  leaf: { borderL: "border-l-leaf", wash: "bg-leaf/5" },
+const ROW_ACCENT: Record<RowAccent, string> = {
+  transparent: "border-l-transparent",
+  soft: "border-l-soft",
+  flame: "border-l-flame",
+  leaf: "border-l-leaf",
 };
 
 /* Shared shell for one event-list row (see OrdinaryRow, GovernanceRow): a
    DateTile, an eyebrow/tag row, a title, a meta line, and a right-aligned
    status block, wrapped in a bordered row that opens the event on click.
    Each caller supplies its own tag/status content and title/meta text —
-   this only owns the shape and the accent/wash treatment. */
-export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent", washed = false, tags, title, titleMuted = false, meta, metaMuted = false, right }: EventRowProps) {
-  const accent = ROW_ACCENT[rowAccent];
+   this only owns the shape and the accent treatment. */
+export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent", tags, title, titleMuted = false, meta, metaMuted = false, right }: EventRowProps) {
   return (
     <div className={clsx(
       // border-b-ink (not the border-ink shorthand) on purpose: the
       // shorthand also sets border-left-color, which would fight
-      // accent.borderL below over the same property
-      "flex items-start gap-4.5 border-b border-b-ink border-l-4 py-5 pr-5.5 pl-4",
-      accent.borderL,
-      washed && accent.wash,
+      // the accent's border below over the same property
+      "flex items-start gap-4.5 border-b border-b-ink py-5",
+      // a plain row has no side edges, so no side padding either (as circle
+      // resources' rows): its content runs flush with the list. Only an
+      // accented one, with its left bar, is inset inside them.
+      rowAccent !== "transparent" && ["border-l-4 pr-5.5 pl-4", ROW_ACCENT[rowAccent]],
     )}>
       <DateTile iso={e.date} accent={dateAccent} />
       <button
