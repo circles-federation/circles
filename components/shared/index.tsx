@@ -3,6 +3,7 @@
 // instead of one path per component. Existing call sites that import a
 // single file directly (e.g. `@/components/shared/button`) still work;
 // this is just a shorter option for new code.
+export { AlertModal } from "./alert-modal";
 export { AppShell } from "./app-shell";
 export { Avatar } from "./avatar";
 export { BottomNav } from "./bottom-nav";

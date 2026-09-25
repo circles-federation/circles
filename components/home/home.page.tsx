@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { ArrowRightStartOnRectangleIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
-import { Avatar, Button, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
+import { AlertModal, Avatar, Button, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
@@ -34,6 +35,15 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   const byId = indexCircles(circles);
   const homeCircle = profile.homeCircleId ? byId[profile.homeCircleId] : undefined;
   const neighbors = members.filter((m) => profile.homeCircleId !== null && m.homeCircleId === profile.homeCircleId);
+  // the name game quizzes you on everyone in your neighborhood but you, so with
+  // no one else there (or no neighborhood) there's nothing to play: say why
+  // instead of opening an empty game
+  const [noGame, setNoGame] = useState(false);
+  const canPlay = neighbors.some((m) => m.id !== profile.id);
+  function playGame() {
+    if (canPlay) onPlayGame();
+    else setNoGame(true);
+  }
   // excludes the neighborhood itself — clicking this stat opens that
   // neighborhood's folder page, which shows its children, not itself, so the
   // count would otherwise be one higher than what's actually there to click
@@ -101,7 +111,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
               <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalCircles} />
               <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
               <button
-                onClick={onPlayGame}
+                onClick={playGame}
                 title="Play the neighbor name game"
                 className="btn-invert btn-teal flex aspect-square w-full cursor-pointer flex-col items-stretch justify-between border border-teal bg-teal p-5 text-paper"
               >
@@ -142,6 +152,16 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
           </EyebrowGroup>
         </Section>
       </SectionGroup>
+
+      {noGame && (
+        <AlertModal
+          title="No neighbors to meet yet"
+          message={homeCircle
+            ? `You're the only member of ${homeCircle.name} so far. The game helps you learn your neighbors' names, so it'll be ready once someone else joins.`
+            : "The game helps you learn your neighbors' names, but you're not part of a neighborhood yet."}
+          onClose={() => setNoGame(false)}
+        />
+      )}
     </PageContainer>
   );
 }
