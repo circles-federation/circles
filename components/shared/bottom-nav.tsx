@@ -22,10 +22,10 @@ const TABS = [
 
 /* Mobile-only bottom nav, replacing the top bar's hamburger menu: same
    destinations as TopBar's desktop nav, icon + label stacked per tab.
-   Visibility is a CSS breakpoint (matching TopBar's `min-[720px]:flex`), not
-   useIsMobile — that hook reads window width in state, which the server
-   can't know, so gating render on it produces a hydration mismatch on the
-   very first paint below the breakpoint.
+   Visibility is a CSS breakpoint (matching TopBar's `min-[720px]:flex`), not a
+   JS width check: the server can't know the window's width, so a check in
+   state would render the desktop layout first and correct it after the first
+   paint (a visible jump, and a hydration mismatch).
 
    Tapping the tab whose page is already showing calls onReselect (back to
    the top, as in a native app) rather than navigating to where you are. */

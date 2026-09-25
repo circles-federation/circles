@@ -209,7 +209,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         )}
 
         {/* on mobile, these three destinations live in BottomNav instead —
-            hidden via CSS breakpoint (not useIsMobile) so this never has to
+            hidden via CSS breakpoint (not a JS width check) so this never has to
             reconcile a server/client mismatch on the first paint. */}
         <nav className="hidden shrink-0 items-center gap-6 pl-6 min-[720px]:flex">
           {action?.desktop && (

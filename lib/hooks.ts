@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { indexCircles, type CirclesById } from "./circles.util";
@@ -33,12 +33,6 @@ export function useCirclesById(): CirclesById {
   return useMemo(() => indexCircles(circles), [circles]);
 }
 
-/* Tracks whether the viewport is below a mobile breakpoint. Always starts
-   `false` (matching what the server renders, since it has no viewport to
-   read) and corrects itself in an effect after mount — reading
-   window.innerWidth during the initial render instead would make the
-   client's first paint disagree with the server's on any actually-mobile
-   viewport, which React reports as a hydration mismatch. */
 function subscribeToConnection(onChange: () => void) {
   window.addEventListener("online", onChange);
   window.addEventListener("offline", onChange);
@@ -54,17 +48,6 @@ function subscribeToConnection(onChange: () => void) {
    the first paint, so an offline device just shows it a moment later. */
 export function useOnline(): boolean {
   return useSyncExternalStore(subscribeToConnection, () => navigator.onLine, () => true);
-}
-
-export function useIsMobile(breakpoint = 720): boolean {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    function onResize() { setIsMobile(window.innerWidth < breakpoint); }
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [breakpoint]);
-  return isMobile;
 }
 
 // old view-state names -> routes, for components still written against the

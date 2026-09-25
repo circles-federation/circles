@@ -11,6 +11,10 @@ import type { Member } from "@/lib/types";
 interface AvatarProps {
   member: Member;
   size?: number;
+  // Tailwind size classes in place of `size`, for an avatar whose size changes
+  // with the screen (Home's own): CSS breakpoints apply from the first paint,
+  // where a JS width check would only correct the size once it had rendered
+  sizeClassName?: string;
   className?: string;
 }
 
@@ -21,18 +25,18 @@ interface AvatarProps {
    instead of their actual face. The viewer's own photo is always visible
    regardless. `size` is a pixel number (avatars appear at many different
    sizes across the app); className adds border/shrink/etc. on top. */
-export function Avatar({ member: m, size = 44, className }: AvatarProps) {
+export function Avatar({ member: m, size = 44, sizeClassName, className }: AvatarProps) {
   const { profile, circles } = useAppState();
   const visible = m.id === profile.id || sharesCircleWith(profile.id, m.id, circles);
-  const style: CSSProperties = { width: size, height: size };
+  const style: CSSProperties | undefined = sizeClassName ? undefined : { width: size, height: size };
 
   if (!visible) {
     return (
-      <div style={style} className={clsx("flex shrink-0 items-center justify-center border border-ink bg-faint", className)}>
+      <div style={style} className={clsx("flex shrink-0 items-center justify-center border border-ink bg-faint", sizeClassName, className)}>
         <UserIcon className="h-1/2 w-1/2 text-soft" strokeWidth={1.5} />
       </div>
     );
   }
 
-  return <img src={avatarFor(m)} alt="" style={style} className={clsx("shrink-0 border border-ink object-cover", className)} />;
+  return <img src={avatarFor(m)} alt="" style={style} className={clsx("shrink-0 border border-ink object-cover", sizeClassName, className)} />;
 }

@@ -8,7 +8,7 @@ import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
 import { isPastEvent, parseDay } from "@/lib/format.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
-import { useIsMobile, useMembers } from "@/lib/hooks";
+import { useMembers } from "@/lib/hooks";
 import type { Circle, Event, Profile } from "@/lib/types";
 
 interface HomeProps {
@@ -30,7 +30,6 @@ interface HomeProps {
    neighborhood (one panel among several now), their circles (speed
    dial), and their events. Profile editing lives on a separate page. */
 export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onEditProfile, onLogout }: HomeProps) {
-  const isMobile = useIsMobile();
   const members = useMembers();
   const byId = indexCircles(circles);
   const homeCircle = profile.homeCircleId ? byId[profile.homeCircleId] : undefined;
@@ -62,7 +61,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
       {/* identity masthead */}
       <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="flex min-w-0 flex-1 items-center gap-5">
-          <Avatar member={profile} size={isMobile ? 96 : 120} />
+          <Avatar member={profile} sizeClassName="size-24 min-[720px]:size-30" />
           <div className="min-w-0">
             <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">
               {profile.name}
