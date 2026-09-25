@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { EyeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, EyeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
-import { Button, ConfirmModal, Eyebrow, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
+import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
+import { Button, ConfirmModal, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
 import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
 import { PhotoPicker } from "./photo-picker";
@@ -53,6 +54,8 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
   // the top bar's Back and the bottom Cancel button both leave the form, so
   // both get the same unsaved-changes guard
   useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
+  // on mobile, saving is the top bar's check; disabled until there's a change
+  useTopBarAction({ label: saving ? "Saving" : "Save changes", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving, variant: "primary" });
   function handleLeave() {
     if (dirty) setConfirmingDiscard(true);
     else onBack();
@@ -60,13 +63,10 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
 
   return (
     <PageContainer size="normal">
-      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-4.5">
-        <Eyebrow className="text-soft">Edit</Eyebrow>
-        <h1 className="mt-3 font-sans text-heading leading-none font-extrabold tracking-tight">Edit my details</h1>
-      </div>
-
       <SectionGroup>
-        <Section>
+        {/* pt-0: the first section starts where any page's content does, with
+            the top bar's title (Edit profile) as the page's only heading */}
+        <Section className="pt-0">
           <Label>Photo</Label>
           <PhotoPicker
             member={profile}
@@ -140,8 +140,10 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
         </Section>
       </SectionGroup>
 
-      <div className="mt-7 flex flex-wrap gap-3">
-        <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button>
+      {/* desktop only: on mobile, saving is the top bar's check and leaving is
+          its Back */}
+      <div className="mt-7 hidden flex-wrap gap-3 min-[720px]:flex">
+        <Button onClick={handleSave} disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</Button>
         <Button variant="secondary" onClick={handleLeave} disabled={saving}>Cancel</Button>
       </div>
 
