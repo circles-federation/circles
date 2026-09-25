@@ -108,6 +108,19 @@ body {
        browser tab keeps its zoom). AppShell's useBlockPinchZoom backs this
        up on iOS. */
     touch-action: pan-x pan-y;
+    /* and no selecting text, or long-press menus on links and images, as
+       in a native app — except in fields, where iOS needs selection to place
+       the cursor and edit what's typed */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input,
+  textarea,
+  [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
   }
 }
 
