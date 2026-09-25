@@ -140,6 +140,10 @@ export const events = pgTable(
     end: time("end").notNull(),
     location: text("location").notNull(),
     description: text("description").notNull(),
+    // set when its organizer cancels it while others are going (one no one
+    // else is going to is deleted instead). Final: a cancelled event stays
+    // visible, labelled so, but takes no RSVPs, votes, signups or edits.
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   },
   (t) => [
     // an event with no host circle is hosted by its organizer and is live

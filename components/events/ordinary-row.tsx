@@ -1,6 +1,6 @@
 "use client";
 
-import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { CancelledBadge } from "./cancelled-badge";
 import { EventRow } from "./event-row";
 import { ParticipationBadge } from "./participation-badge";
 import { Eyebrow } from "@/components/shared";
@@ -27,7 +27,8 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
   const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
   const past = isPastEvent(e);
   const attending = isAttending(e, profile.id);
-  const cancelled = !past && hasRoles(e) && shiftCancelled(e);
+  // called off by its organizer, or a slotted shift that couldn't be filled
+  const cancelled = !!e.cancelled || (!past && hasRoles(e) && shiftCancelled(e));
 
   return (
     <EventRow
@@ -35,11 +36,11 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
       onOpenEvent={onOpenEvent}
       dateAccent={past ? "soft" : undefined}
       title={e.title}
-      titleMuted={past}
+      titleMuted={past || !!e.cancelled}
       // just the host, so the row stays short on a phone — the event's own
       // page has its circle and location
       meta={hostCircle?.name ?? host?.name ?? ""}
-      metaMuted={past}
+      metaMuted={past || !!e.cancelled}
       tags={
         <>
           <Eyebrow className="text-soft">
@@ -49,13 +50,8 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
       }
       right={
         <>
+          {cancelled && <CancelledBadge />}
           {attending && <ParticipationBadge kind="attending" past={past} />}
-          {cancelled && (
-            <div className="mt-0.5 inline-flex items-center gap-1 font-sans text-micro font-bold tracking-[0.06em] text-flame uppercase whitespace-nowrap">
-              <ExclamationTriangleIcon className="size-3" strokeWidth={2.5} />
-              Cancelled
-            </div>
-          )}
         </>
       }
     />

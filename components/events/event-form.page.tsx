@@ -7,7 +7,8 @@ import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isRootCircle, isWithinCircle } from "@/lib/circles.util";
-import { validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
+import { attendeeIds, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
+import { isPastEvent } from "@/lib/format.util";
 import { EVENT_KINDS, majority } from "@/lib/governance.util";
 import type { Circle, Event, EventKindKey, Profile } from "@/lib/types";
 
@@ -48,6 +49,9 @@ interface EditEventFormPageProps extends EventFormPageBaseProps {
   mode: "edit";
   event: Event;
   onSave: (details: EventDetails) => Promise<SaveResult>;
+  // cancel the event outright (see cancelEvent in lib/db/events.ts); the route
+  // then leaves the form, for the event or, if it was deleted, the list
+  onCancelEvent: () => Promise<SaveResult>;
 }
 
 type EventFormPageProps = CreateEventFormPageProps | EditEventFormPageProps;
@@ -123,6 +127,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const meta = EVENT_KINDS[type];
   const gov = meta.governance;
@@ -237,6 +242,18 @@ export function EventFormPage(props: EventFormPageProps) {
     const result = mode === "edit"
       ? await props.onSave(details)
       : await props.onCreate({ ...details, kind: type, circleId, roles, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}) });
+    setBusy(false);
+    if (!result.ok) fail(result.error);
+  }
+
+  // who else is going (the organizer doesn't count): decides whether cancelling
+  // keeps it, marked cancelled, or deletes it — the server decides for real
+  const othersGoing = event ? attendeeIds(event).filter((m) => m !== profile.id).length : 0;
+  async function cancelTheEvent() {
+    if (mode !== "edit" || busy) return;
+    setConfirmingCancel(false);
+    setBusy(true);
+    const result = await props.onCancelEvent();
     setBusy(false);
     if (!result.ok) fail(result.error);
   }
@@ -467,6 +484,36 @@ export function EventFormPage(props: EventFormPageProps) {
         </div>
       </div>
       </TabbedPanel>
+
+      {/* cancelling the event itself (not this form): on every screen size,
+          since it isn't one of the form's own buttons */}
+      {mode === "edit" && !isPastEvent(props.event) && (
+        <div className="mt-8 border-t border-ink pt-5.5">
+          <Eyebrow className="text-soft">Cancel {gov ? "meeting" : "event"}</Eyebrow>
+          <p className="mt-2 mb-4 font-serif text-sm leading-normal text-soft">
+            {othersGoing > 0
+              ? `Everyone going will be emailed, and it'll stay listed as cancelled.`
+              : `No one else is going yet, so it'll be deleted.`}{" "}
+            This can&apos;t be undone.
+          </p>
+          <Button variant="danger" onClick={() => setConfirmingCancel(true)} disabled={busy}>
+            {othersGoing > 0 ? `Cancel ${gov ? "meeting" : "event"}` : `Delete ${gov ? "meeting" : "event"}`}
+          </Button>
+        </div>
+      )}
+
+      {confirmingCancel && (
+        <ConfirmModal
+          title={`Cancel this ${gov ? "meeting" : "event"}?`}
+          message={othersGoing > 0
+            ? `${othersGoing} ${othersGoing === 1 ? "person is" : "people are"} going. They'll be emailed that it's cancelled, and it'll stay listed as cancelled. This can't be undone.`
+            : "No one else is going, so it'll be deleted. This can't be undone."}
+          confirmLabel={othersGoing > 0 ? `Cancel ${gov ? "meeting" : "event"}` : `Delete ${gov ? "meeting" : "event"}`}
+          cancelLabel="Keep it"
+          onConfirm={cancelTheEvent}
+          onCancel={() => setConfirmingCancel(false)}
+        />
+      )}
 
       {confirmingDiscard && (
         <ConfirmModal

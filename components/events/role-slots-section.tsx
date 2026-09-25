@@ -23,7 +23,8 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
   const mine = role.members.includes(profile.id);
   const unmet = roleUnmet(role);
   const full = roleFull(role) && !mine;
-  const disabled = past || full;
+  // a cancelled event's slots are closed, as a past one's are
+  const disabled = past || full || !!e.cancelled;
 
   return (
     <div className={clsx("border px-4.5 py-4", unmet ? "border-ink" : "border-faint")}>
@@ -54,7 +55,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
           </Eyebrow>
         </div>
         <button
-          onClick={() => { if (!past && !full) onToggleRoleSlot(e.id, role.key); }}
+          onClick={() => { if (!disabled) onToggleRoleSlot(e.id, role.key); }}
           disabled={disabled}
           title={full ? "This slot is full" : undefined}
           className={clsx(
@@ -62,7 +63,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
             disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer border-ink", mine ? "bg-ink text-paper" : "bg-paper text-ink"),
           )}
         >
-          {past ? (mine ? "✓ You were in" : "Filled") : (mine ? "✓ You're in — leave" : (full ? "Full" : `Take ${role.label.toLowerCase()}`))}
+          {e.cancelled ? (mine ? "✓ You were in" : "Closed") : past ? (mine ? "✓ You were in" : "Filled") : (mine ? "✓ You're in — leave" : (full ? "Full" : `Take ${role.label.toLowerCase()}`))}
         </button>
       </div>
       {filled.length > 0 && (

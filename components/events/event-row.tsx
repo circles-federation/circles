@@ -65,10 +65,11 @@ export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent"
           {meta}
         </div>
       </button>
-      {/* its first line centred on the time eyebrow's: the eyebrow's line is
-          18px and a status badge's 20px, so the column starts 1px higher.
-          Only this column moves, so the eyebrow-to-title gap doesn't change. */}
-      <div className="-mt-px shrink-0 text-right">
+      {/* one row of status icons (cancelled, then attending), centred on the
+          time eyebrow: the eyebrow's line is 18px and this row 20px (a
+          status badge's height), so it starts 1px higher. Only this column
+          moves, so the eyebrow-to-title gap doesn't change. */}
+      <div className="-mt-px flex h-5 shrink-0 items-center gap-2">
         {right}
       </div>
     </div>

@@ -2,11 +2,12 @@ import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNotNull, isNull, or, sql, type Column, type SQL } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
-import { circleMembers, circles, eventRsvps, eventVotes, events, roleMembers, roles } from "./schema";
+import { circleMembers, circles, eventNotifications, eventRsvps, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
-import { enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications } from "./notifications";
+import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, withdrawEventNotifications } from "./notifications";
 import { isWithinCircle } from "@/lib/circles.util";
 import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
+import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import type { Event, Role } from "@/lib/types";
 
@@ -41,6 +42,7 @@ function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, ev
     circleId: row.circleId,
     ...(row.hostCircleId !== null ? { hostCircleId: row.hostCircleId } : {}),
     ...(row.hostCircleId !== null && row.approvedAt === null ? { proposed: true } : {}),
+    ...(row.cancelledAt !== null ? { cancelled: true } : {}),
     organizerId: row.organizerId,
     date: row.date,
     start: toClockTime(row.start),
@@ -152,6 +154,11 @@ async function loadVisible(memberId: number, id: string): Promise<EventRow> {
 // RSVPs and slot signups open once a circle-hosted event is approved
 function assertLive(row: EventRow) {
   if (row.approvedAt === null) throw new EventError("This event is still waiting on its host circle's vote.");
+}
+
+// a cancelled event is closed to everything: RSVPs, votes, signups and edits
+function assertNotCancelled(row: EventRow) {
+  if (row.cancelledAt !== null) throw new EventError("This event has been cancelled.");
 }
 
 async function assertCanPost(v: Viewer, circleId: string): Promise<{ isRoot: boolean }> {
@@ -288,6 +295,7 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
    it), kind, organizer, or the rsvps/votes, which have their own actions. */
 export async function updateEventDetails(memberId: number, id: string, details: EventDetails): Promise<Event> {
   const row = await loadVisible(memberId, id);
+  assertNotCancelled(row);
   if (row.organizerId !== memberId) throw new EventError("Only the person hosting this event can edit it.");
   const kind = row.kind ?? "ordinary";
   const problem = validateEventDraft({ ...details, kind, circleId: row.circleId, ...(row.hostCircleId ? { hostCircleId: row.hostCircleId } : {}) });
@@ -314,6 +322,7 @@ export async function updateEventDetails(memberId: number, id: string, details: 
 // or a slotted event (those attend by taking a slot)
 export async function setRsvp(memberId: number, id: string, going: boolean): Promise<Event> {
   const row = await loadVisible(memberId, id);
+  assertNotCancelled(row);
   assertLive(row);
   if (row.kind === "meeting") throw new EventError("Meetings are attended by voting.");
   const [slot] = await db.select({ id: roles.id }).from(roles).where(eq(roles.eventId, id)).limit(1);
@@ -329,6 +338,7 @@ export async function setRsvp(memberId: number, id: string, going: boolean): Pro
 // reaches a majority of the host circle approves it for good.
 export async function setVote(memberId: number, id: string, voting: boolean): Promise<Event> {
   const row = await loadVisible(memberId, id);
+  assertNotCancelled(row);
   if (row.kind === "meeting") {
     await db.transaction(async (tx) => {
       // serialize votes on this meeting, so the vote that reaches the
@@ -379,7 +389,9 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
 // take a slot (leaving any other one — a person holds one at a time, and a
 // slot with a max can be full) or leave the one they hold
 export async function toggleRoleSlot(memberId: number, id: string, key: string): Promise<Event> {
-  assertLive(await loadVisible(memberId, id));
+  const row = await loadVisible(memberId, id);
+  assertNotCancelled(row);
+  assertLive(row);
   await db.transaction(async (tx) => {
     const eventRoles = await tx.select().from(roles).where(eq(roles.eventId, id));
     const target = eventRoles.find((r) => r.key === key);
@@ -402,4 +414,43 @@ export async function toggleRoleSlot(memberId: number, id: string, key: string):
     await tx.insert(roleMembers).values({ roleId: target.id, memberId });
   });
   return loadFull(id);
+}
+
+/* Cancel an event, as its organizer. What happens depends on whether anyone
+   else is going to it (an RSVP — which a meeting's vote also is — or a slot):
+   if so it's marked cancelled, stays visible so they find out, and each of
+   them is emailed; if not, there's no one to tell and it's simply deleted.
+   A proposal's votes are approvals, not RSVPs, so an unapproved one is
+   deleted. Either way it's final, and anything still waiting to be sent about
+   it (a "new event" email, a digest line) is withdrawn. Decided under a lock
+   on the event, so an RSVP landing at the same moment is counted. */
+export async function cancelEvent(memberId: number, id: string): Promise<{ deleted: true } | { deleted: false; event: Event }> {
+  const row = await loadVisible(memberId, id);
+  if (row.organizerId !== memberId) throw new EventError("Only the person hosting this event can cancel it.");
+  assertNotCancelled(row);
+  if (isPastEvent(row)) throw new EventError("This event has already happened.");
+  const deleted = await db.transaction(async (tx) => {
+    await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
+    const eventRoles = await tx.select({ id: roles.id }).from(roles).where(eq(roles.eventId, id));
+    const roleIds = eventRoles.map((r) => r.id);
+    const [rsvpRows, slotRows] = await Promise.all([
+      tx.select({ memberId: eventRsvps.memberId }).from(eventRsvps).where(eq(eventRsvps.eventId, id)),
+      roleIds.length > 0 ? tx.select({ memberId: roleMembers.memberId }).from(roleMembers).where(inArray(roleMembers.roleId, roleIds)) : Promise.resolve([]),
+    ]);
+    const going = [...new Set([...rsvpRows, ...slotRows].map((r) => r.memberId))].filter((m) => m !== memberId);
+    await withdrawEventNotifications(tx, id);
+    if (going.length === 0) {
+      if (roleIds.length > 0) await tx.delete(roleMembers).where(inArray(roleMembers.roleId, roleIds));
+      await tx.delete(roles).where(eq(roles.eventId, id));
+      await tx.delete(eventVotes).where(eq(eventVotes.eventId, id));
+      await tx.delete(eventRsvps).where(eq(eventRsvps.eventId, id));
+      await tx.delete(eventNotifications).where(eq(eventNotifications.eventId, id));
+      await tx.delete(events).where(eq(events.id, id));
+      return true;
+    }
+    await tx.update(events).set({ cancelledAt: new Date() }).where(eq(events.id, id));
+    await enqueueCancellationNotifications(tx, id, going);
+    return false;
+  });
+  return deleted ? { deleted: true } : { deleted: false, event: await loadFull(id) };
 }

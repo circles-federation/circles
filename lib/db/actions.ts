@@ -96,6 +96,14 @@ export async function updateEventDetailsAction(id: string, details: EventDetails
   return asMember((memberId) => events.updateEventDetails(memberId, id, details));
 }
 
+// cancelling may have queued emails to the people who were going, which go
+// out once the response is sent, as a new event's do
+export async function cancelEventAction(id: string) {
+  const result = await asMember((memberId) => events.cancelEvent(memberId, id));
+  if (result.ok && !result.value.deleted) after(() => deliverEventNotifications());
+  return result;
+}
+
 export async function setRsvpAction(id: string, going: boolean) {
   return asMember((memberId) => events.setRsvp(memberId, id, going));
 }

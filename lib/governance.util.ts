@@ -48,7 +48,8 @@ export function isProposal(e: Event): boolean {
 // banner and the governance-style row. An approved circle-hosted event is
 // settled and reads as an ordinary one again.
 export function isVoting(e: Event): boolean {
-  return isMeeting(e) || isProposal(e);
+  // a cancelled one is waiting on nothing
+  return !e.cancelled && (isMeeting(e) || isProposal(e));
 }
 // whether the event has been through (or is in) a vote at all — for filters
 export function isGoverned(e: Event): boolean {

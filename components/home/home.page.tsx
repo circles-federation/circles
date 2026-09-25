@@ -54,7 +54,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   // meeting held by a sub-circle (e.g. Finance Council) still counts as "in
   // my neighborhood", not just one held by the neighborhood itself
   const meetings = upcoming.filter((e) => {
-    if (e.kind !== "meeting") return false;
+    if (e.kind !== "meeting" || e.cancelled) return false;
     const circle = byId[e.circleId];
     return !!circle && !!homeCircle && circleNeighborhood(circle, byId)?.id === homeCircle.id;
   });

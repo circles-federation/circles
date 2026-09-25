@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useEffectEvent, useRef, useState,
 import { useToast } from "@/components/shared";
 import { isOutdatedVersion } from "@/lib/app-version";
 import {
+  cancelEventAction as dbCancelEvent,
   createEventAction as dbCreateEvent,
   createResourceAction as dbCreateResource,
   deleteResourceAction as dbDeleteResource,
@@ -42,6 +43,7 @@ export interface AppStateValue {
   toggleRoleSlot(eventId: string, roleKey: string): void;
   createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }>;
   updateEventDetails(id: string, details: EventDetails): Promise<MutationResult>;
+  cancelEvent(id: string): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }>;
   toggleVote(eventId: string): void;
   saveCircle(id: string, patch: Partial<Circle>): void;
   saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult>;
@@ -333,6 +335,25 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  // await-then-update: the server decides between keeping it, cancelled, for the
+  // people who were going, and deleting it outright when no one else was
+  async function cancelEvent(id: string): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }> {
+    const result = await dbCancelEvent(id).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    if (result.value.deleted) {
+      setEvents((prev) => prev.filter((e) => e.id !== id));
+      const drop = (prev: Record<string, boolean>) => Object.fromEntries(Object.entries(prev).filter(([key]) => key !== id));
+      setRsvpState(drop);
+      setVoteState(drop);
+      showToast({ tone: "success", title: "Event deleted", message: "No one else was going, so it's been removed." });
+    } else {
+      const cancelled = result.value.event;
+      setEvents((prev) => prev.map((e) => (e.id === id ? cancelled : e)));
+      showToast({ tone: "success", title: "Event cancelled", message: "Everyone who was going is being emailed." });
+    }
+    return { ok: true, deleted: result.value.deleted };
+  }
+
   // voting on a meeting and RSVPing to it are the same act — meetings are
   // approved by member participation, so there's no "voted but not coming"
   // state. Kept as one function (not a separate toggleRsvp call alongside this
@@ -487,6 +508,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         toggleRoleSlot: tracked(toggleRoleSlot),
         createEvent: tracked(createEvent),
         updateEventDetails: tracked(updateEventDetails),
+        cancelEvent: tracked(cancelEvent),
         toggleVote: tracked(toggleVote),
         saveCircle: tracked(saveCircle),
         saveCircleRoles: tracked(saveCircleRoles),

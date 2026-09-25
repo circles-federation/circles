@@ -84,6 +84,12 @@ export function validateEventDraft(d: EventDraft): string | null {
 // whether a member is going to an event: on its RSVP list — which is also where
 // a meeting's voters land — or holding one of its slots (a slotted event has no
 // plain RSVP list, so signing up for a slot is how you attend it)
+// everyone going to an event: its RSVPs (a meeting's voters among them) and
+// its slot holders — who's told if it's cancelled (see cancelEvent)
+export function attendeeIds(e: Event): number[] {
+  return [...new Set([...e.rsvps, ...(e.roles ?? []).flatMap((r) => r.members)])];
+}
+
 export function isAttending(e: Event, memberId: number): boolean {
   return e.rsvps.includes(memberId) || (e.roles ?? []).some((r) => r.members.includes(memberId));
 }

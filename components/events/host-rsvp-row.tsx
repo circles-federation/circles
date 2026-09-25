@@ -76,7 +76,8 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
       </div>
       {/* meetings have no separate RSVP — voting above is how you attend — and
           a proposal opens for RSVPs only once approved */}
-      {!hasRoles(e) && !isMeeting && !proposal && <RsvpButton going={going} count={attendeeCount} onToggle={onToggleRsvp} big past={past} />}
+      {/* a cancelled event takes no RSVPs; its attendees are still listed below */}
+      {!hasRoles(e) && !isMeeting && !proposal && !e.cancelled && <RsvpButton going={going} count={attendeeCount} onToggle={onToggleRsvp} big past={past} />}
       {hasRoles(e) && !proposal && (
         <div className="text-right">
           <Eyebrow className={roleStatusClass}>{shiftCancelled(e) ? "Not running" : (shiftNeedsSlots(e) ? "Needs slots" : "Shift on")}</Eyebrow>

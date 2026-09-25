@@ -71,6 +71,13 @@
       "when": 1790223452634,
       "tag": "0009_sparkling_siren",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790351773666,
+      "tag": "0010_flawless_sunspot",
+      "breakpoints": true
     }
   ]
 }

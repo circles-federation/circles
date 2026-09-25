@@ -69,7 +69,7 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
   if (section === "events" && id && id !== "new" && !sub) {
     // an event's own page, which only its organizer can edit
     const event = events.find((e) => e.id === id);
-    if (event && isEventOrganizer(event, profile)) {
+    if (event && isEventOrganizer(event, profile) && !event.cancelled) {
       return { href: `/events/${id}/edit`, label: "Edit event", icon: PencilIcon, desktop: false };
     }
   }

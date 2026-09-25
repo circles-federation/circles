@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { CancelledBadge } from "./cancelled-badge";
 import { EventRow } from "./event-row";
 import { ParticipationBadge } from "./participation-badge";
 import { Eyebrow } from "@/components/shared";
@@ -27,10 +28,13 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
   const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
   const approved = isApproved(e, byId);
   const past = isPastEvent(e);
-  const accentKey = approved ? "leaf" : (past ? "soft" : "flame"); // fed to both DateTile and EventRow's own accent
+  // fed to both DateTile and EventRow's own accent; a cancelled one is grey, like one that's over
+  const accentKey = e.cancelled ? "soft" : approved ? "leaf" : (past ? "soft" : "flame");
   const votes = voteCount(e);
   const threshold = voteThreshold(e, byId);
-  const statusText = past
+  const statusText = e.cancelled
+    ? ""
+    : past
     ? (approved ? "" : "· Lapsed")
     : (approved ? "" : `· Proposed — ${threshold - votes} more to approve`);
   const hideOnMobile = !past && !approved;
@@ -45,9 +49,9 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
       dateAccent={accentKey}
       rowAccent={accentKey}
       title={e.title}
-      titleMuted={past}
+      titleMuted={past || !!e.cancelled}
       meta={hostName}
-      metaMuted={past}
+      metaMuted={past || !!e.cancelled}
       tags={
         <>
           <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
@@ -59,6 +63,8 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
         </>
       }
       right={
+        // cancelled: that, beside whether they were going
+        e.cancelled ? <><CancelledBadge />{isAttending(e, profile.id) && <ParticipationBadge kind="attending" past />}</> :
         // where the viewer stands: once it's approved, whether they're attending;
         // until then, whether they've voted to approve it (for a meeting that vote
         // is also their RSVP, but it's the approval that's still in question)

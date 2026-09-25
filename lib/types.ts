@@ -96,6 +96,9 @@ export interface Event {
   hostCircleId?: string;
   // a circle-hosted event still awaiting its host circle's approval
   proposed?: boolean;
+  // cancelled by its organizer while others were going: still shown, labelled
+  // so, but closed to RSVPs, votes, signups and edits (see cancelEvent)
+  cancelled?: boolean;
   organizerId: number;
   date: string;
   start: string;
@@ -123,8 +126,9 @@ export interface CircleResource {
 
 // what an event_notifications row is telling a member: an event or meeting a
 // person hosts ("new"), a circle-hosted proposal they're asked to vote on
-// ("proposed"), or that a proposal or meeting was approved ("approved" — a
-// meeting when it reaches its vote threshold). Separate from *how* it's delivered
+// ("proposed"), that a proposal or meeting was approved ("approved" — a
+// meeting when it reaches its vote threshold), or, to the people going, that
+// its organizer cancelled it ("cancelled"). Separate from *how* it's delivered
 // (an email of its own, or a line in the daily digest), and one member can be
 // owed more than one of these for the same event.
-export type NotificationKind = "new" | "proposed" | "approved";
+export type NotificationKind = "new" | "proposed" | "approved" | "cancelled";

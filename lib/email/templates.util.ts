@@ -25,6 +25,7 @@ const SOFT = "#6b6b6b";
 const FAINT = "#e4e4e4";
 const FLAME = "#e1530b"; // governance events, as in the app
 const LEAF = "#2e7d32"; // approved ones
+const DANGER = "#c0392b"; // a cancelled event, as the app's destructive red
 const SANS = `'Helvetica Neue',Helvetica,Arial,sans-serif`;
 const SERIF = `Georgia,'Times New Roman',serif`;
 
@@ -99,6 +100,7 @@ function whenLabel(d: Pick<EventNotificationData, "date" | "start" | "end">): st
 }
 
 export function eventNotificationEmail(n: EventNotificationData): Body {
+  if (n.notice === "cancelled") return cancelledEventEmail(n);
   const meeting = n.kind === "meeting";
   // five flavors:
   // - approved meeting: it just reached the votes it needed, told to its circle;
@@ -289,6 +291,35 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
           )
           .join("") +
         `<tr><td style="padding:10px 0 28px"><a href="${esc(openAll)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">See all events</a></td></tr>` +
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+    ),
+  };
+}
+
+/* To someone who was going: the organizer called it off. The facts they'd
+   planned around (when, where) are repeated so they know which event it was,
+   and there's no call to act on beyond seeing it in the app. */
+function cancelledEventEmail(n: EventNotificationData): Body {
+  const noun = n.kind === "meeting" ? "meeting" : "event";
+  const when = whenLabel(n);
+  const note = `${n.organizerName} cancelled this ${noun}, so it won't be going ahead.`;
+  const why = `You're getting this because you were going to it.`;
+  const detail = (label: string, value: string) =>
+    `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
+  return {
+    subject: `Cancelled: ${n.title}`,
+    text: `Cancelled ${noun} in ${n.circleName}\n\n${n.title}\n\n${note}\n\nWas: ${when}\nWhere: ${n.location}\n\nView it: ${n.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${DANGER};padding-top:18px">` +
+        eyebrow(`Cancelled ${noun} · ${esc(n.circleName)}`, DANGER) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${DANGER};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}</div></td></tr>` +
+        `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
+        detail("Was", when) +
+        detail("Where", n.location) +
+        `</table></td></tr>` +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };

@@ -95,6 +95,28 @@ export async function enqueueMeetingApprovalNotifications(tx: Tx, meeting: Pick<
   return queueFor(tx, meeting.id, "approved", meeting.circleId, actorId);
 }
 
+/* An event's organizer cancelled it: anything not yet sent about it (its
+   "new" email, a digest line, an approval) is moot, so it's dropped. Runs in
+   the cancelling transaction; sent rows are kept as the record they are. */
+export async function withdrawEventNotifications(tx: Tx, eventId: string): Promise<void> {
+  await tx.delete(eventNotifications).where(and(eq(eventNotifications.eventId, eventId), isNull(eventNotifications.sentAt)));
+}
+
+/* Tell the people who were going (see cancelEvent in lib/db/events.ts) that
+   it's cancelled — always an email of its own, straight away, never a digest
+   line a day later: they may be planning around it. Only those with an email
+   address can be told. */
+export async function enqueueCancellationNotifications(tx: Tx, eventId: string, memberIds: number[]): Promise<number> {
+  if (memberIds.length === 0) return 0;
+  const recipients = await tx.select({ id: members.id }).from(members).where(and(inArray(members.id, memberIds), hasEmail));
+  if (recipients.length === 0) return 0;
+  await tx
+    .insert(eventNotifications)
+    .values(recipients.map((r) => ({ eventId, memberId: r.id, kind: "cancelled" as const, digest: false })))
+    .onConflictDoNothing();
+  return recipients.length;
+}
+
 export type PendingEventNotification = Omit<EventNotificationData, "url"> & {
   eventId: string;
   memberId: number;

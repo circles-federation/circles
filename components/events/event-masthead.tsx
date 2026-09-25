@@ -51,7 +51,7 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
       </div>
       {/* desktop only: on mobile, editing is the top bar's pencil (see
           TopBar's pageAction) */}
-      {isOrganizer && (
+      {isOrganizer && !e.cancelled && (
         <div className="hidden min-[720px]:block min-[720px]:self-start">
           <Button variant="secondary" onClick={onEdit}>
             <PencilIcon className="size-3.5" strokeWidth={2.5} />

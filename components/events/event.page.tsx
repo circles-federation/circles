@@ -1,6 +1,7 @@
 "use client";
 
 import { AttendeesSection } from "./attendees-section";
+import { CancelledBanner } from "./cancelled-banner";
 import { PageContainer } from "@/components/shared";
 import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";
@@ -37,11 +38,13 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
     <PageContainer size="normal">
       <EventMasthead event={e} profile={profile} onEdit={onEditEvent} />
 
+      <CancelledBanner event={e} />
+
       {isVoting(e) && (
         <VoteBanner event={e} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
       )}
 
-      <ShiftStatusBanner event={e} />
+      {!e.cancelled && <ShiftStatusBanner event={e} />}
 
       <HostRsvpRow
         event={e}
