@@ -50,6 +50,18 @@
       opacity: 0;
     }
   }
+
+  /* a page's content arriving (PageContainer): from blurred and clear to
+     sharp. `backwards`, not `both`: the blur only applies while it runs —
+     a filter left on the container would make it the frame a modal inside it
+     positions itself against, instead of the screen. */
+  --animate-blur-in: blur-in 0.25s ease-out backwards;
+  @keyframes blur-in {
+    from {
+      opacity: 0;
+      filter: blur(6px);
+    }
+  }
 }
 
 html,

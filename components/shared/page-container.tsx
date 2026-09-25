@@ -37,7 +37,10 @@ interface PageContainerProps {
    accomplish. */
 export function PageContainer({ size, className, children }: PageContainerProps) {
   return (
-    <div className={clsx("mx-auto px-6 pt-6 pb-20", MAX_WIDTH[size], className)}>
+    // blurs in as it appears: on navigating to a page, once its content (not
+    // the loading state) lands, and on Back to one Next kept, since showing a
+    // hidden element again restarts its animation. Not for reduced motion.
+    <div className={clsx("mx-auto px-6 pt-6 pb-20 motion-safe:animate-blur-in", MAX_WIDTH[size], className)}>
       {children}
     </div>
   );
