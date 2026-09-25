@@ -7,6 +7,10 @@ export interface TopBarAction {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   onAction: () => void;
   disabled?: boolean;
+  // "primary" makes it a primary icon button: the icon in a filled blue
+  // circle (a faint outline while disabled), for the action the page is
+  // there to do (Save). The default is a plain icon.
+  variant?: "plain" | "primary";
 }
 
 type Shown = Omit<TopBarAction, "onAction">;
@@ -51,11 +55,12 @@ export function useTopBarAction(action: TopBarAction | null) {
   const label = action?.label;
   const icon = action?.icon;
   const disabled = action?.disabled;
+  const variant = action?.variant;
   useEffect(() => {
     if (!setShown || !label || !icon) return;
-    setShown({ label, icon, disabled });
+    setShown({ label, icon, disabled, variant });
     return () => setShown(null);
-  }, [setShown, label, icon, disabled]);
+  }, [setShown, label, icon, disabled, variant]);
 }
 
 // for TopBar: the current page's action, if it registered one, and a way to run it

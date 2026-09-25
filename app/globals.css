@@ -18,6 +18,7 @@
   --color-danger: #c0392b; /* destructive actions, error states */
   --color-folder: #b8860b; /* circle resources: the folder icon (a collection) */
   --color-file: #1f5fbf; /* circle resources: the file icon (a single document) */
+  --color-action: #1f5fbf; /* a primary icon button, like the top bar's Save (the same blue as file, for a different job) */
 
   --font-sans: "Helvetica Neue", Arial, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;

@@ -182,7 +182,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
   // the top bar's Back and the bottom Cancel button both leave the form, so
   // both get the same unsaved-changes guard
   useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
-  useTopBarAction({ label: saving ? "Saving" : "Save", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving });
+  useTopBarAction({ label: saving ? "Saving" : "Save", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving, variant: "primary" });
   function handleLeave() {
     if (dirty) setConfirmingDiscard(true);
     else onBack();
