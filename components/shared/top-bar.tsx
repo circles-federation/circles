@@ -3,13 +3,14 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftIcon, Cog6ToothIcon, HomeIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, Cog6ToothIcon, HomeIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
 import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { isCircleMember } from "@/lib/circles.util";
-import type { Circle, Event } from "@/lib/types";
+import { isEventOrganizer } from "@/lib/governance.util";
+import type { Circle, Event, Profile } from "@/lib/types";
 import { OfflineBanner } from "./offline-banner";
 
 const TABS: [string, string][] = [
@@ -25,20 +26,28 @@ interface PageAction {
   label: string;
   icon: typeof PlusIcon;
   // also shown on desktop, as a text link before the tabs — otherwise the
-  // page has its own control there (a circle's masthead Manage button)
+  // page has its own control there (a circle's masthead Manage button, an
+  // event's Edit Event)
   desktop: boolean;
 }
 
 // a page's own primary action, shown in the bar while that page is: an icon
 // on the right on mobile
-function pageAction(pathname: string, circles: Circle[], memberId: number): PageAction | null {
+function pageAction(pathname: string, circles: Circle[], events: Event[], profile: Profile): PageAction | null {
   if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon, desktop: true };
   const [section, id, sub] = pathname.split("/").slice(1);
+  if (section === "events" && id && id !== "new" && !sub) {
+    // an event's own page, which only its organizer can edit
+    const event = events.find((e) => e.id === id);
+    if (event && isEventOrganizer(event, profile)) {
+      return { href: `/events/${id}/edit`, label: "Edit event", icon: PencilIcon, desktop: false };
+    }
+  }
   if (section === "circles" && id && !sub) {
     // a circle's own page, which only its members can manage (a
     // neighborhood's folder view has nothing to manage)
     const circle = circles.find((c) => c.id === id);
-    if (circle && circle.type !== "neighborhood" && isCircleMember(circle, memberId)) {
+    if (circle && circle.type !== "neighborhood" && isCircleMember(circle, profile.id)) {
       return { href: `/circles/${id}/manage`, label: "Manage circle", icon: Cog6ToothIcon, desktop: false };
     }
   }
@@ -75,7 +84,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // the tab roots. A page with unsaved changes can intercept it; otherwise it
   // goes back without ever leaving the app (see useGoBack).
   const isTabRoot = TABS.some(([href]) => pathname === href);
-  const action = pageAction(pathname, circles, profile.id);
+  const action = pageAction(pathname, circles, events, profile);
   const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
   const runBackHandler = useRunBackHandler();
   const goBackInApp = useGoBack();

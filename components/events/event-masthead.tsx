@@ -15,11 +15,8 @@ interface EventMastheadProps {
 
 /* Date tile, kind/exclusivity badges, title, and location — the header
    block every event detail page opens with. The organizer (the person
-   hosting the event) gets an edit button, laid out the
-   same responsive way as Home's own masthead: a full-width row of its own
-   beneath the rest (with a text label, since it's got the room) below
-   720px, then a small icon-only square beside the date tile / title column
-   above it. */
+   hosting the event) gets an Edit Event button beside the date tile / title
+   column on desktop; on mobile it's the top bar's pencil instead. */
 export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps) {
   const byId = useCirclesById();
   const isOrganizer = isEventOrganizer(e, profile);
@@ -52,11 +49,15 @@ export function EventMasthead({ event: e, profile, onEdit }: EventMastheadProps)
           <p className="mt-3 font-serif text-lg text-[#222]">{e.location}</p>
         </div>
       </div>
+      {/* desktop only: on mobile, editing is the top bar's pencil (see
+          TopBar's pageAction) */}
       {isOrganizer && (
-        <Button variant="secondary" onClick={onEdit}>
-          <PencilIcon className="size-3.5" strokeWidth={2.5} />
-          Edit Event
-        </Button>
+        <div className="hidden min-[720px]:block min-[720px]:self-start">
+          <Button variant="secondary" onClick={onEdit}>
+            <PencilIcon className="size-3.5" strokeWidth={2.5} />
+            Edit Event
+          </Button>
+        </div>
       )}
     </div>
   );
