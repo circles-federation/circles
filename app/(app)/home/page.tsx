@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Home } from "@/components/home/home.page";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { useProfileModal } from "@/components/providers/profile-modal-provider";
 import { logout } from "@/lib/auth";
 import { useAppNav } from "@/lib/hooks";
 
@@ -10,6 +11,7 @@ export default function Page() {
   const router = useRouter();
   const { profile, events, circles, rsvpState } = useAppState();
   const nav = useAppNav();
+  const { open: openProfile } = useProfileModal();
   // "Neighbors" and "Local circles" both just open the viewer's own
   // neighborhood folder — pre-filtered to the relevant Type(s) so there's
   // nothing left to click once they land.
@@ -37,6 +39,7 @@ export default function Page() {
       onPlayGame={() => nav.setView("game")}
       onOpenCircle={(c) => nav.openCircle(c)}
       onEditProfile={() => nav.setView("editMyself")}
+      onOpenProfile={() => openProfile(profile)}
       onLogout={handleLogout}
     />
   );

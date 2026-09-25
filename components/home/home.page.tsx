@@ -24,13 +24,14 @@ interface HomeProps {
   onPlayGame: () => void;
   onOpenCircle: (c: Circle) => void;
   onEditProfile: () => void;
+  onOpenProfile: () => void;
   onLogout: () => void;
 }
 
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their circles (speed
    dial), and their events. Profile editing lives on a separate page. */
-export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onEditProfile, onLogout }: HomeProps) {
+export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onEditProfile, onOpenProfile, onLogout }: HomeProps) {
   const members = useMembers();
   const byId = indexCircles(circles);
   const homeCircle = profile.homeCircleId ? byId[profile.homeCircleId] : undefined;
@@ -71,7 +72,10 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
       {/* identity masthead */}
       <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="flex min-w-0 flex-1 items-center gap-5">
-          <Avatar member={profile} sizeClassName="size-24 min-[720px]:size-30" />
+          {/* opens your own profile, as others see it; the photo inverts while pressed */}
+          <button type="button" onClick={onOpenProfile} aria-label="View your profile" className="press-invert shrink-0 cursor-pointer border-0 bg-transparent p-0">
+            <Avatar member={profile} sizeClassName="size-24 min-[720px]:size-30" />
+          </button>
           <div className="min-w-0">
             <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">
               {profile.name}

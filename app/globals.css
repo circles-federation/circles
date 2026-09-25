@@ -192,3 +192,8 @@ body {
 .btn-flame[data-pressed] { background: var(--color-paper) !important; color: var(--color-flame) !important; }
 .btn-flame[data-pressed] * { color: var(--color-flame) !important; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+/* A pressable image (Home's own photo, which opens your profile): the
+   background ink-press turns to ink would be hidden behind the photo, so the
+   photo itself inverts instead, border and all. */
+.press-invert > * { transition: filter 0.08s; }
+.press-invert[data-pressed] > * { filter: invert(1); }

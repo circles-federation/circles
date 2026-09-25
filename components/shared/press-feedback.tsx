@@ -2,9 +2,10 @@
 
 import { useEffect } from "react";
 
-// what gets a pressed look: tiles, cards and outlined buttons (ink-press), and
-// filled buttons (btn-invert) — see the press styles in app/globals.css
-const PRESSABLE = ".ink-press, .btn-invert";
+// what gets a pressed look: tiles, cards and outlined buttons (ink-press),
+// filled buttons (btn-invert), and images (press-invert) — see the press
+// styles in app/globals.css
+const PRESSABLE = ".ink-press, .btn-invert, .press-invert";
 // a touch has to be held this long, without moving, before it looks pressed,
 // so the start of a scroll never flashes a tile
 const TOUCH_DELAY_MS = 80;
