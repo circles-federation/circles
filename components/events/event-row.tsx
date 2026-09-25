@@ -48,8 +48,9 @@ export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent"
       "flex items-start gap-4.5 border-b border-b-ink py-5",
       // a plain row has no side edges, so no side padding either (as circle
       // resources' rows): its content runs flush with the list. Only an
-      // accented one, with its left bar, is inset inside them.
-      rowAccent !== "transparent" && ["border-l-4 pr-5.5 pl-4", ROW_ACCENT[rowAccent]],
+      // accented one is inset, and only on its left, beside its bar: the right
+      // stays flush, so its status (Attending, ...) lines up with the others'.
+      rowAccent !== "transparent" && ["border-l-4 pl-4", ROW_ACCENT[rowAccent]],
     )}>
       <DateTile iso={e.date} accent={dateAccent} />
       <button
@@ -64,7 +65,10 @@ export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent"
           {meta}
         </div>
       </button>
-      <div className="shrink-0 pt-1 text-right">
+      {/* its first line centred on the time eyebrow's: the eyebrow's line is
+          18px and a status badge's 20px, so the column starts 1px higher.
+          Only this column moves, so the eyebrow-to-title gap doesn't change. */}
+      <div className="-mt-px shrink-0 text-right">
         {right}
       </div>
     </div>
