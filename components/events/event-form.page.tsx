@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useEffect, useRef, useState } from "react";
+import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
+import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
@@ -194,21 +195,22 @@ export function EventFormPage(props: EventFormPageProps) {
     else onCancel();
   }
 
-  async function submit() {
-    if (busy) return;
+  // the event as it would be submitted, and the first thing wrong with it if
+  // anything is — worked out on every render, so the submit buttons stay
+  // disabled until it would pass. Instant feedback only: the server
+  // re-validates and is the real check.
+  function buildDraft(): { details: EventDetails; problem: string | null } {
     // blank slot rows are just ignored, but turning slots on with none filled is a mistake
-    let roles: RoleDraft[] = [];
-    if (!gov && useSlots) {
-      roles = slots
-        .filter((x) => x.label.trim())
-        .map((x) => ({
-          label: x.label.trim(),
-          ...(x.description.trim() ? { description: x.description.trim() } : {}),
-          min: parseInt(x.min, 10) || 0,
-          ...(x.max !== "" ? { max: parseInt(x.max, 10) } : {}),
-        }));
-      if (roles.length === 0) return setError("Add at least one slot, or turn off slots.");
-    }
+    const roles: RoleDraft[] = !gov && useSlots
+      ? slots
+          .filter((x) => x.label.trim())
+          .map((x) => ({
+            label: x.label.trim(),
+            ...(x.description.trim() ? { description: x.description.trim() } : {}),
+            min: parseInt(x.min, 10) || 0,
+            ...(x.max !== "" ? { max: parseInt(x.max, 10) } : {}),
+          }))
+      : [];
     const details: EventDetails = {
       title: title.trim(),
       date, start, end,
@@ -216,9 +218,19 @@ export function EventFormPage(props: EventFormPageProps) {
       description: description.trim() || (gov ? "No agenda yet." : "No description yet."),
       roles,
     };
-    // instant feedback only — the server re-validates and is the real check
-    const problem = validateEventDraft({ ...details, kind: type, circleId, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}) });
-    if (problem) return setError(problem);
+    if (!gov && useSlots && roles.length === 0) return { details, problem: "Add at least one slot, or turn off slots." };
+    return { details, problem: validateEventDraft({ ...details, kind: type, circleId, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}) }) };
+  }
+  const draftProblem = buildDraft().problem;
+  // and, when editing, only once something's changed — saving the event as it
+  // already is would do nothing
+  const canSubmit = !busy && !draftProblem && (mode === "create" || dirty);
+
+  async function submit() {
+    if (busy) return;
+    const { details, problem } = buildDraft();
+    const roles = details.roles;
+    if (problem) return fail(problem);
 
     setError("");
     setBusy(true);
@@ -226,8 +238,24 @@ export function EventFormPage(props: EventFormPageProps) {
       ? await props.onSave(details)
       : await props.onCreate({ ...details, kind: type, circleId, roles, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}) });
     setBusy(false);
-    if (!result.ok) setError(result.error);
+    if (!result.ok) fail(result.error);
   }
+
+  const submitLabel = mode === "edit" ? "Save changes" : (gov ? "Propose meeting" : hostCircle ? "Propose event" : "Create event");
+  useTopBarAction({ label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" });
+
+  // The error sits at the foot of the form, and on mobile the submit that
+  // caused it is the top bar's check, so it's brought into view — on every
+  // failed attempt, including one with the same message as the last.
+  const errorRef = useRef<HTMLDivElement>(null);
+  const [failures, setFailures] = useState(0);
+  function fail(message: string) {
+    setError(message);
+    setFailures((n) => n + 1);
+  }
+  useEffect(() => {
+    if (failures > 0) errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [failures]);
 
   const types: [EventKindKey, string][] = [
     ["ordinary", "Event"],
@@ -422,14 +450,16 @@ export function EventFormPage(props: EventFormPageProps) {
         </div>
 
         {error && (
-          <div className={clsx("border-l-[3px] pl-3 font-sans text-xs font-semibold", accent.border, accent.text)}>
+          <div ref={errorRef} className={clsx("border-l-[3px] pl-3 font-sans text-xs font-semibold", accent.border, accent.text)}>
             {error}
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3 border-t border-ink pt-5.5">
-          <Button accent={accentKey} onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : mode === "edit" ? "Save changes" : (gov ? "Propose meeting" : hostCircle ? "Propose event" : "Create event")}
+        {/* desktop only: on mobile, submitting is the top bar's check (see
+            the useTopBarAction call above), and leaving is its Back */}
+        <div className="hidden flex-wrap gap-3 border-t border-ink pt-5.5 min-[720px]:flex">
+          <Button accent={accentKey} onClick={submit} disabled={!canSubmit}>
+            {busy ? "Saving…" : submitLabel}
           </Button>
           <Button variant="secondary" onClick={handleLeave}>
             Cancel
