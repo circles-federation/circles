@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main
         ref={mainRef}
         onScroll={onScroll}
-        className="max-[719px]:pb-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] standalone:flex-1 standalone:overflow-y-auto standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
+        className="max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.75rem)] standalone:flex-1 standalone:overflow-y-auto standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
       >
         {children}
       </main>

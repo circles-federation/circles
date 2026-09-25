@@ -79,6 +79,9 @@ body {
    is only its usual height (h-14.5 plus the status bar), for the first paint */
 :root {
   --top-bar-height: calc(3.625rem + env(safe-area-inset-top));
+  /* the floating BottomNav's gap from the screen's bottom and sides, one
+     value so they match: clear of the home indicator where there is one */
+  --bottom-nav-gap: max(1rem, env(safe-area-inset-bottom));
 }
 
 /* For app chrome (TopBar, BottomNav): a long press on a tab or button does

@@ -43,11 +43,12 @@ export function BottomNav({ onReselect }: { onReselect: () => void }) {
 
   return (
     // floats over the page, like iOS's tab bar (a pill, an exception to
-    // the app's square corners) but ink: clear of the screen's
-    // edges, the home indicator and a landscape notch, with the page scrolling
+    // the app's square corners) but ink: the same gap from the screen's bottom
+    // and sides (--bottom-nav-gap, clear of the home indicator), and clear of a
+    // landscape notch, with the page scrolling
     // on underneath it (AppShell's bottom padding clears it at the end). The
     // blur keeps the labels readable over what shows through.
-    <nav className="app-chrome flex min-[720px]:hidden fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-[0_6px_20px_rgba(10,10,10,0.28)]">
+    <nav className="app-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-[0_6px_20px_rgba(10,10,10,0.28)]">
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
         const active = isActive(href);
         const Icon = active ? Solid : Outline;
