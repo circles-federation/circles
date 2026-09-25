@@ -165,9 +165,13 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
               type="button"
               onClick={goBack}
               aria-label="Back"
-              className="-ml-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
+              className="group -ml-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
             >
-              <ArrowLeftIcon className="size-6" strokeWidth={2} />
+              {/* a faint circle behind the arrow while it's pressed, the size
+                  of an icon button's, so a tap on it visibly lands */}
+              <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
+                <ArrowLeftIcon className="size-6" strokeWidth={2} />
+              </span>
             </button>
           )}
           <span className="truncate font-sans text-lg font-extrabold tracking-[-0.02em]">
