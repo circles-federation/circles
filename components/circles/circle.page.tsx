@@ -303,8 +303,11 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               onOpenEvent={onOpenEvent}
               // events shown to a circle are only ever sent to its own members
               // (and, for the city, everyone), so an outsider only sees the
-              // ones it hosts for a circle they're in
-              emptyText={isCircleAudience(c, profile.id) ? `No upcoming events in ${c.name}.` : `Only members of ${c.name} can see its events.`}
+              // ones it hosts for a circle they're in — the empty state says
+              // that, rather than implying none of its events are public
+              emptyText={isCircleAudience(c, profile.id)
+                ? `No upcoming events in ${c.name}.`
+                : `${c.name} isn't hosting any events open to you.`}
             />
           </Section>
         </SectionGroup>
