@@ -3,6 +3,7 @@ import { DateTile } from "./date-tile";
 import { Chip, Eyebrow } from "@/components/shared";
 import { fmtTime, isPastEvent } from "@/lib/format.util";
 import { isApproved, isVoting } from "@/lib/governance.util";
+import { endedBefore, repeatSummary } from "@/lib/recurrence.util";
 import { useCirclesById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
@@ -38,8 +39,12 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
             {circle && <Chip title="Who can see this event">{circle.name}</Chip>}
           </div>
           {/* just the time: the date tile beside it already gives the date and
-              weekday (or TBD) */}
-          <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
+              weekday (or TBD) — and how it repeats, unless its series ended
+              before this date (it was cancelled along with the rest) */}
+          <Eyebrow className="text-soft">
+            {fmtTime(e.start)}–{fmtTime(e.end)}
+            {e.repeat && !endedBefore(e.repeat, e.date) && <> · {repeatSummary(e.repeat)}</>}
+          </Eyebrow>
           <h1 className="mt-3 font-sans text-heading min-[720px]:text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{e.title}</h1>
           <p className="mt-3 font-serif text-lg text-[#222]">{e.location}</p>
         </div>

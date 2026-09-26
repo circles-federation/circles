@@ -74,6 +74,18 @@ export interface Role {
 
 export type EventKindKey = "ordinary" | "meeting";
 
+export type RepeatFrequency = "weekly" | "monthly";
+
+// a date of a repeating event: the series it's one of, and that series'
+// pattern — read from its first date (see lib/recurrence.util.ts) — up to its
+// last date, if it has one
+export interface EventRepeat {
+  seriesId: string;
+  frequency: RepeatFrequency;
+  startsOn: string;
+  until?: string;
+}
+
 export interface EventKindMeta {
   governance: boolean;
   label: string;
@@ -108,6 +120,9 @@ export interface Event {
   rsvps: number[];
   roles?: Role[];
   votes?: number[];
+  // set on each date of a repeating event — every date is an event of its own,
+  // with its own RSVPs, votes and slots
+  repeat?: EventRepeat;
 }
 
 export type ResourceIcon = "folder" | "file" | "video" | "announcement";

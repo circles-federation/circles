@@ -1,6 +1,7 @@
 import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtTime, parseDay } from "@/lib/format.util";
-import type { CircleType, EventKindKey, NotificationKind } from "@/lib/types";
+import { endedBefore, repeatSummary } from "@/lib/recurrence.util";
+import type { CircleType, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
    Each returns everything but the recipient, so the caller (which knows who
@@ -86,6 +87,8 @@ export interface EventNotificationData {
   proposed: boolean;
   votesNeeded: number;
   organizerName: string;
+  // set on a date of a repeating event
+  repeat?: Pick<EventRepeat, "frequency" | "startsOn" | "until">;
   // where to open it in the app
   url: string;
 }
@@ -158,12 +161,15 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
     approvedEvent && n.hostCircleName
       ? [["Hosted by", n.hostCircleName], ["Proposed by", n.organizerName]]
       : [[proposal || meeting ? "Proposed by" : "Hosted by", n.organizerName]];
+  // a repeating event is announced once, by its first date, so this is where
+  // members learn the rest
+  const repeats = n.repeat ? repeatSummary(n.repeat) : "";
   return {
     subject,
     text:
       `${Lead} in ${because}\n\n${n.title}\n\n` +
       (note ? `${note}\n\n` : "") +
-      `When: ${when}\nWhere: ${n.location}\n${people.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n${excerpt}\n\n${action}: ${n.url}\n\n${why}`,
+      `When: ${when}\n${repeats ? `Repeats: ${repeats}\n` : ""}Where: ${n.location}\n${people.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n${excerpt}\n\n${action}: ${n.url}\n\n${why}`,
     html: shell(
       `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
         eyebrow(`${Lead} · ${esc(because)}`, tone) +
@@ -176,6 +182,7 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
           : "") +
         `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
         detail("When", when) +
+        (repeats ? detail("Repeats", repeats) : "") +
         detail("Where", n.location) +
         people.map(([l, v]) => detail(l, v)).join("") +
         `</table></td></tr>` +
@@ -202,6 +209,7 @@ export interface DigestEventData {
   circleName: string;
   hostCircleName?: string;
   organizerName: string;
+  repeat?: Pick<EventRepeat, "frequency" | "startsOn" | "until">;
   url: string;
 }
 
@@ -236,7 +244,8 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
   const heading = allNew ? `${count} new event${count === 1 ? "" : "s"}` : `${count} update${count === 1 ? "" : "s"}`;
   const meta = (e: DigestEventData) => `${whenLabel(e)} · ${e.location}`;
   const by = (e: DigestEventData) =>
-    e.notice === "proposed" ? `Proposed by ${e.organizerName} for ${e.circleName}` : `${e.kind === "meeting" ? "Proposed" : "Hosted"} by ${e.organizerName}`;
+    (e.notice === "proposed" ? `Proposed by ${e.organizerName} for ${e.circleName}` : `${e.kind === "meeting" ? "Proposed" : "Hosted"} by ${e.organizerName}`) +
+    (e.repeat ? ` · ${repeatSummary(e.repeat)}` : "");
   // the label over a line, and the color it's drawn in
   const label = (e: DigestEventData): { text: string; color: string } | null =>
     e.notice === "proposed"
@@ -302,7 +311,13 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
 function cancelledEventEmail(n: EventNotificationData): Body {
   const noun = n.kind === "meeting" ? "meeting" : "event";
   const when = whenLabel(n);
-  const note = `${n.organizerName} cancelled this ${noun}, so it won't be going ahead.`;
+  // a date of a repeating event is cancelled alone, or with every later date
+  // (its series then ends before it)
+  const note = !n.repeat
+    ? `${n.organizerName} cancelled this ${noun}, so it won't be going ahead.`
+    : endedBefore(n.repeat, n.date)
+      ? `${n.organizerName} cancelled this ${n.repeat.frequency} ${noun} from this date on, so neither this date nor any after it will be going ahead.`
+      : `${n.organizerName} cancelled this date of a ${n.repeat.frequency} ${noun}. The other dates are still on.`;
   const why = `You're getting this because you were going to it.`;
   const detail = (label: string, value: string) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;

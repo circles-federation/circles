@@ -18,7 +18,8 @@ import {
   uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import type { EventKindKey, NotificationKind } from "@/lib/types";
+import type { RoleDraft } from "@/lib/events.util";
+import type { EventKindKey, NotificationKind, RepeatFrequency } from "@/lib/types";
 
 /* Drizzle table definitions — the only file besides lib/db/client.ts and
    lib/better-auth.ts that lib/db/*.ts may import from directly (see the
@@ -114,6 +115,38 @@ export const circleMembers = pgTable(
   ]
 );
 
+/* A repeating event: its pattern, and the template each of its dates is made
+   from. Every date is an ordinary events row pointing back here, so RSVPs,
+   votes, slots, cancelling and notifications all work per date unchanged.
+   Dates are added a few weeks ahead (extendEventSeries in lib/db/events.ts),
+   and generated_through is how far that's got — so a date that was deleted is
+   never made again. A circle-hosted series gets no dates past its first until
+   that first one is approved (approved_at, latched like an event's). */
+export const eventSeries = pgTable(
+  "event_series",
+  {
+    id: text("id").primaryKey(),
+    frequency: text("frequency").$type<RepeatFrequency>().notNull(),
+    // the first date, which the pattern is read from, and the last one allowed
+    startsOn: date("starts_on", { mode: "string" }).notNull(),
+    until: date("until", { mode: "string" }),
+    generatedThrough: date("generated_through", { mode: "string" }).notNull(),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    title: text("title").notNull(),
+    kind: text("kind").$type<EventKindKey>(),
+    circleId: text("circle_id").notNull().references(() => circles.id),
+    hostCircleId: text("host_circle_id").references(() => circles.id),
+    organizerId: integer("organizer_id").notNull().references(() => members.id),
+    start: time("start").notNull(),
+    end: time("end").notNull(),
+    location: text("location").notNull(),
+    description: text("description").notNull(),
+    // signup slot definitions, copied (empty) onto each new date
+    roles: jsonb("roles").$type<RoleDraft[]>().notNull().default(sql`'[]'::jsonb`),
+  },
+  (t) => [check("event_series_frequency", sql`${t.frequency} in ('weekly', 'monthly')`)]
+);
+
 export const events = pgTable(
   "events",
   {
@@ -144,8 +177,11 @@ export const events = pgTable(
     // else is going to is deleted instead). Final: a cancelled event stays
     // visible, labelled so, but takes no RSVPs, votes, signups or edits.
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    // set on each date of a repeating event
+    seriesId: text("series_id").references(() => eventSeries.id),
   },
   (t) => [
+    index("events_series_id_idx").on(t.seriesId),
     // an event with no host circle is hosted by its organizer and is live
     // from the start; only a circle-hosted one can be awaiting approval
     check("events_live_or_proposed", sql`${t.hostCircleId} is not null or ${t.approvedAt} is not null`),

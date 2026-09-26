@@ -1,15 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, isNotNull, isNull, or, sql, type Column, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type Column, type SQL } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
-import { circleMembers, circles, eventNotifications, eventRsvps, eventVotes, events, roleMembers, roles } from "./schema";
+import { circleMembers, circles, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, withdrawEventNotifications } from "./notifications";
 import { isWithinCircle } from "@/lib/circles.util";
-import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
+import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
-import type { Event, Role } from "@/lib/types";
+import { REPEAT_HORIZON_DAYS, addDays, datesBetween, localDay } from "@/lib/recurrence.util";
+import type { Event, EventRepeat, Role } from "@/lib/types";
 
 /* An event belongs to one circle, and that circle is its audience: only the
    circle's members (and, for the city root, everyone) can see it or RSVP to
@@ -21,11 +22,20 @@ import type { Event, Role } from "@/lib/types";
    takes the acting member's id (lib/db/actions.ts passes the signed-in one)
    and checks it, and computes any rsvp/vote/slot arrays itself rather than
    trusting a client-supplied one. Kept free of any session/request access so
-   it can be exercised directly. */
+   it can be exercised directly.
+
+   A repeating event is a series (event_series) whose dates are each an
+   ordinary event here, made a few weeks ahead — so everything above applies
+   to each date on its own. What's series-wide: creating it (the circle is
+   told once, about the first date), a circle-hosted series' approval (the
+   host circle votes once, on the first date, and approving it adds the
+   rest), and an edit or cancellation its organizer applies to "this and
+   later dates". */
 
 export class EventError extends UserFacingError {}
 
 type EventRow = typeof events.$inferSelect;
+type SeriesRow = typeof eventSeries.$inferSelect;
 
 // Postgres always formats a `time` column as "HH:MM:SS" on read, regardless
 // of input precision — lib/format.util.ts's fmtTime/eventDateTime assume the
@@ -34,7 +44,11 @@ function toClockTime(t: string): string {
   return t.slice(0, 5);
 }
 
-function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, eventRoles: Role[] | undefined): Event {
+function toRepeat(s: SeriesRow): EventRepeat {
+  return { seriesId: s.id, frequency: s.frequency, startsOn: s.startsOn, ...(s.until !== null ? { until: s.until } : {}) };
+}
+
+function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, eventRoles: Role[] | undefined, series: SeriesRow | undefined): Event {
   return {
     id: row.id,
     title: row.title,
@@ -52,17 +66,21 @@ function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, ev
     rsvps,
     roles: eventRoles,
     votes,
+    ...(series ? { repeat: toRepeat(series) } : {}),
   };
 }
 
 async function attachRelations(rows: EventRow[]): Promise<Event[]> {
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
-  const [rsvpRows, voteRows, roleRows] = await Promise.all([
+  const seriesIds = [...new Set(rows.flatMap((r) => (r.seriesId !== null ? [r.seriesId] : [])))];
+  const [rsvpRows, voteRows, roleRows, seriesRows] = await Promise.all([
     db.select().from(eventRsvps).where(inArray(eventRsvps.eventId, ids)),
     db.select().from(eventVotes).where(inArray(eventVotes.eventId, ids)),
     db.select().from(roles).where(inArray(roles.eventId, ids)),
+    seriesIds.length > 0 ? db.select().from(eventSeries).where(inArray(eventSeries.id, seriesIds)) : Promise.resolve([]),
   ]);
+  const seriesById = new Map(seriesRows.map((s) => [s.id, s]));
   const roleMemberRows = roleRows.length > 0 ? await db.select().from(roleMembers).where(inArray(roleMembers.roleId, roleRows.map((r) => r.id))) : [];
   const rsvpsByEvent = groupBy(rsvpRows, (r) => r.eventId, (r) => r.memberId);
   const votesByEvent = groupBy(voteRows, (r) => r.eventId, (r) => r.memberId);
@@ -87,7 +105,8 @@ async function attachRelations(rows: EventRow[]): Promise<Event[]> {
       rsvpsByEvent.get(row.id) || [],
       // only a meeting or a circle-hosted event carries a votes array
       row.kind === "meeting" || row.hostCircleId !== null ? votesByEvent.get(row.id) || [] : undefined,
-      rolesByEvent.get(row.id)
+      rolesByEvent.get(row.id),
+      row.seriesId !== null ? seriesById.get(row.seriesId) : undefined
     )
   );
 }
@@ -222,100 +241,226 @@ async function writeRoles(tx: Tx, eventId: string, eventRoles: Role[]) {
    that already hold a complete, vetted Event: createEvent below, and the seed
    script (whose fixtures carry their own ids, rsvps, and votes). */
 export async function insertEvent(event: Event, options: { notifyMembers?: boolean } = {}): Promise<Event> {
-  await db.transaction(async (tx) => {
-    await tx.insert(events).values({
-      id: event.id,
-      title: event.title,
-      kind: event.kind ?? null,
-      circleId: event.circleId,
-      hostCircleId: event.hostCircleId ?? null,
-      approvedAt: event.proposed ? null : new Date(),
-      organizerId: event.organizerId,
-      date: event.date,
-      start: event.start,
-      end: event.end,
-      location: event.location,
-      description: event.description,
-    });
-    if (event.rsvps.length > 0) {
-      await tx.insert(eventRsvps).values(event.rsvps.map((memberId) => ({ eventId: event.id, memberId })));
-    }
-    if (event.votes && event.votes.length > 0) {
-      await tx.insert(eventVotes).values(event.votes.map((memberId) => ({ eventId: event.id, memberId })));
-    }
-    if (event.roles && event.roles.length > 0) {
-      await writeRoles(tx, event.id, event.roles);
-    }
-    if (options.notifyMembers) await enqueueEventNotifications(tx, event);
-  });
+  await db.transaction((tx) => writeEvent(tx, event, options));
   return event;
+}
+
+async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boolean } = {}) {
+  await tx.insert(events).values({
+    id: event.id,
+    title: event.title,
+    kind: event.kind ?? null,
+    circleId: event.circleId,
+    hostCircleId: event.hostCircleId ?? null,
+    approvedAt: event.proposed ? null : new Date(),
+    organizerId: event.organizerId,
+    date: event.date,
+    start: event.start,
+    end: event.end,
+    location: event.location,
+    description: event.description,
+    seriesId: event.repeat?.seriesId ?? null,
+  });
+  if (event.rsvps.length > 0) {
+    await tx.insert(eventRsvps).values(event.rsvps.map((memberId) => ({ eventId: event.id, memberId })));
+  }
+  if (event.votes && event.votes.length > 0) {
+    await tx.insert(eventVotes).values(event.votes.map((memberId) => ({ eventId: event.id, memberId })));
+  }
+  if (event.roles && event.roles.length > 0) {
+    await writeRoles(tx, event.id, event.roles);
+  }
+  if (options.notifyMembers) await enqueueEventNotifications(tx, event);
 }
 
 /* Create an event as `memberId`. The server decides the id, the organizer
    (always the caller), whether it starts as a proposal, and who starts out
    attending/voting — whatever the client might have said about those is not
    an input. A circle-hosted event opens with its proposer's vote, and is
-   approved on the spot if that alone is a majority (a one-member circle). */
-export async function createEvent(memberId: number, draft: EventDraft): Promise<Event> {
+   approved on the spot if that alone is a majority (a one-member circle).
+
+   A repeating one also creates its series, and with it the dates due in the
+   next few weeks (once it's live — a proposal's wait for its approval). Only
+   the first date notifies anyone; the email says how it repeats. Returns
+   every date created, soonest (the one asked for) first. */
+export async function createEvent(memberId: number, draft: EventDraft): Promise<Event[]> {
   const problem = validateEventDraft(draft);
   if (problem) throw new EventError(problem);
   const viewer = await viewerCircles(memberId);
   const { isRoot } = await assertCanPost(viewer, draft.circleId);
   const hostSize = draft.hostCircleId ? await assertCanHost(viewer, draft.hostCircleId, draft.circleId) : 0;
   if (draft.kind === "meeting" && isRoot) throw new EventError("A meeting needs a circle with its own members — pick a neighborhood or group.");
-  const eventRoles = buildRoles(draft.roles ?? []);
-  const isMeeting = draft.kind === "meeting";
-  const hosted = !!draft.hostCircleId;
-  // the creator attends their own event — except a slotted one, where people
-  // sign up for slots instead, and a circle-hosted one, which opens for RSVPs
-  // only once approved
-  const attends = !hosted && (isMeeting || eventRoles.length === 0);
-  return insertEvent({
-    id: randomUUID(),
+  const template: Template = {
     title: draft.title.trim(),
     kind: draft.kind,
     circleId: draft.circleId,
-    ...(draft.hostCircleId ? { hostCircleId: draft.hostCircleId } : {}),
-    ...(hosted && majority(hostSize) > 1 ? { proposed: true } : {}),
+    hostCircleId: draft.hostCircleId ?? null,
     organizerId: memberId,
-    date: draft.date,
     start: draft.start,
     end: draft.end,
     location: draft.location.trim(),
     description: draft.description.trim(),
-    rsvps: attends ? [memberId] : [],
-    // a meeting or proposal starts with its proposer's vote
-    ...(isMeeting || hosted ? { votes: [memberId] } : {}),
+    roles: draft.roles ?? [],
+  };
+  const proposed = !!draft.hostCircleId && majority(hostSize) > 1;
+  const first = newDate(template, draft.date, { opening: true, proposed });
+  const repeat = draft.repeat;
+  if (!repeat) return [await insertEvent(first, { notifyMembers: true })];
+  const seriesId = randomUUID();
+  await db.transaction(async (tx) => {
+    const [series] = await tx
+      .insert(eventSeries)
+      .values({
+        ...template,
+        id: seriesId,
+        frequency: repeat.frequency,
+        startsOn: draft.date,
+        until: repeat.until ?? null,
+        generatedThrough: draft.date,
+        approvedAt: proposed ? null : new Date(),
+      })
+      .returning();
+    if (!series) throw new EventError("Couldn't save that — try again.");
+    await writeEvent(tx, { ...first, repeat: toRepeat(series) }, { notifyMembers: true });
+    await extendSeries(tx, series);
+  });
+  return loadSeries(seriesId);
+}
+
+// what an event's fixed facts are made from — a draft being created, or a
+// series' saved template for its later dates
+type Template = Pick<SeriesRow, "title" | "kind" | "circleId" | "hostCircleId" | "organizerId" | "start" | "end" | "location" | "description" | "roles">;
+
+/* A date's starting state. The organizer attends their own event — except a
+   slotted one, where people sign up for slots instead, and a circle-hosted
+   one, which opens for RSVPs only once approved — and a meeting opens with
+   their vote, as does a proposal (`opening`: the date the host circle votes
+   on; a series' later dates are approved already). */
+function newDate(t: Template, date: string, { opening, proposed }: { opening: boolean; proposed: boolean }): Event {
+  const isMeeting = t.kind === "meeting";
+  const hosted = t.hostCircleId !== null;
+  const eventRoles = buildRoles(t.roles);
+  const attends = !hosted && (isMeeting || eventRoles.length === 0);
+  return {
+    id: randomUUID(),
+    title: t.title,
+    kind: t.kind ?? undefined,
+    circleId: t.circleId,
+    ...(t.hostCircleId !== null ? { hostCircleId: t.hostCircleId } : {}),
+    ...(proposed ? { proposed: true } : {}),
+    organizerId: t.organizerId,
+    date,
+    start: toClockTime(t.start),
+    end: toClockTime(t.end),
+    location: t.location,
+    description: t.description,
+    rsvps: attends ? [t.organizerId] : [],
+    ...(isMeeting || (hosted && opening) ? { votes: [t.organizerId] } : {}),
     ...(eventRoles.length > 0 ? { roles: eventRoles } : {}),
-  }, { notifyMembers: true });
+  };
+}
+
+/* Add a series' dates up to REPEAT_HORIZON_DAYS from today — none if it's a
+   proposal still waiting on its vote, and none already past. Runs in the
+   caller's transaction, with the series row locked or just created. New
+   dates tell no one: the circle heard about the series when it began. */
+async function extendSeries(tx: Tx, s: SeriesRow, today: string = localDay()): Promise<void> {
+  if (s.approvedAt === null) return;
+  const through = addDays(today, REPEAT_HORIZON_DAYS[s.frequency]);
+  if (through <= s.generatedThrough) return;
+  const yesterday = addDays(today, -1);
+  const after = s.generatedThrough > yesterday ? s.generatedThrough : yesterday;
+  for (const date of datesBetween(s.frequency, s.startsOn, after, through, s.until)) {
+    await writeEvent(tx, { ...newDate(s, date, { opening: false, proposed: false }), repeat: toRepeat(s) });
+  }
+  await tx.update(eventSeries).set({ generatedThrough: through }).where(eq(eventSeries.id, s.id));
+}
+
+/* Top up every live series with the dates now within its horizon — run
+   periodically by lib/series.ts, since a series' next date comes into range
+   just by time passing. Each series is locked while it's extended, so two
+   servers (or a create landing at the same moment) can't add the same date
+   twice. Returns how many series were extended. */
+export async function extendEventSeries(now: Date = new Date()): Promise<number> {
+  const today = localDay(now);
+  const live = await db
+    .select({ id: eventSeries.id, frequency: eventSeries.frequency, generatedThrough: eventSeries.generatedThrough })
+    .from(eventSeries)
+    .where(and(isNotNull(eventSeries.approvedAt), or(isNull(eventSeries.until), lt(eventSeries.generatedThrough, eventSeries.until))));
+  const due = live.filter((s) => s.generatedThrough < addDays(today, REPEAT_HORIZON_DAYS[s.frequency]));
+  for (const { id } of due) {
+    await db.transaction(async (tx) => {
+      const [s] = await tx.select().from(eventSeries).where(eq(eventSeries.id, id)).for("update");
+      if (s) await extendSeries(tx, s, today);
+    });
+  }
+  return due.length;
+}
+
+// every date of a series still in the database, soonest first
+async function loadSeries(seriesId: string): Promise<Event[]> {
+  return attachRelations(await db.select().from(events).where(eq(events.seriesId, seriesId)).orderBy(asc(events.date)));
 }
 
 /* Edit an event's own details — organizer only. Deliberately can't change its
    circle or host circle (that would silently change who can see or vote on
-   it), kind, organizer, or the rsvps/votes, which have their own actions. */
-export async function updateEventDetails(memberId: number, id: string, details: EventDetails): Promise<Event> {
+   it), kind, organizer, or the rsvps/votes, which have their own actions.
+
+   On a date of a repeating event, `scope` says whether this is for just that
+   date or for it and every later one — which also changes the template the
+   dates still to come are made from. The day itself only moves one date at a
+   time. A circle-hosted series still waiting on its vote has just its first
+   date, which is the series so far, so an edit to it is always to both (the
+   day included). Returns every event it changed, the one asked for first. */
+export async function updateEventDetails(memberId: number, id: string, details: EventDetails, scope: SeriesScope = "one"): Promise<Event[]> {
   const row = await loadVisible(memberId, id);
   assertNotCancelled(row);
   if (row.organizerId !== memberId) throw new EventError("Only the person hosting this event can edit it.");
   const kind = row.kind ?? "ordinary";
   const problem = validateEventDraft({ ...details, kind, circleId: row.circleId, ...(row.hostCircleId ? { hostCircleId: row.hostCircleId } : {}) });
   if (problem) throw new EventError(problem);
-  const existing = (await loadFull(id)).roles ?? [];
-  await db.transaction(async (tx) => {
-    await tx
-      .update(events)
-      .set({
-        title: details.title.trim(),
-        date: details.date,
-        start: details.start,
-        end: details.end,
-        location: details.location.trim(),
-        description: details.description.trim(),
-      })
-      .where(eq(events.id, id));
-    await writeRoles(tx, id, buildRoles(details.roles, existing));
+  const seriesId = row.seriesId;
+  const fields = {
+    title: details.title.trim(),
+    start: details.start,
+    end: details.end,
+    location: details.location.trim(),
+    description: details.description.trim(),
+  };
+  const targets = await db.transaction(async (tx) => {
+    // the event before its series, the order setVote locks them in
+    await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
+    const [series] = seriesId !== null ? await tx.select().from(eventSeries).where(eq(eventSeries.id, seriesId)).for("update") : [];
+    const pending = !!series && series.approvedAt === null;
+    let ids = [id];
+    if (series && (scope === "upcoming" || pending)) {
+      if (!pending && details.date !== row.date) throw new EventError("Move one date at a time — save the new day for this date only.");
+      if (pending && series.until !== null && details.date >= series.until) throw new EventError("The first date has to be before the last one.");
+      await tx
+        .update(eventSeries)
+        .set({ ...fields, roles: details.roles, ...(pending ? { startsOn: details.date, generatedThrough: details.date } : {}) })
+        .where(eq(eventSeries.id, series.id));
+      if (!pending) {
+        const later = await tx
+          .select({ id: events.id })
+          .from(events)
+          .where(and(eq(events.seriesId, series.id), gte(events.date, row.date), isNull(events.cancelledAt)));
+        ids = [id, ...later.map((e) => e.id).filter((e) => e !== id)];
+      }
+    }
+    const existing = await attachRelations(await tx.select().from(events).where(inArray(events.id, ids)));
+    for (const target of ids) {
+      await tx
+        .update(events)
+        .set({ ...fields, ...(target === id ? { date: details.date } : {}) })
+        .where(eq(events.id, target));
+      // a slot that keeps its name keeps the people already in it, per date
+      await writeRoles(tx, target, buildRoles(details.roles, existing.find((e) => e.id === target)?.roles));
+    }
+    return ids;
   });
-  return loadFull(id);
+  const saved = await attachRelations(await db.select().from(events).where(inArray(events.id, targets)));
+  return targets.flatMap((t) => saved.filter((e) => e.id === t));
 }
 
 // RSVP to (or leave) a plain event — not a meeting (those attend by voting)
@@ -381,6 +526,16 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
       // approving is what makes it visible to its circle, so tell them — in
       // this same transaction, so an approval can't happen without its emails
       await enqueueProposalApprovalNotifications(tx, locked, memberId);
+      // the first date of a series is the vote on the whole series: approving
+      // it adds the rest, approved and silent (this date's email covers them)
+      if (locked.seriesId !== null) {
+        const [series] = await tx
+          .update(eventSeries)
+          .set({ approvedAt: new Date() })
+          .where(and(eq(eventSeries.id, locked.seriesId), isNull(eventSeries.approvedAt)))
+          .returning();
+        if (series) await extendSeries(tx, series);
+      }
     }
   });
   return loadFull(id);
@@ -423,34 +578,77 @@ export async function toggleRoleSlot(memberId: number, id: string, key: string):
    A proposal's votes are approvals, not RSVPs, so an unapproved one is
    deleted. Either way it's final, and anything still waiting to be sent about
    it (a "new event" email, a digest line) is withdrawn. Decided under a lock
-   on the event, so an RSVP landing at the same moment is counted. */
-export async function cancelEvent(memberId: number, id: string): Promise<{ deleted: true } | { deleted: false; event: Event }> {
+   on the event, so an RSVP landing at the same moment is counted.
+
+   On a date of a repeating event, `scope: "upcoming"` does that to this date
+   and every later one, and ends the series the day before — so no more are
+   added. Someone going to several of them gets one email, about the soonest,
+   which says the rest are off too. A circle-hosted series still waiting on its
+   vote has only this date, so cancelling it always ends the series. Returns
+   the ids deleted, and every remaining date of the series (or just this
+   event) as it now stands. */
+export async function cancelEvent(memberId: number, id: string, scope: SeriesScope = "one"): Promise<{ deletedIds: string[]; events: Event[] }> {
   const row = await loadVisible(memberId, id);
   if (row.organizerId !== memberId) throw new EventError("Only the person hosting this event can cancel it.");
   assertNotCancelled(row);
   if (isPastEvent(row)) throw new EventError("This event has already happened.");
-  const deleted = await db.transaction(async (tx) => {
+  const seriesId = row.seriesId;
+  const deletedIds = await db.transaction(async (tx) => {
     await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
-    const eventRoles = await tx.select({ id: roles.id }).from(roles).where(eq(roles.eventId, id));
-    const roleIds = eventRoles.map((r) => r.id);
-    const [rsvpRows, slotRows] = await Promise.all([
-      tx.select({ memberId: eventRsvps.memberId }).from(eventRsvps).where(eq(eventRsvps.eventId, id)),
-      roleIds.length > 0 ? tx.select({ memberId: roleMembers.memberId }).from(roleMembers).where(inArray(roleMembers.roleId, roleIds)) : Promise.resolve([]),
-    ]);
-    const going = [...new Set([...rsvpRows, ...slotRows].map((r) => r.memberId))].filter((m) => m !== memberId);
-    await withdrawEventNotifications(tx, id);
-    if (going.length === 0) {
-      if (roleIds.length > 0) await tx.delete(roleMembers).where(inArray(roleMembers.roleId, roleIds));
-      await tx.delete(roles).where(eq(roles.eventId, id));
-      await tx.delete(eventVotes).where(eq(eventVotes.eventId, id));
-      await tx.delete(eventRsvps).where(eq(eventRsvps.eventId, id));
-      await tx.delete(eventNotifications).where(eq(eventNotifications.eventId, id));
-      await tx.delete(events).where(eq(events.id, id));
-      return true;
+    const [series] = seriesId !== null ? await tx.select().from(eventSeries).where(eq(eventSeries.id, seriesId)).for("update") : [];
+    if (!series || (scope === "one" && series.approvedAt !== null)) {
+      const { deleted, going } = await cancelOne(tx, id, memberId);
+      if (!deleted) await enqueueCancellationNotifications(tx, id, going);
+      return deleted ? [id] : [];
     }
-    await tx.update(events).set({ cancelledAt: new Date() }).where(eq(events.id, id));
-    await enqueueCancellationNotifications(tx, id, going);
-    return false;
+    const later = await tx
+      .select({ id: events.id })
+      .from(events)
+      .where(and(eq(events.seriesId, series.id), gte(events.date, row.date), isNull(events.cancelledAt)))
+      .orderBy(asc(events.date));
+    const deleted: string[] = [];
+    // each person is told once, about the soonest date they were going to
+    const told = new Set<number>();
+    for (const { id: target } of later) {
+      if (target !== id) await tx.select({ id: events.id }).from(events).where(eq(events.id, target)).for("update");
+      const result = await cancelOne(tx, target, memberId);
+      if (result.deleted) deleted.push(target);
+      const tell = result.going.filter((m) => !told.has(m));
+      tell.forEach((m) => told.add(m));
+      if (!result.deleted) await enqueueCancellationNotifications(tx, target, tell);
+    }
+    const dayBefore = addDays(row.date, -1);
+    await tx
+      .update(eventSeries)
+      .set({ until: series.until !== null && series.until < dayBefore ? series.until : dayBefore })
+      .where(eq(eventSeries.id, series.id));
+    return deleted;
   });
-  return deleted ? { deleted: true } : { deleted: false, event: await loadFull(id) };
+  return { deletedIds, events: seriesId !== null ? await loadSeries(seriesId) : deletedIds.includes(id) ? [] : [await loadFull(id)] };
+}
+
+/* cancelEvent's work on one event, whose row the caller has locked: deleted
+   if no one but the organizer was going, otherwise marked cancelled — and
+   either way anything unsent about it withdrawn. Returns who was going, for
+   the caller to decide who's emailed. */
+async function cancelOne(tx: Tx, id: string, organizerId: number): Promise<{ deleted: boolean; going: number[] }> {
+  const eventRoles = await tx.select({ id: roles.id }).from(roles).where(eq(roles.eventId, id));
+  const roleIds = eventRoles.map((r) => r.id);
+  const [rsvpRows, slotRows] = await Promise.all([
+    tx.select({ memberId: eventRsvps.memberId }).from(eventRsvps).where(eq(eventRsvps.eventId, id)),
+    roleIds.length > 0 ? tx.select({ memberId: roleMembers.memberId }).from(roleMembers).where(inArray(roleMembers.roleId, roleIds)) : Promise.resolve([]),
+  ]);
+  const going = [...new Set([...rsvpRows, ...slotRows].map((r) => r.memberId))].filter((m) => m !== organizerId);
+  await withdrawEventNotifications(tx, id);
+  if (going.length === 0) {
+    if (roleIds.length > 0) await tx.delete(roleMembers).where(inArray(roleMembers.roleId, roleIds));
+    await tx.delete(roles).where(eq(roles.eventId, id));
+    await tx.delete(eventVotes).where(eq(eventVotes.eventId, id));
+    await tx.delete(eventRsvps).where(eq(eventRsvps.eventId, id));
+    await tx.delete(eventNotifications).where(eq(eventNotifications.eventId, id));
+    await tx.delete(events).where(eq(events.id, id));
+    return { deleted: true, going };
+  }
+  await tx.update(events).set({ cancelledAt: new Date() }).where(eq(events.id, id));
+  return { deleted: false, going };
 }

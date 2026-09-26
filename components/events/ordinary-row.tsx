@@ -9,6 +9,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending } from "@/lib/events.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import { hasRoles, shiftCancelled } from "@/lib/roles.util";
+import { REPEAT_SHORT_LABEL } from "@/lib/recurrence.util";
 import type { Event } from "@/lib/types";
 
 interface OrdinaryRowProps {
@@ -44,7 +45,7 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
       tags={
         <>
           <Eyebrow className="text-soft">
-            {fmtTime(e.start)}–{fmtTime(e.end)}
+            {fmtTime(e.start)}–{fmtTime(e.end)}{e.repeat && ` · ${REPEAT_SHORT_LABEL[e.repeat.frequency]}`}
           </Eyebrow>
         </>
       }

@@ -1,4 +1,5 @@
-import type { Event, EventKindKey } from "./types";
+import { REPEAT_FREQUENCIES } from "./recurrence.util";
+import type { Event, EventKindKey, RepeatFrequency } from "./types";
 
 /* What a person submits to create an event, and the checks on it — shared by
    the event form (instant feedback) and lib/db/events.ts (the authoritative
@@ -34,7 +35,16 @@ export interface EventDraft {
   location: string;
   description: string;
   roles?: RoleDraft[];
+  // repeat on a weekly or monthly pattern read from `date`, until an optional
+  // last date — only when creating, and not a meeting (yet); see
+  // lib/recurrence.util.ts
+  repeat?: { frequency: RepeatFrequency; until?: string };
 }
+
+// which dates of a repeating event an edit or a cancellation applies to: the
+// one being looked at, or it and every later one (and the series' own
+// template, for the dates still to be added)
+export type SeriesScope = "one" | "upcoming";
 
 // the part of an event its host can edit afterward — not its circle, kind,
 // organizer, rsvps or votes; `roles` is the slot definitions (empty removes them)
@@ -64,6 +74,11 @@ export function validateEventDraft(d: EventDraft): string | null {
   if (d.location.trim().length > EVENT_LOCATION_MAX) return `Keep the location under ${EVENT_LOCATION_MAX} characters.`;
   if (d.description.length > EVENT_DESCRIPTION_MAX) return "That description is too long.";
   if (d.hostCircleId && d.kind === "meeting") return "A meeting is proposed by you, not hosted by a circle.";
+  if (d.repeat) {
+    if (d.kind === "meeting") return "A meeting can't repeat yet — propose each one on its own.";
+    if (!REPEAT_FREQUENCIES.includes(d.repeat.frequency)) return "Pick how often it repeats.";
+    if (d.repeat.until !== undefined && (!isDay(d.repeat.until) || d.repeat.until <= d.date)) return "The last date has to be after the first.";
+  }
   const roles = d.roles ?? [];
   if (roles.length > 0 && d.kind === "meeting") return "A meeting can't have signup slots.";
   if (roles.length > MAX_ROLES) return `Keep it to ${MAX_ROLES} slots or fewer.`;

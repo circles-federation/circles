@@ -10,6 +10,7 @@ import { isApproved, isProposal, voteCount, voteThreshold } from "@/lib/governan
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending } from "@/lib/events.util";
 import { useCirclesById } from "@/lib/hooks";
+import { REPEAT_SHORT_LABEL } from "@/lib/recurrence.util";
 import type { Event } from "@/lib/types";
 
 interface GovernanceRowProps {
@@ -54,7 +55,7 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
       metaMuted={past || !!e.cancelled}
       tags={
         <>
-          <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}</Eyebrow>
+          <Eyebrow className="text-soft">{fmtTime(e.start)}–{fmtTime(e.end)}{e.repeat && ` · ${REPEAT_SHORT_LABEL[e.repeat.frequency]}`}</Eyebrow>
           {statusText && (
             <span className={clsx("font-sans text-label font-bold tracking-[0.08em] uppercase", hideOnMobile && "hidden min-[720px]:inline", approved ? "text-leaf" : past ? "text-soft" : "text-flame")}>
               {statusText}

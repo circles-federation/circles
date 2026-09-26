@@ -5,7 +5,7 @@ import { notFound, useParams, useRouter } from "next/navigation";
 import { EventFormPage } from "@/components/events/event-form.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isEventOrganizer } from "@/lib/governance.util";
-import type { EventDetails } from "@/lib/events.util";
+import type { EventDetails, SeriesScope } from "@/lib/events.util";
 import type { Event } from "@/lib/types";
 
 function EditEvent() {
@@ -21,18 +21,23 @@ function EditEvent() {
   // only the person hosting an event can edit it (the server enforces this
   // too); anyone else has no edit page to land on, and nor does a cancelled one
   if (!event || !isEventOrganizer(event, profile) || (event.cancelled && !cancelling)) notFound();
+  const seriesId = event.repeat?.seriesId;
+  const laterDates = seriesId
+    ? events.filter((e) => e.repeat?.seriesId === seriesId && e.date >= event.date && !e.cancelled).sort((a, b) => a.date.localeCompare(b.date))
+    : [];
 
   return (
     <EventFormPage
       mode="edit"
       event={event}
+      laterDates={laterDates}
       profile={profile}
       circles={circles}
       // replace, not push: the form is done with, so its history entry
       // should be too — otherwise the back button lands on the now-stale
       // edit form instead of the event itself.
-      onSave={async (details: EventDetails) => {
-        const result = await updateEventDetails(event.id, details);
+      onSave={async (details: EventDetails, scope: SeriesScope) => {
+        const result = await updateEventDetails(event.id, details, scope);
         if (result.ok) router.replace(`/events/${event.id}`);
         return result;
       }}
@@ -44,9 +49,9 @@ function EditEvent() {
       onCancel={() => router.back()}
       // replace again: to the event, now marked cancelled, or — if no one else
       // was going and it was deleted — to the list, as it has no page any more
-      onCancelEvent={async () => {
+      onCancelEvent={async (scope: SeriesScope) => {
         setCancelling(event);
-        const result = await cancelEvent(event.id);
+        const result = await cancelEvent(event.id, scope);
         if (!result.ok) setCancelling(null);
         if (result.ok) router.replace(result.deleted ? "/events" : `/events/${event.id}`);
         return result.ok ? { ok: true } : result;

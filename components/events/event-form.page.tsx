@@ -7,10 +7,11 @@ import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isRootCircle, isWithinCircle } from "@/lib/circles.util";
-import { attendeeIds, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft } from "@/lib/events.util";
+import { attendeeIds, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
-import { EVENT_KINDS, majority } from "@/lib/governance.util";
-import type { Circle, Event, EventKindKey, Profile } from "@/lib/types";
+import { EVENT_KINDS, isProposal, majority } from "@/lib/governance.util";
+import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
+import type { Circle, Event, EventKindKey, Profile, RepeatFrequency } from "@/lib/types";
 
 const DEFAULT_START = "18:00";
 const DEFAULT_END = "20:00";
@@ -48,10 +49,14 @@ interface CreateEventFormPageProps extends EventFormPageBaseProps {
 interface EditEventFormPageProps extends EventFormPageBaseProps {
   mode: "edit";
   event: Event;
-  onSave: (details: EventDetails) => Promise<SaveResult>;
+  // for a date of a repeating event: it and every later date not already
+  // cancelled, soonest first — what "this and later dates" would touch
+  laterDates: Event[];
+  // `scope` is for a date of a repeating event: this one, or it and every later one
+  onSave: (details: EventDetails, scope: SeriesScope) => Promise<SaveResult>;
   // cancel the event outright (see cancelEvent in lib/db/events.ts); the route
   // then leaves the form, for the event or, if it was deleted, the list
-  onCancelEvent: () => Promise<SaveResult>;
+  onCancelEvent: (scope: SeriesScope) => Promise<SaveResult>;
 }
 
 type EventFormPageProps = CreateEventFormPageProps | EditEventFormPageProps;
@@ -127,7 +132,17 @@ export function EventFormPage(props: EventFormPageProps) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  // which dates cancelling applies to, while its confirmation is open
+  const [confirmingCancel, setConfirmingCancel] = useState<SeriesScope | null>(null);
+  // "" doesn't repeat; the last date is optional. Chosen only when creating.
+  const [repeat, setRepeat] = useState<RepeatFrequency | "">("");
+  const [until, setUntil] = useState("");
+  // editing a date of a live series: that date alone, or every date from it on.
+  // A circle-hosted series still up for its vote has just its first date, so
+  // there's nothing to choose — an edit to it is to the series.
+  const series = event?.repeat;
+  const seriesLive = !!event && !!series && !isProposal(event);
+  const [scope, setScope] = useState<SeriesScope>("one");
 
   const meta = EVENT_KINDS[type];
   const gov = meta.governance;
@@ -172,7 +187,9 @@ export function EventFormPage(props: EventFormPageProps) {
     location.trim() !== initialValues.location.trim() ||
     description.trim() !== initialValues.description.trim() ||
     useSlots !== initialValues.useSlots ||
-    JSON.stringify(slots) !== JSON.stringify(initialValues.slots);
+    JSON.stringify(slots) !== JSON.stringify(initialValues.slots) ||
+    repeat !== "" ||
+    until !== "";
 
   // picking a different circle to show it to can leave the chosen host outside
   // it, so drop back to hosting it yourself
@@ -184,8 +201,13 @@ export function EventFormPage(props: EventFormPageProps) {
   function changeType(next: EventKindKey) {
     setType(next);
     setError("");
-    // a meeting is proposed by the person, not hosted by a circle
-    if (EVENT_KINDS[next].governance) setHostCircleId("");
+    // a meeting is proposed by the person, not hosted by a circle, and
+    // doesn't repeat (yet)
+    if (EVENT_KINDS[next].governance) {
+      setHostCircleId("");
+      setRepeat("");
+      setUntil("");
+    }
     // the city can't hold a meeting, so step off it when switching to one
     if (EVENT_KINDS[next].governance && circle && isRootCircle(circle)) {
       setCircleId(postable.find((c) => !isRootCircle(c))?.id ?? "");
@@ -219,7 +241,10 @@ export function EventFormPage(props: EventFormPageProps) {
       roles,
     };
     if (!gov && useSlots && roles.length === 0) return { details, problem: "Add at least one slot, or turn off slots." };
-    return { details, problem: validateEventDraft({ ...details, kind: type, circleId, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}) }) };
+    return { details, problem: validateEventDraft({ ...details, kind: type, circleId, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}), ...repeatDraft() }) };
+  }
+  function repeatDraft(): Pick<EventDraft, "repeat"> {
+    return repeat ? { repeat: { frequency: repeat, ...(until ? { until } : {}) } } : {};
   }
   const draftProblem = buildDraft().problem;
   // and, when editing, only once something's changed — saving the event as it
@@ -235,8 +260,8 @@ export function EventFormPage(props: EventFormPageProps) {
     setError("");
     setBusy(true);
     const result = mode === "edit"
-      ? await props.onSave(details)
-      : await props.onCreate({ ...details, kind: type, circleId, roles, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}) });
+      ? await props.onSave(details, scope)
+      : await props.onCreate({ ...details, kind: type, circleId, roles, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}), ...repeatDraft() });
     setBusy(false);
     if (!result.ok) fail(result.error);
   }
@@ -244,14 +269,20 @@ export function EventFormPage(props: EventFormPageProps) {
   // who else is going (the organizer doesn't count): decides whether cancelling
   // keeps it, marked cancelled, or deletes it — the server decides for real
   const othersGoing = event ? attendeeIds(event).filter((m) => m !== profile.id).length : 0;
-  async function cancelTheEvent() {
+  // the same across every date from this one on, for cancelling them all
+  const laterDates = mode === "edit" ? props.laterDates : [];
+  const othersGoingLater = new Set(laterDates.flatMap((e) => attendeeIds(e)).filter((m) => m !== profile.id)).size;
+  async function cancelTheEvent(cancelScope: SeriesScope) {
     if (mode !== "edit" || busy) return;
-    setConfirmingCancel(false);
+    setConfirmingCancel(null);
     setBusy(true);
-    const result = await props.onCancelEvent();
+    const result = await props.onCancelEvent(cancelScope);
     setBusy(false);
     if (!result.ok) fail(result.error);
   }
+  const noun = gov ? "meeting" : "event";
+  const cancelLabel = (s: SeriesScope) =>
+    s === "upcoming" ? "Cancel this and later dates" : `${othersGoing > 0 ? "Cancel" : "Delete"} ${seriesLive ? "this date" : noun}`;
 
   const submitLabel = mode === "edit" ? "Save changes" : (gov ? "Propose meeting" : hostCircle ? "Propose event" : "Create event");
   useTopBarAction({ label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" });
@@ -437,7 +468,8 @@ export function EventFormPage(props: EventFormPageProps) {
         <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
           <div>
             <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            {/* the day only moves one date at a time */}
+            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={seriesLive && scope === "upcoming"} />
           </div>
           <div className="grid grid-cols-2 gap-3.5 min-[720px]:col-span-2">
             <div>
@@ -450,6 +482,56 @@ export function EventFormPage(props: EventFormPageProps) {
             </div>
           </div>
         </div>
+
+        {mode === "create" ? (!gov && (
+          <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
+            <div className={repeat ? "min-[720px]:col-span-2" : "min-[720px]:col-span-3"}>
+              <Label htmlFor="repeat">Repeats</Label>
+              <Select id="repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as RepeatFrequency | "")}>
+                <option value="">Doesn&apos;t repeat</option>
+                {REPEAT_FREQUENCIES.map((f) => (
+                  <option key={f} value={f}>{repeatLabel(f, date)}</option>
+                ))}
+              </Select>
+            </div>
+            {repeat && (
+              <div>
+                <Label htmlFor="until">Until (optional)</Label>
+                <Input id="until" type="date" value={until} min={date || undefined} onChange={(e) => setUntil(e.target.value)} />
+              </div>
+            )}
+            {repeat && (
+              <p className="font-serif text-sm leading-[1.45] text-soft min-[720px]:col-span-3">
+                Each date is its own event, with its own {useSlots ? "slots" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
+                {hostCircle
+                  ? `${hostCircle.name} votes once, on the first date: approving it approves them all.`
+                  : "Members are told once, when it's created."}
+              </p>
+            )}
+          </div>
+        )) : series && (
+          <div>
+            <Label htmlFor="scope">Repeats</Label>
+            <p className="mb-2.5 font-serif text-base">{repeatSummary(series)}</p>
+            {seriesLive ? (
+              <>
+                <Select id="scope" value={scope} onChange={(e) => { setScope(e.target.value as SeriesScope); setDate(initialValues.date); }}>
+                  <option value="one">Save changes to this date only</option>
+                  <option value="upcoming">Save changes to this and later dates</option>
+                </Select>
+                <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+                  {scope === "upcoming"
+                    ? `Changes apply to this date${laterDates.length > 1 ? `, the ${laterDates.length === 2 ? "one" : laterDates.length - 1} after it,` : ""} and every date still to come. The day itself can only be moved one date at a time.`
+                    : "Only this date changes; the others stay as they are."}
+                </p>
+              </>
+            ) : (
+              <p className="font-serif text-sm leading-[1.45] text-soft">
+                While it&apos;s waiting on its vote, changes apply to the whole series.
+              </p>
+            )}
+          </div>
+        )}
 
         <div>
           <Label htmlFor="location">Location</Label>
@@ -474,29 +556,41 @@ export function EventFormPage(props: EventFormPageProps) {
           since it isn't one of the form's own buttons */}
       {mode === "edit" && !isPastEvent(props.event) && (
         <div className="mt-8 border-t border-ink pt-5.5">
-          <Eyebrow className="text-soft">Cancel {gov ? "meeting" : "event"}</Eyebrow>
+          <Eyebrow className="text-soft">Cancel {noun}</Eyebrow>
           <p className="mt-2 mb-4 font-serif text-sm leading-normal text-soft">
             {othersGoing > 0
               ? `Everyone going will be emailed, and it'll stay listed as cancelled.`
               : `No one else is going yet, so it'll be deleted.`}{" "}
+            {seriesLive && "Cancelling this and later dates also stops new ones being added. "}
             This can&apos;t be undone.
           </p>
-          <Button variant="danger" onClick={() => setConfirmingCancel(true)} disabled={busy}>
-            {othersGoing > 0 ? `Cancel ${gov ? "meeting" : "event"}` : `Delete ${gov ? "meeting" : "event"}`}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="danger" onClick={() => setConfirmingCancel("one")} disabled={busy}>
+              {cancelLabel("one")}
+            </Button>
+            {seriesLive && (
+              <Button variant="danger" onClick={() => setConfirmingCancel("upcoming")} disabled={busy}>
+                {cancelLabel("upcoming")}
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
       {confirmingCancel && (
         <ConfirmModal
-          title={`Cancel this ${gov ? "meeting" : "event"}?`}
-          message={othersGoing > 0
-            ? `${othersGoing} ${othersGoing === 1 ? "person is" : "people are"} going. They'll be emailed that it's cancelled, and it'll stay listed as cancelled. This can't be undone.`
-            : "No one else is going, so it'll be deleted. This can't be undone."}
-          confirmLabel={othersGoing > 0 ? `Cancel ${gov ? "meeting" : "event"}` : `Delete ${gov ? "meeting" : "event"}`}
+          title={confirmingCancel === "upcoming" ? "Cancel this and later dates?" : `Cancel this ${seriesLive ? "date" : noun}?`}
+          message={confirmingCancel === "upcoming"
+            ? `That's ${laterDates.length} date${laterDates.length === 1 ? "" : "s"} so far, and no more will be added. ${othersGoingLater > 0
+                ? `${othersGoingLater} ${othersGoingLater === 1 ? "person is" : "people are"} going to at least one — they'll each get one email, and those dates stay listed as cancelled. Dates no one else is going to are deleted.`
+                : "No one else is going to any of them, so they'll be deleted."} This can't be undone.`
+            : othersGoing > 0
+              ? `${othersGoing} ${othersGoing === 1 ? "person is" : "people are"} going. They'll be emailed that it's cancelled, and it'll stay listed as cancelled. This can't be undone.`
+              : `No one else is going, so it'll be deleted. This can't be undone.`}
+          confirmLabel={cancelLabel(confirmingCancel)}
           cancelLabel="Keep it"
-          onConfirm={cancelTheEvent}
-          onCancel={() => setConfirmingCancel(false)}
+          onConfirm={() => cancelTheEvent(confirmingCancel)}
+          onCancel={() => setConfirmingCancel(null)}
         />
       )}
 

@@ -11,7 +11,7 @@ import * as resources from "./resources";
 import { deliverEventNotifications } from "@/lib/notify";
 import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
-import type { EventDetails, EventDraft } from "@/lib/events.util";
+import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { Circle, Member } from "@/lib/types";
 
@@ -92,15 +92,17 @@ export async function createEventAction(draft: EventDraft) {
   return result;
 }
 
-export async function updateEventDetailsAction(id: string, details: EventDetails) {
-  return asMember((memberId) => events.updateEventDetails(memberId, id, details));
+// `scope` is for a date of a repeating event: that date alone, or it and every
+// later one (see lib/db/events.ts)
+export async function updateEventDetailsAction(id: string, details: EventDetails, scope: SeriesScope = "one") {
+  return asMember((memberId) => events.updateEventDetails(memberId, id, details, scope));
 }
 
 // cancelling may have queued emails to the people who were going, which go
 // out once the response is sent, as a new event's do
-export async function cancelEventAction(id: string) {
-  const result = await asMember((memberId) => events.cancelEvent(memberId, id));
-  if (result.ok && !result.value.deleted) after(() => deliverEventNotifications());
+export async function cancelEventAction(id: string, scope: SeriesScope = "one") {
+  const result = await asMember((memberId) => events.cancelEvent(memberId, id, scope));
+  if (result.ok && result.value.events.some((e) => e.cancelled)) after(() => deliverEventNotifications());
   return result;
 }
 

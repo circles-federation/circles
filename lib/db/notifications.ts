@@ -1,11 +1,11 @@
 import { and, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
-import { circleMembers, circles, eventNotifications, members, events } from "./schema";
+import { circleMembers, circles, eventNotifications, eventSeries, members, events } from "./schema";
 import type { DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
-import type { Event, NotificationKind } from "@/lib/types";
+import type { Event, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The queue behind "email a circle's members about a new event". Deciding who
    is emailed lives here (next to the data), sending lives in lib/notify.ts —
@@ -49,8 +49,17 @@ async function queueFor(tx: Tx, eventId: string, kind: NotificationKind, circleI
   return recipients.length;
 }
 
+// how an event repeats, for the email to say — from its series' columns (all
+// null for a one-off, through the left join)
+const seriesColumns = { frequency: eventSeries.frequency, startsOn: eventSeries.startsOn, until: eventSeries.until };
+function toRepeat({ frequency, startsOn, until }: { frequency: EventRepeat["frequency"] | null; startsOn: string | null; until: string | null }) {
+  return frequency !== null && startsOn !== null ? { repeat: { frequency, startsOn, ...(until !== null ? { until } : {}) } } : {};
+}
+
 /* Queue the notifications for a just-created event — inside the transaction
-   that creates it. Who's told, by case:
+   that creates it. For a repeating event that's its first date only; the
+   email says how it repeats, and later dates tell no one (see extendSeries in
+   lib/db/events.ts). Who's told, by case:
 
    - An event or meeting hosted by a person ("new"): the members of the circle
      it's shown to.
@@ -174,6 +183,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
         hostSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.hostCircleId})`,
         circleSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.circleId})`,
         organizerName: organizer.name,
+        ...seriesColumns,
       })
       .from(eventNotifications)
       .innerJoin(events, eq(events.id, eventNotifications.eventId))
@@ -181,8 +191,9 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       .innerJoin(members, eq(members.id, eventNotifications.memberId))
       .innerJoin(organizer, eq(organizer.id, events.organizerId))
       .leftJoin(hostCircle, eq(hostCircle.id, events.hostCircleId))
+      .leftJoin(eventSeries, eq(eventSeries.id, events.seriesId))
       .where(isDue);
-    return rows.flatMap(({ approvedAt, hostSize, circleSize, hostCircleName, ...r }) =>
+    return rows.flatMap(({ approvedAt, hostSize, circleSize, hostCircleName, frequency, startsOn, until, ...r }) =>
       r.email
         ? [
             {
@@ -192,6 +203,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
               start: r.start.slice(0, 5),
               end: r.end.slice(0, 5),
               ...(hostCircleName ? { hostCircleName } : {}),
+              ...toRepeat({ frequency, startsOn, until }),
               // read now, not when queued: it may have been approved since
               proposed: !!hostCircleName && approvedAt === null,
               // a proposal is voted on by its host circle, a meeting by its own
@@ -269,6 +281,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
         circleName: circles.name,
         hostCircleName: hostCircle.name,
         organizerName: organizer.name,
+        ...seriesColumns,
       })
       .from(eventNotifications)
       .innerJoin(events, eq(events.id, eventNotifications.eventId))
@@ -276,6 +289,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
       .innerJoin(members, eq(members.id, eventNotifications.memberId))
       .innerJoin(organizer, eq(organizer.id, events.organizerId))
       .leftJoin(hostCircle, eq(hostCircle.id, events.hostCircleId))
+      .leftJoin(eventSeries, eq(eventSeries.id, events.seriesId))
       .where(isTaken);
     const byMember = new Map<number, PendingDigest>();
     for (const t of taken) {
@@ -284,7 +298,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
       if (digest) digest.keys.push(key);
       else byMember.set(t.memberId, { memberId: t.memberId, email: "", keys: [key], events: [] });
     }
-    for (const { hostCircleName, ...r } of rows) {
+    for (const { hostCircleName, frequency, startsOn, until, ...r } of rows) {
       const digest = byMember.get(r.memberId);
       if (!digest) continue;
       digest.email = r.email ?? "";
@@ -295,6 +309,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
         start: r.start.slice(0, 5),
         end: r.end.slice(0, 5),
         ...(hostCircleName ? { hostCircleName } : {}),
+        ...toRepeat({ frequency, startsOn, until }),
       });
     }
     return [...byMember.values()];

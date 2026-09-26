@@ -21,8 +21,9 @@ import {
 } from "@/lib/db/actions";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
-import type { EventDetails, EventDraft } from "@/lib/events.util";
+import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { isProposal, voteThreshold } from "@/lib/governance.util";
+import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
 
@@ -42,8 +43,8 @@ export interface AppStateValue {
   toggleRsvp(eventId: string): void;
   toggleRoleSlot(eventId: string, roleKey: string): void;
   createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }>;
-  updateEventDetails(id: string, details: EventDetails): Promise<MutationResult>;
-  cancelEvent(id: string): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }>;
+  updateEventDetails(id: string, details: EventDetails, scope?: SeriesScope): Promise<MutationResult>;
+  cancelEvent(id: string, scope?: SeriesScope): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }>;
   toggleVote(eventId: string): void;
   saveCircle(id: string, patch: Partial<Circle>): void;
   saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult>;
@@ -84,6 +85,13 @@ const AWAY_LONG_MS = 60_000;
 // a refresh started this soon after a change is dropped, in case it read the
 // database before that change landed
 const RECENT_WRITE_MS = 10_000;
+
+// replace each of `changed` in `prev` by id, adding any that are new — for an
+// action that answers with several events (the dates of a repeating one)
+function mergeEvents(prev: Event[], changed: Event[]): Event[] {
+  const byId = new Map(changed.map((e) => [e.id, e]));
+  return [...prev.map((e) => byId.get(e.id) ?? e), ...changed.filter((e) => !prev.some((p) => p.id === e.id))];
+}
 
 // { [eventId]: true } for the events the current user has RSVPed to, voted on, ...
 function ownFlags(events: Event[], has: (e: Event) => boolean): Record<string, boolean> {
@@ -282,10 +290,15 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   async function createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }> {
     const result = await dbCreateEvent(draft);
     if (!result.ok) return result;
-    const ev = result.value;
-    setEvents((prev) => [...prev, ev]);
-    if (ev.rsvps.includes(currentUserId)) setRsvpState((prev) => ({ ...prev, [ev.id]: true })); // creator is attending
-    if (ev.votes && ev.votes.includes(currentUserId)) setVoteState((prev) => ({ ...prev, [ev.id]: true })); // proposer's first vote
+    // the event, and for a repeating one its next few dates
+    const created = result.value;
+    const ev = created[0];
+    if (!ev) return { ok: false, error: "Something went wrong — try again." };
+    setEvents((prev) => [...prev, ...created]);
+    // the creator is attending; a proposer has cast the first vote
+    setRsvpState((prev) => ({ ...prev, ...ownFlags(created, (e) => e.rsvps.includes(currentUserId)) }));
+    setVoteState((prev) => ({ ...prev, ...ownFlags(created, (e) => !!e.votes?.includes(currentUserId)) }));
+    const repeats = ev.repeat ? ` It repeats ${repeatSummary(ev.repeat).replace(/^./, (c) => c.toLowerCase())}.` : "";
     const circle = circles.find((c) => c.id === ev.circleId);
     const hostCircle = ev.hostCircleId ? circles.find((c) => c.id === ev.hostCircleId) : undefined;
     if (isProposal(ev)) {
@@ -294,7 +307,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       showToast({
         tone: "success",
         title: "Event proposed",
-        message: `Only ${noun} of ${hostCircle?.name ?? "the circle"} can see it for now. Once a majority approves it, it opens to ${circle ? audienceLabel(circle) : "its circle"}.`,
+        message: `Only ${noun} of ${hostCircle?.name ?? "the circle"} can see it for now. Once a majority approves it, it opens to ${circle ? audienceLabel(circle) : "its circle"}${ev.repeat ? ", every date of it" : ""}.`,
       });
     } else if (ev.kind === "meeting") {
       // "residents" reads naturally for a neighborhood; any other circle just
@@ -314,7 +327,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       showToast({
         tone: "success",
         title: "Event created",
-        message: `${ev.title} is on the calendar for ${circle && circle.parentId !== null ? `members of ${circle.name}` : "everyone"}.`,
+        message: `${ev.title} is on the calendar for ${circle && circle.parentId !== null ? `members of ${circle.name}` : "everyone"}.${repeats}`,
       });
     }
     return { ok: true, event: ev };
@@ -323,35 +336,49 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // save edits to an event's own details (title/date/location/slots/etc.) from
   // the edit-event form — organizer only, enforced by the server; the circle,
   // kind, rsvps and votes aren't editable here (toggleRsvp/toggleVote own those)
-  async function updateEventDetails(id: string, details: EventDetails): Promise<MutationResult> {
-    const result = await dbUpdateEventDetails(id, details);
+  // `scope` is for a date of a repeating event: that one, or every date from it on
+  async function updateEventDetails(id: string, details: EventDetails, scope: SeriesScope = "one"): Promise<MutationResult> {
+    const result = await dbUpdateEventDetails(id, details, scope);
     if (!result.ok) return result;
-    setEvents((prev) => prev.map((e) => (e.id === id ? result.value : e)));
+    setEvents((prev) => mergeEvents(prev, result.value));
     showToast({
       tone: "success",
       title: "Changes saved",
-      message: "Your edits are now live for everyone who can see this event.",
+      message: result.value.length > 1
+        ? `Your edits are now live on this date and the ${result.value.length - 1} after it, and on every date still to come.`
+        : "Your edits are now live for everyone who can see this event.",
     });
     return { ok: true };
   }
 
   // await-then-update: the server decides between keeping it, cancelled, for the
   // people who were going, and deleting it outright when no one else was
-  async function cancelEvent(id: string): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }> {
-    const result = await dbCancelEvent(id).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+  // `scope: "upcoming"` on a date of a repeating event cancels it and every
+  // later date, and ends the series — the answer is every date deleted, and
+  // every one left as it now stands
+  async function cancelEvent(id: string, scope: SeriesScope = "one"): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }> {
+    const result = await dbCancelEvent(id, scope).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
-    if (result.value.deleted) {
-      setEvents((prev) => prev.filter((e) => e.id !== id));
-      const drop = (prev: Record<string, boolean>) => Object.fromEntries(Object.entries(prev).filter(([key]) => key !== id));
-      setRsvpState(drop);
-      setVoteState(drop);
+    const { deletedIds, events: changed } = result.value;
+    const gone = new Set(deletedIds);
+    setEvents((prev) => mergeEvents(prev.filter((e) => !gone.has(e.id)), changed));
+    const drop = (prev: Record<string, boolean>) => Object.fromEntries(Object.entries(prev).filter(([key]) => !gone.has(key)));
+    setRsvpState(drop);
+    setVoteState(drop);
+    const deleted = gone.has(id);
+    const emailed = changed.some((e) => e.cancelled && !events.find((p) => p.id === e.id)?.cancelled);
+    if (scope === "upcoming") {
+      showToast({
+        tone: "success",
+        title: "Dates cancelled",
+        message: `This date and every later one are off, and no more will be added.${emailed ? " Everyone who was going is being emailed." : ""}`,
+      });
+    } else if (deleted) {
       showToast({ tone: "success", title: "Event deleted", message: "No one else was going, so it's been removed." });
     } else {
-      const cancelled = result.value.event;
-      setEvents((prev) => prev.map((e) => (e.id === id ? cancelled : e)));
       showToast({ tone: "success", title: "Event cancelled", message: "Everyone who was going is being emailed." });
     }
-    return { ok: true, deleted: result.value.deleted };
+    return { ok: true, deleted };
   }
 
   // voting on a meeting and RSVPing to it are the same act — meetings are
