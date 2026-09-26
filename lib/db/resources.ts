@@ -25,6 +25,8 @@ function toResource(row: ResourceRow): CircleResource {
     icon: row.icon,
     ...(row.url !== null ? { url: row.url } : {}),
     ...(row.message !== null ? { message: row.message } : {}),
+    createdAt: row.createdAt.toISOString(),
+    ...(row.createdBy !== null ? { createdBy: row.createdBy } : {}),
   };
 }
 
@@ -76,7 +78,7 @@ async function loadResource(id: string): Promise<ResourceRow> {
 export async function createResource(memberId: number, circleId: string, input: ResourceInput): Promise<CircleResource> {
   await assertCanManage(memberId, circleId);
   const clean = cleanInput(input);
-  const [row] = await db.insert(circleResources).values({ id: randomUUID(), circleId, ...clean }).returning();
+  const [row] = await db.insert(circleResources).values({ id: randomUUID(), circleId, createdBy: memberId, ...clean }).returning();
   return toResource(row!);
 }
 

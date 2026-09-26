@@ -33,3 +33,9 @@ export function fmtEditDate(iso: string): string {
   if (isNaN(d.getTime())) return "";
   return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
+// numeric date like "2/24/2026" from an ISO timestamp
+export function fmtNumericDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+}

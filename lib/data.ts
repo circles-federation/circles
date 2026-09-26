@@ -418,8 +418,9 @@ export const CIRCLES: Circle[] = [
 /* ---------- members-only resources ----------
    links a circle's members keep for themselves; only Finance Council's members
    (Priya, Felix, Mira) see these. example.com links — placeholders, not real
-   destinations. Shown in the order listed. */
-export const RESOURCES: CircleResource[] = [
+   destinations. Listed oldest first, since the bulletin shows the newest on
+   top; each gets its posting time when it's seeded. */
+export const RESOURCES: Omit<CircleResource, "createdAt">[] = [
   { id: "res-finance-drive", circleId: "finance-council", title: "Shared drive", url: "https://drive.example.com/finance-council", icon: "folder" },
   { id: "res-finance-budget", circleId: "finance-council", title: "Q3 budget", url: "https://docs.example.com/finance-council/q3-budget", icon: "file" },
 ];

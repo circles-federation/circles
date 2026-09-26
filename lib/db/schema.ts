@@ -258,8 +258,11 @@ export const circleResources = pgTable(
     url: text("url"),
     message: text("message"),
     icon: resourceIcon("icon").notNull(),
-    // display order: resources are shown in the order they were added
+    // display order (newest first), and the date an announcement shows
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // who posted it, which an announcement shows; null for items from before
+    // it was recorded, or once that member is gone
+    createdBy: integer("created_by").references(() => members.id, { onDelete: "set null" }),
   },
   (t) => [
     index("circle_resources_circle_id_idx").on(t.circleId),

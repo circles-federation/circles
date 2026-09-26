@@ -14,7 +14,7 @@ import type { Circle, CircleResource, Event, Member } from "@/lib/types";
    an Event out across events/event_rsvps/event_votes/roles/role_members);
    members/circles have no equivalent "create" DAL function (the app only
    ever edits one), so those go straight through the Drizzle client. */
-export async function seedDatabase({ members, circles, events, resources = [] }: { members: Member[]; circles: Circle[]; events: Event[]; resources?: CircleResource[] }) {
+export async function seedDatabase({ members, circles, events, resources = [] }: { members: Member[]; circles: Circle[]; events: Event[]; resources?: Omit<CircleResource, "createdAt">[] }) {
   console.log(`Seeding ${members.length} members...`);
   await db.insert(membersTable).values(
     members.map((m) => ({
@@ -72,7 +72,7 @@ export async function seedDatabase({ members, circles, events, resources = [] }:
 
   console.log(`Seeding ${resources.length} resources...`);
   // one insert each, in order: rows of a single statement all share one
-  // created_at (now() is per-transaction), which would lose the display order
+  // created_at (now() is per-transaction), which would lose the display order (newest first)
   for (const r of resources) await db.insert(circleResources).values(r);
 
   // Better Auth's own user table, one row per member who has an email — the

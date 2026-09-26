@@ -5,6 +5,8 @@ import { ArrowTopRightOnSquareIcon, DocumentIcon, FolderIcon, MegaphoneIcon, Pen
 import clsx from "clsx";
 import { Button, ConfirmModal, Eyebrow, Input, Label, Modal, TextArea } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { fmtNumericDate } from "@/lib/format.util";
+import { useMemberById } from "@/lib/hooks";
 import { RESOURCE_MESSAGE_MAX, RESOURCE_TITLE_MAX, isAnnouncement, resourceHost, validateResourceInput, type ResourceErrors } from "@/lib/resources.util";
 import type { CircleResource, ResourceIcon } from "@/lib/types";
 
@@ -132,7 +134,10 @@ function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdi
         )}
       </div>
       {announcement ? (
-        <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-[#222]">{r.message}</p>
+        <>
+          <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-[#222]">{r.message}</p>
+          <PostedBy resource={r} />
+        </>
       ) : (
         <div className="mt-auto flex items-center gap-1 pt-3 font-serif text-sm text-soft">
           <span className="min-w-0 truncate">{resourceHost(r.url ?? "")}</span>
@@ -140,6 +145,25 @@ function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdi
         </div>
       )}
     </div>
+  );
+}
+
+// signed like a note: "— Dillon Fagan on 2/24/2026". An item from before
+// posters were recorded, or whose poster has since left, shows just the date.
+function PostedBy({ resource: r }: { resource: CircleResource }) {
+  const memberById = useMemberById();
+  const poster = r.createdBy !== undefined ? memberById(r.createdBy) : undefined;
+  const date = fmtNumericDate(r.createdAt);
+  return (
+    <p className="mt-3 font-serif text-sm text-soft">
+      {poster ? (
+        <>
+          — <span className="text-ink">{poster.name}</span> on {date}
+        </>
+      ) : (
+        `Posted on ${date}`
+      )}
+    </p>
   );
 }
 

@@ -1,0 +1,2 @@
+ALTER TABLE "circle_resources" ADD COLUMN "created_by" integer;--> statement-breakpoint
+ALTER TABLE "circle_resources" ADD CONSTRAINT "circle_resources_created_by_members_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."members"("id") ON DELETE set null ON UPDATE no action;

@@ -125,6 +125,9 @@ export interface CircleResource {
   // an announcement has a message; every other kind has a link instead
   url?: string;
   message?: string;
+  // ISO timestamp it was posted, and by whom (unknown for older items)
+  createdAt: string;
+  createdBy?: number;
 }
 
 // what an event_notifications row is telling a member: an event or meeting a
