@@ -31,8 +31,8 @@ interface CircleCardProps {
    showKindEyebrow controls the type eyebrow ("Neighborhood", "Collective",
    ...) and defaults on for everything except a neighborhood. But any caller
    can override in either direction when its own grid label already says what
-   the eyebrow would: NeighborhoodPage's Councils grid passes false, since
-   "Councils" is right there in the section header; Home's speed dial passes
+   the eyebrow would: NeighborhoodPage's Circles grid passes false, since
+   "Circles" is right there in the section header; Home's speed dial passes
    true for its neighborhood card, since that's a single flat, mixed-type list
    with no grid label to lean on.
 

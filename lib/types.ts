@@ -3,10 +3,11 @@
    type wherever a Member/Circle/Event first gets constructed. */
 
 /* Everything that scopes something is a circle: the city is the root circle;
-   neighborhoods, councils, collectives, and co-ops are circles inside it, and
-   circles nest. `neighborhood` is the one type with behavior (a member's home
+   neighborhoods, collectives, co-ops and plain circles (a council, a working
+   group) are circles inside it, and circles nest. `neighborhood` is the one
+   type with behavior (a member's home
    circle, at most one per member); the rest are display/filter labels. */
-export type CircleType = "neighborhood" | "council" | "collective" | "cooperative" | "other";
+export type CircleType = "neighborhood" | "circle" | "collective" | "cooperative" | "other";
 
 export interface Member {
   id: number;

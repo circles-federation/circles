@@ -128,7 +128,7 @@ async function seedBeta() {
   const circles: Circle[] = [
     { ...base, id: cityId, type: "other", name: file.city.name.trim(), parentId: null, tagline: `${file.city.name.trim()}, together.`, about: "The root circle — every neighborhood and citywide group sits inside it.", members: [] },
     { ...base, id: hoodId, type: "neighborhood", name: file.neighborhood.name.trim(), parentId: cityId, tagline: file.neighborhood.tagline, about: file.neighborhood.about, members: members.map((m) => m.id) },
-    { ...base, id: councilId, type: "council", name: file.council.name.trim(), parentId: hoodId, tagline: file.council.tagline, about: file.council.about, members: councilMemberIds, roles: assembleCircleRoles(councilRoleDrafts(file), councilMemberIds) },
+    { ...base, id: councilId, type: "circle", name: file.council.name.trim(), parentId: hoodId, tagline: file.council.tagline, about: file.council.about, members: councilMemberIds, roles: assembleCircleRoles(councilRoleDrafts(file), councilMemberIds) },
   ];
 
   await seedDatabase({ members, circles, events: [] });

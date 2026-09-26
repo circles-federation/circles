@@ -10,10 +10,10 @@ export type CirclesById = Record<string, Circle>;
 // display label per circle type — the eyebrow on a card or page header
 export const CIRCLE_TYPE_LABEL: Record<CircleType, string> = {
   neighborhood: "Neighborhood",
-  council: "Council",
+  circle: "Circle",
   collective: "Collective",
   cooperative: "Cooperative",
-  other: "Circle",
+  other: "Other",
 };
 
 export function indexCircles(circles: Circle[]): CirclesById {

@@ -105,7 +105,7 @@ export const CIRCLES: Circle[] = [
   {
     id: "finance-council",
     name: "Finance Council",
-    type: "council",
+    type: "circle",
     parentId: "the-903",
     tagline: "Keeps the block's shared money honest.",
     about: "The 903's standing council for shared finances — the dues ledger, mutual-aid fund, and small grants that keep neighborhood projects running. Meets monthly to review the books in the open and vote on requests from other groups on the block.",
@@ -125,7 +125,7 @@ export const CIRCLES: Circle[] = [
   {
     id: "grounds-council",
     name: "Grounds Council",
-    type: "council",
+    type: "circle",
     parentId: "the-903",
     tagline: "Stewards the shared spaces on the block.",
     about: "The 903's standing council for shared physical spaces — the community room, garden beds, greywater loop, and whatever needs fixing before it becomes an emergency. Coordinates workdays and keeps a running repair list the whole block can see.",
@@ -139,7 +139,7 @@ export const CIRCLES: Circle[] = [
   {
     id: "community-council",
     name: "Community Council",
-    type: "council",
+    type: "circle",
     parentId: "the-903",
     tagline: "Holds the thread between neighbors.",
     about: "The 903's standing council for community life — welcoming new neighbors, checking in on folks between meetings, and connecting residents to the right group for what they need. The first stop for anyone wondering where to plug in.",

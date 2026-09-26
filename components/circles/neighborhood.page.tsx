@@ -8,7 +8,7 @@ import { ParentCircle } from "./parent-circle";
 import { circleChildren, circleDescendantIds, indexCircles } from "@/lib/circles.util";
 import type { Circle, Member, Profile } from "@/lib/types";
 
-const ENTITY_TYPES = ["Councils", "Organizations", "People"] as const;
+const ENTITY_TYPES = ["Circles", "Organizations", "People"] as const;
 type EntityType = (typeof ENTITY_TYPES)[number];
 
 function isEntityType(value: string): value is EntityType {
@@ -33,8 +33,8 @@ interface NeighborhoodPageProps {
 /* A single neighborhood's own folder (rendered at /circles/[id] for a
    circle of type "neighborhood" — see app/(app)/circles/[id]/page.tsx, which
    renders every other circle as its own detail page, CirclePage, at that same
-   route instead). Shows the neighborhood's own sub-councils
-   (Finance/Grounds/Community, for The 903) and other circles as folders, and
+   route instead). Shows the neighborhood's own circles
+   (Finance/Grounds/Community councils, for The 903) and organizations as folders, and
    its residents (its explicit members) as files. Search flattens the whole
    subtree rather than just one level.
 
@@ -79,15 +79,15 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
   // no types selected means no filter applied (show everything) — folders/
   // files above still do the query narrowing, this just decides which of
   // the three grids below are eligible to render at all. Any combination of
-  // types can be selected at once (e.g. Councils + Organizations, no People).
-  const showCouncils = typeFilter.length === 0 || typeFilter.includes("Councils");
+  // types can be selected at once (e.g. Circles + Organizations, no People).
+  const showCircles = typeFilter.length === 0 || typeFilter.includes("Circles");
   const showOrgs = typeFilter.length === 0 || typeFilter.includes("Organizations");
   const showPeople = typeFilter.length === 0 || typeFilter.includes("People");
 
-  const councilFolders = showCouncils ? folders.filter((c) => c.type === "council") : [];
-  const otherFolders = showOrgs ? folders.filter((c) => c.type !== "council") : [];
+  const circleFolders = showCircles ? folders.filter((c) => c.type === "circle") : [];
+  const otherFolders = showOrgs ? folders.filter((c) => c.type !== "circle") : [];
   const peopleFiles = showPeople ? files : [];
-  const anySections = councilFolders.length > 0 || otherFolders.length > 0 || peopleFiles.length > 0;
+  const anySections = circleFolders.length > 0 || otherFolders.length > 0 || peopleFiles.length > 0;
 
   return (
     <PageContainer size="wide">
@@ -106,10 +106,10 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
         {!searching && typeFilter.length === 0 && <ParentCircle circle={circle} onOpenCircle={onOpenCircle} />}
         {anySections ? (
           <>
-            {councilFolders.length > 0 && (
+            {circleFolders.length > 0 && (
               <FolderGrid
-                label="Councils"
-                items={councilFolders}
+                label="Circles"
+                items={circleFolders}
                 minWidth={300}
                 renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />}
               />

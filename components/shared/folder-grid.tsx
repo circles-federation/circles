@@ -9,7 +9,7 @@ interface FolderGridProps<T> {
 }
 
 // one labeled grid of folder or file cards — used by CirclesRootPage's and
-// NeighborhoodPage's Councils/Organizations/People sections, and by
+// NeighborhoodPage's Circles/Organizations/People sections, and by
 // Home's "My circles" speed dial
 export function FolderGrid<T>({ label, items, minWidth, renderItem }: FolderGridProps<T>) {
   return (

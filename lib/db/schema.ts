@@ -64,7 +64,7 @@ export const memberPhotos = pgTable("member_photos", {
 });
 
 /* Everything that scopes something is a circle — see lib/types.ts. */
-export const circleType = pgEnum("circle_type", ["neighborhood", "council", "collective", "cooperative", "other"]);
+export const circleType = pgEnum("circle_type", ["neighborhood", "circle", "collective", "cooperative", "other"]);
 
 export const circles = pgTable(
   "circles",
