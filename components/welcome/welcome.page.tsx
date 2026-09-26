@@ -88,7 +88,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
         <div className="border-t-[3px] border-t-ink pt-4.5">
           <Eyebrow className="text-soft">Welcome to</Eyebrow>
           <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
-            Providence
+            Circles
           </h1>
           <p className="mt-3.5 mb-7 font-serif text-lg leading-normal text-[#222]">
             A federation of neighborhoods and other organizations. Sign in with your email to connect with your community.
