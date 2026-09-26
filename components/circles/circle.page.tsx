@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { ArrowTopRightOnSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
+import { Avatar, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
-import { ParentCircle } from "./parent-circle";
 import { BulletinSection } from "./bulletin-section";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL, circleChildren, circleWebsiteUrl, isCircleAudience } from "@/lib/circles.util";
-import { useMemberById } from "@/lib/hooks";
+import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, Event, Member } from "@/lib/types";
 
 interface CirclePageProps {
@@ -29,6 +28,8 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
+  const byId = useCirclesById();
+  const parent = c.parentId !== null ? byId[c.parentId] : undefined;
   // events in this circle — shown to it, or hosted by it — soonest first (location is irrelevant)
   const circleEvents = [...events]
     .filter((e) => e.circleId === c.id || e.hostCircleId === c.id)
@@ -45,7 +46,17 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
     <PageContainer size="normal">
       <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="min-w-0 flex-1">
-          <Eyebrow className="text-soft">{CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
+          {/* where it sits in the tree: its parent, as a chip opposite the type */}
+          <div className="flex items-center justify-between gap-3">
+            <Eyebrow className="shrink-0 text-soft">{CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
+            {parent && (
+              <span className="flex min-w-0 justify-end">
+                <Chip title={`Part of ${parent.name}`} onClick={() => onOpenCircle(parent)}>
+                  {parent.name}
+                </Chip>
+              </span>
+            )}
+          </div>
           <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{c.name}</h1>
           <p className="mt-3.5 font-serif text-xl text-[#222] italic">{c.tagline}</p>
           {lastEditor && (
@@ -111,12 +122,6 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
       {activeTab === "wiki" && (
         <>
           <SectionGroup>
-            {c.parentId !== null && (
-              <Section>
-                <ParentCircle circle={c} onOpenCircle={onOpenCircle} showMembers={false} />
-              </Section>
-            )}
-
             <Section>
               <EyebrowGroup label="About">
                 <p className="max-w-[40em] font-serif text-lg leading-[1.55]">{c.about}</p>
