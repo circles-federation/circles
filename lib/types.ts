@@ -75,6 +75,16 @@ export interface Role {
 
 export type EventKindKey = "ordinary" | "meeting";
 
+// Sociocracy's R/E/D: what a meeting is meant to do with an agenda item (see
+// lib/agenda.util.ts)
+export type AgendaCategory = "report" | "explore" | "decide";
+
+export interface AgendaItem {
+  category: AgendaCategory;
+  title: string;
+  details?: string;
+}
+
 export type RepeatFrequency = "weekly" | "monthly";
 
 // a date of a repeating event: the series it's one of, and that series'
@@ -121,6 +131,8 @@ export interface Event {
   rsvps: number[];
   roles?: Role[];
   votes?: number[];
+  // a meeting's agenda, in order; a meeting has this instead of a description
+  agenda?: AgendaItem[];
   // set on each date of a repeating event — every date is an event of its own,
   // with its own RSVPs, votes and slots
   repeat?: EventRepeat;

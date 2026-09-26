@@ -1,5 +1,6 @@
 "use client";
 
+import { AgendaSection } from "./agenda-section";
 import { AttendeesSection } from "./attendees-section";
 import { CancelledBanner } from "./cancelled-banner";
 import { PageContainer } from "@/components/shared";
@@ -10,7 +11,7 @@ import { HostRsvpRow } from "./host-rsvp-row";
 import { RoleSlotsSection } from "./role-slots-section";
 import { ShiftStatusBanner } from "./shift-status-banner";
 import { VoteBanner } from "./vote-banner";
-import { isVoting } from "@/lib/governance.util";
+import { isMeeting, isVoting } from "@/lib/governance.util";
 import type { Circle, Event, Member, Profile } from "@/lib/types";
 
 interface EventPageProps {
@@ -54,7 +55,8 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
         onToggleRsvp={() => toggleRsvp(e.id)}
       />
 
-      <EventDetailsSection event={e} />
+      {/* a meeting has its agenda where another event has its description */}
+      {isMeeting(e) ? <AgendaSection event={e} /> : <EventDetailsSection event={e} />}
 
       <RoleSlotsSection event={e} profile={profile} onToggleRoleSlot={onToggleRoleSlot} onOpenMember={onOpenMember} />
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
@@ -97,6 +98,9 @@ export function EventFormPage(props: EventFormPageProps) {
         end: event.end,
         location: event.location,
         description: event.description,
+        agenda: event.agenda && event.agenda.length > 0
+          ? event.agenda.map((a): AgendaDraft => ({ category: a.category, title: a.title, details: a.details ?? "" }))
+          : [BLANK_AGENDA_ITEM],
         useSlots: Array.isArray(event.roles) && event.roles.length > 0,
         slots: event.roles && event.roles.length > 0
           ? event.roles.map((r): SlotDraft => ({ label: r.label, description: r.description || "", min: String(r.min), max: r.max != null ? String(r.max) : "" }))
@@ -112,6 +116,7 @@ export function EventFormPage(props: EventFormPageProps) {
         end: DEFAULT_END,
         location: "",
         description: "",
+        agenda: [BLANK_AGENDA_ITEM],
         useSlots: false,
         slots: DEFAULT_SLOTS,
       };
@@ -129,6 +134,8 @@ export function EventFormPage(props: EventFormPageProps) {
   // slots (roles) for an ordinary event: each { label, description, min, max }
   const [useSlots, setUseSlots] = useState(initialValues.useSlots);
   const [slots, setSlots] = useState<SlotDraft[]>(initialValues.slots);
+  // a meeting's agenda, which it has instead of a description
+  const [agenda, setAgenda] = useState<AgendaDraft[]>(initialValues.agenda);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -188,6 +195,7 @@ export function EventFormPage(props: EventFormPageProps) {
     description.trim() !== initialValues.description.trim() ||
     useSlots !== initialValues.useSlots ||
     JSON.stringify(slots) !== JSON.stringify(initialValues.slots) ||
+    (gov && JSON.stringify(agenda) !== JSON.stringify(initialValues.agenda)) ||
     repeat !== "" ||
     until !== "";
 
@@ -237,7 +245,15 @@ export function EventFormPage(props: EventFormPageProps) {
       title: title.trim(),
       date, start, end,
       location: location.trim(),
-      description: description.trim() || (gov ? "No agenda yet." : "No description yet."),
+      description: gov ? "" : description.trim() || "No description yet.",
+      // a wholly blank item is just ignored, like a blank slot
+      ...(gov
+        ? {
+            agenda: agenda
+              .filter((a) => a.title.trim() || a.details.trim())
+              .map((a) => ({ category: a.category, title: a.title.trim(), ...(a.details.trim() ? { details: a.details.trim() } : {}) })),
+          }
+        : {}),
       roles,
     };
     if (!gov && useSlots && roles.length === 0) return { details, problem: "Add at least one slot, or turn off slots." };
@@ -538,10 +554,20 @@ export function EventFormPage(props: EventFormPageProps) {
           <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" />
         </div>
 
-        <div>
-          <Label htmlFor="description">{gov ? "Agenda" : "Description"}</Label>
-          <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder={gov ? "What should this meeting decide or discuss?" : "What's it about, what to bring, who it's for…"} />
-        </div>
+        {gov ? (
+          <div>
+            <Label>Agenda</Label>
+            <p className="mb-3 font-serif text-sm leading-[1.45] text-soft">
+              Mark each topic with what the circle will do with it: hear a report, explore it together, or decide it.
+            </p>
+            <AgendaEditor items={agenda} onChange={setAgenda} />
+          </div>
+        ) : (
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder="What's it about, what to bring, who it's for…" />
+          </div>
+        )}
 
         {error && (
           <div ref={errorRef} className={clsx("border-l-[3px] pl-3 font-sans text-xs font-semibold", accent.border, accent.text)}>

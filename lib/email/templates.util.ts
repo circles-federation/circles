@@ -1,7 +1,8 @@
 import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtTime, parseDay } from "@/lib/format.util";
+import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, repeatSummary } from "@/lib/recurrence.util";
-import type { CircleType, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
+import type { AgendaItem, CircleType, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
    Each returns everything but the recipient, so the caller (which knows who
@@ -25,6 +26,7 @@ const INK = "#0a0a0a";
 const SOFT = "#6b6b6b";
 const FAINT = "#e4e4e4";
 const FLAME = "#e1530b"; // governance events, as in the app
+const AGENDA = "#008480"; // a meeting's agenda items
 const LEAF = "#2e7d32"; // approved ones
 const DANGER = "#c0392b"; // a cancelled event, as the app's destructive red
 const SANS = `'Helvetica Neue',Helvetica,Arial,sans-serif`;
@@ -89,6 +91,8 @@ export interface EventNotificationData {
   organizerName: string;
   // set on a date of a repeating event
   repeat?: Pick<EventRepeat, "frequency" | "startsOn" | "until">;
+  // a meeting's agenda, which it has instead of a description
+  agenda?: AgendaItem[];
   // where to open it in the app
   url: string;
 }
@@ -164,12 +168,15 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
   // a repeating event is announced once, by its first date, so this is where
   // members learn the rest
   const repeats = n.repeat ? repeatSummary(n.repeat) : "";
+  const agenda = n.agenda ?? [];
   return {
     subject,
     text:
       `${Lead} in ${because}\n\n${n.title}\n\n` +
       (note ? `${note}\n\n` : "") +
-      `When: ${when}\n${repeats ? `Repeats: ${repeats}\n` : ""}Where: ${n.location}\n${people.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n${excerpt}\n\n${action}: ${n.url}\n\n${why}`,
+      `When: ${when}\n${repeats ? `Repeats: ${repeats}\n` : ""}Where: ${n.location}\n${people.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n` +
+      (agenda.length > 0 ? `Agenda:\n${agendaText(agenda)}\n\n` : excerpt ? `${excerpt}\n\n` : "") +
+      `${action}: ${n.url}\n\n${why}`,
     html: shell(
       `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
         eyebrow(`${Lead} · ${esc(because)}`, tone) +
@@ -186,6 +193,7 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
         detail("Where", n.location) +
         people.map(([l, v]) => detail(l, v)).join("") +
         `</table></td></tr>` +
+        (agenda.length > 0 ? agendaHtml(agenda) : "") +
         (excerpt
           ? `<tr><td style="font-family:${SERIF};font-size:16px;line-height:1.55;color:#222222;padding-bottom:24px">${esc(excerpt).replace(/\n/g, "<br>")}</td></tr>`
           : "") +
@@ -193,6 +201,36 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };
+}
+
+// "1. [D] Decide: Repair budget", its details indented beneath
+function agendaText(items: AgendaItem[]): string {
+  return items
+    .map((a, i) => {
+      const { letter, label } = AGENDA_CATEGORY[a.category];
+      return `${i + 1}. [${letter}] ${label}: ${a.title}${a.details ? `\n   ${a.details.replace(/\n/g, "\n   ")}` : ""}`;
+    })
+    .join("\n");
+}
+
+// the app's agenda cards, as far as an email allows: a turquoise rule and the
+// category's letter in a solid square, then the title and any details
+function agendaHtml(items: AgendaItem[]): string {
+  const rows = items
+    .map((a) => {
+      const { letter, label } = AGENDA_CATEGORY[a.category];
+      return (
+        `<tr><td style="padding-bottom:10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${INK};border-top:3px solid ${AGENDA}"><tr><td style="padding:12px 14px">` +
+        `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>` +
+        `<td style="width:24px;height:24px;background:${AGENDA};color:#ffffff;text-align:center;font-family:${SANS};font-size:14px;font-weight:800">${letter}</td>` +
+        `<td style="padding-left:8px">${eyebrow(label, AGENDA)}</td></tr></table>` +
+        `<div style="margin-top:8px;font-family:${SANS};font-size:16px;font-weight:700;line-height:1.25;color:${INK}">${esc(a.title)}</div>` +
+        (a.details ? `<div style="margin-top:6px;font-family:${SERIF};font-size:14px;line-height:1.5;color:#222222">${esc(a.details).replace(/\n/g, "<br>")}</div>` : "") +
+        `</td></tr></table></td></tr>`
+      );
+    })
+    .join("");
+  return `<tr><td style="padding-bottom:18px">${eyebrow("Agenda")}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:10px">${rows}</table></td></tr>`;
 }
 
 export interface DigestEventData {

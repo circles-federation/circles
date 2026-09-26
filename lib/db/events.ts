@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type Column, type SQL } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
-import { circleMembers, circles, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
+import { circleMembers, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, withdrawEventNotifications } from "./notifications";
 import { isWithinCircle } from "@/lib/circles.util";
@@ -10,7 +10,7 @@ import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type R
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import { REPEAT_HORIZON_DAYS, addDays, datesBetween, localDay } from "@/lib/recurrence.util";
-import type { Event, EventRepeat, Role } from "@/lib/types";
+import type { AgendaItem, Event, EventRepeat, Role } from "@/lib/types";
 
 /* An event belongs to one circle, and that circle is its audience: only the
    circle's members (and, for the city root, everyone) can see it or RSVP to
@@ -48,7 +48,7 @@ function toRepeat(s: SeriesRow): EventRepeat {
   return { seriesId: s.id, frequency: s.frequency, startsOn: s.startsOn, ...(s.until !== null ? { until: s.until } : {}) };
 }
 
-function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, eventRoles: Role[] | undefined, series: SeriesRow | undefined): Event {
+function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, eventRoles: Role[] | undefined, series: SeriesRow | undefined, agenda: AgendaItem[] | undefined): Event {
   return {
     id: row.id,
     title: row.title,
@@ -66,6 +66,7 @@ function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, ev
     rsvps,
     roles: eventRoles,
     votes,
+    ...(agenda ? { agenda } : {}),
     ...(series ? { repeat: toRepeat(series) } : {}),
   };
 }
@@ -74,12 +75,21 @@ async function attachRelations(rows: EventRow[]): Promise<Event[]> {
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const seriesIds = [...new Set(rows.flatMap((r) => (r.seriesId !== null ? [r.seriesId] : [])))];
-  const [rsvpRows, voteRows, roleRows, seriesRows] = await Promise.all([
+  const meetingIds = rows.filter((r) => r.kind === "meeting").map((r) => r.id);
+  const [rsvpRows, voteRows, roleRows, seriesRows, agendaRows] = await Promise.all([
     db.select().from(eventRsvps).where(inArray(eventRsvps.eventId, ids)),
     db.select().from(eventVotes).where(inArray(eventVotes.eventId, ids)),
     db.select().from(roles).where(inArray(roles.eventId, ids)),
     seriesIds.length > 0 ? db.select().from(eventSeries).where(inArray(eventSeries.id, seriesIds)) : Promise.resolve([]),
+    meetingIds.length > 0
+      ? db.select().from(eventAgendaItems).where(inArray(eventAgendaItems.eventId, meetingIds)).orderBy(asc(eventAgendaItems.position))
+      : Promise.resolve([]),
   ]);
+  const agendaByEvent = groupBy(agendaRows, (a) => a.eventId, (a): AgendaItem => ({
+    category: a.category,
+    title: a.title,
+    ...(a.details !== null ? { details: a.details } : {}),
+  }));
   const seriesById = new Map(seriesRows.map((s) => [s.id, s]));
   const roleMemberRows = roleRows.length > 0 ? await db.select().from(roleMembers).where(inArray(roleMembers.roleId, roleRows.map((r) => r.id))) : [];
   const rsvpsByEvent = groupBy(rsvpRows, (r) => r.eventId, (r) => r.memberId);
@@ -106,7 +116,9 @@ async function attachRelations(rows: EventRow[]): Promise<Event[]> {
       // only a meeting or a circle-hosted event carries a votes array
       row.kind === "meeting" || row.hostCircleId !== null ? votesByEvent.get(row.id) || [] : undefined,
       rolesByEvent.get(row.id),
-      row.seriesId !== null ? seriesById.get(row.seriesId) : undefined
+      row.seriesId !== null ? seriesById.get(row.seriesId) : undefined,
+      // every meeting has an agenda, even an empty one
+      row.kind === "meeting" ? agendaByEvent.get(row.id) || [] : undefined
     )
   );
 }
@@ -237,6 +249,20 @@ async function writeRoles(tx: Tx, eventId: string, eventRoles: Role[]) {
   }
 }
 
+// a meeting's agenda as it's stored: trimmed, blank details dropped
+function cleanAgenda(items: AgendaItem[] = []): AgendaItem[] {
+  return items.map((a) => ({ category: a.category, title: a.title.trim(), ...(a.details?.trim() ? { details: a.details.trim() } : {}) }));
+}
+
+// replace a meeting's agenda as a whole, in the given order
+async function writeAgenda(tx: Tx, eventId: string, items: AgendaItem[]) {
+  await tx.delete(eventAgendaItems).where(eq(eventAgendaItems.eventId, eventId));
+  if (items.length === 0) return;
+  await tx.insert(eventAgendaItems).values(
+    items.map((a, position) => ({ eventId, position, category: a.category, title: a.title, details: a.details ?? null }))
+  );
+}
+
 /* The raw, trusted insert — no authorization, no validation. Only for callers
    that already hold a complete, vetted Event: createEvent below, and the seed
    script (whose fixtures carry their own ids, rsvps, and votes). */
@@ -270,6 +296,7 @@ async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boole
   if (event.roles && event.roles.length > 0) {
     await writeRoles(tx, event.id, event.roles);
   }
+  if (event.agenda && event.agenda.length > 0) await writeAgenda(tx, event.id, event.agenda);
   if (options.notifyMembers) await enqueueEventNotifications(tx, event);
 }
 
@@ -299,11 +326,15 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
     start: draft.start,
     end: draft.end,
     location: draft.location.trim(),
-    description: draft.description.trim(),
+    // a meeting has its agenda instead
+    description: draft.kind === "meeting" ? "" : draft.description.trim(),
     roles: draft.roles ?? [],
   };
   const proposed = !!draft.hostCircleId && majority(hostSize) > 1;
-  const first = newDate(template, draft.date, { opening: true, proposed });
+  const first: Event = {
+    ...newDate(template, draft.date, { opening: true, proposed }),
+    ...(draft.kind === "meeting" ? { agenda: cleanAgenda(draft.agenda) } : {}),
+  };
   const repeat = draft.repeat;
   if (!repeat) return [await insertEvent(first, { notifyMembers: true })];
   const seriesId = randomUUID();
@@ -425,7 +456,7 @@ export async function updateEventDetails(memberId: number, id: string, details: 
     start: details.start,
     end: details.end,
     location: details.location.trim(),
-    description: details.description.trim(),
+    description: kind === "meeting" ? "" : details.description.trim(),
   };
   const targets = await db.transaction(async (tx) => {
     // the event before its series, the order setVote locks them in
@@ -456,6 +487,7 @@ export async function updateEventDetails(memberId: number, id: string, details: 
         .where(eq(events.id, target));
       // a slot that keeps its name keeps the people already in it, per date
       await writeRoles(tx, target, buildRoles(details.roles, existing.find((e) => e.id === target)?.roles));
+      if (kind === "meeting") await writeAgenda(tx, target, cleanAgenda(details.agenda));
     }
     return ids;
   });

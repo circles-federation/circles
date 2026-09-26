@@ -1,5 +1,6 @@
+import { validateAgenda } from "./agenda.util";
 import { REPEAT_FREQUENCIES } from "./recurrence.util";
-import type { Event, EventKindKey, RepeatFrequency } from "./types";
+import type { AgendaItem, Event, EventKindKey, RepeatFrequency } from "./types";
 
 /* What a person submits to create an event, and the checks on it — shared by
    the event form (instant feedback) and lib/db/events.ts (the authoritative
@@ -35,6 +36,9 @@ export interface EventDraft {
   location: string;
   description: string;
   roles?: RoleDraft[];
+  // a meeting's agenda, which it has instead of a description (an ordinary
+  // event has none)
+  agenda?: AgendaItem[];
   // repeat on a weekly or monthly pattern read from `date`, until an optional
   // last date — only when creating, and not a meeting (yet); see
   // lib/recurrence.util.ts
@@ -48,7 +52,7 @@ export type SeriesScope = "one" | "upcoming";
 
 // the part of an event its host can edit afterward — not its circle, kind,
 // organizer, rsvps or votes; `roles` is the slot definitions (empty removes them)
-export type EventDetails = Pick<EventDraft, "title" | "date" | "start" | "end" | "location" | "description"> & {
+export type EventDetails = Pick<EventDraft, "title" | "date" | "start" | "end" | "location" | "description" | "agenda"> & {
   roles: RoleDraft[];
 };
 
@@ -73,6 +77,10 @@ export function validateEventDraft(d: EventDraft): string | null {
   if (!d.location.trim()) return "Add a location.";
   if (d.location.trim().length > EVENT_LOCATION_MAX) return `Keep the location under ${EVENT_LOCATION_MAX} characters.`;
   if (d.description.length > EVENT_DESCRIPTION_MAX) return "That description is too long.";
+  if (d.kind === "meeting") {
+    const problem = validateAgenda(d.agenda ?? []);
+    if (problem) return problem;
+  } else if (d.agenda && d.agenda.length > 0) return "Only a meeting has an agenda.";
   if (d.hostCircleId && d.kind === "meeting") return "A meeting is proposed by you, not hosted by a circle.";
   if (d.repeat) {
     if (d.kind === "meeting") return "A meeting can't repeat yet — propose each one on its own.";

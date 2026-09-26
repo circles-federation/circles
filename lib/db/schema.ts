@@ -19,7 +19,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { RoleDraft } from "@/lib/events.util";
-import type { EventKindKey, NotificationKind, RepeatFrequency } from "@/lib/types";
+import type { AgendaCategory, EventKindKey, NotificationKind, RepeatFrequency } from "@/lib/types";
 
 /* Drizzle table definitions — the only file besides lib/db/client.ts and
    lib/better-auth.ts that lib/db/*.ts may import from directly (see the
@@ -234,6 +234,24 @@ export const eventVotes = pgTable(
     memberId: integer("member_id").notNull().references(() => members.id),
   },
   (t) => [primaryKey({ columns: [t.eventId, t.memberId] })]
+);
+
+// a meeting's agenda, one row per item in order. Only ever rewritten as a
+// whole with the meeting (see writeAgenda in lib/db/events.ts), and gone with it.
+export const eventAgendaItems = pgTable(
+  "event_agenda_items",
+  {
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    category: text("category").$type<AgendaCategory>().notNull(),
+    title: text("title").notNull(),
+    details: text("details"),
+  },
+  (t) => [
+    unique("event_agenda_items_event_position").on(t.eventId, t.position),
+    check("event_agenda_items_category", sql`${t.category} in ('report', 'explore', 'decide')`),
+  ]
 );
 
 export const roles = pgTable(

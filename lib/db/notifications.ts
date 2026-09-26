@@ -1,11 +1,12 @@
-import { and, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
-import { circleMembers, circles, eventNotifications, eventSeries, members, events } from "./schema";
+import { circleMembers, circles, eventAgendaItems, eventNotifications, eventSeries, members, events } from "./schema";
+import { groupBy } from "./util";
 import type { DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
-import type { Event, EventRepeat, NotificationKind } from "@/lib/types";
+import type { AgendaItem, Event, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The queue behind "email a circle's members about a new event". Deciding who
    is emailed lives here (next to the data), sending lives in lib/notify.ts —
@@ -193,6 +194,12 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       .leftJoin(hostCircle, eq(hostCircle.id, events.hostCircleId))
       .leftJoin(eventSeries, eq(eventSeries.id, events.seriesId))
       .where(isDue);
+    // a meeting's email lists its agenda (it has no description)
+    const meetingIds = [...new Set(rows.filter((r) => r.kind === "meeting").map((r) => r.eventId))];
+    const agendaRows = meetingIds.length > 0
+      ? await tx.select().from(eventAgendaItems).where(inArray(eventAgendaItems.eventId, meetingIds)).orderBy(asc(eventAgendaItems.position))
+      : [];
+    const agendaByEvent = groupBy(agendaRows, (a) => a.eventId, (a): AgendaItem => ({ category: a.category, title: a.title, ...(a.details !== null ? { details: a.details } : {}) }));
     return rows.flatMap(({ approvedAt, hostSize, circleSize, hostCircleName, frequency, startsOn, until, ...r }) =>
       r.email
         ? [
@@ -204,6 +211,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
               end: r.end.slice(0, 5),
               ...(hostCircleName ? { hostCircleName } : {}),
               ...toRepeat({ frequency, startsOn, until }),
+              ...(r.kind === "meeting" ? { agenda: agendaByEvent.get(r.eventId) ?? [] } : {}),
               // read now, not when queued: it may have been approved since
               proposed: !!hostCircleName && approvedAt === null,
               // a proposal is voted on by its host circle, a meeting by its own
