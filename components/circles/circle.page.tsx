@@ -12,6 +12,8 @@ import { CIRCLE_TYPE_LABEL, circleChildren, circleWebsiteUrl, isCircleAudience }
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, Event, Member } from "@/lib/types";
 
+type CircleTab = "bulletin" | "wiki" | "members" | "events";
+
 interface CirclePageProps {
   circle: Circle;
   isMember: boolean;
@@ -34,10 +36,16 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   const circleEvents = [...events]
     .filter((e) => e.circleId === c.id || e.hostCircleId === c.id)
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
-  // a member lands on the bulletin, the members-only tab; anyone else only
-  // ever sees the wiki
-  const [tab, setTab] = useState<"bulletin" | "wiki">("bulletin");
-  const activeTab = isMember ? tab : "wiki";
+  // a member lands on the bulletin, the members-only tab; anyone else on the
+  // wiki, with no hint a bulletin exists
+  const [tab, setTab] = useState<CircleTab>(isMember ? "bulletin" : "wiki");
+  const activeTab = !isMember && tab === "bulletin" ? "wiki" : tab;
+  const tabs: { key: CircleTab; label: string }[] = [
+    ...(isMember ? [{ key: "bulletin" as const, label: "Bulletin" }] : []),
+    { key: "wiki", label: "Wiki" },
+    { key: "members", label: "Members" },
+    { key: "events", label: "Events" },
+  ];
   const websiteUrl = c.website ? circleWebsiteUrl(c.website) : null;
   // the bulletin's + lives in the tab row, so opening its add dialog is kept here
   const [adding, setAdding] = useState(false);
@@ -83,33 +91,29 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         ))}
       </div>
 
-      {/* the bulletin is members-only: a non-member gets no tabs at all, not
-          even a hint that a Bulletin tab exists */}
-      {isMember && (
-        <SimpleTabs
-          className="mt-6"
-          tabs={[{ key: "bulletin", label: "Bulletin" }, { key: "wiki", label: "Wiki" }]}
-          active={activeTab}
-          onChange={(key) => setTab(key as "bulletin" | "wiki")}
-          actions={
-            activeTab === "bulletin" && (
-              // a ghost icon button, like the top bar's Back; -mr-2.5 lines the +
-              // up with the page's edge
-              <button
-                type="button"
-                onClick={() => setAdding(true)}
-                title="Add item"
-                aria-label="Add item"
-                className="group -my-2.5 -mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
-              >
-                <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
-                  <PlusIcon className="size-6" strokeWidth={2} />
-                </span>
-              </button>
-            )
-          }
-        />
-      )}
+      <SimpleTabs
+        className="mt-6"
+        tabs={tabs}
+        active={activeTab}
+        onChange={(key) => setTab(key as CircleTab)}
+        actions={
+          activeTab === "bulletin" && (
+            // a ghost icon button, like the top bar's Back; -mr-2.5 lines the +
+            // up with the page's edge
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              title="Add item"
+              aria-label="Add item"
+              className="group -my-2.5 -mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
+            >
+              <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
+                <PlusIcon className="size-6" strokeWidth={2} />
+              </span>
+            </button>
+          )
+        }
+      />
 
       {activeTab === "bulletin" && (
         <SectionGroup>
@@ -144,25 +148,10 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               </Section>
             )}
 
-            {/* a circle's events are only ever sent to its own audience, so for
-                anyone else this section would be permanently (and misleadingly) empty */}
-            {isCircleAudience(c, profile.id) && (
-              <Section>
-                <Eyebrow className="text-soft">Events</Eyebrow>
-                <div className="mt-4">
-                  <EventFeed
-                    events={circleEvents}
-                    onOpenEvent={onOpenEvent}
-                    emptyText={`No upcoming events in ${c.name}.`}
-                  />
-                </div>
-              </Section>
-            )}
-
             {childCircles.length > 0 && (
               <Section>
                 <Eyebrow className="text-soft">Sub-circles</Eyebrow>
-                {/* the grid's own border-t is the header rule — same as Members below */}
+                {/* the grid's own border-t is the header rule, as on the Members tab */}
                 <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">
                   {childCircles.map((child) => (
                     <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />
@@ -170,46 +159,6 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                 </div>
               </Section>
             )}
-
-            <Section>
-              <Eyebrow className="text-soft">Members</Eyebrow>
-              {members.length > 0 ? (
-                <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
-                  {members.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => onOpenMember(m)}
-                      className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-3.5 text-left"
-                    >
-                      <Avatar member={m} size={44} />
-                      <div className="min-w-0">
-                        <div className="font-sans text-sm font-bold">{m.name}</div>
-                        <Eyebrow className="text-soft">{m.role}</Eyebrow>
-                        {/* everyone here belongs to this circle, so no neighborhood chip —
-                            a role they hold in it takes that spot, as an outlined badge */}
-                        {rolesHeldBy(c, m.id).length > 0 && (
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
-                            {rolesHeldBy(c, m.id).map((role) => (
-                              <span
-                                key={role}
-                                title={`Role in ${c.name}`}
-                                className="ink-press-badge inline-flex items-center whitespace-nowrap border border-ink bg-paper px-2.25 py-1 font-sans text-label font-bold uppercase tracking-[0.08em] text-ink"
-                              >
-                                {role}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-4 font-serif text-base text-soft">
-                  No members of {c.name} are listed here yet.
-                </p>
-              )}
-            </Section>
 
             {(c.website || c.address || (c.hours && c.hours.length > 0)) && (
               <Section>
@@ -301,6 +250,64 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
             </section>
           )}
         </>
+      )}
+
+      {activeTab === "members" && (
+        <SectionGroup>
+          <Section>
+            {members.length > 0 ? (
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
+                {members.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => onOpenMember(m)}
+                    className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-3.5 text-left"
+                  >
+                    <Avatar member={m} size={44} />
+                    <div className="min-w-0">
+                      <div className="font-sans text-sm font-bold">{m.name}</div>
+                      <Eyebrow className="text-soft">{m.role}</Eyebrow>
+                      {/* everyone here belongs to this circle, so no neighborhood chip —
+                          a role they hold in it takes that spot, as an outlined badge */}
+                      {rolesHeldBy(c, m.id).length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {rolesHeldBy(c, m.id).map((role) => (
+                            <span
+                              key={role}
+                              title={`Role in ${c.name}`}
+                              className="ink-press-badge inline-flex items-center whitespace-nowrap border border-ink bg-paper px-2.25 py-1 font-sans text-label font-bold uppercase tracking-[0.08em] text-ink"
+                            >
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="font-serif text-base text-soft">
+                No members of {c.name} are listed here yet.
+              </p>
+            )}
+          </Section>
+        </SectionGroup>
+      )}
+
+      {activeTab === "events" && (
+        <SectionGroup>
+          <Section>
+            <EventFeed
+              events={circleEvents}
+              onOpenEvent={onOpenEvent}
+              // events shown to a circle are only ever sent to its own members
+              // (and, for the city, everyone), so an outsider only sees the
+              // ones it hosts for a circle they're in
+              emptyText={isCircleAudience(c, profile.id) ? `No upcoming events in ${c.name}.` : `Only members of ${c.name} can see its events.`}
+            />
+          </Section>
+        </SectionGroup>
       )}
     </PageContainer>
   );
