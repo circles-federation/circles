@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, OfflineBanner, useToast } from "@/components/shared";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
+import { InstallPrompt } from "./install-prompt";
 import type { Member } from "@/lib/types";
 
 type Step = "email" | "code";
@@ -145,6 +146,8 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
             </Button>
           </form>
         )}
+
+        <InstallPrompt />
       </div>
 
       {demoMembers.length > 0 && (
