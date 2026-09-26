@@ -112,3 +112,16 @@ export function circlesForMember(memberId: number, circles: Circle[]): Circle[] 
 export function sharesCircleWith(memberId: number, otherId: number, circles: Circle[]): boolean {
   return circles.some((c) => c.members.includes(memberId) && c.members.includes(otherId));
 }
+
+// a circle's website is typed freehand, with or without "https://", so it's
+// read as a URL either way; null when it isn't an http(s) address at all
+export function circleWebsiteUrl(website: string): URL | null {
+  const raw = website.trim();
+  if (!raw) return null;
+  try {
+    const u = new URL(/^[a-z][a-z\d+.-]*:/i.test(raw) ? raw : `https://${raw}`);
+    return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.includes(".") ? u : null;
+  } catch {
+    return null;
+  }
+}

@@ -9,7 +9,7 @@ import { BulletinSection } from "./bulletin-section";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { CIRCLE_TYPE_LABEL, circleChildren, isCircleAudience } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleChildren, circleWebsiteUrl, isCircleAudience } from "@/lib/circles.util";
 import { useMemberById } from "@/lib/hooks";
 import type { Circle, Event, Member } from "@/lib/types";
 
@@ -37,6 +37,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   // ever sees the wiki
   const [tab, setTab] = useState<"bulletin" | "wiki">("bulletin");
   const activeTab = isMember ? tab : "wiki";
+  const websiteUrl = c.website ? circleWebsiteUrl(c.website) : null;
   // the bulletin's + lives in the tab row, so opening its add dialog is kept here
   const [adding, setAdding] = useState(false);
 
@@ -201,47 +202,56 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               <Section>
                 <Eyebrow className="text-soft">Visit</Eyebrow>
                 {/* the box's own border is the header rule here, fainter than the
-                    ink one above since it's framing a box rather than a card grid */}
-                <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] border border-faint">
-                  <div className="border-r border-b border-faint px-4.5 py-4">
-                    <Eyebrow className="text-soft">Website</Eyebrow>
-                    <div className="mt-2">
-                      {c.website
-                        ? (
-                          <a
-                            href={`https://${c.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-sans text-sm font-bold text-ink underline underline-offset-2 break-all"
-                          >
-                            {c.website}
-                            <ArrowTopRightOnSquareIcon className="size-3.5" strokeWidth={2.5} />
-                          </a>
-                        )
-                        : <span className="font-serif text-sm text-soft">—</span>}
+                    ink one above since it's framing a box rather than a card grid.
+                    Every cell rules its right and bottom, and the grid runs 1px
+                    past the box, clipped, so however the cells wrap the ones on
+                    its edge don't double the box's own border */}
+                <div className="mt-4 overflow-hidden border border-faint">
+                  <div className="-mr-px -mb-px grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))]">
+                    <div className="border-r border-b border-faint px-4.5 py-4">
+                      <Eyebrow className="text-soft">Website</Eyebrow>
+                      <div className="mt-2">
+                        {websiteUrl
+                          ? (
+                            // just the domain, as a bulletin card shows a link
+                            <a
+                              href={websiteUrl.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 font-sans text-sm font-bold text-ink underline underline-offset-2 break-all"
+                            >
+                              {websiteUrl.hostname.replace(/^www\./, "")}
+                              <ArrowTopRightOnSquareIcon className="size-3.5" strokeWidth={2.5} />
+                            </a>
+                          )
+                          // not an address it can link to, so shown as typed
+                          : c.website
+                            ? <span className="font-sans text-sm font-bold break-all text-ink">{c.website}</span>
+                            : <span className="font-serif text-sm text-soft">—</span>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="border-r border-b border-faint px-4.5 py-4">
-                    <Eyebrow className="text-soft">Address</Eyebrow>
-                    <div className="mt-2">
-                      {c.address
-                        ? c.address.split(",").map((line, i) => (
-                            <div key={i} className="font-serif text-sm leading-[1.4] text-[#222]">{line.trim()}</div>
-                          ))
-                        : <span className="font-serif text-sm text-soft">—</span>}
+                    <div className="border-r border-b border-faint px-4.5 py-4">
+                      <Eyebrow className="text-soft">Address</Eyebrow>
+                      <div className="mt-2">
+                        {c.address
+                          ? c.address.split(",").map((line, i) => (
+                              <div key={i} className="font-serif text-sm leading-[1.4] text-[#222]">{line.trim()}</div>
+                            ))
+                          : <span className="font-serif text-sm text-soft">—</span>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="border-b border-faint px-4.5 py-4">
-                    <Eyebrow className="text-soft">Open hours</Eyebrow>
-                    <div className="mt-2">
-                      {c.hours && c.hours.length > 0
-                        ? c.hours.map(([d, t]) => (
-                            <div key={d} className="flex justify-between gap-3 py-px font-serif text-sm text-[#222]">
-                              <span className="text-soft">{d}</span>
-                              <span>{t}</span>
-                            </div>
-                          ))
-                        : <span className="font-serif text-sm text-soft">—</span>}
+                    <div className="border-r border-b border-faint px-4.5 py-4">
+                      <Eyebrow className="text-soft">Open hours</Eyebrow>
+                      <div className="mt-2">
+                        {c.hours && c.hours.length > 0
+                          ? c.hours.map(([d, t]) => (
+                              <div key={d} className="flex justify-between gap-3 py-px font-serif text-sm text-[#222]">
+                                <span className="text-soft">{d}</span>
+                                <span>{t}</span>
+                              </div>
+                            ))
+                          : <span className="font-serif text-sm text-soft">—</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
