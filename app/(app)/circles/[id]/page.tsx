@@ -51,6 +51,12 @@ function CircleRoute() {
       onOpenMember={open}
       onOpenCircle={(c) => nav.openCircle(c)}
       onOpenEvent={(e) => nav.openEvent(e)}
+      onNewEvent={() => nav.newEvent(circle)}
+      // kept in the URL so Back to this page reopens the same tab;
+      // replaceState rather than router.replace, since switching tabs needs
+      // no navigation and shouldn't add history entries
+      initialTab={searchParams.get("tab")}
+      onTabChange={(tab) => window.history.replaceState(null, "", `?tab=${tab}`)}
     />
   );
 }

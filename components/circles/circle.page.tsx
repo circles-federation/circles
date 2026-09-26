@@ -12,7 +12,8 @@ import { CIRCLE_TYPE_LABEL, circleChildren, circleWebsiteUrl, isCircleAudience }
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, Event, Member } from "@/lib/types";
 
-type CircleTab = "bulletin" | "wiki" | "members" | "events";
+const CIRCLE_TABS = ["bulletin", "wiki", "members", "events"] as const;
+type CircleTab = (typeof CIRCLE_TABS)[number];
 
 interface CirclePageProps {
   circle: Circle;
@@ -23,9 +24,33 @@ interface CirclePageProps {
   onOpenMember: (m: Member) => void;
   onOpenCircle: (c: Circle) => void;
   onOpenEvent: (e: Event) => void;
+  // the new event form, hosted by this circle
+  onNewEvent: () => void;
+  // the tab to open on (e.g. restored on Back), and a note of each change so
+  // the route can remember it
+  initialTab?: string | null;
+  onTabChange: (tab: string) => void;
 }
 
-export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent }: CirclePageProps) {
+// a ghost icon button, like the top bar's Back; -mr-2.5 lines the + up with
+// the page's edge
+function TabAddButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className="group -my-2.5 -mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
+    >
+      <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
+        <PlusIcon className="size-6" strokeWidth={2} />
+      </span>
+    </button>
+  );
+}
+
+export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, initialTab, onTabChange }: CirclePageProps) {
   const { profile, circles } = useAppState();
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
@@ -38,7 +63,13 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
   // a member lands on the bulletin, the members-only tab; anyone else on the
   // wiki, with no hint a bulletin exists
-  const [tab, setTab] = useState<CircleTab>(isMember ? "bulletin" : "wiki");
+  const [tab, setTab] = useState<CircleTab>(
+    initialTab && CIRCLE_TABS.includes(initialTab as CircleTab) ? (initialTab as CircleTab) : isMember ? "bulletin" : "wiki",
+  );
+  function changeTab(key: CircleTab) {
+    setTab(key);
+    onTabChange(key);
+  }
   const activeTab = !isMember && tab === "bulletin" ? "wiki" : tab;
   const tabs: { key: CircleTab; label: string }[] = [
     ...(isMember ? [{ key: "bulletin" as const, label: "Bulletin" }] : []),
@@ -95,23 +126,14 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         className="mt-6"
         tabs={tabs}
         active={activeTab}
-        onChange={(key) => setTab(key as CircleTab)}
+        onChange={(key) => changeTab(key as CircleTab)}
         actions={
-          activeTab === "bulletin" && (
-            // a ghost icon button, like the top bar's Back; -mr-2.5 lines the +
-            // up with the page's edge
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              title="Add item"
-              aria-label="Add item"
-              className="group -my-2.5 -mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
-            >
-              <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
-                <PlusIcon className="size-6" strokeWidth={2} />
-              </span>
-            </button>
-          )
+          activeTab === "bulletin" ? (
+            <TabAddButton label="Add item" onClick={() => setAdding(true)} />
+          ) : activeTab === "events" && isMember ? (
+            // only a member can host from the circle
+            <TabAddButton label="New event" onClick={onNewEvent} />
+          ) : null
         }
       />
 

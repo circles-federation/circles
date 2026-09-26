@@ -7,7 +7,7 @@ import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-edit
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
-import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isRootCircle, isWithinCircle } from "@/lib/circles.util";
+import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { attendeeIds, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { EVENT_KINDS, isProposal, majority } from "@/lib/governance.util";
@@ -44,7 +44,9 @@ interface EventFormPageBaseProps {
 
 interface CreateEventFormPageProps extends EventFormPageBaseProps {
   mode: "create";
-  onCreate: (draft: EventDraft) => Promise<SaveResult>;
+  // start as a proposal hosted by this circle, shown to it
+  initialHostCircleId?: string;
+  onCreate:(draft: EventDraft) => Promise<SaveResult>;
 }
 
 interface EditEventFormPageProps extends EventFormPageBaseProps {
@@ -82,6 +84,9 @@ export function EventFormPage(props: EventFormPageProps) {
   const byId = indexCircles(circles);
   const rank = (c: Circle) => (c.id === profile.homeCircleId ? 0 : isRootCircle(c) ? 2 : 1);
   const postable = circlesForAudience(profile.id, circles).sort((x, y) => rank(x) - rank(y));
+  // only a circle they could pick as host themselves (see hostChoices below)
+  const requestedHost = mode === "create" && props.initialHostCircleId ? byId[props.initialHostCircleId] : undefined;
+  const initialHost = requestedHost && !isRootCircle(requestedHost) && isCircleMember(requestedHost, profile.id) ? requestedHost : undefined;
 
   // the form's starting values — blank defaults for a new event, or the
   // event's own current values when editing. `dirty` (below) diffs live
@@ -109,8 +114,8 @@ export function EventFormPage(props: EventFormPageProps) {
     : {
         type: "ordinary" as EventKindKey,
         title: "",
-        circleId: postable[0]?.id ?? "",
-        hostCircleId: "",
+        circleId: initialHost?.id ?? postable[0]?.id ?? "",
+        hostCircleId: initialHost?.id ?? "",
         date: "",
         start: DEFAULT_START,
         end: DEFAULT_END,

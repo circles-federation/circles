@@ -69,6 +69,8 @@ export function useAppNav() {
   return {
     setView: (key: string) => router.push(VIEW_ROUTES[key] || `/${key}`),
     openEvent: (e: Event) => router.push(`/events/${e.id}`),
+    // hostCircle, when given, starts the form as that circle's proposal
+    newEvent: (hostCircle?: Circle) => router.push(hostCircle ? `/events/new?host=${hostCircle.id}` : "/events/new"),
     // every circle lives at /circles/[id], keyed by its own stable id rather
     // than its position in the tree — a neighborhood renders as the folder
     // view there, everything else as its own detail page (see
