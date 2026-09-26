@@ -197,6 +197,33 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
         </div>
       </div>
 
+      {/* right under the masthead, whose bottom rule is its top, and above the
+          tabs, as on the circle's own page */}
+      <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border-b border-ink">
+        {facts.map((f, i) => (
+          <div
+            key={i}
+            className={clsx(
+              "p-3.5",
+              i < facts.length - 1 && "border-b min-[720px]:border-b-0 min-[720px]:border-r border-faint",
+            )}
+          >
+            <input
+              value={f.label}
+              onChange={(e) => updateFact(i, "label", e.target.value)}
+              placeholder="Label"
+              className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink touch:text-base touch:tracking-[0.06em]"
+            />
+            <input
+              value={f.value}
+              onChange={(e) => updateFact(i, "value", e.target.value)}
+              placeholder="Value"
+              className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
+            />
+          </div>
+        ))}
+      </div>
+
       <SimpleTabs
         className="mt-6"
         tabs={[{ key: "wiki", label: "Wiki" }, { key: "circle", label: "Circle" }]}
@@ -206,34 +233,6 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
       {activeTab === "wiki" && (
         <SectionGroup>
-          <Section>
-            <Label>Quick facts</Label>
-            <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border border-ink">
-              {facts.map((f, i) => (
-                <div
-                  key={i}
-                  className={clsx(
-                    "p-3.5",
-                    i < facts.length - 1 && "border-b min-[720px]:border-b-0 min-[720px]:border-r border-faint",
-                  )}
-                >
-                  <input
-                    value={f.label}
-                    onChange={(e) => updateFact(i, "label", e.target.value)}
-                    placeholder="Label"
-                    className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink touch:text-base touch:tracking-[0.06em]"
-                  />
-                  <input
-                    value={f.value}
-                    onChange={(e) => updateFact(i, "value", e.target.value)}
-                    placeholder="Value"
-                    className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
-                  />
-                </div>
-              ))}
-            </div>
-          </Section>
-
           <Section>
             <Label>About</Label>
             <TextArea
