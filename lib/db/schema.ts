@@ -227,7 +227,7 @@ export const roleMembers = pgTable(
    only: the app only ever loads these for circles the viewer belongs to (see
    lib/db/resources.ts). Deliberately a separate table, not a column on
    circles — the circles array is sent to every signed-in member. */
-export const resourceIcon = pgEnum("resource_icon", ["folder", "file"]);
+export const resourceIcon = pgEnum("resource_icon", ["folder", "file", "video", "announcement"]);
 
 // A role a member holds in a circle (see lib/circle-roles.util.ts). A circle's
 // rows are only ever rewritten as a whole, by lib/db/circle-roles.ts, so
@@ -253,12 +253,23 @@ export const circleResources = pgTable(
     id: text("id").primaryKey(),
     circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
-    url: text("url").notNull(),
+    // an announcement is a message to the circle's members; every other kind
+    // (folder, file, video) is a link — each has exactly one of the two
+    url: text("url"),
+    message: text("message"),
     icon: resourceIcon("icon").notNull(),
     // display order: resources are shown in the order they were added
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("circle_resources_circle_id_idx").on(t.circleId)]
+  (t) => [
+    index("circle_resources_circle_id_idx").on(t.circleId),
+    // compared as text, not the enum: a new enum value can't be used in the
+    // transaction that adds it, which a fresh database's migrations share
+    check(
+      "circle_resources_link_or_message",
+      sql`(${t.icon}::text = 'announcement' and ${t.message} is not null and ${t.url} is null) or (${t.icon}::text <> 'announcement' and ${t.url} is not null and ${t.message} is null)`
+    ),
+  ]
 );
 
 export const user = pgTable("user", {

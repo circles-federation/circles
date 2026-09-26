@@ -110,18 +110,21 @@ export interface Event {
   votes?: number[];
 }
 
-export type ResourceIcon = "folder" | "file";
+export type ResourceIcon = "folder" | "file" | "video" | "announcement";
 
-// a link a circle's members keep for themselves — a folder (a collection,
-// like a shared drive) or a file (a single document). Members-only: never a
+// something a circle's members keep for themselves: a link — a folder (a
+// collection, like a shared drive), a file (a single document) or a video —
+// or an announcement, a message typed out for them. Members-only: never a
 // field on Circle, since the circles array is sent to every signed-in member;
 // AppStateProvider's `resources` only ever holds the viewer's own circles'.
 export interface CircleResource {
   id: string;
   circleId: string;
   title: string;
-  url: string;
   icon: ResourceIcon;
+  // an announcement has a message; every other kind has a link instead
+  url?: string;
+  message?: string;
 }
 
 // what an event_notifications row is telling a member: an event or meeting a

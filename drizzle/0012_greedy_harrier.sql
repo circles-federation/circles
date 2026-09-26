@@ -1,0 +1,3 @@
+ALTER TABLE "circle_resources" ALTER COLUMN "url" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "circle_resources" ADD COLUMN "message" text;--> statement-breakpoint
+ALTER TABLE "circle_resources" ADD CONSTRAINT "circle_resources_link_or_message" CHECK (("circle_resources"."icon"::text = 'announcement' and "circle_resources"."message" is not null and "circle_resources"."url" is null) or ("circle_resources"."icon"::text <> 'announcement' and "circle_resources"."url" is not null and "circle_resources"."message" is null));

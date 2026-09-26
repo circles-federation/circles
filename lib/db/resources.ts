@@ -3,7 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleResources, circles } from "./schema";
-import { validateResourceInput, type ResourceInput } from "@/lib/resources.util";
+import { isAnnouncement, validateResourceInput, type ResourceInput } from "@/lib/resources.util";
 import type { CircleResource } from "@/lib/types";
 
 /* Circle resources are members-only, so this file is where that's enforced —
@@ -18,7 +18,14 @@ export class ResourceError extends UserFacingError {}
 type ResourceRow = typeof circleResources.$inferSelect;
 
 function toResource(row: ResourceRow): CircleResource {
-  return { id: row.id, circleId: row.circleId, title: row.title, url: row.url, icon: row.icon };
+  return {
+    id: row.id,
+    circleId: row.circleId,
+    title: row.title,
+    icon: row.icon,
+    ...(row.url !== null ? { url: row.url } : {}),
+    ...(row.message !== null ? { message: row.message } : {}),
+  };
 }
 
 // every resource of every circle this member belongs to, in the order added —
@@ -45,10 +52,19 @@ async function assertCanManage(memberId: number, circleId: string) {
   if (!membership) throw new ResourceError("Only members of this circle can manage its resources.");
 }
 
-function cleanInput(input: ResourceInput): ResourceInput {
+// only what the kind uses is saved, and the other is cleared — so a resource
+// changed from a link to an announcement (or back) keeps nothing stale, which
+// the table's own check constraint also insists on
+function cleanInput(input: ResourceInput): { title: string; icon: ResourceInput["icon"]; url: string | null; message: string | null } {
   const first = Object.values(validateResourceInput(input))[0];
   if (first) throw new ResourceError(first);
-  return { title: input.title.trim(), url: input.url.trim(), icon: input.icon };
+  const announcement = isAnnouncement(input.icon);
+  return {
+    title: input.title.trim(),
+    icon: input.icon,
+    url: announcement ? null : input.url.trim(),
+    message: announcement ? input.message.trim() : null,
+  };
 }
 
 async function loadResource(id: string): Promise<ResourceRow> {

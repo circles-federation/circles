@@ -18,6 +18,8 @@
   --color-danger: #c0392b; /* destructive actions, error states */
   --color-folder: #b8860b; /* circle resources: the folder icon (a collection) */
   --color-file: #1f5fbf; /* circle resources: the file icon (a single document) */
+  --color-video: #6d3fb5; /* circle resources: the video icon (a recording) */
+  --color-announcement: #c0392b; /* circle resources: the announcement icon (the same red as danger, for a different job) */
   --color-action: #1f5fbf; /* a primary icon button, like the top bar's Save (the same blue as file, for a different job) */
 
   --font-sans: "Helvetica Neue", Arial, sans-serif;
