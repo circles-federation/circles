@@ -10,6 +10,9 @@ import type { Member } from "@/lib/types";
 
 type Step = "email" | "code";
 
+// just the shape — name@domain.tld, no spaces. Whether it's a member's is the server's call.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 interface WelcomePageProps {
   // members with an email, handed in by the server (this page is outside
   // AppStateProvider, so it can't read the roster from app state); empty in
@@ -35,6 +38,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
   const demoMembers = [...demoMembersProp].sort((a, b) => a.name.localeCompare(b.name));
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const emailValid = EMAIL_SHAPE.test(email.trim());
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,7 +46,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
 
   async function handleSendCode(e: FormEvent) {
     e.preventDefault();
-    if (!email.trim() || busy) return;
+    if (!emailValid || busy) return;
     setBusy(true);
     const result = await requestLoginCode(email);
     setBusy(false);
@@ -109,7 +113,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
               autoFocus
               required
             />
-            <Button type="submit" disabled={busy || !email.trim()} className="mt-4 w-full">
+            <Button type="submit" disabled={busy || !emailValid} className="mt-4 w-full">
               {busy ? "Sending…" : "Send code"}
             </Button>
           </form>
