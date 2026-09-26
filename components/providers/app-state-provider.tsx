@@ -118,8 +118,8 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
-  // circles live in state so member edits (bio, offers) persist; seeded from the DAL fetch
-  const [circles, setCircles] = useState<Circle[]>(() => initialCircles.map((c) => ({ ...c, offers: [...c.offers], members: [...c.members] })));
+  // circles live in state so member edits (bio, offers, needs) persist; seeded from the DAL fetch
+  const [circles, setCircles] = useState<Circle[]>(() => initialCircles.map((c) => ({ ...c, offers: [...c.offers], needs: [...c.needs], members: [...c.members] })));
   // the roster, so names/avatars/home circles resolve from live data rather
   // than a static seed array; the signed-in member's own edits are mirrored in
   const [members, setMembers] = useState<Member[]>(initialMembers);

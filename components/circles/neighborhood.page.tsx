@@ -59,7 +59,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
     if (!searching) return directFolders;
     return circles
       .filter((c) => subtreeCircleIds.has(c.id) && c.id !== circle.id)
-      .filter((c) => [c.name, c.type, c.tagline, ...(c.offers || [])].join(" ").toLowerCase().includes(q))
+      .filter((c) => [c.name, c.type, c.tagline, ...(c.offers || []), ...(c.needs || [])].join(" ").toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [searching, directFolders, circles, subtreeCircleIds, circle, q]);
 

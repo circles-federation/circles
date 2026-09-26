@@ -124,7 +124,7 @@ async function seedBeta() {
   }));
   const councilMemberIds = members.filter((_, i) => file.people[i]!.inCouncil).map((m) => m.id);
 
-  const base = { offers: [], facts: [] as [string, string][] };
+  const base = { offers: [], needs: [], facts: [] as [string, string][] };
   const circles: Circle[] = [
     { ...base, id: cityId, type: "other", name: file.city.name.trim(), parentId: null, tagline: `${file.city.name.trim()}, together.`, about: "The root circle — every neighborhood and citywide group sits inside it.", members: [] },
     { ...base, id: hoodId, type: "neighborhood", name: file.neighborhood.name.trim(), parentId: cityId, tagline: file.neighborhood.tagline, about: file.neighborhood.about, members: members.map((m) => m.id) },

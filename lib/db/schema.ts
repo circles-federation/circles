@@ -80,6 +80,7 @@ export const circles = pgTable(
     tagline: text("tagline").notNull(),
     about: text("about").notNull(),
     offers: text("offers").array().notNull().default(sql`'{}'::text[]`),
+    needs: text("needs").array().notNull().default(sql`'{}'::text[]`),
     lastEditedBy: integer("last_edited_by").references(() => members.id),
     lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
     facts: jsonb("facts").$type<[string, string][]>().notNull().default(sql`'[]'::jsonb`),

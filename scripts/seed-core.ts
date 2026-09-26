@@ -42,6 +42,7 @@ export async function seedDatabase({ members, circles, events, resources = [] }:
       tagline: c.tagline,
       about: c.about,
       offers: c.offers,
+      needs: c.needs,
       lastEditedBy: c.lastEditedBy ?? null,
       lastEditedAt: c.lastEditedAt ? new Date(c.lastEditedAt) : null,
       facts: c.facts,

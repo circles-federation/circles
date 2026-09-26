@@ -49,6 +49,8 @@ export interface Circle {
   tagline: string;
   about: string;
   offers: string[];
+  // what the circle is asking for — donations, hands, space — the other side of offers
+  needs: string[];
   // member ids — explicit membership rows, for every circle type
   members: number[];
   // only on circles that can have roles (not a neighborhood or the city): every

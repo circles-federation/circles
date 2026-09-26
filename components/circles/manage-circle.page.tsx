@@ -73,6 +73,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
   const [tagline, setTagline] = useState(o.tagline);
   const [about, setAbout] = useState(o.about);
   const [offers, setOffers] = useState([...o.offers]);
+  const [needs, setNeeds] = useState([...o.needs]);
   const [facts, setFacts] = useState<FactDraft[]>(() =>
     Array.from({ length: FACT_SLOTS }, (_, i) => {
       const [label, value] = o.facts[i] || ["", ""];
@@ -116,6 +117,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     tagline.trim() !== o.tagline ||
     about !== o.about ||
     offers.join("\u0000") !== o.offers.join("\u0000") ||
+    needs.join("\u0000") !== o.needs.join("\u0000") ||
     JSON.stringify(factPairs) !== JSON.stringify(o.facts) ||
     join.trim() !== (o.join || "") ||
     contact.trim() !== (o.contact || "") ||
@@ -174,7 +176,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     }
     // only touch the page (and who last edited it) if its own fields changed
     if (pageDirty) {
-      onSave({ parentId, type, name: name.trim(), tagline: tagline.trim(), about: about.trim(), offers, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
+      onSave({ parentId, type, name: name.trim(), tagline: tagline.trim(), about: about.trim(), offers, needs, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
     }
     onBack();
   }
@@ -245,6 +247,11 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
           <Section>
             <Label>What we offer</Label>
             <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
+          </Section>
+
+          <Section>
+            <Label>What we need</Label>
+            <EditableTags values={needs} onChange={setNeeds} placeholder="Add a need and press Enter" />
           </Section>
 
           <Section>

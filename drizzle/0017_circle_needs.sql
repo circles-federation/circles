@@ -1,0 +1,1 @@
+ALTER TABLE "circles" ADD COLUMN "needs" text[] DEFAULT '{}'::text[] NOT NULL;

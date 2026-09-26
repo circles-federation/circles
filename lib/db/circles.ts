@@ -19,6 +19,7 @@ function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDra
     tagline: row.tagline,
     about: row.about,
     offers: row.offers,
+    needs: row.needs,
     members: memberIds,
     ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds) } : {}),
     lastEditedBy: row.lastEditedBy ?? undefined,
