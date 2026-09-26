@@ -472,8 +472,8 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   async function addResource(circleId: string, input: ResourceInput): Promise<MutationResult> {
     const result = await dbCreateResource(circleId, input);
     if (!result.ok) return result;
-    setResources((prev) => [...prev, result.value]);
-    showToast({ tone: "success", title: "Resource added", message: `${result.value.title} is now on this circle's page.` });
+    setResources((prev) => [result.value, ...prev]);
+    showToast({ tone: "success", title: "Item added", message: `${result.value.title} is now on the bulletin.` });
     return { ok: true };
   }
 
@@ -481,7 +481,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     const result = await dbUpdateResource(id, input);
     if (!result.ok) return result;
     setResources((prev) => prev.map((r) => (r.id === id ? result.value : r)));
-    showToast({ tone: "success", title: "Resource updated", message: "Your changes are saved." });
+    showToast({ tone: "success", title: "Item updated", message: "Your changes are saved." });
     return { ok: true };
   }
 
@@ -489,7 +489,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     const result = await dbDeleteResource(id);
     if (!result.ok) return result;
     setResources((prev) => prev.filter((r) => r.id !== id));
-    showToast({ tone: "success", title: "Resource removed", message: "It's no longer on this circle's page." });
+    showToast({ tone: "success", title: "Item removed", message: "It's no longer on the bulletin." });
     return { ok: true };
   }
 

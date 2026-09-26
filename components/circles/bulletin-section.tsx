@@ -13,12 +13,6 @@ const ICONS = { folder: FolderIcon, file: DocumentIcon, video: VideoCameraIcon, 
 // each type gets its own color so what a resource is reads at a glance —
 // folders yellow, files blue, videos purple, announcements red. Full literal
 // class strings (not interpolated) so Tailwind's static scan sees them.
-const ICON_TILE = {
-  folder: "border-folder bg-folder/10 text-folder",
-  file: "border-file bg-file/10 text-file",
-  video: "border-video bg-video/10 text-video",
-  announcement: "border-announcement bg-announcement/10 text-announcement",
-};
 const ICON_TEXT = { folder: "text-folder", file: "text-file", video: "text-video", announcement: "text-announcement" };
 
 const ICON_OPTIONS: { key: ResourceIcon; label: string; hint: string; titlePlaceholder: string }[] = [
@@ -36,84 +30,56 @@ const optionFor = (icon: ResourceIcon) => ICON_OPTIONS.find((o) => o.key === ico
    AppState's `resources` only ever holds the viewer's own circles' (see
    lib/db/resources.ts), so this never has to filter anyone out. Adding,
    editing, and removing save immediately, each as its own change rather than
-   part of the Manage form. */
-export function ResourcesSection({ circleId }: { circleId: string }) {
+   part of the Manage form. Its + sits in the circle page's tab row, so that
+   page owns whether the add dialog is open (`adding`). */
+export function BulletinSection({ circleId, adding, onAdd, onAddingDone }: { circleId: string; adding: boolean; onAdd: () => void; onAddingDone: () => void }) {
   const { resources, removeResource } = useAppState();
   const mine = resources.filter((r) => r.circleId === circleId);
-  const [editing, setEditing] = useState<CircleResource | "new" | null>(null);
+  const [editing, setEditing] = useState<CircleResource | null>(null);
   const [removing, setRemoving] = useState<CircleResource | null>(null);
 
   return (
     <div>
-      <Eyebrow className="text-soft">Resources</Eyebrow>
+      {mine.length === 0 ? (
+        // an empty board is where adding the first item is offered, as a blank
+        // card to fill in; once something's pinned, the tab row's + is enough
+        <button
+          type="button"
+          onClick={onAdd}
+          className="ink-press flex w-full cursor-pointer flex-col items-center gap-1.5 border border-dashed border-soft bg-transparent px-6 py-7 text-center text-soft"
+        >
+          <PlusIcon className="size-6" strokeWidth={2} aria-hidden />
+          <Eyebrow className="text-soft">Add item</Eyebrow>
+          <span className="mt-1 font-serif text-base">Post an announcement, or pin a link your circle uses, like a shared drive.</span>
+        </button>
+      ) : (
+        // a board of pinned cards, as many columns as fit; dense, so a wide
+        // announcement doesn't leave holes behind it
+        <div className="grid grid-flow-row-dense grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-3.5">
+          {mine.map((r) => (
+            <BulletinCard key={r.id} resource={r} onEdit={() => setEditing(r)} />
+          ))}
+        </div>
+      )}
 
-      <div className="mt-3.5 border-t border-ink">
-        {mine.length === 0 && (
-          <p className="pt-4 font-serif text-base text-soft">Nothing here yet — add an announcement, or a link your circle uses, like a shared drive.</p>
-        )}
-        {mine.map((r) => {
-          const Icon = ICONS[r.icon];
-          const tile = (
-            <span className={clsx("flex size-11 shrink-0 items-center justify-center border", ICON_TILE[r.icon])}>
-              <Icon className="size-5" strokeWidth={2} aria-label={optionFor(r.icon).label} />
-            </span>
-          );
-          return (
-            <div key={r.id} className={clsx("flex gap-2 border-b border-faint py-3 last:border-b-ink", isAnnouncement(r.icon) ? "items-start" : "items-center")}>
-              {isAnnouncement(r.icon) ? (
-                // an announcement is read here, not opened: the message itself, line breaks kept
-                <div className="flex min-w-0 flex-1 items-start gap-3.5">
-                  {tile}
-                  <div className="min-w-0 pt-0.5">
-                    <div className="font-sans text-sm font-bold">{r.title}</div>
-                    <p className="mt-1 font-serif text-sm leading-normal whitespace-pre-line text-[#222]">{r.message}</p>
-                  </div>
-                </div>
-              ) : (
-                <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-3.5">
-                  {tile}
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-1.5 font-sans text-sm font-bold">
-                      <span className="truncate">{r.title}</span>
-                      <ArrowTopRightOnSquareIcon className="size-3.5 shrink-0" strokeWidth={2.5} />
-                    </span>
-                    <span className="block truncate font-serif text-sm text-soft">{resourceHost(r.url ?? "")}</span>
-                  </span>
-                </a>
-              )}
-              <button
-                onClick={() => setEditing(r)}
-                title="Edit"
-                aria-label={`Edit ${r.title}`}
-                className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink"
-              >
-                <PencilIcon className="size-4" strokeWidth={2} />
-              </button>
-              <button
-                onClick={() => setRemoving(r)}
-                title="Remove"
-                aria-label={`Remove ${r.title}`}
-                className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink"
-              >
-                <XMarkIcon className="size-4" strokeWidth={2} />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      <Button variant="secondary" size="compact" onClick={() => setEditing("new")} className="mt-3">
-        <PlusIcon className="size-3.5" strokeWidth={2.5} />
-        Add resource
-      </Button>
-
-      {editing && (
-        <ResourceForm circleId={circleId} resource={editing === "new" ? null : editing} onClose={() => setEditing(null)} />
+      {(adding || editing) && (
+        <ResourceForm
+          circleId={circleId}
+          resource={editing}
+          onClose={() => {
+            setEditing(null);
+            onAddingDone();
+          }}
+          onRemove={(r) => {
+            setEditing(null);
+            setRemoving(r);
+          }}
+        />
       )}
 
       {removing && (
         <ConfirmModal
-          title={`Remove this ${isAnnouncement(removing.icon) ? "announcement" : "resource"}?`}
+          title={`Remove this ${optionFor(removing.icon).label.toLowerCase()}?`}
           message={`“${removing.title}” will be removed for everyone in this circle.${isAnnouncement(removing.icon) ? "" : " The link itself isn't affected."}`}
           confirmLabel="Remove"
           cancelLabel="Keep it"
@@ -129,17 +95,67 @@ export function ResourcesSection({ circleId }: { circleId: string }) {
   );
 }
 
+// the colored rule along a card's top, in its kind's color
+const TYPE_RULE = { folder: "border-t-folder", file: "border-t-file", video: "border-t-video", announcement: "border-t-announcement" };
+
+/* One card pinned to the bulletin: its kind (icon and name, in that kind's
+   color, which also rules the card's top edge), its title, and then either
+   where a link goes or an announcement's whole message. A link card is a
+   link all over — its title's link is stretched across it — and inverts
+   while pressed; an announcement is read where it is, and spans more of the
+   board. Its edit button (where removing it lives too) sits above the
+   stretched link, and doesn't press it. */
+function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdit: () => void }) {
+  const Icon = ICONS[r.icon];
+  const announcement = isAnnouncement(r.icon);
+  const control = "relative z-10 -my-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink";
+  return (
+    <div
+      className={clsx(
+        "relative flex flex-col border border-t-[3px] border-ink bg-paper p-3.5",
+        TYPE_RULE[r.icon],
+        announcement ? "col-span-full min-[720px]:col-span-2" : "ink-press",
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <Icon className={clsx("size-4 shrink-0", ICON_TEXT[r.icon])} strokeWidth={2} aria-hidden />
+        <Eyebrow className={clsx("min-w-0 flex-1 truncate", ICON_TEXT[r.icon])}>{optionFor(r.icon).label}</Eyebrow>
+        <button type="button" data-press-ignore onClick={onEdit} title="Edit" aria-label={`Edit ${r.title}`} className={clsx(control, "-mr-1.5")}>
+          <PencilIcon className="size-4" strokeWidth={2} />
+        </button>
+      </div>
+      <div className="mt-2.5 font-sans text-base leading-tight font-bold wrap-anywhere">
+        {announcement ? r.title : (
+          <a href={r.url} target="_blank" rel="noopener noreferrer" className="after:absolute after:inset-0">
+            {r.title}
+          </a>
+        )}
+      </div>
+      {announcement ? (
+        <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-[#222]">{r.message}</p>
+      ) : (
+        <div className="mt-auto flex items-center gap-1 pt-3 font-serif text-sm text-soft">
+          <span className="min-w-0 truncate">{resourceHost(r.url ?? "")}</span>
+          <ArrowTopRightOnSquareIcon className="size-3.5 shrink-0" strokeWidth={2.5} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface ResourceFormProps {
   circleId: string;
   resource: CircleResource | null;
   onClose: () => void;
+  // removing lives here, not on the card, which keeps the board uncluttered
+  onRemove: (resource: CircleResource) => void;
 }
 
 /* Adding or editing one resource. What it is comes first, since that decides
    what else to fill in: a link for a folder, file or video, a message for an
    announcement. Both are kept while the form is open, so switching kind
    doesn't lose what was typed; only the one the kind uses is saved. */
-function ResourceForm({ circleId, resource, onClose }: ResourceFormProps) {
+function ResourceForm({ circleId, resource, onClose, onRemove }: ResourceFormProps) {
   const { addResource, updateResource } = useAppState();
   const [icon, setIcon] = useState<ResourceIcon>(resource?.icon ?? "folder");
   const [title, setTitle] = useState(resource?.title ?? "");
@@ -175,7 +191,7 @@ function ResourceForm({ circleId, resource, onClose }: ResourceFormProps) {
   return (
     <Modal onClose={onClose} className="max-w-110">
       <div className="flex items-center justify-between border-b border-ink px-4.5 py-3">
-        <Eyebrow className="text-soft">{resource ? `Edit ${optionFor(resource.icon).label.toLowerCase()}` : "Add to the bulletin"}</Eyebrow>
+        <Eyebrow className="text-soft">{resource ? `Edit ${optionFor(resource.icon).label.toLowerCase()}` : "Add item"}</Eyebrow>
         <button onClick={onClose} aria-label="Close" className="ml-3 shrink-0 cursor-pointer bg-transparent p-0">
           <XMarkIcon className="size-5 text-ink" strokeWidth={2} />
         </button>
@@ -233,6 +249,11 @@ function ResourceForm({ circleId, resource, onClose }: ResourceFormProps) {
         <div className="flex gap-3">
           <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          {resource && (
+            <Button type="button" variant="danger" onClick={() => onRemove(resource)} disabled={busy} className="ml-auto">
+              Remove
+            </Button>
+          )}
         </div>
       </form>
     </Modal>

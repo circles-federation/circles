@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { ParentCircle } from "./parent-circle";
-import { ResourcesSection } from "./resources-section";
+import { BulletinSection } from "./bulletin-section";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
@@ -37,6 +37,8 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   // ever sees the wiki
   const [tab, setTab] = useState<"bulletin" | "wiki">("bulletin");
   const activeTab = isMember ? tab : "wiki";
+  // the bulletin's + lives in the tab row, so opening its add dialog is kept here
+  const [adding, setAdding] = useState(false);
 
   return (
     <PageContainer size="normal">
@@ -77,13 +79,30 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
           tabs={[{ key: "bulletin", label: "Bulletin" }, { key: "wiki", label: "Wiki" }]}
           active={activeTab}
           onChange={(key) => setTab(key as "bulletin" | "wiki")}
+          actions={
+            activeTab === "bulletin" && (
+              // a ghost icon button, like the top bar's Back; -mr-2.5 lines the +
+              // up with the page's edge
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                title="Add item"
+                aria-label="Add item"
+                className="group -my-2.5 -mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
+              >
+                <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
+                  <PlusIcon className="size-6" strokeWidth={2} />
+                </span>
+              </button>
+            )
+          }
         />
       )}
 
       {activeTab === "bulletin" && (
         <SectionGroup>
           <Section>
-            <ResourcesSection circleId={c.id} />
+            <BulletinSection circleId={c.id} adding={adding} onAdd={() => setAdding(true)} onAddingDone={() => setAdding(false)} />
           </Section>
         </SectionGroup>
       )}

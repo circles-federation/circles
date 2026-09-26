@@ -40,11 +40,11 @@ export function parseResourceUrl(raw: string): URL | null {
 export function validateResourceInput(input: ResourceInput): ResourceErrors {
   const errors: ResourceErrors = {};
   if (!RESOURCE_ICONS.includes(input.icon)) {
-    errors.icon = "Pick what kind of resource it is.";
+    errors.icon = "Pick what kind of item it is.";
     return errors;
   }
   const title = input.title.trim();
-  if (!title) errors.title = isAnnouncement(input.icon) ? "Give the announcement a title." : "Give the resource a title.";
+  if (!title) errors.title = isAnnouncement(input.icon) ? "Give the announcement a title." : "Give it a title.";
   else if (title.length > RESOURCE_TITLE_MAX) errors.title = `Keep the title under ${RESOURCE_TITLE_MAX} characters.`;
   if (isAnnouncement(input.icon)) {
     const message = input.message.trim();

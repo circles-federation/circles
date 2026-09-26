@@ -42,6 +42,9 @@ export function PressFeedback() {
 
     function onPointerDown(e: PointerEvent) {
       end();
+      // a control of its own inside a pressable card (a bulletin card's edit
+      // and remove) doesn't press the card
+      if (e.target instanceof Element && e.target.closest("[data-press-ignore]")) return;
       const el = e.target instanceof Element ? e.target.closest(PRESSABLE) : null;
       if (!el || (el as HTMLButtonElement).disabled) return;
       if (e.pointerType !== "touch") {

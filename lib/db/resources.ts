@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleResources, circles } from "./schema";
@@ -28,14 +28,14 @@ function toResource(row: ResourceRow): CircleResource {
   };
 }
 
-// every resource of every circle this member belongs to, in the order added —
+// every resource of every circle this member belongs to, newest first —
 // what the app sends to the browser, so a non-member never receives a circle's
 export async function getResourcesForMember(memberId: number): Promise<CircleResource[]> {
   const rows = await db
     .select({ resource: circleResources })
     .from(circleResources)
     .innerJoin(circleMembers, and(eq(circleMembers.circleId, circleResources.circleId), eq(circleMembers.memberId, memberId)))
-    .orderBy(asc(circleResources.createdAt));
+    .orderBy(desc(circleResources.createdAt));
   return rows.map((r) => toResource(r.resource));
 }
 
@@ -44,12 +44,12 @@ export async function getResourcesForMember(memberId: number): Promise<CircleRes
 async function assertCanManage(memberId: number, circleId: string) {
   const [circle] = await db.select({ type: circles.type }).from(circles).where(eq(circles.id, circleId));
   if (!circle) throw new ResourceError("That circle doesn't exist.");
-  if (circle.type === "neighborhood") throw new ResourceError("Neighborhoods don't have resources.");
+  if (circle.type === "neighborhood") throw new ResourceError("Neighborhoods don't have a bulletin.");
   const [membership] = await db
     .select({ memberId: circleMembers.memberId })
     .from(circleMembers)
     .where(and(eq(circleMembers.circleId, circleId), eq(circleMembers.memberId, memberId)));
-  if (!membership) throw new ResourceError("Only members of this circle can manage its resources.");
+  if (!membership) throw new ResourceError("Only members of this circle can change its bulletin.");
 }
 
 // only what the kind uses is saved, and the other is cleared — so a resource
@@ -69,7 +69,7 @@ function cleanInput(input: ResourceInput): { title: string; icon: ResourceInput[
 
 async function loadResource(id: string): Promise<ResourceRow> {
   const [row] = await db.select().from(circleResources).where(eq(circleResources.id, id));
-  if (!row) throw new ResourceError("That resource no longer exists.");
+  if (!row) throw new ResourceError("That item is no longer on the bulletin.");
   return row;
 }
 
