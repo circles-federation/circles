@@ -33,7 +33,9 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   const circleEvents = [...events]
     .filter((e) => e.circleId === c.id || e.hostCircleId === c.id)
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
-  const [tab, setTab] = useState<"wiki" | "resources">("wiki");
+  // a member lands on the bulletin, the members-only tab; anyone else only
+  // ever sees the wiki
+  const [tab, setTab] = useState<"bulletin" | "wiki">("bulletin");
   const activeTab = isMember ? tab : "wiki";
 
   return (
@@ -67,18 +69,18 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         ))}
       </div>
 
-      {/* resources are members-only: a non-member gets no tabs at all, not
-          even a hint that a Resources tab exists */}
+      {/* the bulletin is members-only: a non-member gets no tabs at all, not
+          even a hint that a Bulletin tab exists */}
       {isMember && (
         <SimpleTabs
           className="mt-6"
-          tabs={[{ key: "wiki", label: "Wiki" }, { key: "resources", label: "Resources" }]}
+          tabs={[{ key: "bulletin", label: "Bulletin" }, { key: "wiki", label: "Wiki" }]}
           active={activeTab}
-          onChange={(key) => setTab(key as "wiki" | "resources")}
+          onChange={(key) => setTab(key as "bulletin" | "wiki")}
         />
       )}
 
-      {activeTab === "resources" && (
+      {activeTab === "bulletin" && (
         <SectionGroup>
           <Section>
             <ResourcesSection circleId={c.id} />
