@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Modal } from "./modal";
+import { useActAfterPress } from "./press-feedback";
 
 interface ConfirmModalProps {
   title: ReactNode;
@@ -17,6 +18,7 @@ interface ConfirmModalProps {
    props) rather than named after that one use, since any future form with
    a dirty check will want the same confirmation. */
 export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, onCancel }: ConfirmModalProps) {
+  const { pressed, act } = useActAfterPress<"cancel" | "confirm">();
   return (
     <Modal onClose={onCancel} className="max-w-105" centered>
       <div className="p-6">
@@ -25,14 +27,16 @@ export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConf
       </div>
       <div className="flex border-t border-ink">
         <button
-          onClick={onCancel}
+          onClick={() => act("cancel", onCancel)}
+          data-pressed={pressed("cancel")}
           className="btn-invert btn-ink flex-1 cursor-pointer border-r border-ink bg-ink py-3.5 font-sans text-xs font-bold uppercase tracking-wide text-paper"
         >
           {cancelLabel}
         </button>
         <button
-          onClick={onConfirm}
-          className="ink-press flex-1 cursor-pointer bg-paper py-3.5 font-sans text-xs font-bold uppercase tracking-wide text-danger"
+          onClick={() => act("confirm", onConfirm)}
+          data-pressed={pressed("confirm")}
+          className="danger-press flex-1 cursor-pointer bg-paper py-3.5 font-sans text-xs font-bold uppercase tracking-wide text-danger"
         >
           {confirmLabel}
         </button>

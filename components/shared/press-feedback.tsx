@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // what gets a pressed look: tiles, cards and outlined buttons (ink-press),
-// filled buttons (btn-invert), and images (press-invert) — see the press
-// styles in app/globals.css
-const PRESSABLE = ".ink-press, .btn-invert, .press-invert";
+// destructive ones (danger-press), filled buttons (btn-invert), and images
+// (press-invert) — see the press styles in app/globals.css
+const PRESSABLE = ".ink-press, .danger-press, .btn-invert, .press-invert";
 // a touch has to be held this long, without moving, before it looks pressed,
 // so the start of a scroll never flashes a tile
 const TOUCH_DELAY_MS = 80;
 // how far a finger can drift and still be a press rather than a scroll
 const MOVE_SLOP_PX = 8;
-// how long a tap too quick for the delay still shows its pressed look
-const QUICK_TAP_FLASH_MS = 100;
+// how long a tap too quick for the delay still shows its pressed look — and
+// how long a dialog's button shows it before the dialog closes (see
+// useActAfterPress), since a click that removes its own button would
+// otherwise take it away before the look is ever drawn
+export const PRESS_FLASH_MS = 100;
 
 /* The pressed look (a tile inverting to ink, a button to paper) used to be
    :active, which iOS applies the moment a finger lands — including the first
@@ -75,7 +78,7 @@ export function PressFeedback() {
       show(tapped.el);
       window.setTimeout(() => {
         if (press === tapped) end();
-      }, QUICK_TAP_FLASH_MS);
+      }, PRESS_FLASH_MS);
     }
 
     document.addEventListener("pointerdown", onPointerDown, { passive: true });
@@ -95,4 +98,20 @@ export function PressFeedback() {
   }, []);
 
   return null;
+}
+
+/* For a button whose click removes it — a dialog's Confirm or Cancel. It
+   marks the chosen one pressed (the data-pressed attribute, rendered, so it
+   holds even once PressFeedback lets go on release) and acts PRESS_FLASH_MS
+   later, so the press is seen. A second choice in that moment is ignored. */
+export function useActAfterPress<K extends string>() {
+  const [chosen, setChosen] = useState<K | null>(null);
+  return {
+    pressed: (key: K) => (chosen === key ? "" : undefined),
+    act: (key: K, action: () => void) => {
+      if (chosen) return;
+      setChosen(key);
+      window.setTimeout(action, PRESS_FLASH_MS);
+    },
+  };
 }

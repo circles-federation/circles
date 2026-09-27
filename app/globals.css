@@ -188,6 +188,10 @@ body {
    white text on white. This makes it invert against the card instead: a white
    badge with black text. More specific than that rule, so it wins. */
 .ink-press[data-pressed] .ink-press-badge { color: var(--color-ink) !important; }
+/* ink-press for a destructive control: it fills red rather than black */
+.danger-press { transition: background 0.08s, color 0.08s; }
+.danger-press[data-pressed] { background: var(--color-danger) !important; color: var(--color-paper) !important; }
+.danger-press[data-pressed] * { color: var(--color-paper) !important; }
 .btn-invert { transition: background 0.08s, color 0.08s; }
 .btn-ink[data-pressed] { background: var(--color-paper) !important; color: var(--color-ink) !important; }
 .btn-teal[data-pressed] { background: var(--color-paper) !important; color: var(--color-teal) !important; }

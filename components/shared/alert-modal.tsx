@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Modal } from "./modal";
+import { useActAfterPress } from "./press-feedback";
 
 interface AlertModalProps {
   title: ReactNode;
@@ -14,6 +15,7 @@ interface AlertModalProps {
    (why the name game can't start, say). OK, a tap outside it, or Escape all
    close it. */
 export function AlertModal({ title, message, onClose }: AlertModalProps) {
+  const { pressed, act } = useActAfterPress<"ok">();
   return (
     <Modal onClose={onClose} className="max-w-105" centered role="alertdialog">
       <div className="p-6">
@@ -22,7 +24,8 @@ export function AlertModal({ title, message, onClose }: AlertModalProps) {
       </div>
       <div className="flex border-t border-ink">
         <button
-          onClick={onClose}
+          onClick={() => act("ok", onClose)}
+          data-pressed={pressed("ok")}
           autoFocus
           className="btn-invert btn-ink flex-1 cursor-pointer bg-ink py-3.5 font-sans text-xs font-bold uppercase tracking-wide text-paper"
         >

@@ -17,7 +17,7 @@ const PRIMARY_ACCENTS: Record<ButtonAccent, string> = {
 
 const NON_PRIMARY_VARIANTS: Record<Exclude<ButtonVariant, "primary">, string> = {
   secondary: "ink-press border-ink bg-paper text-ink",
-  danger: "ink-press border-danger bg-paper text-danger",
+  danger: "danger-press border-danger bg-paper text-danger",
 };
 
 const SIZES: Record<ButtonSize, string> = {
