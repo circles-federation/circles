@@ -8,6 +8,7 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { GhostIconButton } from "./ghost-icon-button";
 
 type ToastTone = "success" | "error" | "info";
 
@@ -76,7 +77,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed top-0 right-0 left-0 z-1000 flex w-full max-w-full flex-col gap-2.5 p-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] min-[720px]:top-4 min-[720px]:right-4 min-[720px]:left-auto min-[720px]:w-auto min-[720px]:max-w-95 min-[720px]:p-0"
+        // beneath the top bar, whose height it publishes as --top-bar-height
+        // (the notch included); where there's no bar (the welcome page), below
+        // the notch instead
+        className="pointer-events-none fixed top-[calc(var(--top-bar-height,env(safe-area-inset-top))+0.625rem)] right-0 left-0 z-1000 flex w-full max-w-full flex-col gap-2.5 px-2.5 min-[720px]:top-[calc(var(--top-bar-height,env(safe-area-inset-top))+1rem)] min-[720px]:right-4 min-[720px]:left-auto min-[720px]:w-auto min-[720px]:max-w-95 min-[720px]:px-0"
       >
         {toasts.map((t) => {
           const tone = TOAST_TONES[t.tone] || TOAST_TONES.info;
@@ -84,10 +88,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={t.id}
               className={clsx(
-                // per-side classes on purpose: a shorthand like border-ink would
-                // set border-left-color too, colliding with tone.border below in
-                // a way Tailwind resolves by stylesheet order, not intent
-                "pointer-events-auto flex items-start gap-3 border-t border-r border-b border-t-ink border-r-ink border-b-ink border-l-[5px] bg-paper px-4 py-3.5 text-ink shadow-[4px_4px_0_rgba(10,10,10,0.12)] animate-[toastIn_0.18s_ease-out]",
+                // floating chrome, like a dialog: no outline, the bottom nav's
+                // soft shadow, and its tone as a rule down the left
+                "pointer-events-auto flex items-start gap-1 border-l-[5px] bg-paper py-3.5 pr-1.5 pl-4 text-ink shadow-[0_6px_20px_rgba(10,10,10,0.28)] animate-[toastIn_0.18s_ease-out]",
                 tone.border,
               )}
             >
@@ -97,13 +100,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 </div>
                 <div className="mt-1 font-serif text-sm leading-[1.45]">{t.message}</div>
               </div>
-              <button
-                onClick={() => dismiss(t.id)}
-                aria-label="Dismiss"
-                className="shrink-0 cursor-pointer border-none bg-transparent p-0 text-soft"
-              >
-                <XMarkIcon className="size-3.5" strokeWidth={2.5} />
-              </button>
+              {/* the modals' close button; -my-2 keeps its tap area from
+                  making the toast taller */}
+              <GhostIconButton icon={XMarkIcon} label="Dismiss" onClick={() => dismiss(t.id)} className="-my-2" />
             </div>
           );
         })}
