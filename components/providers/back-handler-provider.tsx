@@ -72,6 +72,9 @@ export function useRunBackHandler(): () => boolean {
 function parentRoute(pathname: string): string {
   const parent = pathname.replace(/\/[^/]+\/?$/, "");
   if (parent === "" || parent === "/profile") return "/home";
+  // a bulletin item's form is reached from its circle's Bulletin tab
+  const bulletin = parent.match(/^(\/circles\/[^/]+)\/bulletin$/);
+  if (bulletin) return `${bulletin[1]}?tab=bulletin`;
   return parent;
 }
 

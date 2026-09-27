@@ -2,7 +2,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { indexCircles, type CirclesById } from "./circles.util";
-import type { Circle, Event, Member } from "./types";
+import type { Circle, CircleResource, Event, Member } from "./types";
 
 /* The seam components reach live data through — a hook here rather than
    importing lib/data.ts's seed constants or threading props, so where the
@@ -69,6 +69,9 @@ export function useAppNav() {
   return {
     setView: (key: string) => router.push(VIEW_ROUTES[key] || `/${key}`),
     openEvent: (e: Event) => router.push(`/events/${e.id}`),
+    // a bulletin item's form as a page — what a phone gets instead of the dialog
+    addResource: (c: Circle) => router.push(`/circles/${c.id}/bulletin/new`),
+    editResource: (r: CircleResource) => router.push(`/circles/${r.circleId}/bulletin/${r.id}`),
     // a member's profile page, from anywhere a member is shown
     openMember: (m: Member) => router.push(`/profile/${m.id}`),
     // hostCircle, when given, starts the form as that circle's proposal

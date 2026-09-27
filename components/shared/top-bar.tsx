@@ -10,7 +10,8 @@ import { useGoBack, useRunBackHandler } from "@/components/providers/back-handle
 import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { isCircleMember } from "@/lib/circles.util";
 import { isEventOrganizer } from "@/lib/governance.util";
-import type { Circle, Event, Member, Profile } from "@/lib/types";
+import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
+import { resourceFormTitle } from "@/components/circles/resource-kinds";
 import { GhostIconButton } from "./ghost-icon-button";
 import { OfflineBanner } from "./offline-banner";
 
@@ -86,11 +87,12 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
 // the title for every route under app/(app)/. A circle or event page is titled
 // by its name; a lookup that misses (the page is about to 404) falls back to
 // its section, so the bar never shows an id
-function pageTitle(pathname: string, circles: Circle[], events: Event[], members: Member[]): string {
-  const [section, id, sub] = pathname.split("/").slice(1);
+function pageTitle(pathname: string, circles: Circle[], events: Event[], members: Member[], resources: CircleResource[]): string {
+  const [section, id, sub, item] = pathname.split("/").slice(1);
   if (section === "circles") {
     if (!id) return "Circles";
     if (sub === "manage") return "Manage circle";
+    if (sub === "bulletin") return resourceFormTitle(resources.find((r) => r.id === item)?.icon);
     return circles.find((c) => c.id === id)?.name ?? "Circles";
   }
   if (section === "events") {
@@ -109,7 +111,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
 
 export function TopBar({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
-  const { circles, events, members, profile } = useAppState();
+  const { circles, events, members, resources, profile } = useAppState();
   const isHomeNeighborhood = profile.homeCircleId !== null && pathname === `/circles/${profile.homeCircleId}`;
 
   // Like Flutter's automatic leading back button: shown on every route except
@@ -167,7 +169,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         <div className="flex min-w-0 items-center gap-1 min-[720px]:max-w-[calc(50%-9rem)]">
           {!isTabRoot && <GhostIconButton icon={ArrowLeftIcon} label="Back" onClick={goBack} className="-ml-2.5" />}
           <span className="truncate font-sans text-lg font-extrabold tracking-[-0.02em]">
-            {pageTitle(pathname, circles, events, members)}
+            {pageTitle(pathname, circles, events, members, resources)}
           </span>
           {isHomeNeighborhood && <HomeIcon className="ml-1 size-5 shrink-0 text-teal" strokeWidth={2} aria-label="Your neighborhood" />}
         </div>

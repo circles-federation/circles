@@ -10,7 +10,8 @@ import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL, circleChildren, circleWebsiteUrl, isCircleAudience } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
-import type { Circle, Event, Member } from "@/lib/types";
+import type { Circle, CircleResource, Event, Member } from "@/lib/types";
+import { isPhoneWidth } from "@/lib/viewport";
 
 const CIRCLE_TABS = ["bulletin", "wiki", "members", "events"] as const;
 type CircleTab = (typeof CIRCLE_TABS)[number];
@@ -26,13 +27,17 @@ interface CirclePageProps {
   onOpenEvent: (e: Event) => void;
   // the new event form, hosted by this circle
   onNewEvent: () => void;
+  // a bulletin item's form as a page, which is what a phone gets instead of
+  // the dialog: a new one, or an existing one to edit
+  onAddResourcePage: () => void;
+  onEditResourcePage: (resource: CircleResource) => void;
   // the tab to open on (e.g. restored on Back), and a note of each change so
   // the route can remember it
   initialTab?: string | null;
   onTabChange: (tab: string) => void;
 }
 
-export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, initialTab, onTabChange }: CirclePageProps) {
+export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, initialTab, onTabChange }: CirclePageProps) {
   const { profile, circles } = useAppState();
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
@@ -62,6 +67,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   const websiteUrl = c.website ? circleWebsiteUrl(c.website) : null;
   // the bulletin's + lives in the tab row, so opening its add dialog is kept here
   const [adding, setAdding] = useState(false);
+  const startAdding = () => (isPhoneWidth() ? onAddResourcePage() : setAdding(true));
 
   return (
     <PageContainer size="normal">
@@ -111,7 +117,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         onChange={(key) => changeTab(key as CircleTab)}
         actions={
           activeTab === "bulletin" ? (
-            <GhostIconButton icon={PlusIcon} label="Add item" onClick={() => setAdding(true)} className="-my-2.5 -mr-2.5" />
+            <GhostIconButton icon={PlusIcon} label="Add item" onClick={startAdding} className="-my-2.5 -mr-2.5" />
           ) : activeTab === "events" && isMember ? (
             // only a member can host from the circle
             <GhostIconButton icon={PlusIcon} label="New event" onClick={onNewEvent} className="-my-2.5 -mr-2.5" />
@@ -122,7 +128,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
       {activeTab === "bulletin" && (
         <SectionGroup>
           <Section>
-            <BulletinSection circleId={c.id} adding={adding} onAdd={() => setAdding(true)} onAddingDone={() => setAdding(false)} />
+            <BulletinSection circleId={c.id} adding={adding} onAdd={startAdding} onAddingDone={() => setAdding(false)} onEditPage={onEditResourcePage} />
           </Section>
         </SectionGroup>
       )}
