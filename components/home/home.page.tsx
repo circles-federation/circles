@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowRightStartOnRectangleIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
-import { AlertModal, Avatar, Button, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
+import { AlertModal, Avatar, Button, Chip, ConfirmModal, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
@@ -40,6 +40,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   // no one else there (or no neighborhood) there's nothing to play: say why
   // instead of opening an empty game
   const [noGame, setNoGame] = useState(false);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const canPlay = neighbors.some((m) => m.id !== profile.id);
   function playGame() {
     if (canPlay) onPlayGame();
@@ -99,7 +100,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
           >
             <PencilIcon className="size-3.5" strokeWidth={2.5} />
           </button>
-          <Button variant="danger" onClick={onLogout}>
+          <Button variant="danger" onClick={() => setConfirmingLogout(true)}>
             <ArrowRightStartOnRectangleIcon className="size-3.5" strokeWidth={2.5} />
             Log out
           </Button>
@@ -156,6 +157,17 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
           </EyebrowGroup>
         </Section>
       </SectionGroup>
+
+      {confirmingLogout && (
+        <ConfirmModal
+          title="Log out?"
+          message="You'll need a new code from your email to sign back in."
+          confirmLabel="Log out"
+          cancelLabel="Stay"
+          onConfirm={onLogout}
+          onCancel={() => setConfirmingLogout(false)}
+        />
+      )}
 
       {noGame && (
         <AlertModal
