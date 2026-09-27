@@ -61,18 +61,25 @@ export function AgendaEditor({ items, onChange }: { items: AgendaDraft[]; onChan
                   role="radio"
                   aria-checked={chosen}
                   onClick={() => set(i, { category: c })}
+                  title={AGENDA_CATEGORY[c].label}
                   className={clsx(
-                    "flex cursor-pointer items-center gap-2 border bg-paper px-2 py-1.5 font-sans text-sm font-bold",
+                    "flex cursor-pointer items-center justify-center gap-2 border bg-paper px-2 py-1.5 font-sans text-sm font-bold min-[480px]:justify-start",
                     chosen ? "border-agenda text-agenda" : "border-faint text-soft",
                   )}
                 >
                   <AgendaBadge category={c} outline={!chosen} />
-                  {AGENDA_CATEGORY[c].label}
+                  {/* just the letter on a phone, where three labels don't fit
+                      side by side; the hint below names the chosen one */}
+                  <span className="sr-only min-[480px]:not-sr-only">{AGENDA_CATEGORY[c].label}</span>
                 </button>
               );
             })}
           </div>
-          <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">{AGENDA_CATEGORY[item.category].hint}</p>
+          <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+            {/* named here on a phone, where the buttons show only letters */}
+            <strong className="font-bold text-agenda min-[480px]:hidden">{AGENDA_CATEGORY[item.category].label}: </strong>
+            {AGENDA_CATEGORY[item.category].hint}
+          </p>
 
           <div className="mt-3 flex flex-col gap-2.5">
             <Input value={item.title} onChange={(e) => set(i, { title: e.target.value })} placeholder="Topic (e.g. Repair budget)" aria-label={`Topic ${i + 1} title`} />
