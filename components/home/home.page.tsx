@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightStartOnRectangleIcon, PencilIcon } from "@heroicons/react/24/outline";
+import Link from "next/link";
+import { ArrowRightStartOnRectangleIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import { AlertModal, Avatar, Button, Chip, ConfirmModal, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
@@ -10,6 +11,7 @@ import { StatCard } from "./stat-card";
 import { isPastEvent, parseDay } from "@/lib/format.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
 import { useMembers } from "@/lib/hooks";
+import { useAppState } from "@/components/providers/app-state-provider";
 import type { Circle, Event, Profile } from "@/lib/types";
 
 interface HomeProps {
@@ -33,6 +35,7 @@ interface HomeProps {
    dial), and their events. Profile editing lives on a separate page. */
 export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onEditProfile, onOpenProfile, onLogout }: HomeProps) {
   const members = useMembers();
+  const { pendingApplications } = useAppState();
   const byId = indexCircles(circles);
   const homeCircle = profile.homeCircleId ? byId[profile.homeCircleId] : undefined;
   const neighbors = members.filter((m) => profile.homeCircleId !== null && m.homeCircleId === profile.homeCircleId);
@@ -108,6 +111,20 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
       </div>
 
       <SectionGroup>
+        {/* a system admin's way into the applications waiting for them */}
+        {pendingApplications !== null && (
+          <Section>
+            <EyebrowGroup label="Applications">
+              <Link href="/admin/applications" className="ink-press flex items-center justify-between gap-3 border border-ink bg-paper px-4.5 py-4 text-ink no-underline">
+                <span className="font-sans text-base font-bold">
+                  {pendingApplications === 0 ? "Nothing waiting for review" : `${pendingApplications} waiting for review`}
+                </span>
+                <ChevronRightIcon className="size-4 shrink-0" strokeWidth={2.5} />
+              </Link>
+            </EyebrowGroup>
+          </Section>
+        )}
+
         {/* my neighborhood — one compact panel of stats */}
         <Section>
           <EyebrowGroup label="My neighborhood">

@@ -392,3 +392,63 @@ function cancelledEventEmail(n: EventNotificationData): Body {
     ),
   };
 }
+
+// the masthead every application email opens with: the welcome page's rule,
+// eyebrow and wordmark
+const applicationMasthead = (label: string) =>
+  `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
+  eyebrow(label) +
+  `<div style="margin-top:10px;font-family:${SANS};font-size:44px;font-weight:800;letter-spacing:-0.04em;line-height:0.95;color:${INK}">Circles</div>` +
+  `</td></tr>`;
+const paragraph = (text: string) => `<tr><td style="font-family:${SERIF};font-size:18px;line-height:1.55;color:#222222;padding-bottom:20px">${text}</td></tr>`;
+const footnote = (text: string) =>
+  `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${text}</td></tr>`;
+
+// confirms an applicant's email is really theirs, before anyone reviews it
+export function applicationCodeEmail(code: string, minutes: number): Body {
+  const expiry = `Enter it on the application page to send your application for review. It expires in ${minutes} minutes.`;
+  const ignore = `If you didn't apply to join Circles, you can ignore this email — nothing happens without this code.`;
+  return {
+    subject: "Confirm your Circles application",
+    text: `Confirm your Circles application\n\n    ${code}\n\n${expiry}\n\n${ignore}`,
+    html: shell(
+      applicationMasthead("Confirm your application to") +
+        `<tr><td style="padding:28px 0 24px"><div style="border:2px solid ${INK};padding:26px 16px 26px 24px;text-align:center;font-family:${SANS};font-size:52px;font-weight:800;letter-spacing:0.16em;line-height:1;color:${INK}">${code}</div></td></tr>` +
+        paragraph(expiry) +
+        footnote(ignore)
+    ),
+  };
+}
+
+export function applicationApprovedEmail(d: { firstName: string; neighborhoodName: string; url: string }): Body {
+  const body = `Your application has been approved, and you're now a member of ${d.neighborhoodName}. Sign in with this email address — we'll send you a code each time, with no password to remember.`;
+  return {
+    subject: "Welcome to Circles",
+    text: `Welcome to Circles, ${d.firstName}\n\n${body}\n\nSign in: ${d.url}`,
+    html: shell(
+      applicationMasthead("Welcome to") +
+        `<tr><td style="padding-top:24px"></td></tr>` +
+        paragraph(`${esc(d.firstName)}, ${esc(body)}`) +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(d.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">Sign in</a></td></tr>`
+    ),
+  };
+}
+
+export function applicationDeclinedEmail(d: { firstName: string; neighborhoodName: string; note?: string }): Body {
+  const body = `Thank you for applying to join ${d.neighborhoodName || "Circles"}. We weren't able to approve your application this time.`;
+  const noteLabel = "A note from the reviewer";
+  const after = "If something has changed, or you think this was a mistake, you're welcome to apply again.";
+  return {
+    subject: "Your Circles application",
+    text: `${d.firstName},\n\n${body}\n\n${d.note ? `${noteLabel}:\n${d.note}\n\n` : ""}${after}`,
+    html: shell(
+      applicationMasthead("Your application to") +
+        `<tr><td style="padding-top:24px"></td></tr>` +
+        paragraph(`${esc(d.firstName)}, ${esc(body)}`) +
+        (d.note
+          ? `<tr><td style="padding-bottom:20px">${eyebrow(noteLabel)}<div style="margin-top:8px;border-left:3px solid ${INK};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(d.note).replace(/\n/g, "<br>")}</div></td></tr>`
+          : "") +
+        footnote(after)
+    ),
+  };
+}

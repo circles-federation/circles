@@ -11,6 +11,7 @@
     "db:migrate": "node --env-file=.env.local node_modules/.bin/drizzle-kit migrate",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "db:seed:beta": "tsx --env-file=.env.local scripts/seed-beta.ts",
+    "admin": "tsx --env-file=.env.local scripts/set-admin.ts",
     "icons": "tsx scripts/generate-icons.tsx"
   },
   "dependencies": {

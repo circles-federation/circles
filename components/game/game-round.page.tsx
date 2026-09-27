@@ -79,7 +79,9 @@ export function GameRoundPage({ round, idx, roundsLength, score, picked, answere
           <div className="flex items-center justify-between gap-5">
             <p className="font-serif text-sm leading-[1.45] text-soft">
               {picked === m.name ? "Right — " : `That's ${m.name}. `}
-              <span className="text-ink">{m.name}</span> · {m.role}, {m.pronouns}.
+              <span className="text-ink">{m.name}</span>
+              {/* a new member may not have filled these in yet */}
+              {(m.role || m.pronouns) && <> · {[m.role, m.pronouns].filter(Boolean).join(", ")}.</>}
             </p>
             <Button onClick={onNext} className="shrink-0">
               {idx + 1 >= roundsLength ? "See score" : "Next"}

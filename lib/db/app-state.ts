@@ -1,3 +1,4 @@
+import { countPendingApplications } from "./applications";
 import { getCircles } from "./circles";
 import { getEventsForMember } from "./events";
 import { getMembers } from "./members";
@@ -10,6 +11,8 @@ export interface AppStateData {
   members: Member[];
   resources: CircleResource[];
   profile: Member;
+  // applications waiting for review, for a system admin; null for anyone else
+  pendingApplications: number | null;
 }
 
 /* Everything AppStateProvider holds, as the given member may see it: what
@@ -19,7 +22,13 @@ export interface AppStateData {
    scoped to circles: only the ones the member may see are fetched, so nothing
    else reaches their browser. Null if the member no longer exists. */
 export async function getAppStateForMember(memberId: number): Promise<AppStateData | null> {
-  const [events, circles, members, resources] = await Promise.all([getEventsForMember(memberId), getCircles(), getMembers(), getResourcesForMember(memberId)]);
+  const [events, circles, members, resources, pendingApplications] = await Promise.all([
+    getEventsForMember(memberId),
+    getCircles(),
+    getMembers(),
+    getResourcesForMember(memberId),
+    countPendingApplications(memberId),
+  ]);
   const profile = members.find((m) => m.id === memberId);
-  return profile ? { events, circles, members, resources, profile } : null;
+  return profile ? { events, circles, members, resources, profile, pendingApplications } : null;
 }

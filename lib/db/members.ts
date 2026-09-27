@@ -84,15 +84,22 @@ function sniffImageType(bytes: Buffer): string | null {
   return null;
 }
 
+// an uploaded photo's bytes and real type, or the reason it's refused (as the
+// caller's own error class) — shared by profile photos and applications'
+export async function readPhoto(file: Blob, Refusal: new (message: string) => Error): Promise<{ data: Buffer; contentType: string }> {
+  if (file.size === 0) throw new Refusal("Choose a photo to upload.");
+  if (file.size > MAX_PHOTO_BYTES) throw new Refusal("That photo is too large — choose one under 1 MB.");
+  const data = Buffer.from(await file.arrayBuffer());
+  const contentType = sniffImageType(data);
+  if (!contentType) throw new Refusal("That file isn't a JPEG, PNG or WebP image.");
+  return { data, contentType };
+}
+
 /* Replaces the member's photo — there's no removing one (see memberPhotos in
    schema.ts). Like updateMember, `id` is always the acting member. Returns the
    new photoVersion. */
 export async function setMemberPhoto(id: number, file: Blob): Promise<number> {
-  if (file.size === 0) throw new MemberError("Choose a photo to upload.");
-  if (file.size > MAX_PHOTO_BYTES) throw new MemberError("That photo is too large — choose one under 1 MB.");
-  const data = Buffer.from(await file.arrayBuffer());
-  const contentType = sniffImageType(data);
-  if (!contentType) throw new MemberError("That file isn't a JPEG, PNG or WebP image.");
+  const { data, contentType } = await readPhoto(file, MemberError);
   const updatedAt = new Date();
   await db
     .insert(memberPhotos)

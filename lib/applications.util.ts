@@ -1,0 +1,34 @@
+/* What an application to join needs, as pure rules shared by the apply form
+   (instant feedback) and lib/db/applications.ts (the real check). */
+
+export const APPLICATION_NAME_MAX = 60;
+export const APPLICATION_ADDRESS_MAX = 200;
+export const APPLICATION_NOTE_MAX = 1000;
+
+// just the shape — name@domain.tld, no spaces. Whether it can be used is the server's call.
+export const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export interface ApplicationInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  neighborhoodId: string;
+  address: string;
+}
+
+export type ApplicationErrors = Partial<Record<keyof ApplicationInput | "photo", string>>;
+
+// every problem at once, by field, so the form can mark each one
+export function validateApplication(input: ApplicationInput, hasPhoto: boolean): ApplicationErrors {
+  const errors: ApplicationErrors = {};
+  if (!input.firstName.trim()) errors.firstName = "Enter your first name.";
+  else if (input.firstName.trim().length > APPLICATION_NAME_MAX) errors.firstName = `Keep it under ${APPLICATION_NAME_MAX} characters.`;
+  if (!input.lastName.trim()) errors.lastName = "Enter your last name.";
+  else if (input.lastName.trim().length > APPLICATION_NAME_MAX) errors.lastName = `Keep it under ${APPLICATION_NAME_MAX} characters.`;
+  if (!EMAIL_SHAPE.test(input.email.trim())) errors.email = "Enter an email address, like you@example.com.";
+  if (!input.neighborhoodId) errors.neighborhoodId = "Choose the neighborhood you live in.";
+  if (!input.address.trim()) errors.address = "Enter your home address, so we can check it's in the neighborhood.";
+  else if (input.address.trim().length > APPLICATION_ADDRESS_MAX) errors.address = `Keep it under ${APPLICATION_ADDRESS_MAX} characters.`;
+  if (!hasPhoto) errors.photo = "Add a photo of your face.";
+  return errors;
+}

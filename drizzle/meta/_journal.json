@@ -134,6 +134,13 @@
       "when": 1790457806791,
       "tag": "0018_approved_by_role",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790521617289,
+      "tag": "0019_applications",
+      "breakpoints": true
     }
   ]
 }

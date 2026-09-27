@@ -40,7 +40,8 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
           <Avatar member={m} size={96} />
           <div className="min-w-0">
             <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{m.name}</h1>
-            <div className="mt-3"><Tag filled>{m.role}</Tag></div>
+            {/* a new member may not have filled it in yet */}
+            {m.role && <div className="mt-3"><Tag filled>{m.role}</Tag></div>}
           </div>
         </div>
         {m.bio && <p className="mt-4.5 font-serif text-xl text-[#222] italic">{m.bio}</p>}

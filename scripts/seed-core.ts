@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { insertEvent } from "@/lib/db/events";
 import { circleMembers, circleResources, circleRoles, circles as circlesTable, members as membersTable, user as userTable } from "@/lib/db/schema";
@@ -29,6 +30,10 @@ export async function seedDatabase({ members, circles, events, resources = [] }:
       email: m.email ?? null,
     }))
   );
+
+  // the fixtures carry their own ids, so move the id sequence past them, or
+  // the first member an approved application creates would collide
+  await db.execute(sql`select setval(pg_get_serial_sequence('members', 'id'), (select max(id) from members))`);
 
   console.log(`Seeding ${circles.length} circles...`);
   // parents are referenced in the same statement — Postgres checks FKs at the

@@ -1,17 +1,16 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UsersIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, OfflineBanner, useToast } from "@/components/shared";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
 import { InstallPrompt } from "./install-prompt";
+import { EMAIL_SHAPE } from "@/lib/applications.util";
 import type { Member } from "@/lib/types";
 
 type Step = "email" | "code";
-
-// just the shape — name@domain.tld, no spaces. Whether it's a member's is the server's call.
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface WelcomePageProps {
   // members with an email, handed in by the server (this page is outside
@@ -149,6 +148,13 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
               Use a different email
             </Button>
           </form>
+        )}
+
+        {step === "email" && (
+          <p className="mt-6 font-serif text-base text-soft">
+            New to Circles?{" "}
+            <Link href="/apply" className="font-sans text-sm font-bold text-ink underline underline-offset-2">Apply to join</Link>
+          </p>
         )}
 
         <InstallPrompt />

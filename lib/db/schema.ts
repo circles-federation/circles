@@ -36,7 +36,10 @@ import type { AgendaCategory, EventKindKey, NotificationKind, RepeatFrequency } 
    Better Auth doesn't have to know about the app's own member ids. */
 
 export const members = pgTable("members", {
-  id: integer("id").primaryKey(),
+  // generated for a member created by an approved application; the seed
+  // scripts still insert their fixtures' own ids (and then move the sequence
+  // past them — see scripts/seed-core.ts)
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   name: text("name").notNull(),
   lastName: text("last_name"),
   pronouns: text("pronouns").notNull(),
@@ -45,6 +48,9 @@ export const members = pgTable("members", {
   interests: text("interests").array().notNull().default(sql`'{}'::text[]`),
   bio: text("bio").notNull(),
   email: text("email").unique(),
+  // a system admin: a worker of the foundation running the platform, who
+  // reviews applications (see applications below). Set by `npm run admin`.
+  isAdmin: boolean("is_admin").notNull().default(false),
 });
 
 const bytea = customType<{ data: Buffer }>({
@@ -289,6 +295,49 @@ export const roleMembers = pgTable(
    only: the app only ever loads these for circles the viewer belongs to (see
    lib/db/resources.ts). Deliberately a separate table, not a column on
    circles — the circles array is sent to every signed-in member. */
+/* An application to join: how someone who isn't a member yet asks to become
+   one. It starts unconfirmed until the applicant enters the code emailed to
+   them (so the address is really theirs), then waits for a system admin, who
+   checks the photo is a real face and the address is in the neighborhood.
+   Approving creates the member, their login and their neighborhood
+   membership; either decision emails the applicant. The address and photo
+   are only for that review: both are cleared once it's decided (an approved
+   photo moves to member_photos). */
+export const applicationStatus = pgEnum("application_status", ["unconfirmed", "pending", "approved", "declined"]);
+
+export const applications = pgTable(
+  "applications",
+  {
+    id: text("id").primaryKey(),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    email: text("email").notNull(),
+    neighborhoodId: text("neighborhood_id").notNull().references(() => circles.id),
+    address: text("address"),
+    photo: bytea("photo"),
+    photoType: text("photo_type"),
+    status: applicationStatus("status").notNull().default("unconfirmed"),
+    // the emailed confirmation code, hashed, while it's unconfirmed
+    confirmCodeHash: text("confirm_code_hash"),
+    confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
+    confirmAttempts: integer("confirm_attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // when it was confirmed, and so reached the admins
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: integer("decided_by").references(() => members.id),
+    // the reviewer's note to a declined applicant, which their email includes
+    note: text("note"),
+    // the member an approved application became
+    memberId: integer("member_id").references(() => members.id),
+  },
+  (t) => [
+    // one open application per address at a time
+    uniqueIndex("applications_open_email_unique").on(sql`lower(${t.email})`).where(sql`${t.status} in ('unconfirmed', 'pending')`),
+    index("applications_status_idx").on(t.status),
+  ]
+);
+
 export const resourceIcon = pgEnum("resource_icon", ["folder", "file", "video", "announcement"]);
 
 // A role a member holds in a circle (see lib/circle-roles.util.ts). A circle's

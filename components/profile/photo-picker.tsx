@@ -12,7 +12,7 @@ const PHOTO_SIZE = 512;
    1 MB limit (setMemberPhoto in lib/db/members.ts) and the size every avatar
    is shown at anyway. Filled white first, since a transparent PNG would
    otherwise turn black as a JPEG. */
-async function toSquareJpeg(file: File): Promise<Blob> {
+export async function toSquareJpeg(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const side = Math.min(bitmap.width, bitmap.height);
   const out = Math.min(PHOTO_SIZE, side);

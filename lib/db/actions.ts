@@ -1,6 +1,7 @@
 "use server";
 
 import { after } from "next/server";
+import * as applications from "./applications";
 import { getAppStateForMember, type AppStateData } from "./app-state";
 import * as circleRoles from "./circle-roles";
 import * as circles from "./circles";
@@ -8,6 +9,8 @@ import { UserFacingError } from "./errors";
 import * as events from "./events";
 import * as members from "./members";
 import * as resources from "./resources";
+import { sendEmail } from "@/lib/email";
+import { applicationApprovedEmail, applicationDeclinedEmail } from "@/lib/email/templates.util";
 import { deliverEventNotifications } from "@/lib/notify";
 import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
@@ -123,4 +126,30 @@ export async function setVoteAction(id: string, voting: boolean) {
 
 export async function toggleRoleSlotAction(id: string, roleKey: string) {
   return asMember((memberId) => events.toggleRoleSlot(memberId, id, roleKey));
+}
+
+/* A system admin's decision on an application (lib/db/applications.ts checks
+   they are one). The decision stands whether or not its email goes out, so a
+   failed send comes back as `emailed: false` for the admin to follow up on,
+   rather than as a refusal. */
+async function tellApplicant(decision: applications.Decision, approved: boolean): Promise<{ emailed: boolean }> {
+  const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  try {
+    await sendEmail({
+      to: decision.email,
+      ...(approved ? applicationApprovedEmail({ ...decision, url: base }) : applicationDeclinedEmail(decision)),
+    });
+    return { emailed: true };
+  } catch (err) {
+    console.error("Couldn't email an applicant:", err);
+    return { emailed: false };
+  }
+}
+
+export async function approveApplicationAction(id: string) {
+  return asMember(async (memberId) => tellApplicant(await applications.approveApplication(memberId, id), true));
+}
+
+export async function declineApplicationAction(id: string, note: string) {
+  return asMember(async (memberId) => tellApplicant(await applications.declineApplication(memberId, id, note), false));
 }

@@ -37,6 +37,8 @@ export interface AppStateValue {
   members: Member[];
   // members-only: only the viewer's own circles' resources are ever loaded
   resources: CircleResource[];
+  // applications waiting for review: a number for a system admin, else null
+  pendingApplications: number | null;
   rsvpState: Record<string, boolean>;
   voteState: Record<string, boolean>;
   profile: Profile;
@@ -53,6 +55,8 @@ export interface AppStateValue {
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
   removeResource(id: string): Promise<MutationResult>;
+  // an admin decided one, so there's one fewer waiting (until the next refresh)
+  applicationDecided(): void;
 }
 
 /* Holds the app's runtime state — events, circles, members, the current
@@ -111,10 +115,11 @@ interface AppStateProviderProps {
   initialCircles: Circle[];
   initialMembers: Member[];
   initialResources: CircleResource[];
+  initialPendingApplications: number | null;
   initialProfile: Member;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingApplications }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
@@ -124,6 +129,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // than a static seed array; the signed-in member's own edits are mirrored in
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [resources, setResources] = useState<CircleResource[]>(initialResources);
+  const [pendingApplications, setPendingApplications] = useState(initialPendingApplications);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
   const [rsvpState, setRsvpState] = useState<Record<string, boolean>>(() => ownFlags(initialEvents, (e) => e.rsvps.includes(currentUserId)));
   // voteState: { [eventId]: true } — the current user's votes on meetings
@@ -188,6 +194,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       setCircles(fresh.circles);
       setMembers(fresh.members);
       setResources(fresh.resources);
+      setPendingApplications(fresh.pendingApplications);
       setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
       setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
       // whether their email shows isn't stored on the server
@@ -543,7 +550,8 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events, circles, members, resources, rsvpState, voteState, profile,
+        events, circles, members, resources, pendingApplications, rsvpState, voteState, profile,
+        applicationDecided: tracked(() => setPendingApplications((n) => (n === null ? n : Math.max(0, n - 1)))),
         toggleRsvp: tracked(toggleRsvp),
         toggleRoleSlot: tracked(toggleRoleSlot),
         createEvent: tracked(createEvent),

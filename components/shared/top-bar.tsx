@@ -106,6 +106,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     return members.find((m) => String(m.id) === id)?.name ?? "Profile";
   }
   if (section === "game") return "Name game";
+  if (section === "admin") return sub ? "Application" : "Applications";
   return "Home";
 }
 
@@ -134,7 +135,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // under /circles regardless of how deep the circle sits in the hierarchy
   // — see lib/hooks.ts's openCircle — so the generic case below covers it.
   function isActive(href: string): boolean {
-    if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");
+    if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile") || pathname.startsWith("/admin");
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
