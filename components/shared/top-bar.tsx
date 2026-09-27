@@ -11,6 +11,7 @@ import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-pr
 import { isCircleMember } from "@/lib/circles.util";
 import { isEventOrganizer } from "@/lib/governance.util";
 import type { Circle, Event, Member, Profile } from "@/lib/types";
+import { GhostIconButton } from "./ghost-icon-button";
 import { OfflineBanner } from "./offline-banner";
 
 const TABS: [string, string][] = [
@@ -164,20 +165,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
           can't push them off-centre: it stops short of them instead */}
       <div className="relative mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1 min-[720px]:max-w-[calc(50%-9rem)]">
-          {!isTabRoot && (
-            <button
-              type="button"
-              onClick={goBack}
-              aria-label="Back"
-              className="group -ml-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
-            >
-              {/* a faint circle behind the arrow while it's pressed, the size
-                  of an icon button's, so a tap on it visibly lands */}
-              <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
-                <ArrowLeftIcon className="size-6" strokeWidth={2} />
-              </span>
-            </button>
-          )}
+          {!isTabRoot && <GhostIconButton icon={ArrowLeftIcon} label="Back" onClick={goBack} className="-ml-2.5" />}
           <span className="truncate font-sans text-lg font-extrabold tracking-[-0.02em]">
             {pageTitle(pathname, circles, events, members)}
           </span>

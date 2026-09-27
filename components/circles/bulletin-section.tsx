@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowTopRightOnSquareIcon, DocumentIcon, FolderIcon, MegaphoneIcon, PencilIcon, PlusIcon, VideoCameraIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, DocumentIcon, FolderIcon, MegaphoneIcon, PencilIcon, PlusIcon, VideoCameraIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Button, ConfirmModal, Eyebrow, Input, Label, Modal, TextArea } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -213,13 +213,7 @@ function ResourceForm({ circleId, resource, onClose, onRemove }: ResourceFormPro
   }
 
   return (
-    <Modal onClose={onClose} className="max-w-110">
-      <div className="flex items-center justify-between border-b border-ink px-4.5 py-3">
-        <Eyebrow className="text-soft">{resource ? `Edit ${optionFor(resource.icon).label.toLowerCase()}` : "Add item"}</Eyebrow>
-        <button onClick={onClose} aria-label="Close" className="ml-3 shrink-0 cursor-pointer bg-transparent p-0">
-          <XMarkIcon className="size-5 text-ink" strokeWidth={2} />
-        </button>
-      </div>
+    <Modal onClose={onClose} className="max-w-110" title={resource ? `Edit ${optionFor(resource.icon).label.toLowerCase()}` : "Add item"}>
       <form onSubmit={submit} noValidate className="flex flex-col gap-5 px-4.5 py-5">
         <div>
           <Label>What are you adding?</Label>

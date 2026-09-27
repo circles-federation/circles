@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { UsersIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, OfflineBanner, useToast } from "@/components/shared";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
 import { InstallPrompt } from "./install-prompt";
@@ -163,16 +163,8 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
       )}
 
       {demoOpen && (
-        <Modal onClose={() => setDemoOpen(false)} className="max-w-110">
-          <div className="flex items-center justify-between border-b border-ink px-4.5 py-3">
-            <div>
-              <Eyebrow className="text-soft">Demo accounts</Eyebrow>
-              <p className="mt-1 font-serif text-sm text-soft">Tap a name to fill in their email.</p>
-            </div>
-            <button onClick={() => setDemoOpen(false)} aria-label="Close" className="ml-3 shrink-0 cursor-pointer bg-transparent p-0">
-              <XMarkIcon className="size-5 text-ink" strokeWidth={2} />
-            </button>
-          </div>
+        <Modal onClose={() => setDemoOpen(false)} className="max-w-110" title="Demo accounts">
+          <p className="border-b border-faint px-4.5 py-3 font-serif text-sm text-soft">Tap a name to fill in their email.</p>
           <div className="max-h-[60vh] overflow-y-auto">
             {demoMembers.map((m) => (
               <button

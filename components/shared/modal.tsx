@@ -1,35 +1,62 @@
 "use client";
 
+import { useEffect, type ReactNode } from "react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import type { ReactNode } from "react";
+import { GhostIconButton } from "./ghost-icon-button";
 
 interface ModalProps {
   onClose: () => void;
+  // sets the box's own width (e.g. `max-w-110`)
   className: string;
+  // shown in a header like the top bar's: the close button, then the title.
+  // Left out, there's no header (ConfirmModal and AlertModal title their own
+  // body and close from their buttons)
+  title?: ReactNode;
+  // a short dialog sits in the middle; a longer one is top-anchored, so
+  // content taller than the viewport scrolls instead of being clipped
+  centered?: boolean;
+  role?: "dialog" | "alertdialog";
   children: ReactNode;
 }
 
-/* Shared modal shell: full-screen dim overlay, top-anchored (not vertically
-   centered) so content taller than the viewport scrolls instead of being
-   clipped (the retired profile modal needed exactly this before this
-   component existed). Clicking the overlay dismisses; clicking inside the
-   box doesn't propagate. `className` sets the box's own width (e.g.
-   `max-w-110`) — required, not defaulted, since a caller-supplied max-w-*
-   class can't reliably beat one already baked in here without
-   tailwind-merge (see FloatingActionButton's own note on this).
-   overscroll-contain keeps a scroll that reaches the overlay's end from
-   carrying on into the page behind it, which in the installed app is
-   AppShell's <main>, the modal's own ancestor. ConfirmModal does the same. */
-export function Modal({ onClose, className, children }: ModalProps) {
+/* The shell every dialog shares: a dimmed overlay, and a paper box floating
+   over it with the same soft shadow as the app's other floating chrome (the
+   bottom nav). A tap on the overlay or Escape closes it, like its close
+   button. `className` is required, not defaulted, since a caller's max-w-*
+   can't reliably beat one baked in here without tailwind-merge (see
+   FloatingActionButton's own note on this). overscroll-contain keeps a scroll
+   that reaches the overlay's end from carrying on into the page behind it,
+   which in the installed app is AppShell's <main>, the modal's own ancestor. */
+export function Modal({ onClose, className, title, centered, role = "dialog", children }: ModalProps) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto overscroll-contain bg-ink/55 px-5 pt-15"
+      className={clsx(
+        "fixed inset-0 z-100 flex justify-center overflow-y-auto overscroll-contain bg-ink/40 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
+        centered ? "items-center pt-[calc(1.25rem+env(safe-area-inset-top))]" : "items-start pt-[calc(3.75rem+env(safe-area-inset-top))]",
+      )}
     >
       <div
+        role={role}
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className={clsx("w-full border border-ink bg-paper shadow-[8px_8px_0_rgba(10,10,10,1)]", className)}
+        className={clsx("w-full bg-paper shadow-[0_6px_20px_rgba(10,10,10,0.28)]", className)}
       >
+        {title && (
+          // laid out like the top bar: -ml-2.5 lines the X up with the edge,
+          // as the bar's Back is
+          <div className="flex h-14.5 items-center gap-1 border-b border-faint px-4.5">
+            <GhostIconButton icon={XMarkIcon} label="Close" onClick={onClose} className="-ml-2.5" />
+            <h2 className="m-0 truncate font-sans text-lg font-extrabold tracking-[-0.02em]">{title}</h2>
+          </div>
+        )}
         {children}
       </div>
     </div>

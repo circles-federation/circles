@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
-import { ArrowUpOnSquareIcon, EllipsisHorizontalIcon, PlusCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowUpOnSquareIcon, EllipsisHorizontalIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, Modal } from "@/components/shared";
 
 // an iPhone browser tab, not the installed app. iOS has no install API (no
@@ -39,13 +39,7 @@ export function InstallPrompt() {
       </div>
 
       {open && (
-        <Modal onClose={() => setOpen(false)} className="max-w-110">
-          <div className="flex items-center justify-between border-b border-ink px-4.5 py-3">
-            <Eyebrow className="text-soft">Install Circles</Eyebrow>
-            <button onClick={() => setOpen(false)} aria-label="Close" className="ml-3 shrink-0 cursor-pointer bg-transparent p-0">
-              <XMarkIcon className="size-5 text-ink" strokeWidth={2} />
-            </button>
-          </div>
+        <Modal onClose={() => setOpen(false)} className="max-w-110" title="Install Circles">
           <ol className="px-4.5 py-2 font-serif text-base leading-normal">
             <Step n={1}>
               Tap <strong className="font-sans">Share</strong>

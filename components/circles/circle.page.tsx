@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowTopRightOnSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
+import { Avatar, Chip, Eyebrow, EyebrowGroup, GhostIconButton, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
@@ -30,24 +30,6 @@ interface CirclePageProps {
   // the route can remember it
   initialTab?: string | null;
   onTabChange: (tab: string) => void;
-}
-
-// a ghost icon button, like the top bar's Back; -mr-2.5 lines the + up with
-// the page's edge
-function TabAddButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      className="group -my-2.5 -mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink"
-    >
-      <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
-        <PlusIcon className="size-6" strokeWidth={2} />
-      </span>
-    </button>
-  );
 }
 
 export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, initialTab, onTabChange }: CirclePageProps) {
@@ -129,10 +111,10 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         onChange={(key) => changeTab(key as CircleTab)}
         actions={
           activeTab === "bulletin" ? (
-            <TabAddButton label="Add item" onClick={() => setAdding(true)} />
+            <GhostIconButton icon={PlusIcon} label="Add item" onClick={() => setAdding(true)} className="-my-2.5 -mr-2.5" />
           ) : activeTab === "events" && isMember ? (
             // only a member can host from the circle
-            <TabAddButton label="New event" onClick={onNewEvent} />
+            <GhostIconButton icon={PlusIcon} label="New event" onClick={onNewEvent} className="-my-2.5 -mr-2.5" />
           ) : null
         }
       />
