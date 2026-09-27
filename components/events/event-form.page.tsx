@@ -25,6 +25,7 @@ interface SlotDraft {
   max: string;
 }
 
+const DEFAULT_MEETING_TITLE = "Meeting";
 const DEFAULT_SLOTS: SlotDraft[] = [{ label: "", description: "", min: "1", max: "" }];
 
 // full literal class strings per key — Tailwind's static scan can't see
@@ -196,7 +197,8 @@ export function EventFormPage(props: EventFormPageProps) {
   // doesn't count: it's a selection, not entered content (moot in edit mode
   // anyway, since that tab is disabled there).
   const dirty =
-    title.trim() !== initialValues.title.trim() ||
+    // a new meeting's default title isn't a change of its own
+    title.trim() !== (mode === "create" && gov && initialValues.title === "" ? DEFAULT_MEETING_TITLE : initialValues.title.trim()) ||
     circleId !== initialValues.circleId ||
     hostCircleId !== initialValues.hostCircleId ||
     date !== initialValues.date ||
@@ -220,6 +222,10 @@ export function EventFormPage(props: EventFormPageProps) {
   function changeType(next: EventKindKey) {
     setType(next);
     setError("");
+    // a meeting starts out titled plainly "Meeting", which switching back to an
+    // event takes away again, as long as it hasn't been edited
+    if (EVENT_KINDS[next].governance && !title.trim()) setTitle(DEFAULT_MEETING_TITLE);
+    if (!EVENT_KINDS[next].governance && title === DEFAULT_MEETING_TITLE) setTitle("");
     // a meeting is proposed by the person, not hosted by a circle, and
     // doesn't repeat (yet)
     if (EVENT_KINDS[next].governance) {
