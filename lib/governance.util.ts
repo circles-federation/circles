@@ -36,6 +36,11 @@ export function voteCount(e: Event): number {
 export function isMeeting(e: Event): e is Event & { kind: "meeting"; votes: number[] } {
   return e.kind === "meeting";
 }
+// a meeting its circle's Leader, Secretary or Facilitator scheduled: approved
+// from the start, with no vote, and attended by RSVP like an ordinary event
+export function isScheduledMeeting(e: Event): boolean {
+  return isMeeting(e) && !!e.approvedByRole;
+}
 // hosted by a circle (proposed or already approved), rather than by a person
 export function isCircleHosted(e: Event): e is Event & { hostCircleId: string } {
   return !!e.hostCircleId;
@@ -49,7 +54,7 @@ export function isProposal(e: Event): boolean {
 // settled and reads as an ordinary one again.
 export function isVoting(e: Event): boolean {
   // a cancelled one is waiting on nothing
-  return !e.cancelled && (isMeeting(e) || isProposal(e));
+  return !e.cancelled && ((isMeeting(e) && !isScheduledMeeting(e)) || isProposal(e));
 }
 // whether the event has been through (or is in) a vote at all — for filters
 export function isGoverned(e: Event): boolean {
@@ -73,10 +78,11 @@ export function voteThreshold(e: Event, byId: CirclesById): number {
   if (!circle) return Infinity;
   return majority(circle.members.length);
 }
-// a meeting is approved when its votes meet the threshold; a circle-hosted
+// a meeting is approved when its votes meet the threshold (or it was scheduled
+// without a vote); a circle-hosted
 // event once it has been approved; a plain event has nothing to approve.
 export function isApproved(e: Event, byId: CirclesById): boolean {
-  if (isMeeting(e)) return voteCount(e) >= voteThreshold(e, byId);
+  if (isMeeting(e)) return isScheduledMeeting(e) || voteCount(e) >= voteThreshold(e, byId);
   return isCircleHosted(e) && !e.proposed;
 }
 // whether a given member is the organizer of this event, and so may edit it —

@@ -88,6 +88,9 @@ export interface EventNotificationData {
   // approving votes that takes
   proposed: boolean;
   votesNeeded: number;
+  // the voting circle's Leader, Secretary or Facilitator created it, so it
+  // needed no vote: that role's name
+  approvedByRole?: string;
   organizerName: string;
   // set on a date of a repeating event
   repeat?: Pick<EventRepeat, "frequency" | "startsOn" | "until">;
@@ -116,12 +119,14 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
   // - proposal: a circle-hosted event asks its host circle's members to vote;
   // - hosted: that same email going out after the vote already passed (it
   //   isn't a request for votes any more);
-  // - plain: an event or meeting a person hosts.
+  // - plain: an event or meeting a person hosts (a meeting asks for votes,
+  //   unless its circle's Leader, Secretary or Facilitator scheduled it).
   const decided = n.notice === "approved";
   const approvedMeeting = decided && meeting;
   const approvedEvent = decided && !meeting;
   const proposal = n.notice === "proposed" && n.proposed && !!n.hostCircleName;
-  const voting = proposal || (!decided && meeting);
+  const scheduled = meeting && !!n.approvedByRole;
+  const voting = proposal || (!decided && meeting && !scheduled);
   // whose member the reader is: the host circle's for what's sent to voters
   const because = n.notice === "proposed" ? (n.hostCircleName ?? n.circleName) : n.circleName;
   const noun = approvedEvent ? "approved event" : approvedMeeting ? "approved meeting" : proposal ? "proposed event" : meeting ? "meeting" : "event";
@@ -134,12 +139,14 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
   const excerpt = n.description.length > EXCERPT_CHARS ? `${n.description.slice(0, EXCERPT_CHARS).trimEnd()}…` : n.description;
   const action = voting ? "View and vote" : "View event";
   const why = `You're getting this because you're a member of ${because}.`;
-  const noteBorder = decided ? LEAF : FLAME;
+  const noteBorder = decided || scheduled ? LEAF : FLAME;
   // what a meeting asks of its circle, in the app's own words ("residents" of a
   // neighborhood, "members" of anything else) — voting is also the RSVP
   const voters = n.circleType === "neighborhood" ? "residents" : "members";
   const meetingNote =
-    meeting && n.notice === "new"
+    scheduled && n.notice === "new"
+      ? `${n.organizerName}, ${n.circleName}'s ${n.approvedByRole}, scheduled this meeting. It doesn't need a vote — RSVP if you're coming.`
+      : meeting && n.notice === "new"
       ? `${n.organizerName} proposed this meeting for ${n.circleName}. It needs ${n.votesNeeded} vote${n.votesNeeded === 1 ? "" : "s"} from ${voters} of ${n.circleName} to be held — voting is also how you RSVP.`
       : "";
   const note = meetingNote ||
@@ -147,6 +154,8 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
       ? `${n.circleName} has the ${n.votesNeeded} vote${n.votesNeeded === 1 ? "" : "s"} this meeting needed, so it's approved.`
       : proposal
     ? `${n.organizerName} proposed this for ${n.circleName}. It needs ${n.votesNeeded} approving vote${n.votesNeeded === 1 ? "" : "s"} from ${because} members before it opens up to ${n.circleName}.`
+    : approvedEvent && n.approvedByRole
+      ? `${n.organizerName}, ${n.hostCircleName ?? "the circle"}'s ${n.approvedByRole}, approved this event, so it's now open to everyone in ${n.circleName}.`
     : approvedEvent
       ? `${n.hostCircleName ?? "A circle"} approved this event, so it's now open to everyone in ${n.circleName}.`
       : "");
@@ -163,8 +172,8 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
   // forward named as its proposer
   const people: [string, string][] =
     approvedEvent && n.hostCircleName
-      ? [["Hosted by", n.hostCircleName], ["Proposed by", n.organizerName]]
-      : [[proposal || meeting ? "Proposed by" : "Hosted by", n.organizerName]];
+      ? [["Hosted by", n.hostCircleName], n.approvedByRole ? ["Approved by", `${n.organizerName}, ${n.approvedByRole}`] : ["Proposed by", n.organizerName]]
+      : [[scheduled ? "Scheduled by" : proposal || meeting ? "Proposed by" : "Hosted by", n.organizerName]];
   // a repeating event is announced once, by its first date, so this is where
   // members learn the rest
   const repeats = n.repeat ? repeatSummary(n.repeat) : "";
@@ -246,6 +255,8 @@ export interface DigestEventData {
   // the circle it's shown to; hostCircleName is set for a circle-hosted event
   circleName: string;
   hostCircleName?: string;
+  // see EventNotificationData
+  approvedByRole?: string;
   organizerName: string;
   repeat?: Pick<EventRepeat, "frequency" | "startsOn" | "until">;
   url: string;
@@ -282,7 +293,11 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
   const heading = allNew ? `${count} new event${count === 1 ? "" : "s"}` : `${count} update${count === 1 ? "" : "s"}`;
   const meta = (e: DigestEventData) => `${whenLabel(e)} · ${e.location}`;
   const by = (e: DigestEventData) =>
-    (e.notice === "proposed" ? `Proposed by ${e.organizerName} for ${e.circleName}` : `${e.kind === "meeting" ? "Proposed" : "Hosted"} by ${e.organizerName}`) +
+    (e.notice === "proposed"
+      ? `Proposed by ${e.organizerName} for ${e.circleName}`
+      : e.approvedByRole
+        ? `Scheduled by ${e.organizerName}, ${e.approvedByRole}`
+        : `${e.kind === "meeting" ? "Proposed" : "Hosted"} by ${e.organizerName}`) +
     (e.repeat ? ` · ${repeatSummary(e.repeat)}` : "");
   // the label over a line, and the color it's drawn in
   const label = (e: DigestEventData): { text: string; color: string } | null =>
@@ -291,7 +306,7 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
       : e.notice === "approved"
         ? { text: "Meeting Approved", color: LEAF }
         : e.kind === "meeting"
-          ? { text: "Meeting · Vote to Approve", color: FLAME }
+          ? e.approvedByRole ? { text: "Meeting", color: INK } : { text: "Meeting · Vote to Approve", color: FLAME }
           : null;
   const openAll = `${events[0]?.url.replace(/\/events\/.*$/, "") ?? ""}/events`;
   const why = `You're getting this because you're a member of ${circleNames.join(", ")}.`;

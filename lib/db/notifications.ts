@@ -181,6 +181,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
         circleType: circles.type,
         hostCircleName: hostCircle.name,
         approvedAt: events.approvedAt,
+        approvedByRole: events.approvedByRole,
         hostSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.hostCircleId})`,
         circleSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.circleId})`,
         organizerName: organizer.name,
@@ -200,7 +201,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       ? await tx.select().from(eventAgendaItems).where(inArray(eventAgendaItems.eventId, meetingIds)).orderBy(asc(eventAgendaItems.position))
       : [];
     const agendaByEvent = groupBy(agendaRows, (a) => a.eventId, (a): AgendaItem => ({ category: a.category, title: a.title, ...(a.details !== null ? { details: a.details } : {}) }));
-    return rows.flatMap(({ approvedAt, hostSize, circleSize, hostCircleName, frequency, startsOn, until, ...r }) =>
+    return rows.flatMap(({ approvedAt, approvedByRole, hostSize, circleSize, hostCircleName, frequency, startsOn, until, ...r }) =>
       r.email
         ? [
             {
@@ -210,6 +211,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
               start: r.start.slice(0, 5),
               end: r.end.slice(0, 5),
               ...(hostCircleName ? { hostCircleName } : {}),
+              ...(approvedByRole ? { approvedByRole } : {}),
               ...toRepeat({ frequency, startsOn, until }),
               ...(r.kind === "meeting" ? { agenda: agendaByEvent.get(r.eventId) ?? [] } : {}),
               // read now, not when queued: it may have been approved since
@@ -288,6 +290,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
         location: events.location,
         circleName: circles.name,
         hostCircleName: hostCircle.name,
+        approvedByRole: events.approvedByRole,
         organizerName: organizer.name,
         ...seriesColumns,
       })
@@ -306,7 +309,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
       if (digest) digest.keys.push(key);
       else byMember.set(t.memberId, { memberId: t.memberId, email: "", keys: [key], events: [] });
     }
-    for (const { hostCircleName, frequency, startsOn, until, ...r } of rows) {
+    for (const { hostCircleName, approvedByRole, frequency, startsOn, until, ...r } of rows) {
       const digest = byMember.get(r.memberId);
       if (!digest) continue;
       digest.email = r.email ?? "";
@@ -317,6 +320,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
         start: r.start.slice(0, 5),
         end: r.end.slice(0, 5),
         ...(hostCircleName ? { hostCircleName } : {}),
+        ...(approvedByRole ? { approvedByRole } : {}),
         ...toRepeat({ frequency, startsOn, until }),
       });
     }

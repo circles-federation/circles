@@ -309,6 +309,18 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         title: "Event proposed",
         message: `Only ${noun} of ${hostCircle?.name ?? "the circle"} can see it for now. Once a majority approves it, it opens to ${circle ? audienceLabel(circle) : "its circle"}${ev.repeat ? ", every date of it" : ""}.`,
       });
+    } else if (ev.approvedByRole && hostCircle) {
+      showToast({
+        tone: "success",
+        title: "Event approved",
+        message: `As ${hostCircle.name}'s ${ev.approvedByRole}, you've approved it without a vote. It's open to ${circle ? audienceLabel(circle) : "its circle"} now, and they're being told.${repeats}`,
+      });
+    } else if (ev.approvedByRole) {
+      showToast({
+        tone: "success",
+        title: "Meeting scheduled",
+        message: `As ${circle?.name ?? "the circle"}'s ${ev.approvedByRole}, you've put it on the calendar without a vote. Its ${circle?.type === "neighborhood" ? "residents" : "members"} will be notified and can RSVP.`,
+      });
     } else if (ev.kind === "meeting") {
       // "residents" reads naturally for a neighborhood; any other circle just
       // has "members" — see lib/governance.util.ts's votingMemberNoun for the same
@@ -393,6 +405,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     if (!event) return;
     const hosted = !!event.hostCircleId;
     if (hosted && !isProposal(event)) return; // already approved — nothing left to vote on
+    if (event.approvedByRole) return; // approved without a vote — nothing to vote on
     const wasVoted = !!voteState[eventId];
     const wasGoing = !!rsvpState[eventId];
     const has = (event.votes || []).includes(currentUserId);

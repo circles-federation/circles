@@ -138,6 +138,8 @@ export const eventSeries = pgTable(
     circleId: text("circle_id").notNull().references(() => circles.id),
     hostCircleId: text("host_circle_id").references(() => circles.id),
     organizerId: integer("organizer_id").notNull().references(() => members.id),
+    // as on events: the role that approved it without a vote, for every date
+    approvedByRole: text("approved_by_role"),
     start: time("start").notNull(),
     end: time("end").notNull(),
     location: text("location").notNull(),
@@ -163,6 +165,11 @@ export const events = pgTable(
     // — it stays set even if votes are later withdrawn or the roster changes.
     hostCircleId: text("host_circle_id").references(() => circles.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
+    // the role's name when the organizer was the Leader, Secretary or
+    // Facilitator of the circle that would have voted — a meeting's own, or the
+    // host circle — so it was approved without a vote (a meeting like that is
+    // attended by RSVP). Kept as it was even if they later lose the role.
+    approvedByRole: text("approved_by_role"),
     organizerId: integer("organizer_id").notNull().references(() => members.id),
     // "YYYY-MM-DD"/"HH:MM" strings at the app boundary (see lib/format.util.ts) —
     // date/time mode:"string" keeps the DAL's row shape matching that exactly

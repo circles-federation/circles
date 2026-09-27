@@ -8,6 +8,7 @@ import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
+import { approvingRole } from "@/lib/circle-roles.util";
 import { attendeeIds, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { EVENT_KINDS, isProposal, majority } from "@/lib/governance.util";
@@ -160,7 +161,12 @@ export function EventFormPage(props: EventFormPageProps) {
   const gov = meta.governance;
   // a circle can host an ordinary event (a meeting is always proposed by the person)
   const hostCircle = !gov ? byId[hostCircleId] : undefined;
-  const proposing = gov || !!hostCircle;
+  // the Leader, Secretary or Facilitator of the circle that would vote — a
+  // meeting's own, or the host circle — approves it without a vote (the server
+  // decides for real; an edit keeps what it decided then)
+  const votingCircle = gov ? byId[circleId] : hostCircle;
+  const approverRole = event ? (event.approvedByRole ?? null) : votingCircle ? approvingRole(votingCircle, profile.id) : null;
+  const proposing = !approverRole && (gov || !!hostCircle);
   const accentKey = proposing ? "flame" : "ink";
   const accent = ACCENT[accentKey];
 
@@ -305,7 +311,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const cancelLabel = (s: SeriesScope) =>
     s === "upcoming" ? "Cancel this and later dates" : `${othersGoing > 0 ? "Cancel" : "Delete"} ${seriesLive ? "this date" : noun}`;
 
-  const submitLabel = mode === "edit" ? "Save changes" : (gov ? "Propose meeting" : hostCircle ? "Propose event" : "Create event");
+  const submitLabel = mode === "edit" ? "Save changes" : (gov ? (approverRole ? "Schedule meeting" : "Propose meeting") : hostCircle && !approverRole ? "Propose event" : "Create event");
   useTopBarAction({ label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" });
 
   // The error sits at the foot of the form, and on mobile the submit that
@@ -329,7 +335,7 @@ export function EventFormPage(props: EventFormPageProps) {
   return (
     <PageContainer size="compact">
       <div className={clsx("border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
-        <Eyebrow className={proposing ? "text-flame" : "text-soft"}>{mode === "edit" ? "Edit" : (proposing ? "Propose" : "Create")}</Eyebrow>
+        <Eyebrow className={proposing ? "text-flame" : "text-soft"}>{mode === "edit" ? "Edit" : (proposing ? "Propose" : gov && approverRole ? "Schedule" : "Create")}</Eyebrow>
         <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">
           {mode === "edit" ? initialValues.title : (type === "ordinary" ? "New event" : "New meeting")}
         </h1>
@@ -349,7 +355,12 @@ export function EventFormPage(props: EventFormPageProps) {
         onChange={(key) => changeType(key as EventKindKey)}
         className="mt-6"
       >
-      {gov && circle && (
+      {gov && circle && approverRole && (
+        <p className="mb-1 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-[#222]">
+          This is a governance meeting for <strong>{circle.name}</strong>. As its <strong>{approverRole}</strong>, you schedule it directly — it doesn&apos;t need a vote, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
+        </p>
+      )}
+      {gov && circle && !approverRole && (
         <p className="mb-1 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
           This is a governance meeting for <strong>{circle.name}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {circle.type === "neighborhood" ? "residents" : "members"}</strong> to be approved. Your proposal counts as the first vote.
         </p>
@@ -371,8 +382,8 @@ export function EventFormPage(props: EventFormPageProps) {
           {circle && (
             <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
               {isRootCircle(circle)
-                ? `${hostCircle ? "Once approved, everyone" : "Everyone"} in the city can see this and RSVP.`
-                : `${hostCircle ? "Once approved, only" : "Only"} ${audienceLabel(circle)} can see this, RSVP and be notified about it.`}
+                ? `${proposing ? "Once approved, everyone" : "Everyone"} in the city can see this and RSVP.`
+                : `${proposing ? "Once approved, only" : "Only"} ${audienceLabel(circle)} can see this, RSVP and be notified about it.`}
               {mode === "edit" && " The circle can't be changed once an event exists."}
             </p>
           )}
@@ -380,7 +391,7 @@ export function EventFormPage(props: EventFormPageProps) {
 
         {gov ? (
           <div>
-            <Label>Proposed by</Label>
+            <Label>{approverRole ? "Scheduled by" : "Proposed by"}</Label>
             <div className="flex items-center gap-2.5 border border-ink bg-paper px-3 py-2.75">
               <Avatar member={profile} size={26} />
               <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
@@ -398,6 +409,8 @@ export function EventFormPage(props: EventFormPageProps) {
               <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
                 {mode === "edit"
                   ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
+                  : approverRole
+                  ? `As ${hostCircle.name}'s ${approverRole}, you approve it yourself, with no vote. It opens to ${audienceLabel(circle)} as soon as you create it.`
                   : `This is a proposal. It needs ${hostThresholdPreview} approving votes from ${hostCircle.type === "neighborhood" ? "residents" : "members"} of ${hostCircle.name}, and yours counts as the first. Until then only they can see it; once approved it opens to ${audienceLabel(circle)}.`}
               </p>
             )}
@@ -524,7 +537,7 @@ export function EventFormPage(props: EventFormPageProps) {
             {repeat && (
               <p className="font-serif text-sm leading-[1.45] text-soft min-[720px]:col-span-3">
                 Each date is its own event, with its own {useSlots ? "slots" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
-                {hostCircle
+                {hostCircle && !approverRole
                   ? `${hostCircle.name} votes once, on the first date: approving it approves them all.`
                   : "Members are told once, when it's created."}
               </p>

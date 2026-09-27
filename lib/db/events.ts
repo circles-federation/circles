@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type Column, type SQL } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
-import { circleMembers, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
+import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, withdrawEventNotifications } from "./notifications";
 import { isWithinCircle } from "@/lib/circles.util";
@@ -56,6 +56,7 @@ function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, ev
     circleId: row.circleId,
     ...(row.hostCircleId !== null ? { hostCircleId: row.hostCircleId } : {}),
     ...(row.hostCircleId !== null && row.approvedAt === null ? { proposed: true } : {}),
+    ...(row.approvedByRole !== null ? { approvedByRole: row.approvedByRole } : {}),
     ...(row.cancelledAt !== null ? { cancelled: true } : {}),
     organizerId: row.organizerId,
     date: row.date,
@@ -279,6 +280,7 @@ async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boole
     circleId: event.circleId,
     hostCircleId: event.hostCircleId ?? null,
     approvedAt: event.proposed ? null : new Date(),
+    approvedByRole: event.approvedByRole ?? null,
     organizerId: event.organizerId,
     date: event.date,
     start: event.start,
@@ -304,7 +306,10 @@ async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boole
    (always the caller), whether it starts as a proposal, and who starts out
    attending/voting — whatever the client might have said about those is not
    an input. A circle-hosted event opens with its proposer's vote, and is
-   approved on the spot if that alone is a majority (a one-member circle).
+   approved on the spot if that alone is a majority (a one-member circle), or
+   with no vote at all if its proposer is the host circle's Leader, Secretary
+   or Facilitator — as a meeting is when its own circle's is the one who
+   creates it (`approvedByRole`).
 
    A repeating one also creates its series, and with it the dates due in the
    next few weeks (once it's live — a proposal's wait for its approval). Only
@@ -317,12 +322,19 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
   const { isRoot } = await assertCanPost(viewer, draft.circleId);
   const hostSize = draft.hostCircleId ? await assertCanHost(viewer, draft.hostCircleId, draft.circleId) : 0;
   if (draft.kind === "meeting" && isRoot) throw new EventError("A meeting needs a circle with its own members — pick a neighborhood or group.");
+  // the Leader, Secretary or Facilitator of the circle that would vote on it —
+  // a meeting's own circle, or the host circle — approves it by creating it:
+  // a meeting is scheduled outright (and attended by RSVP), a circle-hosted
+  // event opens to its circle at once. No vote, so none is cast.
+  const votingCircleId = draft.kind === "meeting" ? draft.circleId : draft.hostCircleId;
+  const approvedByRole = votingCircleId ? await builtinRoleOf(memberId, votingCircleId) : null;
   const template: Template = {
     title: draft.title.trim(),
     kind: draft.kind,
     circleId: draft.circleId,
     hostCircleId: draft.hostCircleId ?? null,
     organizerId: memberId,
+    approvedByRole,
     start: draft.start,
     end: draft.end,
     location: draft.location.trim(),
@@ -330,7 +342,7 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
     description: draft.kind === "meeting" ? "" : draft.description.trim(),
     roles: draft.roles ?? [],
   };
-  const proposed = !!draft.hostCircleId && majority(hostSize) > 1;
+  const proposed = !!draft.hostCircleId && !approvedByRole && majority(hostSize) > 1;
   const first: Event = {
     ...newDate(template, draft.date, { opening: true, proposed }),
     ...(draft.kind === "meeting" ? { agenda: cleanAgenda(draft.agenda) } : {}),
@@ -358,9 +370,23 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
   return loadSeries(seriesId);
 }
 
+// the built-in role a member holds in a circle, if any — the server's own read
+// of what approvingRole (lib/circle-roles.util.ts) checks in the form.
+// Posting a meeting or hosting an event already requires membership, so a
+// holder here is a member.
+async function builtinRoleOf(memberId: number, circleId: string): Promise<string | null> {
+  const [held] = await db
+    .select({ label: circleRoles.label })
+    .from(circleRoles)
+    .where(and(eq(circleRoles.circleId, circleId), eq(circleRoles.memberId, memberId), eq(circleRoles.builtin, true)))
+    .orderBy(asc(circleRoles.position))
+    .limit(1);
+  return held?.label ?? null;
+}
+
 // what an event's fixed facts are made from — a draft being created, or a
 // series' saved template for its later dates
-type Template = Pick<SeriesRow, "title" | "kind" | "circleId" | "hostCircleId" | "organizerId" | "start" | "end" | "location" | "description" | "roles">;
+type Template = Pick<SeriesRow, "title" | "kind" | "circleId" | "hostCircleId" | "organizerId" | "approvedByRole" | "start" | "end" | "location" | "description" | "roles">;
 
 /* A date's starting state. The organizer attends their own event — except a
    slotted one, where people sign up for slots instead, and a circle-hosted
@@ -379,6 +405,7 @@ function newDate(t: Template, date: string, { opening, proposed }: { opening: bo
     circleId: t.circleId,
     ...(t.hostCircleId !== null ? { hostCircleId: t.hostCircleId } : {}),
     ...(proposed ? { proposed: true } : {}),
+    ...(t.approvedByRole !== null ? { approvedByRole: t.approvedByRole } : {}),
     organizerId: t.organizerId,
     date,
     start: toClockTime(t.start),
@@ -386,7 +413,8 @@ function newDate(t: Template, date: string, { opening, proposed }: { opening: bo
     location: t.location,
     description: t.description,
     rsvps: attends ? [t.organizerId] : [],
-    ...(isMeeting || (hosted && opening) ? { votes: [t.organizerId] } : {}),
+    // approved by its role holder, there's no vote to open with
+    ...(isMeeting || (hosted && opening) ? { votes: t.approvedByRole !== null ? [] : [t.organizerId] } : {}),
     ...(eventRoles.length > 0 ? { roles: eventRoles } : {}),
   };
 }
@@ -501,7 +529,8 @@ export async function setRsvp(memberId: number, id: string, going: boolean): Pro
   const row = await loadVisible(memberId, id);
   assertNotCancelled(row);
   assertLive(row);
-  if (row.kind === "meeting") throw new EventError("Meetings are attended by voting.");
+  // a meeting its circle's Leader, Secretary or Facilitator scheduled has no vote to attend by
+  if (row.kind === "meeting" && row.approvedByRole === null) throw new EventError("Meetings are attended by voting.");
   const [slot] = await db.select({ id: roles.id }).from(roles).where(eq(roles.eventId, id)).limit(1);
   if (slot) throw new EventError("This event uses signup slots — take a slot instead.");
   if (going) await db.insert(eventRsvps).values({ eventId: id, memberId }).onConflictDoNothing();
@@ -517,6 +546,7 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
   const row = await loadVisible(memberId, id);
   assertNotCancelled(row);
   if (row.kind === "meeting") {
+    if (row.approvedByRole !== null) throw new EventError(`This meeting was scheduled by its circle's ${row.approvedByRole}, so there's no vote — RSVP instead.`);
     await db.transaction(async (tx) => {
       // serialize votes on this meeting, so the vote that reaches the
       // threshold is seen as the one that did (see enqueueMeetingApprovalNotifications)

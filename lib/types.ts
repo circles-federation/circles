@@ -121,6 +121,10 @@ export interface Event {
   hostCircleId?: string;
   // a circle-hosted event still awaiting its host circle's approval
   proposed?: boolean;
+  // the role (Leader, Secretary or Facilitator) its organizer held in the circle
+  // that would have voted on it — a meeting's own, or the host circle — which
+  // approved it without a vote. A meeting like that is attended by RSVP.
+  approvedByRole?: string;
   // cancelled by its organizer while others were going: still shown, labelled
   // so, but closed to RSVPs, votes, signups and edits (see cancelEvent)
   cancelled?: boolean;
