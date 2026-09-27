@@ -1,0 +1,92 @@
+"use client";
+
+import { EnvelopeIcon } from "@heroicons/react/24/outline";
+import { Avatar, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
+import { CircleCard } from "@/components/circles/circle-card";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { circlesForMember } from "@/lib/circles.util";
+import { useCirclesById } from "@/lib/hooks";
+import type { Circle, Member } from "@/lib/types";
+
+interface MemberProfilePageProps {
+  member: Member;
+  onOpenCircle: (c: Circle) => void;
+}
+
+/* A member's profile, laid out like a circle page: a masthead (their home
+   neighborhood as its chip, where a circle has its parent), then sections.
+   Editing your own is the top bar's pencil. */
+export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePageProps) {
+  const { profile, circles } = useAppState();
+  const byId = useCirclesById();
+  // the neighborhood is the masthead's chip, so it isn't repeated in the grid
+  const memberCircles = circlesForMember(m.id, circles).filter((c) => c.type !== "neighborhood");
+  const home = m.homeCircleId ? byId[m.homeCircleId] : undefined;
+
+  return (
+    <PageContainer size="normal">
+      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5">
+        <div className="flex items-center justify-between gap-3">
+          <Eyebrow className="shrink-0 text-soft">{m.pronouns}</Eyebrow>
+          {home && (
+            <span className="flex min-w-0 justify-end">
+              <Chip title={m.homeCircleId === profile.homeCircleId ? "Your neighborhood" : "Their neighborhood"} onClick={() => onOpenCircle(home)}>
+                {home.name}
+              </Chip>
+            </span>
+          )}
+        </div>
+        <div className="mt-4 flex items-center gap-5">
+          <Avatar member={m} size={96} />
+          <div className="min-w-0">
+            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{m.name}</h1>
+            <div className="mt-3"><Tag filled>{m.role}</Tag></div>
+          </div>
+        </div>
+        {m.bio && <p className="mt-4.5 font-serif text-xl text-[#222] italic">{m.bio}</p>}
+      </div>
+
+      <SectionGroup>
+        {m.email && (
+          <Section>
+            <EyebrowGroup label="Get in touch">
+              <a
+                href={`mailto:${m.email}`}
+                className="inline-flex items-center gap-2 border border-ink px-3.25 py-2.25 font-sans text-sm font-bold break-all text-ink"
+              >
+                <EnvelopeIcon className="size-4 shrink-0" strokeWidth={2} />
+                {m.email}
+              </a>
+            </EyebrowGroup>
+          </Section>
+        )}
+
+        {(m.skills.length > 0 || m.interests.length > 0) && (
+          <Section className="flex flex-col gap-5.5">
+            {m.skills.length > 0 && (
+              <EyebrowGroup label="Skills offered">
+                {m.skills.map((s) => <Tag key={s}>{s}</Tag>)}
+              </EyebrowGroup>
+            )}
+            {m.interests.length > 0 && (
+              <EyebrowGroup label="Interests">
+                {m.interests.map((s) => <Tag key={s}>{s}</Tag>)}
+              </EyebrowGroup>
+            )}
+          </Section>
+        )}
+
+        {memberCircles.length > 0 && (
+          <Section>
+            <FolderGrid
+              label="Member of"
+              items={memberCircles}
+              minWidth={300}
+              renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow />}
+            />
+          </Section>
+        )}
+      </SectionGroup>
+    </PageContainer>
+  );
+}

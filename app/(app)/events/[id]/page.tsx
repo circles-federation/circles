@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { notFound, useParams } from "next/navigation";
 import { EventPage } from "@/components/events/event.page";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { useProfileModal } from "@/components/providers/profile-modal-provider";
 import { useAppNav } from "@/lib/hooks";
 
 function EventDetail() {
@@ -13,7 +12,6 @@ function EventDetail() {
     events, rsvpState, toggleRsvp, voteState, toggleVote,
     toggleRoleSlot, profile,
   } = useAppState();
-  const { open } = useProfileModal();
   const nav = useAppNav();
 
   const event = events.find((e) => e.id === id);
@@ -27,7 +25,7 @@ function EventDetail() {
       toggleRsvp={toggleRsvp}
       voteState={voteState}
       toggleVote={toggleVote}
-      onOpenMember={open}
+      onOpenMember={nav.openMember}
       onOpenCircle={(c) => nav.openCircle(c)}
       onToggleRoleSlot={toggleRoleSlot}
     />

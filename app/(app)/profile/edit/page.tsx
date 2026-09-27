@@ -1,11 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { EditMyselfPage } from "@/components/profile/edit-myself.page";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { useGoBack } from "@/components/providers/back-handler-provider";
 
 export default function Page() {
-  const router = useRouter();
+  // back to wherever it was opened from: Home, or your own profile page
+  const goBack = useGoBack();
   const { profile, saveProfile, savePhoto } = useAppState();
 
   return (
@@ -13,7 +14,7 @@ export default function Page() {
       profile={profile}
       onSave={saveProfile}
       onSavePhoto={savePhoto}
-      onBack={() => router.push("/home")}
+      onBack={goBack}
     />
   );
 }

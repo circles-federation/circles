@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { AppShell } from "@/components/shared";
 import { AppStateProvider } from "@/components/providers/app-state-provider";
 import { BackHandlerProvider } from "@/components/providers/back-handler-provider";
-import { ProfileModalProvider } from "@/components/providers/profile-modal-provider";
 import { TopBarActionProvider } from "@/components/providers/top-bar-action-provider";
 import { getAppStateForMember } from "@/lib/db/app-state";
 import { getCurrentUserId } from "@/lib/session";
@@ -28,13 +27,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialCircles={circles} initialMembers={members} initialResources={resources} initialProfile={profile}>
-      <ProfileModalProvider>
-        <BackHandlerProvider>
-          <TopBarActionProvider>
-            <AppShell>{children}</AppShell>
-          </TopBarActionProvider>
-        </BackHandlerProvider>
-      </ProfileModalProvider>
+      <BackHandlerProvider>
+        <TopBarActionProvider>
+          <AppShell>{children}</AppShell>
+        </TopBarActionProvider>
+      </BackHandlerProvider>
     </AppStateProvider>
   );
 }

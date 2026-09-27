@@ -10,7 +10,7 @@ import { useGoBack, useRunBackHandler } from "@/components/providers/back-handle
 import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { isCircleMember } from "@/lib/circles.util";
 import { isEventOrganizer } from "@/lib/governance.util";
-import type { Circle, Event, Profile } from "@/lib/types";
+import type { Circle, Event, Member, Profile } from "@/lib/types";
 import { OfflineBanner } from "./offline-banner";
 
 const TABS: [string, string][] = [
@@ -69,6 +69,8 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
       return { href: `/events/${id}/edit`, label: "Edit event", icon: PencilIcon };
     }
   }
+  // your own profile page is where you edit it
+  if (section === "profile" && id === String(profile.id)) return { href: "/profile/edit", label: "Edit profile", icon: PencilIcon };
   if (section === "circles" && id && !sub) {
     // a circle's own page, which only its members can manage (a
     // neighborhood's folder view has nothing to manage)
@@ -83,7 +85,7 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
 // the title for every route under app/(app)/. A circle or event page is titled
 // by its name; a lookup that misses (the page is about to 404) falls back to
 // its section, so the bar never shows an id
-function pageTitle(pathname: string, circles: Circle[], events: Event[]): string {
+function pageTitle(pathname: string, circles: Circle[], events: Event[], members: Member[]): string {
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section === "circles") {
     if (!id) return "Circles";
@@ -96,14 +98,17 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[]): string
     if (sub === "edit") return "Edit event";
     return events.find((e) => e.id === id)?.title ?? "Events";
   }
-  if (section === "profile") return "Edit profile";
+  if (section === "profile") {
+    if (id === "edit") return "Edit profile";
+    return members.find((m) => String(m.id) === id)?.name ?? "Profile";
+  }
   if (section === "game") return "Name game";
   return "Home";
 }
 
 export function TopBar({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
-  const { circles, events, profile } = useAppState();
+  const { circles, events, members, profile } = useAppState();
   const isHomeNeighborhood = profile.homeCircleId !== null && pathname === `/circles/${profile.homeCircleId}`;
 
   // Like Flutter's automatic leading back button: shown on every route except
@@ -174,7 +179,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
             </button>
           )}
           <span className="truncate font-sans text-lg font-extrabold tracking-[-0.02em]">
-            {pageTitle(pathname, circles, events)}
+            {pageTitle(pathname, circles, events, members)}
           </span>
           {isHomeNeighborhood && <HomeIcon className="ml-1 size-5 shrink-0 text-teal" strokeWidth={2} aria-label="Your neighborhood" />}
         </div>

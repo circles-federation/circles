@@ -11,7 +11,7 @@ interface EyebrowGroupProps {
    Circles pages, and detail-page sections) instead of each call site
    re-picking its own margin. Renders as one wrapping div — not a fragment —
    specifically so a flex/grid `gap` on the caller's container (e.g.
-   profile-modal.jsx's `flex flex-col gap-5.5`) sees each group as a single
+   member-profile.page.tsx's `flex flex-col gap-5.5`) sees each group as a single
    item and only spaces *between* groups; a fragment's children get gapped
    individually too, which doubled the label-to-content spacing on top of
    this component's own mt-3.5. Not a fit for a header that also carries a

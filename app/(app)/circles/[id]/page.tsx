@@ -5,7 +5,6 @@ import { notFound, useParams, useSearchParams } from "next/navigation";
 import { CirclePage } from "@/components/circles/circle.page";
 import { NeighborhoodPage } from "@/components/circles/neighborhood.page";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { useProfileModal } from "@/components/providers/profile-modal-provider";
 import { isCircleMember } from "@/lib/circles.util";
 import { useAppNav, useMemberById, useMembers } from "@/lib/hooks";
 
@@ -19,7 +18,6 @@ function CircleRoute() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const { circles, events, profile } = useAppState();
-  const { open } = useProfileModal();
   const nav = useAppNav();
   const members = useMembers();
   const memberById = useMemberById();
@@ -35,7 +33,7 @@ function CircleRoute() {
         members={members}
         profile={profile}
         onOpenCircle={(c) => nav.openCircle(c)}
-        onOpenMember={open}
+        onOpenMember={nav.openMember}
         initialTypeFilter={searchParams.get("types")?.split(",")}
       />
     );
@@ -48,7 +46,7 @@ function CircleRoute() {
       lastEditor={circle.lastEditedBy ? memberById(circle.lastEditedBy) || null : null}
       lastEditedAt={circle.lastEditedAt}
       events={events}
-      onOpenMember={open}
+      onOpenMember={nav.openMember}
       onOpenCircle={(c) => nav.openCircle(c)}
       onOpenEvent={(e) => nav.openEvent(e)}
       onNewEvent={() => nav.newEvent(circle)}

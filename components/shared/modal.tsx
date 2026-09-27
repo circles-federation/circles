@@ -11,16 +11,15 @@ interface ModalProps {
 
 /* Shared modal shell: full-screen dim overlay, top-anchored (not vertically
    centered) so content taller than the viewport scrolls instead of being
-   clipped — see ProfileModal, which needed exactly this before this
-   component existed. Clicking the overlay dismisses; clicking inside the
+   clipped (the retired profile modal needed exactly this before this
+   component existed). Clicking the overlay dismisses; clicking inside the
    box doesn't propagate. `className` sets the box's own width (e.g.
    `max-w-110`) — required, not defaulted, since a caller-supplied max-w-*
    class can't reliably beat one already baked in here without
    tailwind-merge (see FloatingActionButton's own note on this).
    overscroll-contain keeps a scroll that reaches the overlay's end from
    carrying on into the page behind it, which in the installed app is
-   AppShell's <main>, the modal's own ancestor. ConfirmModal and ProfileModal
-   do the same. */
+   AppShell's <main>, the modal's own ancestor. ConfirmModal does the same. */
 export function Modal({ onClose, className, children }: ModalProps) {
   return (
     <div

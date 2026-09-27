@@ -19,7 +19,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// AppStateProvider/ProfileModalProvider/AppShell live in app/(app)/layout.jsx
+// AppStateProvider/AppShell live in app/(app)/layout.jsx
 // now, not here — this root layout covers both the unauthenticated welcome
 // page and the (app) group, and the welcome page needs neither the app chrome
 // nor a fetch that depends on being logged in. ToastProvider stays here since
