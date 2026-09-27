@@ -141,6 +141,13 @@
       "when": 1790521617289,
       "tag": "0019_applications",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790526997069,
+      "tag": "0020_circle_invitations",
+      "breakpoints": true
     }
   ]
 }

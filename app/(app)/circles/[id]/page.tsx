@@ -52,6 +52,8 @@ function CircleRoute() {
       onNewEvent={() => nav.newEvent(circle)}
       onAddResourcePage={() => nav.addResource(circle)}
       onEditResourcePage={(r) => nav.editResource(r)}
+      onInvitePage={() => nav.inviteTo(circle)}
+      onOpenInvitation={(i) => nav.openInvitation(i)}
       // kept in the URL so Back to this page reopens the same tab;
       // replaceState rather than router.replace, since switching tabs needs
       // no navigation and shouldn't add history entries

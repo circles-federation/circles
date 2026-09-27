@@ -7,10 +7,11 @@ import * as circleRoles from "./circle-roles";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
 import * as events from "./events";
+import * as invitations from "./invitations";
 import * as members from "./members";
 import * as resources from "./resources";
 import { sendEmail } from "@/lib/email";
-import { applicationApprovedEmail, applicationDeclinedEmail } from "@/lib/email/templates.util";
+import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail } from "@/lib/email/templates.util";
 import { deliverEventNotifications } from "@/lib/notify";
 import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
@@ -152,4 +153,39 @@ export async function approveApplicationAction(id: string) {
 
 export async function declineApplicationAction(id: string, note: string) {
   return asMember(async (memberId) => tellApplicant(await applications.declineApplication(memberId, id, note), false));
+}
+
+/* Invitations to a circle (lib/db/invitations.ts checks who may do each).
+   Accepting hands back the whole of the member's app state, since joining a
+   circle opens up its events and bulletin to them. */
+// the invitee is emailed once, right after the response is sent; a failed
+// send isn't retried — the invitation is on their Home either way
+export async function createInvitationAction(circleId: string, memberId: number) {
+  const result = await asMember((inviterId) => invitations.createInvitation(inviterId, circleId, memberId));
+  if (result.ok) after(() => emailInvitee(result.value.id));
+  return result;
+}
+
+async function emailInvitee(id: string) {
+  try {
+    const data = await invitations.getInvitationEmailData(id);
+    if (!data) return;
+    const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+    await sendEmail({ to: data.email, ...invitationEmail({ ...data, url: `${base}/invitations/${id}` }) });
+  } catch (err) {
+    console.error("Couldn't email an invitee:", err);
+  }
+}
+
+export async function acceptInvitationAction(id: string) {
+  return asMember(async (memberId) => {
+    const { circleId } = await invitations.acceptInvitation(memberId, id);
+    const state = await getAppStateForMember(memberId);
+    if (!state) throw new UserFacingError("Sign in again to do that.");
+    return { circleId, state };
+  });
+}
+
+export async function deleteInvitationAction(id: string) {
+  return asMember((memberId) => invitations.deleteInvitation(memberId, id));
 }

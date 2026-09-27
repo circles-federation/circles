@@ -151,6 +151,19 @@ export type ResourceIcon = "folder" | "file" | "video" | "announcement";
 // or an announcement, a message typed out for them. Members-only: never a
 // field on Circle, since the circles array is sent to every signed-in member;
 // AppStateProvider's `resources` only ever holds the viewer's own circles'.
+// an invitation for a member to join a circle, from one of its members; seen
+// by the invitee and the circle's members
+export interface CircleInvitation {
+  id: string;
+  circleId: string;
+  // who's invited
+  memberId: number;
+  // who invited them (unknown if they've since left the platform)
+  invitedBy?: number;
+  // ISO timestamp
+  createdAt: string;
+}
+
 export interface CircleResource {
   id: string;
   circleId: string;

@@ -295,6 +295,23 @@ export const roleMembers = pgTable(
    only: the app only ever loads these for circles the viewer belongs to (see
    lib/db/resources.ts). Deliberately a separate table, not a column on
    circles — the circles array is sent to every signed-in member. */
+/* An invitation for a member to join a circle, from one of its members. It
+   waits until the invitee accepts (they join, and the row goes), declines,
+   or a member of the circle deletes it. Seen only by the invitee and the
+   circle's members (lib/db/invitations.ts). One per member per circle. */
+export const circleInvitations = pgTable(
+  "circle_invitations",
+  {
+    id: text("id").primaryKey(),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    // null once the member who sent it no longer exists
+    invitedBy: integer("invited_by").references(() => members.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("circle_invitations_circle_member_unique").on(t.circleId, t.memberId), index("circle_invitations_member_idx").on(t.memberId)]
+);
+
 /* An application to join: how someone who isn't a member yet asks to become
    one. It starts unconfirmed until the applicant enters the code emailed to
    them (so the address is really theirs), then waits for a system admin, who

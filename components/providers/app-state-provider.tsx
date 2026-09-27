@@ -18,14 +18,18 @@ import {
   updateMemberAction as dbUpdateMember,
   updateMemberPhotoAction as dbUpdateMemberPhoto,
   updateResourceAction as dbUpdateResource,
+  createInvitationAction as dbCreateInvitation,
+  acceptInvitationAction as dbAcceptInvitation,
+  deleteInvitationAction as dbDeleteInvitation,
 } from "@/lib/db/actions";
+import type { AppStateData } from "@/lib/db/app-state";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { isProposal, voteThreshold } from "@/lib/governance.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
+import type { Circle, CircleInvitation, CircleResource, Event, Member, Profile } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -37,6 +41,8 @@ export interface AppStateValue {
   members: Member[];
   // members-only: only the viewer's own circles' resources are ever loaded
   resources: CircleResource[];
+  // their own invitations to circles, and those to the circles they're in
+  invitations: CircleInvitation[];
   // applications waiting for review: a number for a system admin, else null
   pendingApplications: number | null;
   rsvpState: Record<string, boolean>;
@@ -57,6 +63,11 @@ export interface AppStateValue {
   removeResource(id: string): Promise<MutationResult>;
   // an admin decided one, so there's one fewer waiting (until the next refresh)
   applicationDecided(): void;
+  inviteToCircle(circleId: string, memberId: number): Promise<MutationResult>;
+  // resolves to the circle joined, for the caller to go to
+  acceptInvitation(id: string): Promise<{ ok: true; circleId: string } | { ok: false; error: string }>;
+  // `declining`: the invitee turning it down, rather than a member deleting it
+  deleteInvitation(id: string, declining: boolean): Promise<MutationResult>;
 }
 
 /* Holds the app's runtime state — events, circles, members, the current
@@ -116,10 +127,11 @@ interface AppStateProviderProps {
   initialMembers: Member[];
   initialResources: CircleResource[];
   initialPendingApplications: number | null;
+  initialInvitations: CircleInvitation[];
   initialProfile: Member;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingApplications }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingApplications, initialInvitations }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
@@ -130,6 +142,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [resources, setResources] = useState<CircleResource[]>(initialResources);
   const [pendingApplications, setPendingApplications] = useState(initialPendingApplications);
+  const [invitations, setInvitations] = useState<CircleInvitation[]>(initialInvitations);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
   const [rsvpState, setRsvpState] = useState<Record<string, boolean>>(() => ownFlags(initialEvents, (e) => e.rsvps.includes(currentUserId)));
   // voteState: { [eventId]: true } — the current user's votes on meetings
@@ -167,6 +180,21 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
      someone is partway through, so it's only checked for (checkVersion) on
      coming back after a while away; otherwise the next navigation does it,
      since Next's router reloads the page itself on meeting a newer build. */
+  // take in the whole of what the server says the app holds: a refresh, or an
+  // accepted invitation (which opens up the new circle's events and bulletin)
+  function adopt(fresh: AppStateData) {
+    setEvents(fresh.events);
+    setCircles(fresh.circles);
+    setMembers(fresh.members);
+    setResources(fresh.resources);
+    setInvitations(fresh.invitations);
+    setPendingApplications(fresh.pendingApplications);
+    setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
+    setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
+    // whether their email shows isn't stored on the server
+    setProfile((p) => ({ ...fresh.profile, emailPublic: p.emailPublic }));
+  }
+
   const refresh = useEffectEvent(async (checkVersion: boolean) => {
     if (refreshing.current || !navigator.onLine || Date.now() - lastRefresh.current < MIN_REFRESH_GAP_MS) return;
     refreshing.current = true;
@@ -189,16 +217,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       }
       // a change made just before or while this ran may be missing from what came back
       if (lastWrite.current >= startedAt - RECENT_WRITE_MS) return;
-      const fresh = result.value;
-      setEvents(fresh.events);
-      setCircles(fresh.circles);
-      setMembers(fresh.members);
-      setResources(fresh.resources);
-      setPendingApplications(fresh.pendingApplications);
-      setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
-      setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
-      // whether their email shows isn't stored on the server
-      setProfile((p) => ({ ...fresh.profile, emailPublic: p.emailPublic }));
+      adopt(result.value);
     } finally {
       refreshing.current = false;
     }
@@ -540,6 +559,37 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  // invitations are await-then-update, like resources: the server decides who
+  // may, and generates the id
+  async function inviteToCircle(circleId: string, memberId: number): Promise<MutationResult> {
+    const result = await dbCreateInvitation(circleId, memberId);
+    if (!result.ok) return result;
+    setInvitations((prev) => [result.value, ...prev]);
+    const invitee = members.find((m) => m.id === memberId);
+    const circle = circles.find((c) => c.id === circleId);
+    showToast({ tone: "success", title: "Invitation sent", message: `${invitee?.name ?? "They"} will see it on their Home page, and can join ${circle?.name ?? "the circle"} from there.` });
+    return { ok: true };
+  }
+
+  async function acceptInvitation(id: string): Promise<{ ok: true; circleId: string } | { ok: false; error: string }> {
+    const result = await dbAcceptInvitation(id);
+    if (!result.ok) return result;
+    adopt(result.value.state);
+    const circle = result.value.state.circles.find((c) => c.id === result.value.circleId);
+    showToast({ tone: "success", title: `You've joined ${circle?.name ?? "the circle"}`, message: "Its bulletin and events are open to you now." });
+    return { ok: true, circleId: result.value.circleId };
+  }
+
+  async function deleteInvitation(id: string, declining: boolean): Promise<MutationResult> {
+    const result = await dbDeleteInvitation(id);
+    if (!result.ok) return result;
+    setInvitations((prev) => prev.filter((i) => i.id !== id));
+    showToast(declining
+      ? { tone: "success", title: "Invitation declined", message: "It's been removed." }
+      : { tone: "success", title: "Invitation deleted", message: "It's been withdrawn." });
+    return { ok: true };
+  }
+
   // circles aren't filtered by the viewer's own neighborhood — the Circles
   // page nests every neighborhood at the city root specifically so any
   // neighborhood's whole subtree can be browsed into, not just the viewer's
@@ -550,7 +600,10 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events, circles, members, resources, pendingApplications, rsvpState, voteState, profile,
+        events, circles, members, resources, invitations, pendingApplications, rsvpState, voteState, profile,
+        inviteToCircle: tracked(inviteToCircle),
+        acceptInvitation: tracked(acceptInvitation),
+        deleteInvitation: tracked(deleteInvitation),
         applicationDecided: tracked(() => setPendingApplications((n) => (n === null ? n : Math.max(0, n - 1)))),
         toggleRsvp: tracked(toggleRsvp),
         toggleRoleSlot: tracked(toggleRoleSlot),

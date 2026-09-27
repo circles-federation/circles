@@ -18,6 +18,7 @@ export { GhostIconButton } from "./ghost-icon-button";
 export { ForwardLink } from "./forward-link";
 export { Input } from "./input";
 export { Label } from "./label";
+export { LinkRow } from "./link-row";
 export { Modal } from "./modal";
 export { OfflineBanner } from "./offline-banner";
 export { PageContainer } from "./page-container";

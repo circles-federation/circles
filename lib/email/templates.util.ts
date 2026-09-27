@@ -452,3 +452,26 @@ export function applicationDeclinedEmail(d: { firstName: string; neighborhoodNam
     ),
   };
 }
+
+// a member invited you to join their circle
+export function invitationEmail(d: { name: string; inviterName?: string; circleName: string; tagline: string; url: string }): Body {
+  const who = d.inviterName ?? "A member";
+  const lead = `${who} invited you to join ${d.circleName}.`;
+  const after = "Accept it in the app to become a member — you'll see its bulletin and events. It's also waiting on your Home page.";
+  const why = `You're getting this because ${who} invited you on Circles.`;
+  return {
+    subject: `${who} invited you to join ${d.circleName}`,
+    text: `${d.name},\n\n${lead}${d.tagline ? `\n\n${d.circleName}: ${d.tagline}` : ""}\n\n${after}\n\nView the invitation: ${d.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
+        eyebrow("Invitation to join") +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(d.circleName)}</div>` +
+        (d.tagline ? `<div style="margin-top:12px;font-family:${SERIF};font-size:18px;font-style:italic;line-height:1.4;color:#222222">${esc(d.tagline)}</div>` : "") +
+        `</td></tr>` +
+        `<tr><td style="padding-top:24px"></td></tr>` +
+        paragraph(`${esc(d.name)}, ${esc(lead)} ${esc(after)}`) +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(d.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View invitation</a></td></tr>` +
+        footnote(esc(why))
+    ),
+  };
+}

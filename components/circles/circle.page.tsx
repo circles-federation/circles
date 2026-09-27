@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { ArrowTopRightOnSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, Chip, Eyebrow, EyebrowGroup, GhostIconButton, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
+import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL, circleChildren, circleWebsiteUrl, isCircleAudience } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
-import type { Circle, CircleResource, Event, Member } from "@/lib/types";
+import type { Circle, CircleInvitation, CircleResource, Event, Member } from "@/lib/types";
 import { isPhoneWidth } from "@/lib/viewport";
 
 const CIRCLE_TABS = ["bulletin", "wiki", "members", "events"] as const;
@@ -31,14 +32,17 @@ interface CirclePageProps {
   // the dialog: a new one, or an existing one to edit
   onAddResourcePage: () => void;
   onEditResourcePage: (resource: CircleResource) => void;
+  // inviting people as a page (a phone; desktop gets a dialog), and an invitation's own page
+  onInvitePage: () => void;
+  onOpenInvitation: (invitation: CircleInvitation) => void;
   // the tab to open on (e.g. restored on Back), and a note of each change so
   // the route can remember it
   initialTab?: string | null;
   onTabChange: (tab: string) => void;
 }
 
-export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, initialTab, onTabChange }: CirclePageProps) {
-  const { profile, circles } = useAppState();
+export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, onInvitePage, onOpenInvitation, initialTab, onTabChange }: CirclePageProps) {
+  const { profile, circles, invitations } = useAppState();
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
@@ -68,6 +72,10 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   // the bulletin's + lives in the tab row, so opening its add dialog is kept here
   const [adding, setAdding] = useState(false);
   const startAdding = () => (isPhoneWidth() ? onAddResourcePage() : setAdding(true));
+  const [inviting, setInviting] = useState(false);
+  const startInviting = () => (isPhoneWidth() ? onInvitePage() : setInviting(true));
+  // this circle's invitations not yet accepted
+  const invited = invitations.filter((i) => i.circleId === c.id);
 
   return (
     <PageContainer size="normal">
@@ -118,6 +126,8 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         actions={
           activeTab === "bulletin" ? (
             <GhostIconButton icon={PlusIcon} label="Add item" onClick={startAdding} className="-my-2.5 -mr-2.5" />
+          ) : activeTab === "members" && isMember ? (
+            <GhostIconButton icon={UserPlusIcon} label="Invite" onClick={startInviting} className="-my-2.5 -mr-2.5" />
           ) : activeTab === "events" && isMember ? (
             // only a member can host from the circle
             <GhostIconButton icon={PlusIcon} label="New event" onClick={onNewEvent} className="-my-2.5 -mr-2.5" />
@@ -302,6 +312,32 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               </p>
             )}
           </Section>
+          {/* invitations not yet accepted — shown to the circle's members (and
+              to the person invited, their own), each opening its page */}
+          {invited.length > 0 && (
+            <Section>
+              <Eyebrow className="text-soft">Invited</Eyebrow>
+              <div className="mt-3.5 grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
+                {invited.map((inv) => {
+                  const m = memberById(inv.memberId);
+                  const by = inv.invitedBy !== undefined ? memberById(inv.invitedBy) : undefined;
+                  return (
+                    <button
+                      key={inv.id}
+                      onClick={() => onOpenInvitation(inv)}
+                      className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-3.5 text-left"
+                    >
+                      {m && <Avatar member={m} size={44} />}
+                      <div className="min-w-0">
+                        <div className="font-sans text-sm font-bold">{m?.name ?? "Someone"}{m?.id === profile.id && <span className="font-semibold text-soft"> (you)</span>}</div>
+                        <Eyebrow className="text-soft">{by ? `Invited by ${by.id === profile.id ? "you" : by.name}` : "Invited"}</Eyebrow>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
         </SectionGroup>
       )}
 
@@ -322,6 +358,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
           </Section>
         </SectionGroup>
       )}
+      {inviting && <InviteModal circle={c} onClose={() => setInviting(false)} />}
     </PageContainer>
   );
 }

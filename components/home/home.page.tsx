@@ -4,13 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRightStartOnRectangleIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
-import { AlertModal, Avatar, Button, Chip, ConfirmModal, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
+import { AlertModal, Avatar, Button, Chip, ConfirmModal, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
-import { isPastEvent, parseDay } from "@/lib/format.util";
+import { fmtNumericDate, isPastEvent, parseDay } from "@/lib/format.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
-import { useMembers } from "@/lib/hooks";
+import { useMemberById, useMembers } from "@/lib/hooks";
 import { useAppState } from "@/components/providers/app-state-provider";
 import type { Circle, Event, Profile } from "@/lib/types";
 
@@ -35,7 +35,10 @@ interface HomeProps {
    dial), and their events. Profile editing lives on a separate page. */
 export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onEditProfile, onOpenProfile, onLogout }: HomeProps) {
   const members = useMembers();
-  const { pendingApplications } = useAppState();
+  const { pendingApplications, invitations } = useAppState();
+  const memberById = useMemberById();
+  // invitations to join a circle, sent to me
+  const myInvitations = invitations.filter((i) => i.memberId === profile.id);
   const byId = indexCircles(circles);
   const homeCircle = profile.homeCircleId ? byId[profile.homeCircleId] : undefined;
   const neighbors = members.filter((m) => profile.homeCircleId !== null && m.homeCircleId === profile.homeCircleId);
@@ -121,6 +124,29 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
                 </span>
                 <ChevronRightIcon className="size-4 shrink-0" strokeWidth={2.5} />
               </Link>
+            </EyebrowGroup>
+          </Section>
+        )}
+
+        {myInvitations.length > 0 && (
+          <Section>
+            <EyebrowGroup label={myInvitations.length === 1 ? "1 invitation" : `${myInvitations.length} invitations`}>
+              <div className="border-t border-ink">
+                {myInvitations.map((inv) => {
+                  const by = inv.invitedBy !== undefined ? memberById(inv.invitedBy) : undefined;
+                  const sent = fmtNumericDate(inv.createdAt);
+                  return (
+                    <LinkRow
+                      key={inv.id}
+                      href={`/invitations/${inv.id}`}
+                      // who invited you, as the applications list shows the applicant
+                      image={by ? <Avatar member={by} size={56} /> : <div className="size-14 shrink-0 border border-ink bg-faint" />}
+                      title={byId[inv.circleId]?.name ?? "A circle"}
+                      detail={by ? `Invited by ${by.name} · ${sent}` : `Invited ${sent}`}
+                    />
+                  );
+                })}
+              </div>
             </EyebrowGroup>
           </Section>
         )}

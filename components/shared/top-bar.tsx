@@ -93,6 +93,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     if (!id) return "Circles";
     if (sub === "manage") return "Manage circle";
     if (sub === "bulletin") return resourceFormTitle(resources.find((r) => r.id === item)?.icon);
+    if (sub === "invite") return "Invite";
     return circles.find((c) => c.id === id)?.name ?? "Circles";
   }
   if (section === "events") {
@@ -107,6 +108,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
   }
   if (section === "game") return "Name game";
   if (section === "admin") return sub ? "Application" : "Applications";
+  if (section === "invitations") return "Invitation";
   return "Home";
 }
 
@@ -135,7 +137,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // under /circles regardless of how deep the circle sits in the hierarchy
   // — see lib/hooks.ts's openCircle — so the generic case below covers it.
   function isActive(href: string): boolean {
-    if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile") || pathname.startsWith("/admin");
+    if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile") || pathname.startsWith("/admin") || pathname.startsWith("/invitations");
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
