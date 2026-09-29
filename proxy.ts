@@ -17,8 +17,9 @@ import { getSessionCookie } from "better-auth/cookies";
    labor the mock cookie check had before. */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  // the welcome page, and applying to join — both for people without a session
-  if (pathname === "/" || pathname === "/apply") return NextResponse.next();
+  // the welcome page, applying to join, and the beta terms and privacy notes
+  // an applicant agrees to — all for people without a session
+  if (pathname === "/" || pathname === "/apply" || pathname === "/terms" || pathname === "/privacy") return NextResponse.next();
   if (!getSessionCookie(request)) {
     return NextResponse.redirect(new URL("/", request.url));
   }

@@ -339,6 +339,10 @@ export const applications = pgTable(
     confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
     confirmAttempts: integer("confirm_attempts").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // the beta terms and privacy notes agreed to (BETA_AGREEMENT_VERSION), and
+    // when — null only on applications from before there was an agreement
+    agreementVersion: text("agreement_version"),
+    agreedAt: timestamp("agreed_at", { withTimezone: true }),
     // when it was confirmed, and so reached the admins
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     decidedAt: timestamp("decided_at", { withTimezone: true }),

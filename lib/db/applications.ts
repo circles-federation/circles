@@ -4,7 +4,7 @@ import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { readPhoto } from "./members";
 import { applications, circleMembers, circles, memberPhotos, members, user } from "./schema";
-import { APPLICATION_NOTE_MAX, validateApplication, type ApplicationInput } from "@/lib/applications.util";
+import { APPLICATION_NOTE_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationInput } from "@/lib/applications.util";
 
 /* Applications to join (see the applications table in schema.ts). The public
    half — starting one and confirming its email — takes no member at all, since
@@ -33,11 +33,15 @@ export async function getNeighborhoodsForApplying(): Promise<{ id: string; name:
 /* Start an application: checked, stored unconfirmed, and given a confirmation
    code for the caller to email. Starting again with the same address replaces
    an unconfirmed one (a typo, a lost email), but not one already waiting for
-   review. Returns the new application's id and its code. */
-export async function startApplication(input: ApplicationInput, photo: Blob): Promise<{ id: string; code: string }> {
+   review. `agreementVersion` is the version of the beta terms and privacy
+   notes the applicant agreed to, which must be the current one. Returns the
+   new application's id and its code. */
+export async function startApplication(input: ApplicationInput, photo: Blob, agreementVersion: string): Promise<{ id: string; code: string }> {
   const problems = validateApplication(input, photo.size > 0);
   const first = Object.values(problems)[0];
   if (first) throw new ApplicationError(first);
+  if (!agreementVersion) throw new ApplicationError("Agree to the beta terms and privacy notes to apply.");
+  if (agreementVersion !== BETA_AGREEMENT_VERSION) throw new ApplicationError("The beta terms have changed since you opened this page. Reload it to read them.");
   const { data, contentType } = await readPhoto(photo, ApplicationError);
   const email = normalizeEmail(input.email);
   const [hood] = await db.select({ id: circles.id }).from(circles).where(and(eq(circles.id, input.neighborhoodId), eq(circles.type, "neighborhood")));
@@ -61,6 +65,8 @@ export async function startApplication(input: ApplicationInput, photo: Blob): Pr
       address: input.address.trim(),
       photo: data,
       photoType: contentType,
+      agreementVersion,
+      agreedAt: new Date(),
       confirmCodeHash: hashCode(code),
       confirmExpiresAt: new Date(Date.now() + CONFIRM_CODE_MINUTES * 60_000),
     });

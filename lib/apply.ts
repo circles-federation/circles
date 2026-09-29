@@ -46,7 +46,8 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
   try {
     const { id, code } = await startApplication(
       { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId"), address: field("address") },
-      photo instanceof Blob ? photo : new Blob()
+      photo instanceof Blob ? photo : new Blob(),
+      field("agreementVersion")
     );
     const failed = await sendCode(email, code);
     if (failed) return { ok: false, error: failed };

@@ -6,9 +6,11 @@ import { ArrowLeftIcon, CameraIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, Input, Label, Select, useToast } from "@/components/shared";
 import { toSquareJpeg } from "@/components/profile/photo-picker";
 import { confirmApplicationCode, resendApplicationCode, submitApplication } from "@/lib/apply";
-import { APPLICATION_ADDRESS_MAX, APPLICATION_NAME_MAX, validateApplication, type ApplicationErrors, type ApplicationInput } from "@/lib/applications.util";
+import { BetaPrivacy } from "@/components/legal/beta-privacy";
+import { BetaTerms } from "@/components/legal/beta-terms";
+import { APPLICATION_ADDRESS_MAX, APPLICATION_NAME_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationErrors, type ApplicationInput } from "@/lib/applications.util";
 
-type Step = "form" | "confirm" | "done";
+type Step = "form" | "agree" | "confirm" | "done";
 
 interface ApplyPageProps {
   neighborhoods: { id: string; name: string }[];
@@ -16,8 +18,9 @@ interface ApplyPageProps {
 
 /* Applying to join — there's no sign-up: every application is read by a
    system admin, who checks the photo is a real face and the address is in the
-   neighborhood. Three steps: the form; the code emailed to them, which proves
-   the address is theirs and sends the application for review; and a "thanks,
+   neighborhood. Four steps: the form; the beta terms and privacy notes, which
+   they agree to by sending it; the code emailed to them, which proves the
+   address is theirs and sends the application for review; and a "thanks,
    we'll email you". Outside the signed-in app, so it's laid out like the
    welcome page rather than under a top bar. */
 export function ApplyPage({ neighborhoods }: ApplyPageProps) {
@@ -33,15 +36,23 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
 
   const set = (patch: Partial<ApplicationInput>) => setInput((prev) => ({ ...prev, ...patch }));
 
-  async function handleSubmit(e: FormEvent) {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
+  function handleContinue(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
     const found = validateApplication(input, !!photo);
     setErrors(found);
-    if (Object.keys(found).length > 0 || !photo) return;
+    if (Object.keys(found).length === 0) setStep("agree");
+  }
+
+  async function handleAgree() {
+    if (busy || !photo) return;
     const form = new FormData();
     for (const [key, value] of Object.entries(input)) form.set(key, value);
     form.set("photo", photo, "photo.jpg");
+    form.set("agreementVersion", BETA_AGREEMENT_VERSION);
     setBusy(true);
     const result = await submitApplication(form);
     setBusy(false);
@@ -100,7 +111,7 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
         </div>
 
         {step === "form" && (
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5.5">
+          <form onSubmit={handleContinue} noValidate className="flex flex-col gap-5.5">
             <PhotoField photo={photo} onChange={setPhoto} error={errors.photo} />
 
             <div className="grid grid-cols-1 gap-5.5 min-[480px]:grid-cols-2 min-[480px]:gap-3">
@@ -139,10 +150,28 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
               <FieldError message={errors.address} hint="Only the person reviewing your application sees this, to check it's in the neighborhood. It's deleted once your application is decided." />
             </div>
 
-            <Button type="submit" disabled={busy} className="w-full">
-              {busy ? "Sending…" : "Send application"}
+            <Button type="submit" className="w-full">
+              Continue
             </Button>
           </form>
+        )}
+
+        {step === "agree" && (
+          <div className="mt-7">
+            <p className="font-serif text-lg leading-normal text-[#222]">
+              Before you send your application, please read the short terms and privacy notes for the beta.
+            </p>
+            <h2 className="mt-9 border-t border-t-ink pt-4 font-sans text-xl font-extrabold tracking-[-0.02em]">Beta terms</h2>
+            <BetaTerms />
+            <h2 className="mt-9 border-t border-t-ink pt-4 font-sans text-xl font-extrabold tracking-[-0.02em]">Privacy</h2>
+            <BetaPrivacy />
+            <Button type="button" onClick={handleAgree} disabled={busy} className="mt-9 w-full">
+              {busy ? "Sending…" : "Agree and send"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setStep("form")} disabled={busy} className="mt-3 w-full">
+              Back to your application
+            </Button>
+          </div>
         )}
 
         {step === "confirm" && (
