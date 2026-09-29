@@ -11,6 +11,9 @@ import { HostRsvpRow } from "./host-rsvp-row";
 import { RoleSlotsSection } from "./role-slots-section";
 import { ShiftStatusBanner } from "./shift-status-banner";
 import { VoteBanner } from "./vote-banner";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { isAttending } from "@/lib/events.util";
+import { isPastEvent } from "@/lib/format.util";
 import { isMeeting, isVoting } from "@/lib/governance.util";
 import type { Circle, Event, Member, Profile } from "@/lib/types";
 
@@ -54,6 +57,21 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
         onOpenMember={onOpenMember}
         onToggleRsvp={() => toggleRsvp(e.id)}
       />
+
+      {/* once you're going, a copy for your own calendar: the phone offers to
+          add the file (app/api/events/[id]/calendar). A link styled as a
+          secondary Button, since it opens a file rather than running code */}
+      {!e.cancelled && !isPastEvent(e) && isAttending(e, profile.id) && (
+        <div className="border-b border-faint py-4">
+          <a
+            href={`/api/events/${e.id}/calendar`}
+            className="ink-press inline-flex items-center justify-center gap-1.5 border border-ink bg-paper px-3.75 py-2.5 font-sans text-xs font-bold tracking-wide whitespace-nowrap text-ink uppercase no-underline"
+          >
+            <CalendarDaysIcon className="size-4" strokeWidth={2} />
+            Add to calendar
+          </a>
+        </div>
+      )}
 
       {/* a meeting has its agenda where another event has its description */}
       {isMeeting(e) ? <AgendaSection event={e} /> : <EventDetailsSection event={e} />}

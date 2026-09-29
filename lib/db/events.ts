@@ -183,6 +183,15 @@ async function loadVisible(memberId: number, id: string): Promise<EventRow> {
   return row;
 }
 
+// one event, if the member may see it — for reads outside AppState, like the
+// calendar file (app/api/events/[id]/calendar); null for a missing or hidden one
+export async function getVisibleEvent(memberId: number, id: string): Promise<Event | null> {
+  const [row] = await db.select().from(events).where(eq(events.id, id));
+  if (!row || !canSee(row, await viewerCircles(memberId))) return null;
+  const [full] = await attachRelations([row]);
+  return full ?? null;
+}
+
 // RSVPs and slot signups open once a circle-hosted event is approved
 function assertLive(row: EventRow) {
   if (row.approvedAt === null) throw new EventError("This event is still waiting on its host circle's vote.");
