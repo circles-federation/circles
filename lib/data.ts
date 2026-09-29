@@ -439,6 +439,19 @@ export const CIRCLES: Circle[] = [
     address: "134 Mathewson St, Providence, RI",
     hours: [["Sat (biweekly)", "12:00pm"]],
   },
+  // a group: private to its members, so only Felix and Gus see it
+  {
+    id: "providence-anarchists",
+    name: "Providence Anarchists",
+    type: "group",
+    parentId: "providence",
+    tagline: "",
+    about: "",
+    offers: [],
+    needs: [],
+    members: [8, 25],
+    facts: [],
+  },
 ];
 
 /* ---------- members-only resources ----------

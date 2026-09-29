@@ -7,7 +7,7 @@ import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-edit
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
-import { audienceLabel, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
+import { audienceLabel, circleCanHost, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
 import { attendeeIds, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -48,6 +48,8 @@ interface CreateEventFormPageProps extends EventFormPageBaseProps {
   mode: "create";
   // start as a proposal hosted by this circle, shown to it
   initialHostCircleId?: string;
+  // start shown to this circle, hosted by the person (a group, which can't host)
+  initialCircleId?: string;
   onCreate:(draft: EventDraft) => Promise<SaveResult>;
 }
 
@@ -88,7 +90,9 @@ export function EventFormPage(props: EventFormPageProps) {
   const postable = circlesForAudience(profile.id, circles).sort((x, y) => rank(x) - rank(y));
   // only a circle they could pick as host themselves (see hostChoices below)
   const requestedHost = mode === "create" && props.initialHostCircleId ? byId[props.initialHostCircleId] : undefined;
-  const initialHost = requestedHost && !isRootCircle(requestedHost) && isCircleMember(requestedHost, profile.id) ? requestedHost : undefined;
+  const initialHost = requestedHost && !isRootCircle(requestedHost) && circleCanHost(requestedHost) && isCircleMember(requestedHost, profile.id) ? requestedHost : undefined;
+  // only a circle they could pick themselves
+  const requestedCircle = mode === "create" && props.initialCircleId ? postable.find((c) => c.id === props.initialCircleId) : undefined;
 
   // the form's starting values — blank defaults for a new event, or the
   // event's own current values when editing. `dirty` (below) diffs live
@@ -116,7 +120,7 @@ export function EventFormPage(props: EventFormPageProps) {
     : {
         type: "ordinary" as EventKindKey,
         title: "",
-        circleId: initialHost?.id ?? postable[0]?.id ?? "",
+        circleId: initialHost?.id ?? requestedCircle?.id ?? postable[0]?.id ?? "",
         hostCircleId: initialHost?.id ?? "",
         date: "",
         start: DEFAULT_START,
@@ -172,10 +176,12 @@ export function EventFormPage(props: EventFormPageProps) {
   const accent = ACCENT[accentKey];
 
   // a meeting needs a roster to compute its majority, and the city's is
-  // implicit — so meetings can't be held in it
+  // implicit — so meetings can't be held in it; nor in a group, which can't
+  // hold one (see circleCanHost)
+  const canHoldMeeting = (c: Circle) => !isRootCircle(c) && circleCanHost(c);
   const circleChoices = mode === "edit"
     ? (byId[initialValues.circleId] ? [byId[initialValues.circleId]!] : [])
-    : postable.filter((c) => !gov || !isRootCircle(c));
+    : postable.filter((c) => !gov || canHoldMeeting(c));
   const circle = byId[circleId];
   const circleOptions = circleChoices.map((c) => ({ id: c.id, label: isRootCircle(c) ? `${c.name} (Everyone)` : c.name }));
   const meetingThresholdPreview = circle ? majority(circle.members.length) : 0;
@@ -186,7 +192,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const parentOf = (id: string) => byId[id]?.parentId;
   const hostChoices = mode === "edit"
     ? (hostCircle ? [hostCircle] : [])
-    : circlesForMember(profile.id, circles).filter((c) => !isRootCircle(c) && isWithinCircle(c.id, circleId, parentOf));
+    : circlesForMember(profile.id, circles).filter((c) => !isRootCircle(c) && circleCanHost(c) && isWithinCircle(c.id, circleId, parentOf));
   const hostOptions = [
     { id: "", label: `${profile.name} (you)` },
     ...hostChoices.map((c) => ({ id: c.id, label: c.name })),
@@ -233,9 +239,9 @@ export function EventFormPage(props: EventFormPageProps) {
       setRepeat("");
       setUntil("");
     }
-    // the city can't hold a meeting, so step off it when switching to one
-    if (EVENT_KINDS[next].governance && circle && isRootCircle(circle)) {
-      setCircleId(postable.find((c) => !isRootCircle(c))?.id ?? "");
+    // the city and a group can't hold a meeting, so step off either when switching to one
+    if (EVENT_KINDS[next].governance && circle && !canHoldMeeting(circle)) {
+      setCircleId(postable.find(canHoldMeeting)?.id ?? "");
     }
   }
 

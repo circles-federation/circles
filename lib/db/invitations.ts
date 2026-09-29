@@ -17,10 +17,14 @@ export class InvitationError extends UserFacingError {}
 
 type InvitationRow = typeof circleInvitations.$inferSelect;
 
-function toInvitation(row: InvitationRow): CircleInvitation {
+// the circle's name and tagline travel with the invitation: a group is hidden
+// from everyone but its members, so the person invited can't look it up
+function toInvitation(row: InvitationRow, circle: { name: string; tagline: string }): CircleInvitation {
   return {
     id: row.id,
     circleId: row.circleId,
+    circleName: circle.name,
+    circleTagline: circle.tagline,
     memberId: row.memberId,
     ...(row.invitedBy !== null ? { invitedBy: row.invitedBy } : {}),
     createdAt: row.createdAt.toISOString(),
@@ -37,18 +41,19 @@ async function circleIdsOf(memberId: number): Promise<string[]> {
 export async function getInvitationsForMember(memberId: number): Promise<CircleInvitation[]> {
   const own = await circleIdsOf(memberId);
   const rows = await db
-    .select()
+    .select({ invitation: circleInvitations, name: circles.name, tagline: circles.tagline })
     .from(circleInvitations)
+    .innerJoin(circles, eq(circles.id, circleInvitations.circleId))
     .where(own.length > 0 ? or(eq(circleInvitations.memberId, memberId), inArray(circleInvitations.circleId, own)) : eq(circleInvitations.memberId, memberId))
     .orderBy(desc(circleInvitations.createdAt));
-  return rows.map(toInvitation);
+  return rows.map((r) => toInvitation(r.invitation, r));
 }
 
 /* Invite `inviteeId` to `circleId`, as `inviterId`, who must belong to it.
    Not a neighborhood (being a resident is what makes someone a member) or the
    city (everyone's in it already). */
 export async function createInvitation(inviterId: number, circleId: string, inviteeId: number): Promise<CircleInvitation> {
-  const [circle] = await db.select({ type: circles.type, parentId: circles.parentId, name: circles.name }).from(circles).where(eq(circles.id, circleId));
+  const [circle] = await db.select({ type: circles.type, parentId: circles.parentId, name: circles.name, tagline: circles.tagline }).from(circles).where(eq(circles.id, circleId));
   if (!circle) throw new InvitationError("That circle doesn't exist.");
   if (circle.type === "neighborhood" || circle.parentId === null) throw new InvitationError("Neighborhoods and the city don't take invitations — their members are the people who live there.");
   const roster = (await db.select({ memberId: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.memberId);
@@ -62,7 +67,7 @@ export async function createInvitation(inviterId: number, circleId: string, invi
     .onConflictDoNothing()
     .returning();
   if (!row) throw new InvitationError(`${invitee.name} has already been invited to ${circle.name}.`);
-  return toInvitation(row);
+  return toInvitation(row, circle);
 }
 
 // the invitee accepts: they join the circle, and the invitation is done with

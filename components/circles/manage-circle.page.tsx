@@ -9,15 +9,16 @@ import { Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, Se
 import { EditableTags } from "@/components/profile/editable-tags";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { CIRCLE_ROLE_LABEL_MAX, circleHasRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { CIRCLE_TYPE_LABEL } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleHasWiki } from "@/lib/circles.util";
 import { useMemberById } from "@/lib/hooks";
 import type { Circle, CircleType, Member } from "@/lib/types";
 
 // neighborhood isn't offered here for now — its type carries real behavior
 // (home circles, the folder view, no roles) that switching into or out of
 // isn't safe to do from this generic form yet.
+// a group's type is fixed, and nothing else can become one (see updateCircle)
 const CIRCLE_TYPE_OPTIONS = (Object.entries(CIRCLE_TYPE_LABEL) as [CircleType, string][]).filter(
-  ([value]) => value !== "neighborhood"
+  ([value]) => value !== "neighborhood" && value !== "group"
 );
 
 // matches circle.page.tsx's read-only facts grid (label above a bold value,
@@ -126,7 +127,9 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     JSON.stringify(hoursPairs) !== JSON.stringify(o.hours || []);
   const dirty = pageDirty || rolesDirty;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  const [activeTab, setActiveTab] = useState<"wiki" | "circle">("wiki");
+  // a group has no wiki or quick facts (see circleHasWiki), so only the Circle part
+  const hasWiki = circleHasWiki(o);
+  const [activeTab, setActiveTab] = useState<"wiki" | "circle">(hasWiki ? "wiki" : "circle");
 
   function updateFact(i: number, key: keyof FactDraft, value: string) {
     setFacts((prev) => prev.map((f, j) => (j === i ? { ...f, [key]: value } : f)));
@@ -199,7 +202,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
       {/* right under the masthead, whose bottom rule is its top, and above the
           tabs, as on the circle's own page */}
-      <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border-b border-ink">
+      {hasWiki && <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border-b border-ink">
         {facts.map((f, i) => (
           <div
             key={i}
@@ -222,14 +225,16 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
             />
           </div>
         ))}
-      </div>
+      </div>}
 
-      <SimpleTabs
-        className="mt-6"
-        tabs={[{ key: "wiki", label: "Wiki" }, { key: "circle", label: "Circle" }]}
-        active={activeTab}
-        onChange={(key) => setActiveTab(key as "wiki" | "circle")}
-      />
+      {hasWiki && (
+        <SimpleTabs
+          className="mt-6"
+          tabs={[{ key: "wiki", label: "Wiki" }, { key: "circle", label: "Circle" }]}
+          active={activeTab}
+          onChange={(key) => setActiveTab(key as "wiki" | "circle")}
+        />
+      )}
 
       {activeTab === "wiki" && (
         <SectionGroup>
@@ -351,7 +356,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                 </div>
               )}
 
-              {o.type !== "neighborhood" && (
+              {o.type !== "neighborhood" && o.type !== "group" && (
                 <div>
                   <Label htmlFor="circle-type">Type</Label>
                   <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} className="min-[720px]:max-w-90">

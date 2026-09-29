@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowTopRightOnSquareIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, Chip, Eyebrow, EyebrowGroup, GhostIconButton, PageContainer, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
+import { Avatar, Chip, Eyebrow, EyebrowGroup, GhostIconButton, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
@@ -9,7 +9,7 @@ import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { CIRCLE_TYPE_LABEL, circleChildren, circleWebsiteUrl, isCircleAudience } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleChildren, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, Event, Member } from "@/lib/types";
 import { isPhoneWidth } from "@/lib/viewport";
@@ -61,10 +61,12 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
     setTab(key);
     onTabChange(key);
   }
-  const activeTab = !isMember && tab === "bulletin" ? "wiki" : tab;
+  // a group has no wiki (see circleHasWiki), and only its members ever see it
+  const hasWiki = circleHasWiki(c);
+  const activeTab = !isMember && tab === "bulletin" ? "wiki" : !hasWiki && tab === "wiki" ? "bulletin" : tab;
   const tabs: { key: CircleTab; label: string }[] = [
     ...(isMember ? [{ key: "bulletin" as const, label: "Bulletin" }] : []),
-    { key: "wiki", label: "Wiki" },
+    ...(hasWiki ? [{ key: "wiki" as const, label: "Wiki" }] : []),
     { key: "members", label: "Members" },
     { key: "events", label: "Events" },
   ];
@@ -83,7 +85,9 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         <div className="min-w-0 flex-1">
           {/* where it sits in the tree: its parent, as a chip opposite the type */}
           <div className="flex items-center justify-between gap-3">
-            <Eyebrow className="shrink-0 text-soft">{CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
+            <Eyebrow className="shrink-0 text-soft">
+              {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
+            </Eyebrow>
             {parent && (
               <span className="flex min-w-0 justify-end">
                 <Chip title={`Part of ${parent.name}`} onClick={() => onOpenCircle(parent)}>
@@ -109,14 +113,14 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         </div>
       </div>
 
-      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 min-[720px]:grid-cols-4 gap-px bg-faint border-b border-ink">
+      {hasWiki && <div className="grid grid-cols-1 min-[480px]:grid-cols-2 min-[720px]:grid-cols-4 gap-px bg-faint border-b border-ink">
         {c.facts.map(([k, v]) => (
           <div key={k} className="bg-paper py-4 px-3.5">
             <Eyebrow className="text-soft">{k}</Eyebrow>
             <div className="mt-2 font-sans text-lg font-extrabold tracking-[-0.01em]">{v}</div>
           </div>
         ))}
-      </div>
+      </div>}
 
       <SimpleTabs
         className="mt-6"

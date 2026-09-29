@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { FolderGrid, PageContainer, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
-import { CIRCLE_TYPE_LABEL } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, isGroup } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
 
 interface CirclesRootPageProps {
@@ -14,7 +14,7 @@ interface CirclesRootPageProps {
 
 interface Section {
   key: string;
-  label: string;
+  label: ReactNode;
   minWidth: number;
   items: Circle[];
   renderItem: (c: Circle) => ReactNode;
@@ -46,9 +46,15 @@ export function CirclesRootPage({ circles, onOpenCircle }: CirclesRootPageProps)
       items: folders.filter((c) => c.type === "neighborhood"),
       renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow={false} />,
     },
+    // groups, which only their own members ever receive, in their own grid
+    {
+      key: "groups", label: <PrivateLabel>Groups</PrivateLabel>, minWidth: 300,
+      items: folders.filter(isGroup),
+      renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow={false} />,
+    },
     {
       key: "circles", label: "Organizations", minWidth: 300,
-      items: folders.filter((c) => c.type !== "neighborhood"),
+      items: folders.filter((c) => c.type !== "neighborhood" && !isGroup(c)),
       renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} />,
     },
   ].filter((s) => s.items.length > 0);

@@ -44,9 +44,14 @@ async function attachMembers(rows: CircleRow[]): Promise<Circle[]> {
   return rows.map((row) => toCircle(row, membersByCircle.get(row.id) || [], rolesByCircle.get(row.id) || []));
 }
 
-export async function getCircles(): Promise<Circle[]> {
+/* Every circle this member may know of: all of them, except a group they
+   don't belong to — a group is private to its members (see isGroup in
+   lib/circles.util.ts), so it, and its roster, never reach anyone else's
+   browser. What AppState is seeded and refreshed with. */
+export async function getCirclesForMember(memberId: number): Promise<Circle[]> {
   const rows = await db.select().from(circles);
-  return attachMembers(rows);
+  const all = await attachMembers(rows);
+  return all.filter((c) => c.type !== "group" || c.members.includes(memberId));
 }
 
 export async function getCircleById(id: string): Promise<Circle | null> {
@@ -77,6 +82,11 @@ export async function updateCircle(memberId: number, id: string, patch: Partial<
   const [membership] = await db.select().from(circleMembers).where(and(eq(circleMembers.circleId, id), eq(circleMembers.memberId, memberId))).limit(1);
   if (!membership) throw new CircleError(`Only members of ${circle.name} can edit its page.`);
 
+  // becoming a group, or ceasing to be one, would hide a circle from everyone
+  // outside it, or reveal a private one — a group's type is fixed
+  if (patch.type !== undefined && patch.type !== circle.type && (patch.type === "group" || circle.type === "group")) {
+    throw new CircleError("A group can't become another kind of circle, and a circle can't become a group.");
+  }
   const { members: _members, roles: _roles, lastEditedAt, ...columnPatch } = patch;
   if (Object.keys(columnPatch).length > 0 || lastEditedAt !== undefined) {
     await db

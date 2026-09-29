@@ -1,5 +1,5 @@
 import { countPendingApplications } from "./applications";
-import { getCircles } from "./circles";
+import { getCirclesForMember } from "./circles";
 import { getEventsForMember } from "./events";
 import { getInvitationsForMember } from "./invitations";
 import { getMembers } from "./members";
@@ -27,7 +27,7 @@ export interface AppStateData {
 export async function getAppStateForMember(memberId: number): Promise<AppStateData | null> {
   const [events, circles, members, resources, invitations, pendingApplications] = await Promise.all([
     getEventsForMember(memberId),
-    getCircles(),
+    getCirclesForMember(memberId),
     getMembers(),
     getResourcesForMember(memberId),
     getInvitationsForMember(memberId),

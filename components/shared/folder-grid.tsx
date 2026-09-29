@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { EyebrowGroup } from "./eyebrow-group";
 
 interface FolderGridProps<T> {
-  label: string;
+  label: ReactNode;
   items: T[];
   minWidth: number;
   renderItem: (item: T, index: number, array: T[]) => ReactNode;

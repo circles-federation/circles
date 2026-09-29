@@ -79,6 +79,8 @@ export function useAppNav() {
     openMember: (m: Member) => router.push(`/profile/${m.id}`),
     // hostCircle, when given, starts the form as that circle's proposal
     newEvent: (hostCircle?: Circle) => router.push(hostCircle ? `/events/new?host=${hostCircle.id}` : "/events/new"),
+    // an event shown to this circle and hosted by the person — for a group, which can't host
+    newEventIn: (circle: Circle) => router.push(`/events/new?circle=${circle.id}`),
     // every circle lives at /circles/[id], keyed by its own stable id rather
     // than its position in the tree — a neighborhood renders as the folder
     // view there, everything else as its own detail page (see

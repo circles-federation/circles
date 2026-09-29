@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FolderGrid, PageContainer, SearchWithFilter } from "@/components/shared";
+import { FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
 import { ParentCircle } from "./parent-circle";
-import { circleChildren, circleDescendantIds, indexCircles } from "@/lib/circles.util";
+import { circleChildren, circleDescendantIds, indexCircles, isGroup } from "@/lib/circles.util";
 import type { Circle, Member, Profile } from "@/lib/types";
 
-const ENTITY_TYPES = ["Circles", "Organizations", "People"] as const;
+const ENTITY_TYPES = ["Circles", "Groups", "Organizations", "People"] as const;
 type EntityType = (typeof ENTITY_TYPES)[number];
 
 function isEntityType(value: string): value is EntityType {
@@ -81,13 +81,17 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
   // the three grids below are eligible to render at all. Any combination of
   // types can be selected at once (e.g. Circles + Organizations, no People).
   const showCircles = typeFilter.length === 0 || typeFilter.includes("Circles");
+  const showGroups = typeFilter.length === 0 || typeFilter.includes("Groups");
   const showOrgs = typeFilter.length === 0 || typeFilter.includes("Organizations");
   const showPeople = typeFilter.length === 0 || typeFilter.includes("People");
 
+  // groups get their own grid, between the circles and the organizations
+  // (only a group's members ever receive it, so only they see it here)
   const circleFolders = showCircles ? folders.filter((c) => c.type === "circle") : [];
-  const otherFolders = showOrgs ? folders.filter((c) => c.type !== "circle") : [];
+  const groupFolders = showGroups ? folders.filter(isGroup) : [];
+  const otherFolders = showOrgs ? folders.filter((c) => c.type !== "circle" && !isGroup(c)) : [];
   const peopleFiles = showPeople ? files : [];
-  const anySections = circleFolders.length > 0 || otherFolders.length > 0 || peopleFiles.length > 0;
+  const anySections = circleFolders.length > 0 || groupFolders.length > 0 || otherFolders.length > 0 || peopleFiles.length > 0;
 
   return (
     <PageContainer size="wide">
@@ -110,6 +114,14 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
               <FolderGrid
                 label="Circles"
                 items={circleFolders}
+                minWidth={300}
+                renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />}
+              />
+            )}
+            {groupFolders.length > 0 && (
+              <FolderGrid
+                label={<PrivateLabel>Groups</PrivateLabel>}
+                items={groupFolders}
                 minWidth={300}
                 renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />}
               />

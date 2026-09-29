@@ -141,7 +141,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
                       href={`/invitations/${inv.id}`}
                       // who invited you, as the applications list shows the applicant
                       image={by ? <Avatar member={by} size={56} /> : <div className="size-14 shrink-0 border border-ink bg-faint" />}
-                      title={byId[inv.circleId]?.name ?? "A circle"}
+                      title={inv.circleName}
                       detail={by ? `Invited by ${by.name} · ${sent}` : `Invited ${sent}`}
                     />
                   );

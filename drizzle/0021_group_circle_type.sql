@@ -1,0 +1,1 @@
+ALTER TYPE "public"."circle_type" ADD VALUE 'group';

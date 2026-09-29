@@ -7,7 +7,7 @@
    group) are circles inside it, and circles nest. `neighborhood` is the one
    type with behavior (a member's home
    circle, at most one per member); the rest are display/filter labels. */
-export type CircleType = "neighborhood" | "circle" | "collective" | "cooperative" | "other";
+export type CircleType = "neighborhood" | "circle" | "collective" | "cooperative" | "other" | "group";
 
 export interface Member {
   id: number;
@@ -156,6 +156,10 @@ export type ResourceIcon = "folder" | "file" | "video" | "announcement";
 export interface CircleInvitation {
   id: string;
   circleId: string;
+  // the circle's name and tagline, for someone who can't see the circle itself
+  // yet (a group is visible only to its members)
+  circleName: string;
+  circleTagline: string;
   // who's invited
   memberId: number;
   // who invited them (unknown if they've since left the platform)

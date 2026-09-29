@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Eyebrow } from "./eyebrow";
 
 interface EyebrowGroupProps {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
 }
 

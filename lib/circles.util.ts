@@ -14,7 +14,27 @@ export const CIRCLE_TYPE_LABEL: Record<CircleType, string> = {
   collective: "Collective",
   cooperative: "Cooperative",
   other: "Other",
+  group: "Group",
 };
+
+/* A group is a circle with fewer features, and private: only its own members
+   know it exists (lib/db/circles.ts never sends it to anyone else). It has a
+   bulletin, members and invitations, and members may post their own events to
+   it, but no wiki, quick facts or roles, and it can't host an event or hold a
+   meeting. */
+export function isGroup(circle: Pick<Circle, "type">): boolean {
+  return circle.type === "group";
+}
+
+// the wiki (About, offers and needs, visiting and joining) and quick facts
+export function circleHasWiki(circle: Pick<Circle, "type">): boolean {
+  return !isGroup(circle);
+}
+
+// whether a circle can host an event, or hold a meeting (its members voting)
+export function circleCanHost(circle: Pick<Circle, "type">): boolean {
+  return !isGroup(circle);
+}
 
 export function indexCircles(circles: Circle[]): CirclesById {
   return circles.reduce<CirclesById>((acc, c) => {

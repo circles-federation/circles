@@ -22,8 +22,9 @@ export default function Page() {
   const [shown, setShown] = useState(found);
   if (found && found !== shown) setShown(found);
   const invitation = found ?? shown;
-  const circle = invitation && circles.find((c) => c.id === invitation.circleId);
-  if (!invitation || !circle) notFound();
+  if (!invitation) notFound();
+  // missing for a group the viewer isn't in yet (only its members can see it)
+  const circle = circles.find((c) => c.id === invitation.circleId);
 
   return (
     <InvitationPage

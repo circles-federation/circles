@@ -12,7 +12,9 @@ import type { Circle, CircleInvitation, Member } from "@/lib/types";
 
 interface InvitationPageProps {
   invitation: CircleInvitation;
-  circle: Circle;
+  // undefined for a group the viewer isn't in yet, which they can't see — the
+  // invitation carries its name and tagline instead
+  circle: Circle | undefined;
   onOpenCircle: (c: Circle) => void;
   onOpenMember: (m: Member) => void;
   // after accepting: to the circle just joined
@@ -62,10 +64,14 @@ export function InvitationPage({ invitation: inv, circle, onOpenCircle, onOpenMe
     <PageContainer size="normal">
       <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5">
         <Eyebrow className="text-soft">Invitation to join</Eyebrow>
-        <button type="button" onClick={() => onOpenCircle(circle)} className="mt-3 block cursor-pointer border-0 bg-transparent p-0 text-left">
-          <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em] underline decoration-2 underline-offset-4">{circle.name}</h1>
-        </button>
-        <p className="mt-3.5 font-serif text-xl text-[#222] italic">{circle.tagline}</p>
+        {circle ? (
+          <button type="button" onClick={() => onOpenCircle(circle)} className="mt-3 block cursor-pointer border-0 bg-transparent p-0 text-left">
+            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em] underline decoration-2 underline-offset-4">{inv.circleName}</h1>
+          </button>
+        ) : (
+          <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{inv.circleName}</h1>
+        )}
+        {inv.circleTagline && <p className="mt-3.5 font-serif text-xl text-[#222] italic">{inv.circleTagline}</p>}
       </div>
 
       <SectionGroup>
@@ -78,7 +84,7 @@ export function InvitationPage({ invitation: inv, circle, onOpenCircle, onOpenMe
             )}
             <p className="font-serif text-lg leading-normal">
               {mine
-                ? <>{inviter ? <strong className="font-sans">{inviter.name}</strong> : "A member"} invited you to join this {CIRCLE_TYPE_LABEL[circle.type].toLowerCase()} on {sent}.</>
+                ? <>{inviter ? <strong className="font-sans">{inviter.name}</strong> : "A member"} invited you to join this {circle ? CIRCLE_TYPE_LABEL[circle.type].toLowerCase() : "group"} on {sent}.</>
                 : <><strong className="font-sans">{invitee?.name ?? "Someone"}</strong> was invited{inviter ? <> by {inviter.id === profile.id ? "you" : inviter.name}</> : null} on {sent}, and hasn&apos;t accepted yet.</>}
             </p>
           </div>
@@ -99,8 +105,8 @@ export function InvitationPage({ invitation: inv, circle, onOpenCircle, onOpenMe
         <ConfirmModal
           title={mine ? "Decline this invitation?" : "Delete this invitation?"}
           message={mine
-            ? `You won't join ${circle.name}. A member can invite you again later.`
-            : `${invitee?.name ?? "They"} won't be able to join ${circle.name} from it. You can invite them again later.`}
+            ? `You won't join ${inv.circleName}. A member can invite you again later.`
+            : `${invitee?.name ?? "They"} won't be able to join ${inv.circleName} from it. You can invite them again later.`}
           confirmLabel={mine ? "Decline" : "Delete"}
           cancelLabel="Keep it"
           onConfirm={remove}

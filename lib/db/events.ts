@@ -5,7 +5,7 @@ import { UserFacingError } from "./errors";
 import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, withdrawEventNotifications } from "./notifications";
-import { isWithinCircle } from "@/lib/circles.util";
+import { circleCanHost, isWithinCircle } from "@/lib/circles.util";
 import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
@@ -202,21 +202,22 @@ function assertNotCancelled(row: EventRow) {
   if (row.cancelledAt !== null) throw new EventError("This event has been cancelled.");
 }
 
-async function assertCanPost(v: Viewer, circleId: string): Promise<{ isRoot: boolean }> {
-  const [circle] = await db.select({ parentId: circles.parentId }).from(circles).where(eq(circles.id, circleId));
+async function assertCanPost(v: Viewer, circleId: string): Promise<{ isRoot: boolean; canHost: boolean }> {
+  const [circle] = await db.select({ parentId: circles.parentId, type: circles.type }).from(circles).where(eq(circles.id, circleId));
   if (!circle) throw new EventError("That circle doesn't exist.");
   if (!v.audience.includes(circleId)) throw new EventError("You can only post to circles you belong to.");
-  return { isRoot: circle.parentId === null };
+  return { isRoot: circle.parentId === null, canHost: circleCanHost(circle) };
 }
 
 // a circle can host only if it has members of its own to vote (not the city,
 // whose roster is implicit), the proposer is one of them, and it's the circle
 // the event is shown to or one inside it; returns how many members it has
 async function assertCanHost(v: Viewer, circleId: string, audienceCircleId: string): Promise<number> {
-  const rows = await db.select({ id: circles.id, parentId: circles.parentId }).from(circles);
+  const rows = await db.select({ id: circles.id, parentId: circles.parentId, type: circles.type }).from(circles);
   const circle = rows.find((c) => c.id === circleId);
   if (!circle) throw new EventError("That circle doesn't exist.");
-  if (circle.parentId === null) throw new EventError("The whole city can't host an event — pick a neighborhood or group.");
+  if (circle.parentId === null) throw new EventError("The whole city can't host an event — pick one of your circles.");
+  if (!circleCanHost(circle)) throw new EventError("A group can't host an event — host it yourself, shown to the group.");
   if (!v.own.includes(circleId)) throw new EventError("You can only host on behalf of a circle you belong to.");
   const parents = new Map(rows.map((c) => [c.id, c.parentId]));
   if (!isWithinCircle(circleId, audienceCircleId, (id) => parents.get(id))) {
@@ -328,9 +329,10 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
   const problem = validateEventDraft(draft);
   if (problem) throw new EventError(problem);
   const viewer = await viewerCircles(memberId);
-  const { isRoot } = await assertCanPost(viewer, draft.circleId);
+  const { isRoot, canHost } = await assertCanPost(viewer, draft.circleId);
   const hostSize = draft.hostCircleId ? await assertCanHost(viewer, draft.hostCircleId, draft.circleId) : 0;
-  if (draft.kind === "meeting" && isRoot) throw new EventError("A meeting needs a circle with its own members — pick a neighborhood or group.");
+  if (draft.kind === "meeting" && isRoot) throw new EventError("A meeting needs a circle with its own members — pick a neighborhood or one of your circles.");
+  if (draft.kind === "meeting" && !canHost) throw new EventError("A group can't hold a meeting — post an ordinary event to it instead.");
   // the Leader, Secretary or Facilitator of the circle that would vote on it —
   // a meeting's own circle, or the host circle — approves it by creating it:
   // a meeting is scheduled outright (and attended by RSVP), a circle-hosted
