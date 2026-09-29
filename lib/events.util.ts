@@ -1,4 +1,5 @@
 import { validateAgenda } from "./agenda.util";
+import { isPastEvent } from "./format.util";
 import { REPEAT_FREQUENCIES } from "./recurrence.util";
 import type { AgendaItem, Event, EventKindKey, RepeatFrequency } from "./types";
 
@@ -73,6 +74,9 @@ export function validateEventDraft(d: EventDraft): string | null {
   if (d.kind !== "ordinary" && d.kind !== "meeting") return "Pick event or meeting.";
   if (!d.circleId) return "Pick a circle.";
   if (!isDay(d.date)) return "Pick a date.";
+  // what's over can't be edited (see updateEventDetails), so nothing is
+  // created in, or moved into, the past either
+  if (isPastEvent(d)) return `Pick today or a later date for the ${noun}.`;
   if (!isClock(d.start) || !isClock(d.end)) return "Pick a start and end time.";
   if (!d.location.trim()) return "Add a location.";
   if (d.location.trim().length > EVENT_LOCATION_MAX) return `Keep the location under ${EVENT_LOCATION_MAX} characters.`;
