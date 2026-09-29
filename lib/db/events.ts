@@ -475,6 +475,8 @@ export async function updateEventDetails(memberId: number, id: string, details: 
   const row = await loadVisible(memberId, id);
   assertNotCancelled(row);
   if (row.organizerId !== memberId) throw new EventError("Only the person hosting this event can edit it.");
+  // what happened is a record now, as it is for cancelling (see cancelEvent)
+  if (isPastEvent(row)) throw new EventError("This event has already happened, so it can't be edited.");
   const kind = row.kind ?? "ordinary";
   const problem = validateEventDraft({ ...details, kind, circleId: row.circleId, ...(row.hostCircleId ? { hostCircleId: row.hostCircleId } : {}) });
   if (problem) throw new EventError(problem);

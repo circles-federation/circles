@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { EventFormPage } from "@/components/events/event-form.page";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { isPastEvent } from "@/lib/format.util";
 import { isEventOrganizer } from "@/lib/governance.util";
 import type { EventDetails, SeriesScope } from "@/lib/events.util";
 import type { Event } from "@/lib/types";
@@ -19,8 +20,9 @@ function EditEvent() {
   const [cancelling, setCancelling] = useState<Event | null>(null);
   const event = events.find((e) => e.id === id) ?? cancelling ?? undefined;
   // only the person hosting an event can edit it (the server enforces this
-  // too); anyone else has no edit page to land on, and nor does a cancelled one
-  if (!event || !isEventOrganizer(event, profile) || (event.cancelled && !cancelling)) notFound();
+  // too); anyone else has no edit page to land on, and nor does a cancelled
+  // one or one that's over
+  if (!event || !isEventOrganizer(event, profile) || (event.cancelled && !cancelling) || isPastEvent(event)) notFound();
   const seriesId = event.repeat?.seriesId;
   const laterDates = seriesId
     ? events.filter((e) => e.repeat?.seriesId === seriesId && e.date >= event.date && !e.cancelled).sort((a, b) => a.date.localeCompare(b.date))

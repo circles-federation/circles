@@ -9,6 +9,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
 import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { isCircleMember } from "@/lib/circles.util";
+import { isPastEvent } from "@/lib/format.util";
 import { isEventOrganizer } from "@/lib/governance.util";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
 import { resourceFormTitle } from "@/components/circles/resource-kinds";
@@ -65,9 +66,10 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
   if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon };
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section === "events" && id && id !== "new" && !sub) {
-    // an event's own page, which only its organizer can edit
+    // an event's own page, which only its organizer can edit, until it's
+    // cancelled or over
     const event = events.find((e) => e.id === id);
-    if (event && isEventOrganizer(event, profile) && !event.cancelled) {
+    if (event && isEventOrganizer(event, profile) && !event.cancelled && !isPastEvent(event)) {
       return { href: `/events/${id}/edit`, label: "Edit event", icon: PencilIcon };
     }
   }
