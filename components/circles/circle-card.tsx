@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { Avatar, Chip, Eyebrow } from "@/components/shared";
+import { Avatar, Chip, Eyebrow, PrivateLabel } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { CIRCLE_TYPE_LABEL, circleNeighborhood } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleNeighborhood, isGroup } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle } from "@/lib/types";
 
@@ -52,7 +52,9 @@ export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showK
     >
       {showKindEyebrow && (
         <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
-          <Eyebrow className="text-soft">{CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
+          <Eyebrow className="text-soft">
+            {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
+          </Eyebrow>
           {!isNeighborhood && showNeighborhoodChip && hood !== null && (
             <Chip title={hood.id === profile.homeCircleId ? "Local to this neighborhood" : "Across the federation"}>{hood.name}</Chip>
           )}
