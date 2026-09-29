@@ -43,9 +43,12 @@ export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showK
   const hood = circleNeighborhood(c, byId);
 
   return (
+    // items-stretch: a <button>'s default is align-items: flex-start, which
+    // leaves each row only as wide as its content, so the type/chip row had no
+    // room for justify-between to push the chip to the far side
     <button
       onClick={() => onOpenCircle(c)}
-      className="ink-press bg-paper flex cursor-pointer flex-col border-r border-b border-ink p-5.5 text-left"
+      className="ink-press bg-paper flex cursor-pointer flex-col items-stretch border-r border-b border-ink p-5.5 text-left"
     >
       {showKindEyebrow && (
         <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
