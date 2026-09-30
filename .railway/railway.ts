@@ -47,7 +47,7 @@ export default defineRailway(() => {
       restartPolicyMaxRetries: 3,
     },
   });
-  return project("zippy-analysis", {
+  return project("circles", {
     resources: [circles],
   });
 });
