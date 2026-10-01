@@ -12,7 +12,7 @@ import * as members from "./members";
 import * as resources from "./resources";
 import { sendEmail } from "@/lib/email";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail } from "@/lib/email/templates.util";
-import { deliverEventNotifications } from "@/lib/notify";
+import { deliverAnnouncementNotifications, deliverEventNotifications } from "@/lib/notify";
 import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
@@ -76,8 +76,12 @@ export async function saveCircleRolesAction(circleId: string, drafts: CircleRole
   return asMember((memberId) => circleRoles.setCircleRoles(memberId, circleId, drafts));
 }
 
+// a new announcement has queued emails to the circle's members, sent once the
+// response is out
 export async function createResourceAction(circleId: string, input: ResourceInput) {
-  return asMember((memberId) => resources.createResource(memberId, circleId, input));
+  const result = await asMember((memberId) => resources.createResource(memberId, circleId, input));
+  if (result.ok && result.value.icon === "announcement") after(() => deliverAnnouncementNotifications());
+  return result;
 }
 
 export async function updateResourceAction(id: string, input: ResourceInput) {

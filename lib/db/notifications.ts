@@ -1,17 +1,18 @@
 import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
-import { circleMembers, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, members, events, roleMembers, roles } from "./schema";
+import { announcementNotifications, circleMembers, circleResources, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, members, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
-import type { DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
+import type { AnnouncementEmailData, DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
 import { REMINDER_HOURS } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import { localDay } from "@/lib/recurrence.util";
 import type { AgendaItem, Event, EventChange, EventRepeat, NotificationKind } from "@/lib/types";
 
-/* The queue behind "email a circle's members about a new event". Deciding who
-   is emailed lives here (next to the data), sending lives in lib/notify.ts —
+/* The queues behind "email a circle's members about a new event" (and the
+   rest of an event's news) and "…about a new announcement". Deciding who is
+   emailed lives here (next to the data), sending lives in lib/notify.ts —
    this file never touches SMTP. */
 
 const MAX_ATTEMPTS = 5;
@@ -464,4 +465,88 @@ export async function markDigestSent(keys: DigestKey[]): Promise<void> {
 
 export async function markDigestFailed(keys: DigestKey[], error: string): Promise<void> {
   for (const k of keys) await markNotificationFailed(k, error);
+}
+
+/* An announcement was just posted to a circle's bulletin: queue an email for
+   each of the circle's members, except the poster. Always an email of its own
+   — a bulletin is only on a circle with a page of its own, never a
+   neighborhood or the city, the audiences big enough for the digest. Runs in
+   the transaction that posts it. Returns how many were queued. */
+export async function enqueueAnnouncementNotifications(tx: Tx, resourceId: string, circleId: string, posterId: number): Promise<number> {
+  const recipients = await tx
+    .select({ id: members.id })
+    .from(circleMembers)
+    .innerJoin(members, eq(members.id, circleMembers.memberId))
+    .where(and(eq(circleMembers.circleId, circleId), hasEmail, ne(members.id, posterId)));
+  if (recipients.length === 0) return 0;
+  await tx.insert(announcementNotifications).values(recipients.map((r) => ({ resourceId, memberId: r.id }))).onConflictDoNothing();
+  return recipients.length;
+}
+
+export type PendingAnnouncementNotification = Omit<AnnouncementEmailData, "url"> & {
+  resourceId: string;
+  circleId: string;
+  memberId: number;
+  email: string;
+};
+
+// claimEventNotifications' counterpart for announcements: the same leasing, so
+// concurrent drains get different rows. Rendered from the announcement as it
+// stands now, so an edit made before it goes out is what's sent.
+export async function claimAnnouncementNotifications(limit: number): Promise<PendingAnnouncementNotification[]> {
+  const poster = alias(members, "poster");
+  return db.transaction(async (tx) => {
+    const due = await tx
+      .select({ resourceId: announcementNotifications.resourceId, memberId: announcementNotifications.memberId })
+      .from(announcementNotifications)
+      .where(
+        and(
+          isNull(announcementNotifications.sentAt),
+          lt(announcementNotifications.attempts, MAX_ATTEMPTS),
+          or(isNull(announcementNotifications.lastAttemptAt), lt(announcementNotifications.lastAttemptAt, sql`now() - ${RETRY_AFTER}`))
+        )
+      )
+      .orderBy(announcementNotifications.createdAt)
+      .limit(limit)
+      .for("update", { skipLocked: true });
+    if (due.length === 0) return [];
+    const isDue = or(...due.map((d) => and(eq(announcementNotifications.resourceId, d.resourceId), eq(announcementNotifications.memberId, d.memberId))));
+    await tx
+      .update(announcementNotifications)
+      .set({ attempts: sql`${announcementNotifications.attempts} + 1`, lastAttemptAt: sql`now()` })
+      .where(isDue);
+    const rows = await tx
+      .select({
+        resourceId: circleResources.id,
+        circleId: circleResources.circleId,
+        memberId: members.id,
+        email: members.email,
+        title: circleResources.title,
+        message: circleResources.message,
+        createdAt: circleResources.createdAt,
+        circleName: circles.name,
+        posterName: poster.name,
+      })
+      .from(announcementNotifications)
+      .innerJoin(circleResources, eq(circleResources.id, announcementNotifications.resourceId))
+      .innerJoin(circles, eq(circles.id, circleResources.circleId))
+      .innerJoin(members, eq(members.id, announcementNotifications.memberId))
+      .leftJoin(poster, eq(poster.id, circleResources.createdBy))
+      .where(isDue);
+    // an item edited into a link since has no message left to send
+    return rows.flatMap(({ email, message, posterName, ...r }) =>
+      email && message !== null ? [{ ...r, email, message, ...(posterName ? { posterName } : {}) }] : []
+    );
+  });
+}
+
+const isAnnouncementRow = (n: { resourceId: string; memberId: number }) =>
+  and(eq(announcementNotifications.resourceId, n.resourceId), eq(announcementNotifications.memberId, n.memberId));
+
+export async function markAnnouncementSent(n: { resourceId: string; memberId: number }): Promise<void> {
+  await db.update(announcementNotifications).set({ sentAt: sql`now()`, lastError: null }).where(isAnnouncementRow(n));
+}
+
+export async function markAnnouncementFailed(n: { resourceId: string; memberId: number }, error: string): Promise<void> {
+  await db.update(announcementNotifications).set({ lastError: error.slice(0, 500) }).where(isAnnouncementRow(n));
 }

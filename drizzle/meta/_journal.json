@@ -176,6 +176,13 @@
       "when": 1790864241323,
       "tag": "0024_event_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790865661512,
+      "tag": "0025_announcement_notifications",
+      "breakpoints": true
     }
   ]
 }

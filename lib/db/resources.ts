@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
+import { enqueueAnnouncementNotifications } from "./notifications";
 import { circleMembers, circleResources, circles } from "./schema";
 import { isAnnouncement, validateResourceInput, type ResourceInput } from "@/lib/resources.util";
 import type { CircleResource } from "@/lib/types";
@@ -75,11 +76,17 @@ async function loadResource(id: string): Promise<ResourceRow> {
   return row;
 }
 
+// a new announcement emails the circle's other members, queued in the same
+// transaction; a link, and any edit, tells no one
 export async function createResource(memberId: number, circleId: string, input: ResourceInput): Promise<CircleResource> {
   await assertCanManage(memberId, circleId);
   const clean = cleanInput(input);
-  const [row] = await db.insert(circleResources).values({ id: randomUUID(), circleId, createdBy: memberId, ...clean }).returning();
-  return toResource(row!);
+  const row = await db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(circleResources).values({ id: randomUUID(), circleId, createdBy: memberId, ...clean }).returning();
+    if (isAnnouncement(clean.icon)) await enqueueAnnouncementNotifications(tx, inserted!.id, circleId, memberId);
+    return inserted!;
+  });
+  return toResource(row);
 }
 
 export async function updateResource(memberId: number, id: string, input: ResourceInput): Promise<CircleResource> {

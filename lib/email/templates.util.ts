@@ -1,5 +1,5 @@
 import type { EmailMessage } from "./index";
-import { MONTHS, WEEKDAYS, fmtTime, parseDay } from "@/lib/format.util";
+import { MONTHS, WEEKDAYS, fmtNumericDate, fmtTime, parseDay } from "@/lib/format.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { addDays, endedBefore, repeatSummary } from "@/lib/recurrence.util";
 import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
@@ -29,6 +29,7 @@ const FLAME = "#e1530b"; // governance events, as in the app
 const AGENDA = "#008480"; // a meeting's agenda items
 const LEAF = "#2e7d32"; // approved ones
 const DANGER = "#c0392b"; // a cancelled event, as the app's destructive red
+const ANNOUNCEMENT = "#c0392b"; // a bulletin announcement (the same red, for a different job, as in the app)
 const SANS = `'Helvetica Neue',Helvetica,Arial,sans-serif`;
 const SERIF = `Georgia,'Times New Roman',serif`;
 
@@ -509,6 +510,41 @@ function reminderEmail(n: EventNotificationData): Body {
           : "") +
         (agenda.length > 0 ? agendaHtml(agenda) : "") +
         `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+    ),
+  };
+}
+
+export interface AnnouncementEmailData {
+  circleName: string;
+  title: string;
+  message: string;
+  // who posted it, when that's still known
+  posterName?: string;
+  createdAt: Date;
+  // the circle's page, where a member lands on its bulletin
+  url: string;
+}
+
+/* An announcement posted to a circle's bulletin, sent whole to its members —
+   it's a message written for them to read, so there's nothing to click
+   through to for the rest. Dressed like the bulletin's announcement card: a
+   red rule along the top, the message, and the poster's signature. */
+export function announcementEmail(a: AnnouncementEmailData): Body {
+  const date = fmtNumericDate(a.createdAt.toISOString());
+  const signature = a.posterName ? `— ${a.posterName} on ${date}` : `— ${date}`;
+  const why = `You're getting this because you're a member of ${a.circleName}.`;
+  return {
+    subject: `${a.circleName}: ${a.title}`,
+    text: `Announcement in ${a.circleName}\n\n${a.title}\n\n${a.message}\n\n${signature}\n\nSee the bulletin: ${a.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${ANNOUNCEMENT};padding-top:18px">` +
+        eyebrow(`Announcement · ${esc(a.circleName)}`, ANNOUNCEMENT) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(a.title)}</div>` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:20px;font-family:${SERIF};font-size:18px;line-height:1.55;color:#222222">${esc(a.message).replace(/\n/g, "<br>")}</td></tr>` +
+        `<tr><td style="padding:14px 0 28px;font-family:${SERIF};font-size:15px;font-style:italic;color:${SOFT}">${esc(signature)}</td></tr>` +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(a.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">See the bulletin</a></td></tr>` +
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };

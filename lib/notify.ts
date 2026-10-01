@@ -1,6 +1,17 @@
-import { claimDigests, claimEventNotifications, enqueueReminders, markDigestFailed, markDigestSent, markNotificationFailed, markNotificationSent } from "@/lib/db/notifications";
+import {
+  claimAnnouncementNotifications,
+  claimDigests,
+  claimEventNotifications,
+  enqueueReminders,
+  markAnnouncementFailed,
+  markAnnouncementSent,
+  markDigestFailed,
+  markDigestSent,
+  markNotificationFailed,
+  markNotificationSent,
+} from "@/lib/db/notifications";
 import { sendEmail } from "@/lib/email";
-import { eventChanges, eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
+import { announcementEmail, eventChanges, eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
@@ -12,7 +23,8 @@ import { localDay } from "@/lib/recurrence.util";
    safety net for anything that failed, was left over from before a restart, or
    was queued by another server. The database decides which rows a given drain
    may take, so they never double-send. The poller also queues reminders as
-   events come within a day of starting (enqueueReminders).
+   events come within a day of starting (enqueueReminders), and drains
+   bulletin announcements' emails the same way (deliverAnnouncementNotifications).
 
    The daily digest (deliverDigests) rides the same poller: it isn't triggered
    by anything, it just becomes due once a day. */
@@ -22,7 +34,9 @@ const BATCH = 20;
 
 // where a notification opens in the app. BETTER_AUTH_URL is this app's own
 // public URL (Better Auth needs it too), so there's no second setting for it.
-const eventUrl = (id: string) => `${(process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "")}/events/${id}`;
+const appUrl = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const eventUrl = (id: string) => `${appUrl}/events/${id}`;
+const circleUrl = (id: string) => `${appUrl}/circles/${id}`;
 
 // The digest goes out once a day at DIGEST_HOUR (0-23, this server's local
 // time — set TZ for a server that isn't in the community's timezone). Rows
@@ -82,6 +96,39 @@ export async function deliverEventNotifications(): Promise<void> {
   }
 }
 
+let drainingAnnouncements = false;
+let announcementsAgain = false;
+
+// deliverEventNotifications' counterpart for bulletin announcements: called
+// right after one is posted, and by the poller as the safety net
+export async function deliverAnnouncementNotifications(): Promise<void> {
+  if (drainingAnnouncements) {
+    announcementsAgain = true;
+    return;
+  }
+  drainingAnnouncements = true;
+  try {
+    do {
+      announcementsAgain = false;
+      for (let batch = await claimAnnouncementNotifications(BATCH); batch.length > 0; batch = await claimAnnouncementNotifications(BATCH)) {
+        for (const n of batch) {
+          try {
+            await sendEmail({ to: n.email, ...announcementEmail({ ...n, url: circleUrl(n.circleId) }) });
+            await markAnnouncementSent(n);
+          } catch (err) {
+            console.error(`Couldn't email announcement ${n.resourceId} to member ${n.memberId}:`, err);
+            await markAnnouncementFailed(n, err instanceof Error ? err.message : String(err));
+          }
+        }
+      }
+    } while (announcementsAgain);
+  } catch (err) {
+    console.error("Announcement drain failed:", err);
+  } finally {
+    drainingAnnouncements = false;
+  }
+}
+
 export async function deliverDigests(now: Date = new Date()): Promise<void> {
   if (digesting) return;
   digesting = true;
@@ -135,6 +182,7 @@ export function startNotificationWorker(): void {
   if (g.__notificationPoller) return;
   const tick = () => {
     void remindThenDeliver();
+    void deliverAnnouncementNotifications();
     void deliverDigests();
   };
   g.__notificationPoller = setInterval(tick, POLL_MS);

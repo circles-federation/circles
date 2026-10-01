@@ -415,6 +415,28 @@ export const circleResources = pgTable(
   ]
 );
 
+/* An email owed to a member about an announcement just posted to their
+   circle's bulletin — the same queue as event_notifications (claimed, retried,
+   drained by lib/notify.ts), kept apart since it's about a bulletin item, not
+   an event. Gone with the announcement, so one removed before it's sent never
+   goes out. */
+export const announcementNotifications = pgTable(
+  "announcement_notifications",
+  {
+    resourceId: text("resource_id").notNull().references(() => circleResources.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastError: text("last_error"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.resourceId, t.memberId] }),
+    index("announcement_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
+  ]
+);
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
