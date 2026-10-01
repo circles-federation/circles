@@ -1,0 +1,1 @@
+ALTER TABLE "event_notifications" ADD COLUMN "change" jsonb;

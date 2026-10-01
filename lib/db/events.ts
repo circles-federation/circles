@@ -4,7 +4,7 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
-import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, withdrawEventNotifications } from "./notifications";
+import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, withdrawEventNotifications } from "./notifications";
 import { circleCanHost, isWithinCircle } from "@/lib/circles.util";
 import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -521,13 +521,28 @@ export async function updateEventDetails(memberId: number, id: string, details: 
       }
     }
     const existing = await attachRelations(await tx.select().from(events).where(inArray(events.id, ids)));
+    const andLater = !!series && scope === "upcoming" && !pending;
+    // each person going is told once, about the soonest date they're going to
+    // (ids starts with this date, and the rest are later)
+    const told = new Set<number>();
     for (const target of ids) {
+      const before = existing.find((e) => e.id === target);
+      const date = target === id ? details.date : before?.date;
+      // a new date, time or place is news to whoever's going; other edits
+      // aren't. Read before the slots are rewritten, so someone in a slot this
+      // edit removes still hears.
+      if (before && (date !== before.date || fields.start !== before.start || fields.end !== before.end || fields.location !== before.location)) {
+        const tell = (await goingTo(tx, target, memberId)).going.filter((m) => !told.has(m));
+        tell.forEach((m) => told.add(m));
+        const was = { date: before.date, start: before.start, end: before.end, location: before.location };
+        await enqueueUpdateNotifications(tx, target, tell, { was, ...(andLater ? { andLater } : {}) });
+      }
       await tx
         .update(events)
         .set({ ...fields, ...(target === id ? { date: details.date } : {}) })
         .where(eq(events.id, target));
       // a slot that keeps its name keeps the people already in it, per date
-      await writeRoles(tx, target, buildRoles(details.roles, existing.find((e) => e.id === target)?.roles));
+      await writeRoles(tx, target, buildRoles(details.roles, before?.roles));
       if (kind === "meeting") await writeAgenda(tx, target, cleanAgenda(details.agenda));
     }
     return ids;
@@ -702,18 +717,25 @@ export async function cancelEvent(memberId: number, id: string, scope: SeriesSco
   return { deletedIds, events: seriesId !== null ? await loadSeries(seriesId) : deletedIds.includes(id) ? [] : [await loadFull(id)] };
 }
 
-/* cancelEvent's work on one event, whose row the caller has locked: deleted
-   if no one but the organizer was going, otherwise marked cancelled — and
-   either way anything unsent about it withdrawn. Returns who was going, for
-   the caller to decide who's emailed. */
-async function cancelOne(tx: Tx, id: string, organizerId: number): Promise<{ deleted: boolean; going: number[] }> {
+/* Everyone going to an event other than its organizer: its RSVPs (a meeting's
+   voters among them) and its slot holders — who's told when it's moved or
+   cancelled. Also returns its slots' ids, which cancelOne deletes by. */
+async function goingTo(tx: Tx, id: string, organizerId: number): Promise<{ going: number[]; roleIds: number[] }> {
   const eventRoles = await tx.select({ id: roles.id }).from(roles).where(eq(roles.eventId, id));
   const roleIds = eventRoles.map((r) => r.id);
   const [rsvpRows, slotRows] = await Promise.all([
     tx.select({ memberId: eventRsvps.memberId }).from(eventRsvps).where(eq(eventRsvps.eventId, id)),
     roleIds.length > 0 ? tx.select({ memberId: roleMembers.memberId }).from(roleMembers).where(inArray(roleMembers.roleId, roleIds)) : Promise.resolve([]),
   ]);
-  const going = [...new Set([...rsvpRows, ...slotRows].map((r) => r.memberId))].filter((m) => m !== organizerId);
+  return { going: [...new Set([...rsvpRows, ...slotRows].map((r) => r.memberId))].filter((m) => m !== organizerId), roleIds };
+}
+
+/* cancelEvent's work on one event, whose row the caller has locked: deleted
+   if no one but the organizer was going, otherwise marked cancelled — and
+   either way anything unsent about it withdrawn. Returns who was going, for
+   the caller to decide who's emailed. */
+async function cancelOne(tx: Tx, id: string, organizerId: number): Promise<{ deleted: boolean; going: number[] }> {
+  const { going, roleIds } = await goingTo(tx, id, organizerId);
   await withdrawEventNotifications(tx, id);
   if (going.length === 0) {
     if (roleIds.length > 0) await tx.delete(roleMembers).where(inArray(roleMembers.roleId, roleIds));

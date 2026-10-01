@@ -1,6 +1,6 @@
 import { claimDigests, claimEventNotifications, markDigestFailed, markDigestSent, markNotificationFailed, markNotificationSent } from "@/lib/db/notifications";
 import { sendEmail } from "@/lib/email";
-import { eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
+import { eventChanges, eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
 import { isPastEvent } from "@/lib/format.util";
 
 /* Sends the queued event emails (see lib/db/notifications.ts for who's queued
@@ -56,6 +56,11 @@ export async function deliverEventNotifications(): Promise<void> {
       drainAgain = false;
       for (let batch = await claimEventNotifications(BATCH); batch.length > 0; batch = await claimEventNotifications(BATCH)) {
         for (const n of batch) {
+          // edited and then put back before it went out: there's no news
+          if (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) {
+            await markNotificationSent(n);
+            continue;
+          }
           try {
             await sendEmail({ to: n.email, ...eventNotificationEmail({ ...n, url: eventUrl(n.eventId) }) });
             await markNotificationSent(n);

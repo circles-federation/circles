@@ -97,9 +97,12 @@ export async function createEventAction(draft: EventDraft) {
 }
 
 // `scope` is for a date of a repeating event: that date alone, or it and every
-// later one (see lib/db/events.ts)
+// later one (see lib/db/events.ts). A new date, time or place may have queued
+// emails to the people going, sent once the response is out.
 export async function updateEventDetailsAction(id: string, details: EventDetails, scope: SeriesScope = "one") {
-  return asMember((memberId) => events.updateEventDetails(memberId, id, details, scope));
+  const result = await asMember((memberId) => events.updateEventDetails(memberId, id, details, scope));
+  if (result.ok) after(() => deliverEventNotifications());
+  return result;
 }
 
 // cancelling may have queued emails to the people who were going, which go

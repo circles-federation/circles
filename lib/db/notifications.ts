@@ -6,7 +6,7 @@ import { groupBy } from "./util";
 import type { DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
-import type { AgendaItem, Event, EventRepeat, NotificationKind } from "@/lib/types";
+import type { AgendaItem, Event, EventChange, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The queue behind "email a circle's members about a new event". Deciding who
    is emailed lives here (next to the data), sending lives in lib/notify.ts —
@@ -127,6 +127,29 @@ export async function enqueueCancellationNotifications(tx: Tx, eventId: string, 
   return recipients.length;
 }
 
+/* Tell the people going (see goingTo in lib/db/events.ts) that the organizer
+   moved it — a new date, time or place. An email of its own, straight away,
+   like a cancellation. `change` is when and where it was before. A member still
+   waiting on an unsent one for this event keeps it, along with what it was
+   before *that* edit, since that's what they last heard; the email is rendered
+   from the event as it stands when it goes out. One already sent is replaced,
+   so a later edit is news again. */
+export async function enqueueUpdateNotifications(tx: Tx, eventId: string, memberIds: number[], change: EventChange): Promise<number> {
+  if (memberIds.length === 0) return 0;
+  const recipients = await tx.select({ id: members.id }).from(members).where(and(inArray(members.id, memberIds), hasEmail));
+  if (recipients.length === 0) return 0;
+  await tx
+    .insert(eventNotifications)
+    .values(recipients.map((r) => ({ eventId, memberId: r.id, kind: "updated" as const, digest: false, change })))
+    .onConflictDoUpdate({
+      target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind],
+      set: { change, createdAt: sql`now()`, sentAt: null, attempts: 0, lastAttemptAt: null, lastError: null },
+      // replace a sent one, or one that ran out of attempts; leave a pending one be
+      setWhere: or(isNotNull(eventNotifications.sentAt), sql`${eventNotifications.attempts} >= ${MAX_ATTEMPTS}`),
+    });
+  return recipients.length;
+}
+
 export type PendingEventNotification = Omit<EventNotificationData, "url"> & {
   eventId: string;
   memberId: number;
@@ -169,6 +192,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
         eventId: events.id,
         memberId: members.id,
         notice: eventNotifications.kind,
+        change: eventNotifications.change,
         email: members.email,
         title: events.title,
         kind: events.kind,
@@ -201,12 +225,13 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       ? await tx.select().from(eventAgendaItems).where(inArray(eventAgendaItems.eventId, meetingIds)).orderBy(asc(eventAgendaItems.position))
       : [];
     const agendaByEvent = groupBy(agendaRows, (a) => a.eventId, (a): AgendaItem => ({ category: a.category, title: a.title, ...(a.details !== null ? { details: a.details } : {}) }));
-    return rows.flatMap(({ approvedAt, approvedByRole, hostSize, circleSize, hostCircleName, frequency, startsOn, until, ...r }) =>
+    return rows.flatMap(({ approvedAt, approvedByRole, hostSize, circleSize, hostCircleName, frequency, startsOn, until, change, ...r }) =>
       r.email
         ? [
             {
               ...r,
               email: r.email,
+              ...(change ? { change } : {}),
               kind: r.kind ?? "ordinary",
               start: r.start.slice(0, 5),
               end: r.end.slice(0, 5),

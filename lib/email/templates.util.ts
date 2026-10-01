@@ -2,7 +2,7 @@ import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtTime, parseDay } from "@/lib/format.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, repeatSummary } from "@/lib/recurrence.util";
-import type { AgendaItem, CircleType, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
+import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
    Each returns everything but the recipient, so the caller (which knows who
@@ -96,6 +96,8 @@ export interface EventNotificationData {
   repeat?: Pick<EventRepeat, "frequency" | "startsOn" | "until">;
   // a meeting's agenda, which it has instead of a description
   agenda?: AgendaItem[];
+  // an "updated" notice's when and where from before the change
+  change?: EventChange;
   // where to open it in the app
   url: string;
 }
@@ -111,6 +113,7 @@ function whenLabel(d: Pick<EventNotificationData, "date" | "start" | "end">): st
 
 export function eventNotificationEmail(n: EventNotificationData): Body {
   if (n.notice === "cancelled") return cancelledEventEmail(n);
+  if (n.notice === "updated") return updatedEventEmail(n);
   const meeting = n.kind === "meeting";
   // five flavors:
   // - approved meeting: it just reached the votes it needed, told to its circle;
@@ -386,6 +389,60 @@ function cancelledEventEmail(n: EventNotificationData): Body {
         `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
         detail("Was", when) +
         detail("Where", n.location) +
+        `</table></td></tr>` +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+    ),
+  };
+}
+
+// which of an event's when and where differ from what an "updated" notice
+// remembers — all false once an edit has been undone, and nothing need be sent
+export function eventChanges(n: Pick<EventNotificationData, "date" | "start" | "end" | "location" | "change">) {
+  const was = n.change?.was;
+  return {
+    date: !!was && was.date !== n.date,
+    time: !!was && (was.start !== n.start || was.end !== n.end),
+    location: !!was && was.location !== n.location,
+  };
+}
+
+/* To someone who's going: the organizer moved it — a new date, time or place.
+   Each detail that changed shows what it was beneath it, struck through. */
+function updatedEventEmail(n: EventNotificationData): Body {
+  const noun = n.kind === "meeting" ? "meeting" : "event";
+  const changed = eventChanges(n);
+  const parts = [changed.date && "date", changed.time && "time", changed.location && "location"].filter((p): p is string => !!p);
+  const what = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : (parts[0] ?? "details");
+  const note =
+    n.change?.andLater && n.repeat
+      ? `${n.organizerName} changed the ${what} of this ${n.repeat.frequency} ${noun}, from this date on.`
+      : `${n.organizerName} changed the ${what} of this ${noun}.`;
+  const why = `You're getting this because you're going to it.`;
+  const when = whenLabel(n);
+  const was = n.change?.was;
+  const wasWhen = was && (changed.date || changed.time) ? whenLabel(was) : "";
+  const wasWhere = was && changed.location ? was.location : "";
+  const detail = (label: string, value: string, before: string) =>
+    `<tr><td style="padding-bottom:14px">${eyebrow(before ? `${label} · changed` : label, before ? INK : SOFT)}` +
+    `<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div>` +
+    (before ? `<div style="margin-top:2px;font-family:${SERIF};font-size:15px;line-height:1.4;color:${SOFT};text-decoration:line-through">${esc(before)}</div>` : "") +
+    `</td></tr>`;
+  return {
+    subject: `Changed: ${n.title}`,
+    text:
+      `Changed ${noun} in ${n.circleName}\n\n${n.title}\n\n${note}\n\n` +
+      `When: ${when}\n${wasWhen ? `  (was ${wasWhen})\n` : ""}Where: ${n.location}\n${wasWhere ? `  (was ${wasWhere})\n` : ""}\n` +
+      `View it: ${n.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
+        eyebrow(`Changed ${noun} · ${esc(n.circleName)}`) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${INK};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}</div></td></tr>` +
+        `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
+        detail("When", when, wasWhen) +
+        detail("Where", n.location, wasWhere) +
         `</table></td></tr>` +
         `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`

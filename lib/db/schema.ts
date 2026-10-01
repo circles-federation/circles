@@ -19,7 +19,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { RoleDraft } from "@/lib/events.util";
-import type { AgendaCategory, EventKindKey, NotificationKind, RepeatFrequency } from "@/lib/types";
+import type { AgendaCategory, EventChange, EventKindKey, NotificationKind, RepeatFrequency } from "@/lib/types";
 
 /* Drizzle table definitions — the only file besides lib/db/client.ts and
    lib/better-auth.ts that lib/db/*.ts may import from directly (see the
@@ -219,6 +219,9 @@ export const eventNotifications = pgTable(
     // delivered as a line in the member's daily digest rather than an email of
     // its own — for circles too big to email about each event one at a time
     digest: boolean("digest").notNull().default(false),
+    // an "updated" row's when-and-where from before the change (null on every
+    // other kind)
+    change: jsonb("change").$type<EventChange>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     attempts: integer("attempts").notNull().default(0),
