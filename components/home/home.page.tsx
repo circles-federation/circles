@@ -201,6 +201,12 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
         </Section>
       </SectionGroup>
 
+      {/* pulled down into PageContainer's bottom padding, so on a phone it
+          sits just above the bottom nav once scrolled to the very end */}
+      <p className="mt-16 -mb-14 text-center font-sans text-label tracking-wide text-soft opacity-60 select-none">
+        Circles R1 Beta 1
+      </p>
+
       {confirmingLogout && (
         <ConfirmModal
           title="Log out?"
