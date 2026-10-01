@@ -6,7 +6,7 @@ import type { Event } from "./types";
    their own, so they're converted to UTC here in the community's zone (`tz`,
    an IANA name) — UTC times need no VTIMEZONE block, which calendar apps
    handle unevenly. It's a one-off copy: a later edit or cancellation doesn't
-   reach it. */
+   reach it. It carries an alert an hour before the start. */
 
 // the UTC instant of a wall-clock time in `tz`, DST included
 function zonedToUtc(date: string, time: string, tz: string): Date {
@@ -71,6 +71,13 @@ export function eventCalendarFile(e: Event, { tz, url }: { tz: string; url: stri
     `LOCATION:${text(e.location)}`,
     `DESCRIPTION:${text(description)}`,
     `URL:${url}`,
+    // the calendar's own alert an hour before, alongside the reminder email the
+    // day before (lib/db/notifications.ts's enqueueReminders)
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    `DESCRIPTION:${text(e.title)}`,
+    "TRIGGER:-PT1H",
+    "END:VALARM",
     "END:VEVENT",
     "END:VCALENDAR",
   ];

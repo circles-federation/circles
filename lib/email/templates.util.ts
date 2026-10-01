@@ -1,7 +1,7 @@
 import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtTime, parseDay } from "@/lib/format.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
-import { endedBefore, repeatSummary } from "@/lib/recurrence.util";
+import { addDays, endedBefore, repeatSummary } from "@/lib/recurrence.util";
 import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
@@ -98,6 +98,11 @@ export interface EventNotificationData {
   agenda?: AgendaItem[];
   // an "updated" notice's when and where from before the change
   change?: EventChange;
+  // a reminder's: the slots the reader holds, the slots still short of their
+  // minimum, and the day it's sent (to say "today" or "tomorrow")
+  mySlots?: string[];
+  openSlots?: { label: string; min: number; filled: number }[];
+  today?: string;
   // where to open it in the app
   url: string;
 }
@@ -114,6 +119,7 @@ function whenLabel(d: Pick<EventNotificationData, "date" | "start" | "end">): st
 export function eventNotificationEmail(n: EventNotificationData): Body {
   if (n.notice === "cancelled") return cancelledEventEmail(n);
   if (n.notice === "updated") return updatedEventEmail(n);
+  if (n.notice === "reminder") return reminderEmail(n);
   const meeting = n.kind === "meeting";
   // five flavors:
   // - approved meeting: it just reached the votes it needed, told to its circle;
@@ -449,6 +455,67 @@ function updatedEventEmail(n: EventNotificationData): Body {
     ),
   };
 }
+
+/* To someone going: it's coming up within a day. The when and where again,
+   their own slot if they hold one, and — where it can still make a difference
+   — the slots still short of people, since an event whose required slot is
+   empty an hour before it starts is called off (lib/roles.util.ts). */
+function reminderEmail(n: EventNotificationData): Body {
+  const noun = n.kind === "meeting" ? "meeting" : "event";
+  const day = parseDay(n.date);
+  const dayWord =
+    n.today === n.date ? "today" : n.today && addDays(n.today, 1) === n.date ? "tomorrow" : isNaN(day.getTime()) ? "soon" : `on ${WEEKDAYS[day.getDay()]}`;
+  const at = `${dayWord} at ${fmtTime(n.start)}`;
+  const mine = n.mySlots ?? [];
+  const note = mine.length > 0
+    ? `You're signed up as ${listOf(mine)} for this ${noun}, ${at}.`
+    : `You're going to this ${noun}, ${at}.`;
+  const open = n.openSlots ?? [];
+  const openLines = open.map((s) => `${s.label}: ${s.filled} of ${s.min} needed`);
+  const openNote = "If a required slot is still empty an hour before the start, the event is called off.";
+  const Day = dayWord.charAt(0).toUpperCase() + dayWord.slice(1);
+  const why = `You're getting this because you're going to it.`;
+  const when = whenLabel(n);
+  const agenda = n.agenda ?? [];
+  const detail = (label: string, value: string) =>
+    `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
+  const host: [string, string] = n.hostCircleName ? ["Hosted by", n.hostCircleName] : [n.approvedByRole && n.kind === "meeting" ? "Scheduled by" : n.kind === "meeting" ? "Proposed by" : "Hosted by", n.organizerName];
+  return {
+    subject: `${Day} at ${fmtTime(n.start)}: ${n.title}`,
+    text:
+      `Reminder: ${n.title}\n\n${note}\n\n` +
+      `When: ${when}\nWhere: ${n.location}\n${host[0]}: ${host[1]}\n\n` +
+      (openLines.length > 0 ? `Still short of people:\n${openLines.map((l) => `- ${l}`).join("\n")}\n${openNote}\n\n` : "") +
+      (agenda.length > 0 ? `Agenda:\n${agendaText(agenda)}\n\n` : "") +
+      `View it: ${n.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
+        eyebrow(`Reminder · ${esc(n.circleName)}`) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${INK};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}</div></td></tr>` +
+        `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
+        detail("When", when) +
+        detail("Where", n.location) +
+        detail(host[0], host[1]) +
+        `</table></td></tr>` +
+        // the app's "needs slots" warning: orange, with what each slot is short
+        (openLines.length > 0
+          ? `<tr><td style="padding-bottom:24px"><div style="border-left:3px solid ${FLAME};padding-left:12px">` +
+            eyebrow("Still short of people", FLAME) +
+            `<div style="margin-top:6px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${openLines.map(esc).join("<br>")}</div>` +
+            `<div style="margin-top:6px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${openNote}</div>` +
+            `</div></td></tr>`
+          : "") +
+        (agenda.length > 0 ? agendaHtml(agenda) : "") +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+    ),
+  };
+}
+
+// "a", "a and b", "a, b and c"
+const listOf = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : (items[0] ?? ""));
 
 // the masthead every application email opens with: the welcome page's rule,
 // eyebrow and wordmark

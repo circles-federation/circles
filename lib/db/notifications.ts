@@ -1,11 +1,13 @@
 import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
-import { circleMembers, circles, eventAgendaItems, eventNotifications, eventSeries, members, events } from "./schema";
+import { circleMembers, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, members, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
 import type { DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
+import { REMINDER_HOURS } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
+import { localDay } from "@/lib/recurrence.util";
 import type { AgendaItem, Event, EventChange, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The queue behind "email a circle's members about a new event". Deciding who
@@ -150,6 +152,86 @@ export async function enqueueUpdateNotifications(tx: Tx, eventId: string, member
   return recipients.length;
 }
 
+// a timestamp-without-zone literal for `d` in this machine's timezone, to set
+// against an event's date + start, which are the community's wall-clock time
+const wallClock = (d: Date) => `${localDay(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+
+// everyone going to an event, organizer included, who can be emailed: its
+// RSVPs (a meeting's voters among them) and its slot holders
+async function goingWithEmail(tx: Tx, eventId: string): Promise<number[]> {
+  const [rsvpRows, slotRows] = await Promise.all([
+    tx.select({ id: members.id }).from(eventRsvps).innerJoin(members, eq(members.id, eventRsvps.memberId)).where(and(eq(eventRsvps.eventId, eventId), hasEmail)),
+    tx
+      .select({ id: members.id })
+      .from(roleMembers)
+      .innerJoin(roles, eq(roles.id, roleMembers.roleId))
+      .innerJoin(members, eq(members.id, roleMembers.memberId))
+      .where(and(eq(roles.eventId, eventId), hasEmail)),
+  ]);
+  return [...new Set([...rsvpRows, ...slotRows].map((r) => r.id))];
+}
+
+/* Queue a reminder for everyone going to each event that starts within the
+   next REMINDER_HOURS and hasn't had one — an email of its own, never a digest
+   line. Run by the poller (lib/notify.ts), since an event comes into range
+   just by time passing. Who's going is read at that moment, so someone who
+   signs up later, already this close, isn't reminded of what they just chose.
+   A cancelled event, a proposal, and a meeting still short of its votes are
+   passed over; the last is looked at again until it's approved or has begun.
+   Each event is locked while it's done, so two servers can't both queue it.
+   Returns how many reminders were queued. */
+export async function enqueueReminders(now: Date = new Date()): Promise<number> {
+  const later = new Date(now.getTime() + REMINDER_HOURS * 60 * 60 * 1000);
+  const startsAt = sql`(${events.date} + ${events.start})`;
+  const due = await db
+    .select({
+      id: events.id,
+      kind: events.kind,
+      approvedByRole: events.approvedByRole,
+      votes: sql<number>`(select count(*)::int from event_votes where event_id = ${events.id})`,
+      circleSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.circleId})`,
+    })
+    .from(events)
+    .where(
+      and(
+        isNull(events.remindedAt),
+        isNull(events.cancelledAt),
+        isNotNull(events.approvedAt),
+        sql`${startsAt} > ${wallClock(now)}::timestamp`,
+        sql`${startsAt} <= ${wallClock(later)}::timestamp`
+      )
+    );
+  const ready = due.filter((e) => e.kind !== "meeting" || e.approvedByRole !== null || e.votes >= majority(e.circleSize));
+  let queued = 0;
+  for (const { id } of ready) {
+    queued += await db.transaction(async (tx) => {
+      const [row] = await tx.select({ remindedAt: events.remindedAt }).from(events).where(eq(events.id, id)).for("update", { skipLocked: true });
+      if (!row || row.remindedAt !== null) return 0;
+      await tx.update(events).set({ remindedAt: new Date() }).where(eq(events.id, id));
+      const going = await goingWithEmail(tx, id);
+      if (going.length === 0) return 0;
+      await tx
+        .insert(eventNotifications)
+        .values(going.map((memberId) => ({ eventId: id, memberId, kind: "reminder" as const, digest: false })))
+        // one sent before the event was moved further out is due again
+        .onConflictDoUpdate({
+          target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind],
+          set: { createdAt: sql`now()`, sentAt: null, attempts: 0, lastAttemptAt: null, lastError: null },
+        });
+      return going.length;
+    });
+  }
+  return queued;
+}
+
+// an event was moved: a reminder not yet sent would name the old time, so
+// it's dropped (updateEventDetails decides whether one is due again)
+export async function withdrawReminders(tx: Tx, eventId: string): Promise<void> {
+  await tx
+    .delete(eventNotifications)
+    .where(and(eq(eventNotifications.eventId, eventId), eq(eventNotifications.kind, "reminder"), isNull(eventNotifications.sentAt)));
+}
+
 export type PendingEventNotification = Omit<EventNotificationData, "url"> & {
   eventId: string;
   memberId: number;
@@ -225,6 +307,28 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       ? await tx.select().from(eventAgendaItems).where(inArray(eventAgendaItems.eventId, meetingIds)).orderBy(asc(eventAgendaItems.position))
       : [];
     const agendaByEvent = groupBy(agendaRows, (a) => a.eventId, (a): AgendaItem => ({ category: a.category, title: a.title, ...(a.details !== null ? { details: a.details } : {}) }));
+    // a reminder names the reader's own slots and any still short of people
+    const reminderIds = [...new Set(rows.filter((r) => r.notice === "reminder").map((r) => r.eventId))];
+    const slotRows = reminderIds.length > 0
+      ? await tx
+          .select({
+            eventId: roles.eventId,
+            label: roles.label,
+            min: roles.min,
+            holders: sql<number[]>`(select coalesce(array_agg(member_id), '{}') from role_members where role_id = ${roles.id})`,
+          })
+          .from(roles)
+          .where(inArray(roles.eventId, reminderIds))
+          .orderBy(asc(roles.id))
+      : [];
+    const slotsByEvent = groupBy(slotRows, (s) => s.eventId, (s) => s);
+    const reminderSlots = (eventId: string, memberId: number) => {
+      const slots = slotsByEvent.get(eventId) ?? [];
+      return {
+        mySlots: slots.filter((s) => s.holders.includes(memberId)).map((s) => s.label),
+        openSlots: slots.filter((s) => s.holders.length < s.min).map((s) => ({ label: s.label, min: s.min, filled: s.holders.length })),
+      };
+    };
     return rows.flatMap(({ approvedAt, approvedByRole, hostSize, circleSize, hostCircleName, frequency, startsOn, until, change, ...r }) =>
       r.email
         ? [
@@ -239,6 +343,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
               ...(approvedByRole ? { approvedByRole } : {}),
               ...toRepeat({ frequency, startsOn, until }),
               ...(r.kind === "meeting" ? { agenda: agendaByEvent.get(r.eventId) ?? [] } : {}),
+              ...(r.notice === "reminder" ? reminderSlots(r.eventId, r.memberId) : {}),
               // read now, not when queued: it may have been approved since
               proposed: !!hostCircleName && approvedAt === null,
               // a proposal is voted on by its host circle, a meeting by its own

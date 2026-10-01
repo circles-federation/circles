@@ -1,7 +1,9 @@
-import { claimDigests, claimEventNotifications, markDigestFailed, markDigestSent, markNotificationFailed, markNotificationSent } from "@/lib/db/notifications";
+import { claimDigests, claimEventNotifications, enqueueReminders, markDigestFailed, markDigestSent, markNotificationFailed, markNotificationSent } from "@/lib/db/notifications";
 import { sendEmail } from "@/lib/email";
 import { eventChanges, eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
+import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
+import { localDay } from "@/lib/recurrence.util";
 
 /* Sends the queued event emails (see lib/db/notifications.ts for who's queued
    and why). Two things call drain: the create-event action, right after its
@@ -9,7 +11,8 @@ import { isPastEvent } from "@/lib/format.util";
    two — and a poller started at server boot (instrumentation.ts), which is the
    safety net for anything that failed, was left over from before a restart, or
    was queued by another server. The database decides which rows a given drain
-   may take, so they never double-send.
+   may take, so they never double-send. The poller also queues reminders as
+   events come within a day of starting (enqueueReminders).
 
    The daily digest (deliverDigests) rides the same poller: it isn't triggered
    by anything, it just becomes due once a day. */
@@ -56,13 +59,14 @@ export async function deliverEventNotifications(): Promise<void> {
       drainAgain = false;
       for (let batch = await claimEventNotifications(BATCH); batch.length > 0; batch = await claimEventNotifications(BATCH)) {
         for (const n of batch) {
-          // edited and then put back before it went out: there's no news
-          if (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) {
+          // edited and then put back before it went out: there's no news; and a
+          // reminder that's been retrying past the start is too late to help
+          if ((n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) || (n.notice === "reminder" && eventStartsAt(n) <= new Date())) {
             await markNotificationSent(n);
             continue;
           }
           try {
-            await sendEmail({ to: n.email, ...eventNotificationEmail({ ...n, url: eventUrl(n.eventId) }) });
+            await sendEmail({ to: n.email, ...eventNotificationEmail({ ...n, url: eventUrl(n.eventId), today: localDay() }) });
             await markNotificationSent(n);
           } catch (err) {
             console.error(`Couldn't email event ${n.eventId} to member ${n.memberId}:`, err);
@@ -114,12 +118,23 @@ export async function deliverDigests(now: Date = new Date()): Promise<void> {
   }
 }
 
+// queue reminders for whatever has come within a day of starting, then send
+// them along with anything else waiting
+async function remindThenDeliver(): Promise<void> {
+  try {
+    await enqueueReminders();
+  } catch (err) {
+    console.error("Queueing event reminders failed:", err);
+  }
+  await deliverEventNotifications();
+}
+
 export function startNotificationWorker(): void {
   // globalThis, so dev-server module reloads don't stack up pollers
   const g = globalThis as typeof globalThis & { __notificationPoller?: NodeJS.Timeout };
   if (g.__notificationPoller) return;
   const tick = () => {
-    void deliverEventNotifications();
+    void remindThenDeliver();
     void deliverDigests();
   };
   g.__notificationPoller = setInterval(tick, POLL_MS);

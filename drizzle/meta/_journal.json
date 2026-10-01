@@ -169,6 +169,13 @@
       "when": 1790862215351,
       "tag": "0023_event_update_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790864241323,
+      "tag": "0024_event_reminders",
+      "breakpoints": true
     }
   ]
 }

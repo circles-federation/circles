@@ -46,6 +46,22 @@ export interface EventDraft {
   repeat?: { frequency: RepeatFrequency; until?: string };
 }
 
+// the people going are emailed a reminder once an event is this close
+export const REMINDER_HOURS = 24;
+
+// when an event starts, in this machine's timezone (the community's — see TZ)
+export function eventStartsAt(e: Pick<Event, "date" | "start">): Date {
+  const [y, m, d] = e.date.split("-").map(Number) as [number, number, number];
+  const [hh, mm] = e.start.split(":").map(Number) as [number, number];
+  return new Date(y, m - 1, d, hh, mm);
+}
+
+// whether it starts after `now` but within REMINDER_HOURS of it
+export function startsWithinReminder(e: Pick<Event, "date" | "start">, now: Date = new Date()): boolean {
+  const ms = eventStartsAt(e).getTime() - now.getTime();
+  return ms > 0 && ms <= REMINDER_HOURS * 60 * 60 * 1000;
+}
+
 // which dates of a repeating event an edit or a cancellation applies to: the
 // one being looked at, or it and every later one (and the series' own
 // template, for the dates still to be added)

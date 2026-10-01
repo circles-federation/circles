@@ -191,6 +191,11 @@ export const events = pgTable(
     // else is going to is deleted instead). Final: a cancelled event stays
     // visible, labelled so, but takes no RSVPs, votes, signups or edits.
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    // set once the people going have been queued a reminder, or when there's
+    // nothing to remind them of: it was created, or moved, already within a
+    // day of starting (see enqueueReminders in lib/db/notifications.ts).
+    // Cleared when it's moved further out, so they're reminded again.
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
     // set on each date of a repeating event
     seriesId: text("series_id").references(() => eventSeries.id),
   },

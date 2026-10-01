@@ -4,9 +4,9 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
-import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, withdrawEventNotifications } from "./notifications";
+import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, withdrawEventNotifications, withdrawReminders } from "./notifications";
 import { circleCanHost, isWithinCircle } from "@/lib/circles.util";
-import { roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
+import { roleKey, startsWithinReminder, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import { REPEAT_HORIZON_DAYS, addDays, datesBetween, localDay } from "@/lib/recurrence.util";
@@ -297,6 +297,8 @@ async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boole
     end: event.end,
     location: event.location,
     description: event.description,
+    // created less than a day out, its people have only just heard of it
+    remindedAt: startsWithinReminder(event) ? new Date() : null,
     seriesId: event.repeat?.seriesId ?? null,
   });
   if (event.rsvps.length > 0) {
@@ -537,9 +539,18 @@ export async function updateEventDetails(memberId: number, id: string, details: 
         const was = { date: before.date, start: before.start, end: before.end, location: before.location };
         await enqueueUpdateNotifications(tx, target, tell, { was, ...(andLater ? { andLater } : {}) });
       }
+      // a new start time sets the reminder going again: due afresh when it's
+      // moved further out, and skipped when it's moved to within a day, since
+      // the change email just told everyone
+      const rescheduled = !!before && date !== undefined && (date !== before.date || fields.start !== before.start);
+      if (rescheduled) await withdrawReminders(tx, target);
       await tx
         .update(events)
-        .set({ ...fields, ...(target === id ? { date: details.date } : {}) })
+        .set({
+          ...fields,
+          ...(target === id ? { date: details.date } : {}),
+          ...(rescheduled ? { remindedAt: startsWithinReminder({ date, start: fields.start }) ? new Date() : null } : {}),
+        })
         .where(eq(events.id, target));
       // a slot that keeps its name keeps the people already in it, per date
       await writeRoles(tx, target, buildRoles(details.roles, before?.roles));

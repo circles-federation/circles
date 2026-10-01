@@ -185,11 +185,11 @@ export interface CircleResource {
 // person hosts ("new"), a circle-hosted proposal they're asked to vote on
 // ("proposed"), that a proposal or meeting was approved ("approved" — a
 // meeting when it reaches its vote threshold), or, to the people going, that
-// its organizer moved it ("updated") or cancelled it ("cancelled"). Separate
-// from *how* it's delivered (an email of its own, or a line in the daily
-// digest), and one member can be owed more than one of these for the same
-// event.
-export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "cancelled";
+// its organizer moved it ("updated") or cancelled it ("cancelled"), or that
+// it's coming up within a day ("reminder"). Separate from *how* it's delivered
+// (an email of its own, or a line in the daily digest), and one member can be
+// owed more than one of these for the same event.
+export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "cancelled" | "reminder";
 
 // what an "updated" notification remembers: when and where the event was
 // before the change, so the email can say what moved. `andLater` marks an edit
