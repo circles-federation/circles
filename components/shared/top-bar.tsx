@@ -11,8 +11,10 @@ import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-pr
 import { isCircleMember } from "@/lib/circles.util";
 import { isPastEvent } from "@/lib/format.util";
 import { isEventOrganizer } from "@/lib/governance.util";
+import { useHomeNeedsAttention } from "@/lib/hooks";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
 import { resourceFormTitle } from "@/components/circles/resource-kinds";
+import { AttentionDot } from "./attention-dot";
 import { GhostIconButton } from "./ghost-icon-button";
 import { OfflineBanner } from "./offline-banner";
 
@@ -117,7 +119,8 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
 export function TopBar({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
   const { circles, events, members, resources, profile } = useAppState();
-  const isHomeNeighborhood = profile.homeCircleId !== null && pathname === `/circles/${profile.homeCircleId}`;
+  const needsAttention = useHomeNeedsAttention();
+  const isHomeNeighborhood =profile.homeCircleId !== null && pathname === `/circles/${profile.homeCircleId}`;
 
   // Like Flutter's automatic leading back button: shown on every route except
   // the tab roots. A page with unsaved changes can intercept it; otherwise it
@@ -221,9 +224,10 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
                 e.preventDefault();
                 onReselect();
               }}
-              className={clsx(NAV_LINK, isActive(href) ? "border-b-ink" : "border-b-transparent")}
+              className={clsx(NAV_LINK, "relative", isActive(href) ? "border-b-ink" : "border-b-transparent")}
             >
               {label}
+              {href === "/home" && needsAttention && <AttentionDot className="top-0 -right-3" />}
             </Link>
           ))}
         </nav>

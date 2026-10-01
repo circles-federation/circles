@@ -5,6 +5,7 @@
 // this is just a shorter option for new code.
 export { AlertModal } from "./alert-modal";
 export { AppShell } from "./app-shell";
+export { AttentionDot } from "./attention-dot";
 export { Avatar } from "./avatar";
 export { BottomNav } from "./bottom-nav";
 export { Button } from "./button";

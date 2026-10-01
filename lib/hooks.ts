@@ -33,6 +33,14 @@ export function useCirclesById(): CirclesById {
   return useMemo(() => indexCircles(circles), [circles]);
 }
 
+/* Whether Home has something waiting on the member — applications to review
+   (admins only) or invitations sent to them — for the dot on its nav tab.
+   Stands in for a notifications screen until there is one. */
+export function useHomeNeedsAttention(): boolean {
+  const { pendingApplications, invitations, profile } = useAppState();
+  return (pendingApplications ?? 0) > 0 || invitations.some((i) => i.memberId === profile.id);
+}
+
 function subscribeToConnection(onChange: () => void) {
   window.addEventListener("online", onChange);
   window.addEventListener("offline", onChange);

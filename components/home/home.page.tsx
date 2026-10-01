@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRightStartOnRectangleIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
-import { AlertModal, Avatar, Button, Chip, ConfirmModal, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
+import { AlertModal, AttentionDot, Avatar, Button, Chip, ConfirmModal, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { EventFeed } from "@/components/events/event-feed";
 import { StatCard } from "./stat-card";
@@ -117,7 +117,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
         {/* a system admin's way into the applications waiting for them */}
         {pendingApplications !== null && (
           <Section>
-            <EyebrowGroup label="Applications">
+            <EyebrowGroup label={<AttentionLabel on={pendingApplications > 0}>Applications</AttentionLabel>}>
               <Link href="/admin/applications" className="ink-press flex items-center justify-between gap-3 border border-ink bg-paper px-4.5 py-4 text-ink no-underline">
                 <span className="font-sans text-base font-bold">
                   {pendingApplications === 0 ? "Nothing waiting for review" : `${pendingApplications} waiting for review`}
@@ -130,7 +130,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
 
         {myInvitations.length > 0 && (
           <Section>
-            <EyebrowGroup label={myInvitations.length === 1 ? "1 invitation" : `${myInvitations.length} invitations`}>
+            <EyebrowGroup label={<AttentionLabel on>{myInvitations.length === 1 ? "1 invitation" : `${myInvitations.length} invitations`}</AttentionLabel>}>
               <div className="border-t border-ink">
                 {myInvitations.map((inv) => {
                   const by = inv.invitedBy !== undefined ? memberById(inv.invitedBy) : undefined;
@@ -228,5 +228,16 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
         />
       )}
     </PageContainer>
+  );
+}
+
+// a section's eyebrow carrying the same dot as the Home tab, so it's clear
+// which section the tab's dot is about
+function AttentionLabel({ on, children }: { on: boolean; children: ReactNode }) {
+  return (
+    <span className="relative">
+      {children}
+      {on && <AttentionDot className="top-1/2 -right-3.5 -translate-y-1/2" />}
+    </span>
   );
 }

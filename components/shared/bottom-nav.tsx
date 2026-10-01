@@ -13,6 +13,8 @@ import {
   GlobeAmericasIcon as CirclesSolid,
   CalendarDaysIcon as EventsSolid,
 } from "@heroicons/react/24/solid";
+import { useHomeNeedsAttention } from "@/lib/hooks";
+import { AttentionDot } from "./attention-dot";
 
 const TABS = [
   { href: "/home", label: "Home", outline: HomeOutline, solid: HomeSolid },
@@ -31,6 +33,7 @@ const TABS = [
    the top, as in a native app) rather than navigating to where you are. */
 export function BottomNav({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
+  const needsAttention = useHomeNeedsAttention();
 
   // mirrors TopBar's isActive: Home also covers the game and profile pages,
   // which are reached only from Home and have no bottom-nav tab of their
@@ -65,7 +68,10 @@ export function BottomNav({ onReselect }: { onReselect: () => void }) {
             }}
             className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5"
           >
-            <Icon className={clsx("size-6", color)} />
+            <span className="relative">
+              <Icon className={clsx("size-6", color)} />
+              {href === "/home" && needsAttention && <AttentionDot className="-top-0.5 -right-1.5" />}
+            </span>
             <span className={clsx("font-sans text-micro tracking-wide uppercase font-bold", color)}>{label}</span>
           </Link>
         );
