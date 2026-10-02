@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, memberPhotos, members } from "./schema";
+import { isBirthDecade } from "@/lib/members.util";
 import type { Member, Profile } from "@/lib/types";
 
 export class MemberError extends UserFacingError {}
@@ -20,6 +21,7 @@ function toMember(row: MemberRow, homeCircleId: string | null, photoUpdatedAt: D
     skills: row.skills,
     interests: row.interests,
     bio: row.bio,
+    ...(row.birthDecade !== null ? { birthDecade: row.birthDecade } : {}),
     email: row.email ?? undefined,
     photoVersion: photoUpdatedAt?.getTime(),
   };
@@ -84,11 +86,17 @@ export async function getMemberByEmail(email: string): Promise<Member | null> {
    takes no id from the client at all and supplies the session's own, so
    there's no id to check here — a member can only ever reach their own row.
    Reads (getMemberById) stay open to any id; only the write is narrowed. */
-export async function updateMember(id: number, patch: Partial<Profile>): Promise<Member | null> {
+// a profile edit; birthDecade is null to clear it, since an undefined field
+// doesn't survive the trip from the browser to a Server Action
+export type ProfilePatch = Omit<Partial<Profile>, "birthDecade"> & { birthDecade?: number | null };
+
+export async function updateMember(id: number, patch: ProfilePatch): Promise<Member | null> {
   // never the email itself: it's what they sign in with, and the session finds
   // their member by it (lib/session.ts), so changing it would lock them out
   const { name, lastName, pronouns, role, skills, interests, bio, emailPublic } = patch;
-  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, emailPublic };
+  const birthDecade = patch.birthDecade;
+  if (birthDecade !== undefined && birthDecade !== null && !isBirthDecade(birthDecade)) throw new MemberError("Pick one of the decades listed.");
+  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, emailPublic, birthDecade };
   if (Object.values(columnPatch).some((v) => v !== undefined)) {
     await db.update(members).set(columnPatch).where(eq(members.id, id));
   }

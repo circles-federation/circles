@@ -20,6 +20,9 @@ export interface Member {
   skills: string[];
   interests: string[];
   bio: string;
+  // the decade they were born in, as its first year (1990 for the '90s), if
+  // they've chosen to say (see lib/members.util.ts)
+  birthDecade?: number;
   email?: string;
   // set once they've uploaded a photo (its upload time, in ms) — part of the
   // photo's URL, so a replaced photo is never served from a stale cache

@@ -5,6 +5,7 @@ import { Avatar, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section
 import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { circlesForMember } from "@/lib/circles.util";
+import { birthDecadeLabel } from "@/lib/members.util";
 import { useCirclesById } from "@/lib/hooks";
 import type { Circle, Member } from "@/lib/types";
 
@@ -51,6 +52,17 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
       </div>
 
       <SectionGroup>
+        {/* the playful one: the decade as a big, tilted sticker */}
+        {m.birthDecade !== undefined && (
+          <Section>
+            <EyebrowGroup label="Born in the">
+              <span className="inline-block -rotate-3 bg-ink px-4 pt-2 pb-1.5 font-sans text-title leading-none font-extrabold tracking-[-0.04em] text-paper">
+                {birthDecadeLabel(m.birthDecade)}
+              </span>
+            </EyebrowGroup>
+          </Section>
+        )}
+
         {ownHidden ? (
           <Section>
             <EyebrowGroup label="Get in touch">

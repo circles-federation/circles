@@ -1,0 +1,1 @@
+ALTER TABLE "members" ADD COLUMN "birth_decade" integer;

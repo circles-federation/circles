@@ -47,6 +47,9 @@ export const members = pgTable("members", {
   skills: text("skills").array().notNull().default(sql`'{}'::text[]`),
   interests: text("interests").array().notNull().default(sql`'{}'::text[]`),
   bio: text("bio").notNull(),
+  // the decade they were born in, as its first year (1990 for the '90s), if
+  // they've chosen to say — never a birthdate
+  birthDecade: integer("birth_decade"),
   email: text("email").unique(),
   // whether other members may see the email (Edit myself's Visible/Hidden);
   // when they may not, it's left out of what's sent to them (getMembersForViewer)

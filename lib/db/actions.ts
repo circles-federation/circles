@@ -17,7 +17,7 @@ import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, Profile } from "@/lib/types";
+import type { Circle } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
    connection — Drizzle's Postgres driver is Node-only. These thin wrappers
@@ -29,7 +29,7 @@ import type { Circle, Profile } from "@/lib/types";
    updateMemberAction never takes an id at all, so there's no id a caller
    could substitute someone else's for; updateCircleAction requires the
    session member to belong to the circle (lib/db/circles.ts). */
-export async function updateMemberAction(patch: Partial<Profile>) {
+export async function updateMemberAction(patch: members.ProfilePatch) {
   return asMember((memberId) => members.updateMember(memberId, patch));
 }
 

@@ -9,6 +9,7 @@ import { ConfirmModal, Label, PageContainer, Section, SectionGroup, TextArea } f
 import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
 import { PhotoPicker } from "./photo-picker";
+import { BIRTH_DECADES, birthDecadeLabel } from "@/lib/members.util";
 import type { Profile } from "@/lib/types";
 
 interface EditMyselfPageProps {
@@ -31,6 +32,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
     draft.bio !== profile.bio ||
     (draft.email || "") !== (profile.email || "") ||
     draft.emailPublic !== profile.emailPublic ||
+    draft.birthDecade !== profile.birthDecade ||
     draft.skills.join(" ") !== profile.skills.join(" ") ||
     draft.interests.join(" ") !== profile.interests.join(" ");
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -77,6 +79,34 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
         <Section>
           <Label htmlFor="bio">Bio</Label>
           <TextArea id="bio" value={draft.bio} onChange={(e) => set({ bio: e.target.value })} rows={3} />
+        </Section>
+
+        {/* the decade, not a birthdate — a tap each, or say nothing */}
+        <Section>
+          <Label>Born in the</Label>
+          <div role="radiogroup" aria-label="Born in the" className="flex flex-wrap gap-2">
+            {[undefined, ...BIRTH_DECADES].map((decade) => {
+              const chosen = draft.birthDecade === decade;
+              return (
+                <button
+                  key={decade ?? "none"}
+                  type="button"
+                  role="radio"
+                  aria-checked={chosen}
+                  onClick={() => set({ birthDecade: decade })}
+                  className={clsx(
+                    "ink-press cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold",
+                    chosen ? "bg-ink text-paper" : "bg-paper text-ink",
+                    decade === undefined && "font-bold text-soft",
+                    decade === undefined && chosen && "text-paper",
+                  )}
+                >
+                  {decade === undefined ? "Rather not say" : birthDecadeLabel(decade)}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Just the decade, never a birthdate. It shows on your profile.</p>
         </Section>
 
         {/* email + visibility */}

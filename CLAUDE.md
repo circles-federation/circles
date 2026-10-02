@@ -27,6 +27,8 @@ Mutators on `AppStateProvider` are pure state + toast now — they never navigat
 
 **A hidden email really is hidden.** Edit myself's Visible/Hidden choice is `members.email_public` (`Profile.emailPublic`, saved by `updateMember` like the rest of the profile). `getMembersForViewer` in `lib/db/members.ts`, which AppState is seeded and refreshed with, leaves the email off everyone who's hidden theirs except the viewer themself, so it never reaches anyone else's browser; the profile page's "Get in touch" then simply has nothing to show.
 
+**Born in the…** A member may say which decade they were born in (`members.birth_decade`, `Member.birthDecade`, stored as the decade's first year), never a birthdate. Edit myself offers the decades in `BIRTH_DECADES` (`lib/members.util.ts`, which `updateMember` checks against too) plus "Rather not say", which saves `null` (an undefined field wouldn't survive the trip to the Server Action, hence `ProfilePatch`). The profile shows it under "Born in the" as a big, tilted sticker, labelled by `birthDecadeLabel`: "'90s", but "2000s" and "2010s" in full, since "'00s" would read as the 1900s.
+
 A member's profile is a page, `/profile/[id]` (`components/profile/member-profile.page.tsx`), opened from anywhere a member is shown (circles, attendee lists, member lists, role slots) through `useAppNav().openMember`. It's laid out like a circle page, with their home neighborhood as the masthead chip and "Member of" as a `FolderGrid` of `CircleCard`s. On your own, the top bar's action is the Edit pencil to `/profile/edit`, which goes back (`useGoBack`) to wherever it was opened from. It replaced a global profile modal.
 
 ### Data access layer
