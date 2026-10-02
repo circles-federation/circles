@@ -14,6 +14,7 @@ import {
   CalendarDaysIcon as EventsSolid,
 } from "@heroicons/react/24/solid";
 import { useHomeNeedsAttention } from "@/lib/hooks";
+import { activeTab } from "@/lib/nav.util";
 import { AttentionDot } from "./attention-dot";
 
 const TABS = [
@@ -35,14 +36,8 @@ export function BottomNav({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
   const needsAttention = useHomeNeedsAttention();
 
-  // mirrors TopBar's isActive: Home also covers the game and profile pages,
-  // which are reached only from Home and have no bottom-nav tab of their
-  // own. Every circle page lives under /circles — see top-bar.jsx's isActive
-  // for why the generic case below already covers it.
-  function isActive(href: string): boolean {
-    if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile");
-    return pathname === href || pathname.startsWith(`${href}/`);
-  }
+  // the tab this page belongs to, if any (the same rule as TopBar's tabs)
+  const currentTab = activeTab(pathname);
 
   return (
     // floats over the page, like iOS's tab bar (a pill, an exception to
@@ -53,7 +48,7 @@ export function BottomNav({ onReselect }: { onReselect: () => void }) {
     // blur keeps the labels readable over what shows through.
     <nav className="app-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-[0_6px_20px_rgba(10,10,10,0.28)]">
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
-        const active = isActive(href);
+        const active = currentTab === href;
         const Icon = active ? Solid : Outline;
         const color = active ? "text-paper" : "text-paper/60";
         return (

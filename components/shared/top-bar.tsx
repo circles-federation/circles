@@ -13,6 +13,7 @@ import { isPastEvent } from "@/lib/format.util";
 import { isEventOrganizer } from "@/lib/governance.util";
 import { useHomeNeedsAttention } from "@/lib/hooks";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
+import { activeTab } from "@/lib/nav.util";
 import { resourceFormTitle } from "@/components/circles/resource-kinds";
 import { AttentionDot } from "./attention-dot";
 import { GhostIconButton } from "./ghost-icon-button";
@@ -138,15 +139,8 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
     goBackInApp();
   }
 
-  // a tab is "active" if the current route is it or a nested route beneath
-  // it, or (for Home) one of the sibling pages reached only from Home. Every
-  // circle page (neighborhood folder view, circle detail, or manage) lives
-  // under /circles regardless of how deep the circle sits in the hierarchy
-  // — see lib/hooks.ts's openCircle — so the generic case below covers it.
-  function isActive(href: string): boolean {
-    if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile") || pathname.startsWith("/admin") || pathname.startsWith("/invitations") || pathname.startsWith("/settings");
-    return pathname === href || pathname.startsWith(`${href}/`);
-  }
+  // the tab this page belongs to, if any (the same rule as BottomNav's)
+  const currentTab = activeTab(pathname);
 
   // Installed as an app, the bar lies over AppShell's scrolling <main> instead
   // of above it, so the page scrolls up under its see-through lower edge as in
@@ -226,7 +220,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
                 e.preventDefault();
                 onReselect();
               }}
-              className={clsx(NAV_LINK, "relative", isActive(href) ? "border-b-ink" : "border-b-transparent")}
+              className={clsx(NAV_LINK, "relative", currentTab === href ? "border-b-ink" : "border-b-transparent")}
             >
               {label}
               {href === "/home" && needsAttention && <AttentionDot className="top-0 -right-3" />}
