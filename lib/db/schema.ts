@@ -19,7 +19,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { RoleDraft } from "@/lib/events.util";
-import type { AgendaCategory, EventChange, EventKindKey, MemberLanguage, NotificationKind, RepeatFrequency } from "@/lib/types";
+import type { AgendaCategory, EventChange, EventKindKey, MemberLanguage, NotificationChannel, NotificationKind, RepeatFrequency } from "@/lib/types";
 
 /* Drizzle table definitions — the only file besides lib/db/client.ts and
    lib/better-auth.ts that lib/db/*.ts may import from directly (see the
@@ -248,6 +248,7 @@ export const eventNotifications = pgTable(
     eventId: text("event_id").notNull().references(() => events.id),
     memberId: integer("member_id").notNull().references(() => members.id),
     kind: text("kind").$type<NotificationKind>().notNull().default("new"),
+    channel: text("channel").$type<NotificationChannel>().notNull().default("email"),
     // delivered as a line in the member's daily digest rather than an email of
     // its own — for circles too big to email about each event one at a time
     digest: boolean("digest").notNull().default(false),
@@ -261,7 +262,7 @@ export const eventNotifications = pgTable(
     lastError: text("last_error"),
   },
   (t) => [
-    primaryKey({ columns: [t.eventId, t.memberId, t.kind] }),
+    primaryKey({ columns: [t.eventId, t.memberId, t.kind, t.channel] }),
     index("event_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
   ]
 );
@@ -452,6 +453,7 @@ export const announcementNotifications = pgTable(
   {
     resourceId: text("resource_id").notNull().references(() => circleResources.id, { onDelete: "cascade" }),
     memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    channel: text("channel").$type<NotificationChannel>().notNull().default("email"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     attempts: integer("attempts").notNull().default(0),
@@ -459,7 +461,7 @@ export const announcementNotifications = pgTable(
     lastError: text("last_error"),
   },
   (t) => [
-    primaryKey({ columns: [t.resourceId, t.memberId] }),
+    primaryKey({ columns: [t.resourceId, t.memberId, t.channel] }),
     index("announcement_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
   ]
 );

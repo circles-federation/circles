@@ -1,27 +1,52 @@
-import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
-import { announcementNotifications, circleMembers, circleResources, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, members, events, roleMembers, roles } from "./schema";
+import { announcementNotifications, circleMembers, circleResources, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, members, events, pushSubscriptions, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
 import type { AnnouncementEmailData, DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
 import { REMINDER_HOURS } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import { localDay } from "@/lib/recurrence.util";
-import type { AgendaItem, Event, EventChange, EventRepeat, NotificationKind } from "@/lib/types";
+import type { AgendaItem, Event, EventChange, EventRepeat, NotificationChannel, NotificationKind } from "@/lib/types";
 
-/* The queues behind "email a circle's members about a new event" (and the
+/* The queues behind "tell a circle's members about a new event" (and the
    rest of an event's news) and "…about a new announcement". Deciding who is
-   emailed lives here (next to the data), sending lives in lib/notify.ts —
-   this file never touches SMTP. */
+   told lives here (next to the data), sending lives in lib/notify.ts — this
+   file never touches SMTP or a push service. Each member is told on every
+   channel they can be reached by (see channelsFor), one queue row each. */
 
 const MAX_ATTEMPTS = 5;
 // a row can be tried again this long after its last attempt: the backoff after
 // a failure, and the lease that keeps two drains off the same row
 const RETRY_AFTER = sql`interval '5 minutes'`;
 
-// email addresses are optional on a member; nobody without one can be told
-const hasEmail = isNotNull(members.email);
+type Recipient = { memberId: number; channel: NotificationChannel };
+
+/* How each member matching `who` can be told: by email if they have an
+   address (it's optional on a member), and by push if they've turned it on
+   for a device, unless `push` is false (a digest line is email only). Someone
+   with neither can't be told at all. */
+async function channelsFor(tx: Tx, who: SQL | undefined, { push = true } = {}): Promise<Recipient[]> {
+  const rows = await tx
+    .select({
+      id: members.id,
+      email: isNotNull(members.email),
+      push: sql<boolean>`exists (select 1 from ${pushSubscriptions} where ${pushSubscriptions.memberId} = ${members.id})`,
+    })
+    .from(members)
+    .where(who);
+  return rows.flatMap((r): Recipient[] => [
+    ...(r.email ? [{ memberId: r.id, channel: "email" as const }] : []),
+    ...(push && r.push ? [{ memberId: r.id, channel: "push" as const }] : []),
+  ]);
+}
+
+// how many members `recipients` reaches, on whatever channels
+const membersIn = (recipients: Recipient[]) => new Set(recipients.map((r) => r.memberId)).size;
+
+// the members of circleId (an explicit roster: not for the city root)
+const inCircle = (circleId: string) => inArray(members.id, db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId)));
 
 async function hasSubCircle(tx: Tx, circleId: string): Promise<boolean> {
   const [subCircle] = await tx.select({ id: circles.id }).from(circles).where(eq(circles.parentId, circleId)).limit(1);
@@ -35,22 +60,17 @@ async function hasSubCircle(tx: Tx, circleId: string): Promise<boolean> {
    no sub-circles is small enough for an email of its own, right away; one with
    sub-circles — a neighborhood, the city — becomes a line in each member's
    once-a-day digest instead (lib/notify.ts's deliverDigests). `immediate`
-   overrides that, for news that shouldn't wait a day. */
+   overrides that, for news that shouldn't wait a day. A digest line is
+   email only: its push is a nudge sent with the digest email itself. */
 async function queueFor(tx: Tx, eventId: string, kind: NotificationKind, circleId: string, exceptId: number, immediate = false): Promise<number> {
   const [circle] = await tx.select({ parentId: circles.parentId }).from(circles).where(eq(circles.id, circleId));
   if (!circle) return 0;
   const digest = !immediate && (await hasSubCircle(tx, circleId));
-  const recipients =
-    circle.parentId === null
-      ? await tx.select({ id: members.id }).from(members).where(and(hasEmail, ne(members.id, exceptId)))
-      : await tx
-          .select({ id: members.id })
-          .from(circleMembers)
-          .innerJoin(members, eq(members.id, circleMembers.memberId))
-          .where(and(eq(circleMembers.circleId, circleId), hasEmail, ne(members.id, exceptId)));
+  const notMe = ne(members.id, exceptId);
+  const recipients = await channelsFor(tx, circle.parentId === null ? notMe : and(inCircle(circleId), notMe), { push: !digest });
   if (recipients.length === 0) return 0;
-  await tx.insert(eventNotifications).values(recipients.map((r) => ({ eventId, memberId: r.id, kind, digest }))).onConflictDoNothing();
-  return recipients.length;
+  await tx.insert(eventNotifications).values(recipients.map((r) => ({ eventId, ...r, kind, digest }))).onConflictDoNothing();
+  return membersIn(recipients);
 }
 
 // how an event repeats, for the email to say — from its series' columns (all
@@ -116,65 +136,58 @@ export async function withdrawEventNotifications(tx: Tx, eventId: string): Promi
 }
 
 /* Tell the people who were going (see cancelEvent in lib/db/events.ts) that
-   it's cancelled — always an email of its own, straight away, never a digest
-   line a day later: they may be planning around it. Only those with an email
-   address can be told. */
+   it's cancelled — always on its own, straight away, never a digest line a
+   day later: they may be planning around it. */
 export async function enqueueCancellationNotifications(tx: Tx, eventId: string, memberIds: number[]): Promise<number> {
   if (memberIds.length === 0) return 0;
-  const recipients = await tx.select({ id: members.id }).from(members).where(and(inArray(members.id, memberIds), hasEmail));
+  const recipients = await channelsFor(tx, inArray(members.id, memberIds));
   if (recipients.length === 0) return 0;
   await tx
     .insert(eventNotifications)
-    .values(recipients.map((r) => ({ eventId, memberId: r.id, kind: "cancelled" as const, digest: false })))
+    .values(recipients.map((r) => ({ eventId, ...r, kind: "cancelled" as const, digest: false })))
     .onConflictDoNothing();
-  return recipients.length;
+  return membersIn(recipients);
 }
 
 /* Tell the people going (see goingTo in lib/db/events.ts) that the organizer
-   moved it — a new date, time or place. An email of its own, straight away,
-   like a cancellation. `change` is when and where it was before. A member still
+   moved it — a new date, time or place. On its own, straight away, like a
+   cancellation. `change` is when and where it was before. A member still
    waiting on an unsent one for this event keeps it, along with what it was
    before *that* edit, since that's what they last heard; the email is rendered
    from the event as it stands when it goes out. One already sent is replaced,
    so a later edit is news again. */
 export async function enqueueUpdateNotifications(tx: Tx, eventId: string, memberIds: number[], change: EventChange): Promise<number> {
   if (memberIds.length === 0) return 0;
-  const recipients = await tx.select({ id: members.id }).from(members).where(and(inArray(members.id, memberIds), hasEmail));
+  const recipients = await channelsFor(tx, inArray(members.id, memberIds));
   if (recipients.length === 0) return 0;
   await tx
     .insert(eventNotifications)
-    .values(recipients.map((r) => ({ eventId, memberId: r.id, kind: "updated" as const, digest: false, change })))
+    .values(recipients.map((r) => ({ eventId, ...r, kind: "updated" as const, digest: false, change })))
     .onConflictDoUpdate({
-      target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind],
+      target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind, eventNotifications.channel],
       set: { change, createdAt: sql`now()`, sentAt: null, attempts: 0, lastAttemptAt: null, lastError: null },
       // replace a sent one, or one that ran out of attempts; leave a pending one be
       setWhere: or(isNotNull(eventNotifications.sentAt), sql`${eventNotifications.attempts} >= ${MAX_ATTEMPTS}`),
     });
-  return recipients.length;
+  return membersIn(recipients);
 }
 
 // a timestamp-without-zone literal for `d` in this machine's timezone, to set
 // against an event's date + start, which are the community's wall-clock time
 const wallClock = (d: Date) => `${localDay(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 
-// everyone going to an event, organizer included, who can be emailed: its
-// RSVPs (a meeting's voters among them) and its slot holders
-async function goingWithEmail(tx: Tx, eventId: string): Promise<number[]> {
+// everyone going to an event, organizer included: its RSVPs (a meeting's
+// voters among them) and its slot holders
+async function going(tx: Tx, eventId: string): Promise<number[]> {
   const [rsvpRows, slotRows] = await Promise.all([
-    tx.select({ id: members.id }).from(eventRsvps).innerJoin(members, eq(members.id, eventRsvps.memberId)).where(and(eq(eventRsvps.eventId, eventId), hasEmail)),
-    tx
-      .select({ id: members.id })
-      .from(roleMembers)
-      .innerJoin(roles, eq(roles.id, roleMembers.roleId))
-      .innerJoin(members, eq(members.id, roleMembers.memberId))
-      .where(and(eq(roles.eventId, eventId), hasEmail)),
+    tx.select({ id: eventRsvps.memberId }).from(eventRsvps).where(eq(eventRsvps.eventId, eventId)),
+    tx.select({ id: roleMembers.memberId }).from(roleMembers).innerJoin(roles, eq(roles.id, roleMembers.roleId)).where(eq(roles.eventId, eventId)),
   ]);
   return [...new Set([...rsvpRows, ...slotRows].map((r) => r.id))];
 }
 
 /* Queue a reminder for everyone going to each event that starts within the
-   next REMINDER_HOURS and hasn't had one — an email of its own, never a digest
-   line. Run by the poller (lib/notify.ts), since an event comes into range
+   next REMINDER_HOURS and hasn't had one — on its own, never a digest line. Run by the poller (lib/notify.ts), since an event comes into range
    just by time passing. Who's going is read at that moment, so someone who
    signs up later, already this close, isn't reminded of what they just chose.
    A cancelled event, a proposal, and a meeting still short of its votes are
@@ -209,17 +222,18 @@ export async function enqueueReminders(now: Date = new Date()): Promise<number> 
       const [row] = await tx.select({ remindedAt: events.remindedAt }).from(events).where(eq(events.id, id)).for("update", { skipLocked: true });
       if (!row || row.remindedAt !== null) return 0;
       await tx.update(events).set({ remindedAt: new Date() }).where(eq(events.id, id));
-      const going = await goingWithEmail(tx, id);
-      if (going.length === 0) return 0;
+      const goingIds = await going(tx, id);
+      const recipients = goingIds.length > 0 ? await channelsFor(tx, inArray(members.id, goingIds)) : [];
+      if (recipients.length === 0) return 0;
       await tx
         .insert(eventNotifications)
-        .values(going.map((memberId) => ({ eventId: id, memberId, kind: "reminder" as const, digest: false })))
+        .values(recipients.map((r) => ({ eventId: id, ...r, kind: "reminder" as const, digest: false })))
         // one sent before the event was moved further out is due again
         .onConflictDoUpdate({
-          target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind],
+          target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind, eventNotifications.channel],
           set: { createdAt: sql`now()`, sentAt: null, attempts: 0, lastAttemptAt: null, lastError: null },
         });
-      return going.length;
+      return membersIn(recipients);
     });
   }
   return queued;
@@ -233,17 +247,21 @@ export async function withdrawReminders(tx: Tx, eventId: string): Promise<void> 
     .where(and(eq(eventNotifications.eventId, eventId), eq(eventNotifications.kind, "reminder"), isNull(eventNotifications.sentAt)));
 }
 
-export type PendingEventNotification = Omit<EventNotificationData, "url"> & {
-  eventId: string;
-  memberId: number;
-  email: string;
-};
+// one queue row: what it's about, who it's for, and which way it goes
+export type NotificationKey = { eventId: string; memberId: number; notice: NotificationKind; channel: NotificationChannel };
 
-// Take up to `limit` unsent notifications that are due (never tried, or last
-// tried long enough ago), stamp them as attempted, and return what's needed to
-// write and send each email. SKIP LOCKED means concurrent callers — another
-// drain, another server — get different rows rather than the same ones.
-export async function claimEventNotifications(limit: number): Promise<PendingEventNotification[]> {
+export type PendingEventNotification = Omit<EventNotificationData, "url"> &
+  NotificationKey & {
+    // null if they've since removed their address: an email row is then dropped
+    email: string | null;
+  };
+
+// Take up to `limit` unsent notifications on `channel` that are due (never
+// tried, or last tried long enough ago), stamp them as attempted, and return
+// what's needed to write and send each one. SKIP LOCKED means concurrent
+// callers — another drain, another server — get different rows rather than
+// the same ones.
+export async function claimEventNotifications(limit: number, channel: NotificationChannel): Promise<PendingEventNotification[]> {
   const organizer = alias(members, "organizer");
   const hostCircle = alias(circles, "host_circle");
   return db.transaction(async (tx) => {
@@ -252,6 +270,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       .from(eventNotifications)
       .where(
         and(
+          eq(eventNotifications.channel, channel),
           // digest rows wait for their daily send (claimDigests)
           eq(eventNotifications.digest, false),
           isNull(eventNotifications.sentAt),
@@ -263,8 +282,9 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
       .limit(limit)
       .for("update", { skipLocked: true });
     if (due.length === 0) return [];
-    const isDue = or(
-      ...due.map((d) => and(eq(eventNotifications.eventId, d.eventId), eq(eventNotifications.memberId, d.memberId), eq(eventNotifications.kind, d.kind)))
+    const isDue = and(
+      eq(eventNotifications.channel, channel),
+      or(...due.map((d) => and(eq(eventNotifications.eventId, d.eventId), eq(eventNotifications.memberId, d.memberId), eq(eventNotifications.kind, d.kind))))
     );
     await tx
       .update(eventNotifications)
@@ -275,6 +295,7 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
         eventId: events.id,
         memberId: members.id,
         notice: eventNotifications.kind,
+        channel: eventNotifications.channel,
         change: eventNotifications.change,
         email: members.email,
         title: events.title,
@@ -330,12 +351,8 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
         openSlots: slots.filter((s) => s.holders.length < s.min).map((s) => ({ label: s.label, min: s.min, filled: s.holders.length })),
       };
     };
-    return rows.flatMap(({ approvedAt, approvedByRole, hostSize, circleSize, hostCircleName, frequency, startsOn, until, change, ...r }) =>
-      r.email
-        ? [
-            {
+    return rows.map(({ approvedAt, approvedByRole, hostSize, circleSize, hostCircleName, frequency, startsOn, until, change, ...r }) => ({
               ...r,
-              email: r.email,
               ...(change ? { change } : {}),
               kind: r.kind ?? "ordinary",
               start: r.start.slice(0, 5),
@@ -349,25 +366,22 @@ export async function claimEventNotifications(limit: number): Promise<PendingEve
               proposed: !!hostCircleName && approvedAt === null,
               // a proposal is voted on by its host circle, a meeting by its own
               votesNeeded: majority(hostCircleName ? hostSize : circleSize),
-            },
-          ]
-        : []
-    );
+    }));
   });
 }
 
-const isRow = (n: { eventId: string; memberId: number; notice: NotificationKind }) =>
-  and(eq(eventNotifications.eventId, n.eventId), eq(eventNotifications.memberId, n.memberId), eq(eventNotifications.kind, n.notice));
+const isRow = (n: NotificationKey) =>
+  and(eq(eventNotifications.eventId, n.eventId), eq(eventNotifications.memberId, n.memberId), eq(eventNotifications.kind, n.notice), eq(eventNotifications.channel, n.channel));
 
-export async function markNotificationSent(n: { eventId: string; memberId: number; notice: NotificationKind }): Promise<void> {
+export async function markNotificationSent(n: NotificationKey): Promise<void> {
   await db.update(eventNotifications).set({ sentAt: sql`now()`, lastError: null }).where(isRow(n));
 }
 
-export async function markNotificationFailed(n: { eventId: string; memberId: number; notice: NotificationKind }, error: string): Promise<void> {
+export async function markNotificationFailed(n: NotificationKey, error: string): Promise<void> {
   await db.update(eventNotifications).set({ lastError: error.slice(0, 500) }).where(isRow(n));
 }
 
-export type DigestKey = { eventId: string; memberId: number; notice: NotificationKind };
+export type DigestKey = NotificationKey & { channel: "email" };
 
 export interface PendingDigest {
   memberId: number;
@@ -387,8 +401,10 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
   const organizer = alias(members, "organizer");
   const hostCircle = alias(circles, "host_circle");
   return db.transaction(async (tx) => {
+    // digest rows are only ever queued for email (see queueFor)
     const due = and(
       eq(eventNotifications.digest, true),
+      eq(eventNotifications.channel, "email"),
       isNull(eventNotifications.sentAt),
       lt(eventNotifications.attempts, MAX_ATTEMPTS),
       lte(eventNotifications.createdAt, cutoff),
@@ -404,6 +420,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
     if (taken.length === 0) return [];
     const isTaken = and(
       eq(eventNotifications.digest, true),
+      eq(eventNotifications.channel, "email"),
       sql`(${eventNotifications.eventId}, ${eventNotifications.memberId}, ${eventNotifications.kind}) in (${sql.join(taken.map((t) => sql`(${t.eventId}, ${t.memberId}, ${t.kind})`), sql`, `)})`
     );
     await tx.update(eventNotifications).set({ attempts: sql`${eventNotifications.attempts} + 1`, lastAttemptAt: sql`now()` }).where(isTaken);
@@ -435,7 +452,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
       .where(isTaken);
     const byMember = new Map<number, PendingDigest>();
     for (const t of taken) {
-      const key: DigestKey = { eventId: t.eventId, memberId: t.memberId, notice: t.kind };
+      const key: DigestKey = { eventId: t.eventId, memberId: t.memberId, notice: t.kind, channel: "email" };
       const digest = byMember.get(t.memberId);
       if (digest) digest.keys.push(key);
       else byMember.set(t.memberId, { memberId: t.memberId, email: "", keys: [key], events: [] });
@@ -467,33 +484,31 @@ export async function markDigestFailed(keys: DigestKey[], error: string): Promis
   for (const k of keys) await markNotificationFailed(k, error);
 }
 
-/* An announcement was just posted to a circle's bulletin: queue an email for
-   each of the circle's members, except the poster. Always an email of its own
-   — a bulletin is only on a circle with a page of its own, never a
-   neighborhood or the city, the audiences big enough for the digest. Runs in
-   the transaction that posts it. Returns how many were queued. */
+/* An announcement was just posted to a circle's bulletin: tell each of the
+   circle's members, except the poster. Always on its own — a bulletin is only
+   on a circle with a page of its own, never a neighborhood or the city, the
+   audiences big enough for the digest. Runs in the transaction that posts it.
+   Returns how many members were queued. */
 export async function enqueueAnnouncementNotifications(tx: Tx, resourceId: string, circleId: string, posterId: number): Promise<number> {
-  const recipients = await tx
-    .select({ id: members.id })
-    .from(circleMembers)
-    .innerJoin(members, eq(members.id, circleMembers.memberId))
-    .where(and(eq(circleMembers.circleId, circleId), hasEmail, ne(members.id, posterId)));
+  const recipients = await channelsFor(tx, and(inCircle(circleId), ne(members.id, posterId)));
   if (recipients.length === 0) return 0;
-  await tx.insert(announcementNotifications).values(recipients.map((r) => ({ resourceId, memberId: r.id }))).onConflictDoNothing();
-  return recipients.length;
+  await tx.insert(announcementNotifications).values(recipients.map((r) => ({ resourceId, ...r }))).onConflictDoNothing();
+  return membersIn(recipients);
 }
 
-export type PendingAnnouncementNotification = Omit<AnnouncementEmailData, "url"> & {
-  resourceId: string;
-  circleId: string;
-  memberId: number;
-  email: string;
-};
+export type AnnouncementKey = { resourceId: string; memberId: number; channel: NotificationChannel };
+
+export type PendingAnnouncementNotification = Omit<AnnouncementEmailData, "url"> &
+  AnnouncementKey & {
+    circleId: string;
+    // null if they've since removed their address: an email row is then dropped
+    email: string | null;
+  };
 
 // claimEventNotifications' counterpart for announcements: the same leasing, so
 // concurrent drains get different rows. Rendered from the announcement as it
 // stands now, so an edit made before it goes out is what's sent.
-export async function claimAnnouncementNotifications(limit: number): Promise<PendingAnnouncementNotification[]> {
+export async function claimAnnouncementNotifications(limit: number, channel: NotificationChannel): Promise<PendingAnnouncementNotification[]> {
   const poster = alias(members, "poster");
   return db.transaction(async (tx) => {
     const due = await tx
@@ -501,6 +516,7 @@ export async function claimAnnouncementNotifications(limit: number): Promise<Pen
       .from(announcementNotifications)
       .where(
         and(
+          eq(announcementNotifications.channel, channel),
           isNull(announcementNotifications.sentAt),
           lt(announcementNotifications.attempts, MAX_ATTEMPTS),
           or(isNull(announcementNotifications.lastAttemptAt), lt(announcementNotifications.lastAttemptAt, sql`now() - ${RETRY_AFTER}`))
@@ -510,7 +526,10 @@ export async function claimAnnouncementNotifications(limit: number): Promise<Pen
       .limit(limit)
       .for("update", { skipLocked: true });
     if (due.length === 0) return [];
-    const isDue = or(...due.map((d) => and(eq(announcementNotifications.resourceId, d.resourceId), eq(announcementNotifications.memberId, d.memberId))));
+    const isDue = and(
+      eq(announcementNotifications.channel, channel),
+      or(...due.map((d) => and(eq(announcementNotifications.resourceId, d.resourceId), eq(announcementNotifications.memberId, d.memberId))))
+    );
     await tx
       .update(announcementNotifications)
       .set({ attempts: sql`${announcementNotifications.attempts} + 1`, lastAttemptAt: sql`now()` })
@@ -520,6 +539,7 @@ export async function claimAnnouncementNotifications(limit: number): Promise<Pen
         resourceId: circleResources.id,
         circleId: circleResources.circleId,
         memberId: members.id,
+        channel: announcementNotifications.channel,
         email: members.email,
         title: circleResources.title,
         message: circleResources.message,
@@ -533,20 +553,19 @@ export async function claimAnnouncementNotifications(limit: number): Promise<Pen
       .innerJoin(members, eq(members.id, announcementNotifications.memberId))
       .leftJoin(poster, eq(poster.id, circleResources.createdBy))
       .where(isDue);
-    // an item edited into a link since has no message left to send
-    return rows.flatMap(({ email, message, posterName, ...r }) =>
-      email && message !== null ? [{ ...r, email, message, ...(posterName ? { posterName } : {}) }] : []
-    );
+    // an item edited into a link since has no message left to send (the row
+    // stays claimed until it runs out of attempts)
+    return rows.flatMap(({ message, posterName, ...r }) => (message !== null ? [{ ...r, message, ...(posterName ? { posterName } : {}) }] : []));
   });
 }
 
-const isAnnouncementRow = (n: { resourceId: string; memberId: number }) =>
-  and(eq(announcementNotifications.resourceId, n.resourceId), eq(announcementNotifications.memberId, n.memberId));
+const isAnnouncementRow = (n: AnnouncementKey) =>
+  and(eq(announcementNotifications.resourceId, n.resourceId), eq(announcementNotifications.memberId, n.memberId), eq(announcementNotifications.channel, n.channel));
 
-export async function markAnnouncementSent(n: { resourceId: string; memberId: number }): Promise<void> {
+export async function markAnnouncementSent(n: AnnouncementKey): Promise<void> {
   await db.update(announcementNotifications).set({ sentAt: sql`now()`, lastError: null }).where(isAnnouncementRow(n));
 }
 
-export async function markAnnouncementFailed(n: { resourceId: string; memberId: number }, error: string): Promise<void> {
+export async function markAnnouncementFailed(n: AnnouncementKey, error: string): Promise<void> {
   await db.update(announcementNotifications).set({ lastError: error.slice(0, 500) }).where(isAnnouncementRow(n));
 }

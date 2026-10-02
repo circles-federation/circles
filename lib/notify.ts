@@ -96,11 +96,12 @@ export async function deliverEventNotifications(): Promise<void> {
   try {
     do {
       drainAgain = false;
-      for (let batch = await claimEventNotifications(BATCH); batch.length > 0; batch = await claimEventNotifications(BATCH)) {
+      for (let batch = await claimEventNotifications(BATCH, "email"); batch.length > 0; batch = await claimEventNotifications(BATCH, "email")) {
         for (const n of batch) {
           // edited and then put back before it went out: there's no news; and a
-          // reminder that's been retrying past the start is too late to help
-          if ((n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) || (n.notice === "reminder" && eventStartsAt(n) <= new Date())) {
+          // reminder that's been retrying past the start is too late to help.
+          // Nor can anyone be emailed who's since removed their address.
+          if (!n.email || (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) || (n.notice === "reminder" && eventStartsAt(n) <= new Date())) {
             await markNotificationSent(n);
             continue;
           }
@@ -135,8 +136,12 @@ export async function deliverAnnouncementNotifications(): Promise<void> {
   try {
     do {
       announcementsAgain = false;
-      for (let batch = await claimAnnouncementNotifications(BATCH); batch.length > 0; batch = await claimAnnouncementNotifications(BATCH)) {
+      for (let batch = await claimAnnouncementNotifications(BATCH, "email"); batch.length > 0; batch = await claimAnnouncementNotifications(BATCH, "email")) {
         for (const n of batch) {
+          if (!n.email) {
+            await markAnnouncementSent(n);
+            continue;
+          }
           try {
             await sendEmail({ to: n.email, ...announcementEmail({ ...n, url: circleUrl(n.circleId) }) });
             await markAnnouncementSent(n);

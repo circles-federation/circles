@@ -205,6 +205,11 @@ export interface CircleResource {
 // owed more than one of these for the same event.
 export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "cancelled" | "reminder";
 
+// which way a queued notification goes out: each channel is its own queue
+// row, sent and retried on its own, so a failed push never resends an email
+// or the reverse
+export type NotificationChannel = "email" | "push";
+
 // what an "updated" notification remembers: when and where the event was
 // before the change, so the email can say what moved. `andLater` marks an edit
 // to a date of a repeating event and every date after it.
