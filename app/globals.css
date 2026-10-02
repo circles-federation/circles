@@ -98,6 +98,12 @@ body {
   /* the floating BottomNav's gap from the screen's bottom and sides, one
      value so they match: clear of the home indicator where there is one */
   --bottom-nav-gap: max(1rem, env(safe-area-inset-bottom));
+  /* the installed app's height: the whole screen, until AppShell's
+     useKeyboard sets it to what's left above the keyboard; and the room it
+     adds under the page while typing, so a field near the end can still be
+     scrolled up clear of the keyboard */
+  --app-height: 100dvh;
+  --keyboard-room: 0px;
 }
 
 /* For app chrome (TopBar, BottomNav): a long press on a tab or button does

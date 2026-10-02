@@ -29,6 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useBlockEdgeSwipe();
   useBlockPinchZoom();
   useServiceWorker();
+  useKeyboard(mainRef);
 
   // a tab tapped again while its page is showing: back to the top, whichever
   // of the document or <main> is what scrolls
@@ -38,7 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-dvh bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink standalone:relative standalone:flex standalone:h-dvh standalone:flex-col">
+    <div className="min-h-dvh bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink standalone:relative standalone:flex standalone:h-(--app-height) standalone:flex-col">
       <TopBar onReselect={scrollToTop} />
 
       <main
@@ -47,6 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.75rem)] standalone:flex-1 standalone:overflow-y-auto standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
       >
         {children}
+        <div aria-hidden className="h-(--keyboard-room)" />
       </main>
 
       <BottomNav onReselect={scrollToTop} />
@@ -70,6 +72,76 @@ function useServiceWorker() {
     navigator.serviceWorker.addEventListener("message", onMessage);
     return () => navigator.serviceWorker.removeEventListener("message", onMessage);
   }, [router]);
+}
+
+const FIELD = "input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]), textarea, select, [contenteditable]";
+// how far below TopBar a field being typed in sits
+const FIELD_MARGIN_PX = 24;
+// a field lower than this share of the screen would end up under the keyboard
+const KEYBOARD_LINE = 0.4;
+
+/* Installed as an app, the iOS keyboard doesn't make the page any shorter:
+   Safari slides the whole screen up to keep the field being typed in above
+   it, TopBar and all. It only slides when the field would end up under the
+   keyboard, so the moment a field in <main> is focused (before the keyboard
+   animates in) it's scrolled up to just below TopBar, with room added under
+   the page (--keyboard-room) so a field near the end can go that high too.
+   Then, once the keyboard is up, the shell is sized to what's still visible
+   (the visual viewport, as --app-height), so <main> ends at the keyboard and
+   the field stays in view as more is typed; any slide that happened anyway
+   is undone. Both are put back once the keyboard is gone. Android already
+   shrinks the page for its keyboard, so there this only confirms the height
+   it has. A browser tab is left to the browser. */
+function useKeyboard(mainRef: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const main = mainRef.current;
+    if (!viewport || !main || !isInstalledApp()) return;
+    const root = document.documentElement;
+    // the visual viewport is as tall as the layout one unless something (the
+    // keyboard) is covering it
+    const keyboardUp = () => !!viewport && viewport.height < window.innerHeight - 1;
+
+    function onFocusIn(e: FocusEvent) {
+      const field = e.target;
+      if (!(field instanceof HTMLElement) || !field.matches(FIELD) || !main?.contains(field)) return;
+      root.style.setProperty("--keyboard-room", "60dvh");
+      const rect = field.getBoundingClientRect();
+      if (rect.bottom < window.innerHeight * KEYBOARD_LINE) return;
+      const topBar = parseFloat(getComputedStyle(root).getPropertyValue("--top-bar-height")) || 0;
+      main.scrollTop += rect.top - topBar - FIELD_MARGIN_PX;
+    }
+
+    // left every field with no keyboard showing (a hardware keyboard, say):
+    // the room isn't needed. With the keyboard up, fit() takes it away once
+    // the keyboard has gone, so the page doesn't jump while it's closing.
+    function onFocusOut(e: FocusEvent) {
+      const next = e.relatedTarget;
+      if (!(next instanceof HTMLElement && next.matches(FIELD)) && !keyboardUp()) root.style.setProperty("--keyboard-room", "0px");
+    }
+
+    function fit() {
+      if (!viewport) return;
+      root.style.setProperty("--app-height", `${viewport.height}px`);
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+      // the keyboard's gone: no more room needed under the page
+      if (!keyboardUp()) root.style.setProperty("--keyboard-room", "0px");
+    }
+
+    fit();
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    viewport.addEventListener("resize", fit);
+    viewport.addEventListener("scroll", fit);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+      viewport.removeEventListener("resize", fit);
+      viewport.removeEventListener("scroll", fit);
+      root.style.removeProperty("--app-height");
+      root.style.removeProperty("--keyboard-room");
+    };
+  }, [mainRef]);
 }
 
 /* Installed as an app, pinching doesn't zoom, as in a native app. The CSS
