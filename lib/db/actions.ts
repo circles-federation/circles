@@ -15,6 +15,7 @@ import { sendEmail } from "@/lib/email";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail } from "@/lib/email/templates.util";
 import { deliverAnnouncementNotifications, deliverEventNotifications, pushToMember } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
+import { invitationPush } from "@/lib/push/messages.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
@@ -167,23 +168,27 @@ export async function declineApplicationAction(id: string, note: string) {
 /* Invitations to a circle (lib/db/invitations.ts checks who may do each).
    Accepting hands back the whole of the member's app state, since joining a
    circle opens up its events and bulletin to them. */
-// the invitee is emailed once, right after the response is sent; a failed
-// send isn't retried — the invitation is on their Home either way
+// the invitee is told once, by email and by push, right after the response is
+// sent; a failed send isn't retried — the invitation is on their Home either way
 export async function createInvitationAction(circleId: string, memberId: number) {
   const result = await asMember((inviterId) => invitations.createInvitation(inviterId, circleId, memberId));
-  if (result.ok) after(() => emailInvitee(result.value.id));
+  if (result.ok) after(() => tellInvitee(result.value.id));
   return result;
 }
 
-async function emailInvitee(id: string) {
-  try {
-    const data = await invitations.getInvitationEmailData(id);
-    if (!data) return;
-    const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
-    await sendEmail({ to: data.email, ...invitationEmail({ ...data, url: `${base}/invitations/${id}` }) });
-  } catch (err) {
-    console.error("Couldn't email an invitee:", err);
-  }
+async function tellInvitee(id: string) {
+  const data = await invitations.getInvitationNoticeData(id).catch((err) => {
+    console.error("Couldn't read an invitation to send:", err);
+    return null;
+  });
+  if (!data) return;
+  const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const email = data.email;
+  await Promise.all([
+    email &&
+      sendEmail({ to: email, ...invitationEmail({ ...data, url: `${base}/invitations/${id}` }) }).catch((err) => console.error("Couldn't email an invitee:", err)),
+    pushToMember(data.memberId, invitationPush({ ...data, invitationId: id })).catch((err) => console.error("Couldn't push to an invitee:", err)),
+  ]);
 }
 
 export async function acceptInvitationAction(id: string) {

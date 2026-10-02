@@ -14,7 +14,7 @@ import {
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
-import { eventNotificationPush } from "@/lib/push/messages.util";
+import { announcementPush, digestPush, eventNotificationPush } from "@/lib/push/messages.util";
 import { announcementEmail, eventChanges, eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -158,41 +158,42 @@ export async function deliverEventNotifications(): Promise<void> {
   await Promise.all([deliverEventEmails(), deliverEventPushes()]);
 }
 
-let drainingAnnouncements = false;
-let announcementsAgain = false;
+const deliverAnnouncementEmails = drainer("Announcement email", async () => {
+  for (let batch = await claimAnnouncementNotifications(BATCH, "email"); batch.length > 0; batch = await claimAnnouncementNotifications(BATCH, "email")) {
+    for (const n of batch) {
+      if (!n.email) {
+        await markAnnouncementSent(n);
+        continue;
+      }
+      try {
+        await sendEmail({ to: n.email, ...announcementEmail({ ...n, url: circleUrl(n.circleId) }) });
+        await markAnnouncementSent(n);
+      } catch (err) {
+        console.error(`Couldn't email announcement ${n.resourceId} to member ${n.memberId}:`, err);
+        await markAnnouncementFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
+
+const deliverAnnouncementPushes = drainer("Announcement push", async () => {
+  for (let batch = await claimAnnouncementNotifications(BATCH, "push"); batch.length > 0; batch = await claimAnnouncementNotifications(BATCH, "push")) {
+    for (const n of batch) {
+      try {
+        await pushToMember(n.memberId, announcementPush(n));
+        await markAnnouncementSent(n);
+      } catch (err) {
+        console.error(`Couldn't push announcement ${n.resourceId} to member ${n.memberId}:`, err);
+        await markAnnouncementFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
 
 // deliverEventNotifications' counterpart for bulletin announcements: called
 // right after one is posted, and by the poller as the safety net
 export async function deliverAnnouncementNotifications(): Promise<void> {
-  if (drainingAnnouncements) {
-    announcementsAgain = true;
-    return;
-  }
-  drainingAnnouncements = true;
-  try {
-    do {
-      announcementsAgain = false;
-      for (let batch = await claimAnnouncementNotifications(BATCH, "email"); batch.length > 0; batch = await claimAnnouncementNotifications(BATCH, "email")) {
-        for (const n of batch) {
-          if (!n.email) {
-            await markAnnouncementSent(n);
-            continue;
-          }
-          try {
-            await sendEmail({ to: n.email, ...announcementEmail({ ...n, url: circleUrl(n.circleId) }) });
-            await markAnnouncementSent(n);
-          } catch (err) {
-            console.error(`Couldn't email announcement ${n.resourceId} to member ${n.memberId}:`, err);
-            await markAnnouncementFailed(n, err instanceof Error ? err.message : String(err));
-          }
-        }
-      }
-    } while (announcementsAgain);
-  } catch (err) {
-    console.error("Announcement drain failed:", err);
-  } finally {
-    drainingAnnouncements = false;
-  }
+  await Promise.all([deliverAnnouncementEmails(), deliverAnnouncementPushes()]);
 }
 
 export async function deliverDigests(now: Date = new Date()): Promise<void> {
@@ -218,6 +219,9 @@ export async function deliverDigests(now: Date = new Date()): Promise<void> {
         try {
           await sendEmail({ to: digest.email, ...eventDigestEmail(upcoming.map((e) => ({ ...e, url: eventUrl(e.id) }))) });
           await markDigestSent(digest.keys);
+          // a nudge toward the email just sent, on whatever devices have push
+          // on; best effort, since a late nudge would point at old news
+          await pushToMember(digest.memberId, digestPush()).catch((err) => console.error(`Couldn't push the digest nudge to member ${digest.memberId}:`, err));
         } catch (err) {
           console.error(`Couldn't email the digest to member ${digest.memberId}:`, err);
           await markDigestFailed(digest.keys, err instanceof Error ? err.message : String(err));

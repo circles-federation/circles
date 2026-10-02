@@ -77,3 +77,23 @@ export function eventNotificationPush(n: EventPushData): PushMessage {
 
   return message(`New ${noun} in ${n.circleName}`, line(n.title, when, n.location, repeats), url, tag);
 }
+
+/* A new announcement on a circle's bulletin: its title, and as much of the
+   message as fits (the whole of it is on the bulletin, a tap away). */
+export function announcementPush(a: { resourceId: string; circleId: string; circleName: string; title: string; message: string; posterName?: string }): PushMessage {
+  const text = a.message.replace(/\s+/g, " ").trim();
+  return message(`${a.circleName}: ${a.title}`, a.posterName ? `${a.posterName}: ${text}` : text, `/circles/${a.circleId}`, `announcement-${a.resourceId}`);
+}
+
+// an invitation to join a circle, opened where it's accepted or declined
+export function invitationPush(d: { invitationId: string; inviterName?: string; circleName: string; tagline: string }): PushMessage {
+  return message(`${d.inviterName ?? "A member"} invited you to ${d.circleName}`, d.tagline || "Open it to accept or decline.", `/invitations/${d.invitationId}`, `invitation-${d.invitationId}`);
+}
+
+/* The daily digest's push is only a nudge toward the email, with none of its
+   detail: the digest is the place for a day's worth of news. A web app can't
+   open the mail app, so a tap opens the events list. Tagged so today's
+   replaces yesterday's if it's still showing. */
+export function digestPush(): PushMessage {
+  return message("Your daily digest is in your inbox", "There's news from your circles. Check your email for the details.", "/events", "digest");
+}

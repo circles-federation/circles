@@ -97,17 +97,20 @@ export async function deleteInvitation(memberId: number, id: string): Promise<vo
   await db.delete(circleInvitations).where(eq(circleInvitations.id, id));
 }
 
-// what the invitee's email says: who they are, who invited them, and to what.
-// Null when there's no one to email (no address, or it's gone already).
-export async function getInvitationEmailData(id: string): Promise<{ email: string; name: string; inviterName?: string; circleName: string; tagline: string } | null> {
+// what the invitee is told, by email (if they have an address) and by push:
+// who they are, who invited them, and to what. Null once it's gone.
+export async function getInvitationNoticeData(
+  id: string
+): Promise<{ memberId: number; email: string | null; name: string; inviterName?: string; circleName: string; tagline: string } | null> {
   const inviter = alias(members, "inviter");
   const [row] = await db
-    .select({ email: members.email, name: members.name, inviterName: inviter.name, circleName: circles.name, tagline: circles.tagline })
+    .select({ memberId: members.id, email: members.email, name: members.name, inviterName: inviter.name, circleName: circles.name, tagline: circles.tagline })
     .from(circleInvitations)
     .innerJoin(members, eq(members.id, circleInvitations.memberId))
     .innerJoin(circles, eq(circles.id, circleInvitations.circleId))
     .leftJoin(inviter, eq(inviter.id, circleInvitations.invitedBy))
     .where(eq(circleInvitations.id, id));
-  if (!row?.email) return null;
-  return { email: row.email, name: row.name, circleName: row.circleName, tagline: row.tagline, ...(row.inviterName ? { inviterName: row.inviterName } : {}) };
+  if (!row) return null;
+  const { inviterName, ...rest } = row;
+  return { ...rest, ...(inviterName ? { inviterName } : {}) };
 }
