@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject, type UIEvent } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { registerServiceWorker } from "@/lib/push-client";
+import { isInstalledApp } from "@/lib/viewport";
 import { BottomNav } from "./bottom-nav";
 import { TopBar } from "./top-bar";
 
@@ -26,6 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const onScroll = useScrollRestoration(mainRef);
   useBlockEdgeSwipe();
   useBlockPinchZoom();
+  useServiceWorker();
 
   // a tab tapped again while its page is showing: back to the top, whichever
   // of the document or <main> is what scrolls
@@ -51,10 +54,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-// running from the home screen rather than in a browser tab (iOS's own flag
-// covers home-screen apps that predate display-mode support)
-function isInstalled(): boolean {
-  return matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+/* Registers the service worker (public/sw.js, there for push notifications),
+   and follows a tapped notification: the worker asks an already-open window
+   to go to what it's about, which is done here through the router rather
+   than by reloading the page. */
+function useServiceWorker() {
+  const router = useRouter();
+  useEffect(() => {
+    registerServiceWorker().catch((err) => console.error("Couldn't register the service worker:", err));
+    if (!("serviceWorker" in navigator)) return;
+    function onMessage(e: MessageEvent) {
+      const data = e.data as { type?: string; path?: unknown } | null;
+      if (data?.type === "open" && typeof data.path === "string" && data.path.startsWith("/")) router.push(data.path);
+    }
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [router]);
 }
 
 /* Installed as an app, pinching doesn't zoom, as in a native app. The CSS
@@ -63,7 +78,7 @@ function isInstalled(): boolean {
    alone. Only when installed: a browser tab keeps its zoom. */
 function useBlockPinchZoom() {
   useEffect(() => {
-    if (!isInstalled()) return;
+    if (!isInstalledApp()) return;
     const cancel = (e: Event) => e.preventDefault();
     // Safari-only events, so not in the DOM's typed event map
     document.addEventListener("gesturestart", cancel, { passive: false });
@@ -88,7 +103,7 @@ const EDGE_SWIPE_PX = 20;
    The cost is that a tap starting that close to the edge does nothing. */
 function useBlockEdgeSwipe() {
   useEffect(() => {
-    if (!isInstalled()) return;
+    if (!isInstalledApp()) return;
     function onTouchStart(e: TouchEvent) {
       const x = e.touches[0]?.clientX;
       if (x !== undefined && (x < EDGE_SWIPE_PX || x > window.innerWidth - EDGE_SWIPE_PX)) e.preventDefault();

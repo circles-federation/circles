@@ -1,7 +1,8 @@
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { indexCircles, type CirclesById } from "./circles.util";
+import { currentSubscription, pushPermission, pushSupported, subscribeThisDevice, unsubscribeThisDevice } from "./push-client";
 import type { Circle, CircleInvitation, CircleResource, Event, Member } from "./types";
 
 /* The seam components reach live data through — a hook here rather than
@@ -104,4 +105,40 @@ export function useAppNav() {
       router.push(c.parentId === null ? "/circles" : `/circles/${c.id}${qs}`);
     },
   };
+}
+
+/* Whether push notifications are on for this device, and the way to turn
+   them on or off (lib/push-client.ts). "unknown" until it's been read, which
+   is also what the server renders; "unsupported" where the browser has no
+   push at all, such as an iPhone browser tab rather than the installed app;
+   "denied" once the person has blocked notifications for Circles, which only
+   their device's settings can undo. subscribe() must be called from a tap. */
+export type PushStatus = "unknown" | "unsupported" | "denied" | "off" | "on";
+
+async function readPushStatus(subscribed: boolean): Promise<PushStatus> {
+  if (subscribed) return "on";
+  return (await pushPermission()) === "denied" ? "denied" : "off";
+}
+
+export function usePushSubscription() {
+  const [status, setStatus] = useState<PushStatus>("unknown");
+  useEffect(() => {
+    let live = true;
+    (async () => (pushSupported() ? await readPushStatus(!!(await currentSubscription())) : "unsupported"))()
+      .then((s) => live && setStatus(s))
+      .catch((err) => console.error("Couldn't read this device's notification setting:", err));
+    return () => {
+      live = false;
+    };
+  }, []);
+  async function subscribe(): Promise<boolean> {
+    const on = await subscribeThisDevice();
+    setStatus(await readPushStatus(on));
+    return on;
+  }
+  async function unsubscribe(): Promise<void> {
+    await unsubscribeThisDevice();
+    setStatus(await readPushStatus(false));
+  }
+  return { status, subscribe, unsubscribe };
 }

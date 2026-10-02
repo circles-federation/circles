@@ -204,6 +204,13 @@
       "when": 1790904099068,
       "tag": "0028_member_languages",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790951146496,
+      "tag": "0029_push_subscriptions",
+      "breakpoints": true
     }
   ]
 }

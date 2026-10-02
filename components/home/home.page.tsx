@@ -7,6 +7,7 @@ import { PlayIcon } from "@heroicons/react/24/solid";
 import { AlertModal, AttentionDot, Avatar, Button, Chip, ConfirmModal, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { EventFeed } from "@/components/events/event-feed";
+import { PushPrompt } from "./push-prompt";
 import { StatCard } from "./stat-card";
 import { fmtNumericDate, isPastEvent, parseDay } from "@/lib/format.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
@@ -114,6 +115,8 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
       </div>
 
       <SectionGroup>
+        <PushPrompt />
+
         {/* a system admin's way into the applications waiting for them */}
         {pendingApplications !== null && (
           <Section>

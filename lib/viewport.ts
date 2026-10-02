@@ -5,3 +5,10 @@
 export function isPhoneWidth(): boolean {
   return window.matchMedia("(max-width: 719px)").matches;
 }
+
+// running from the home screen rather than in a browser tab (iOS's own flag
+// covers home-screen apps that predate display-mode support). Browser-only,
+// like isPhoneWidth: in render, read it through useSyncExternalStore.
+export function isInstalledApp(): boolean {
+  return window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}

@@ -77,6 +77,25 @@ export const memberPhotos = pgTable("member_photos", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* One row per device a member has turned push notifications on for (see
+   lib/push/index.ts). The endpoint is the push service's address for that
+   browser install, so it's the key: if someone else signs in on the same
+   device, saving its subscription moves the row to them. */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    endpoint: text("endpoint").primaryKey(),
+    memberId: integer("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+  },
+  (t) => [index("push_subscriptions_member_idx").on(t.memberId)]
+);
+
 /* Everything that scopes something is a circle — see lib/types.ts. */
 export const circleType = pgEnum("circle_type", ["neighborhood", "circle", "collective", "cooperative", "other", "group"]);
 

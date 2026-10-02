@@ -10,7 +10,9 @@ import {
   markNotificationFailed,
   markNotificationSent,
 } from "@/lib/db/notifications";
+import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
+import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
 import { announcementEmail, eventChanges, eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -54,6 +56,29 @@ export function digestCutoff(now: Date, hour = digestHour()): Date {
   cutoff.setHours(hour, 0, 0, 0);
   if (cutoff > now) cutoff.setDate(cutoff.getDate() - 1);
   return cutoff;
+}
+
+/* Push `message` to every device `memberId` has turned notifications on for.
+   A device the push service says is gone is forgotten. It counts as delivered
+   if any device took it, or if there's no device left to try; only when every
+   device failed for some other reason (the service down, say) does it throw,
+   so a queued notification is retried. Returns how many devices took it. */
+export async function pushToMember(memberId: number, message: PushMessage): Promise<number> {
+  const subscriptions = await getSubscriptions(memberId);
+  let delivered = 0;
+  let lastError: unknown;
+  for (const sub of subscriptions) {
+    try {
+      await sendPush(sub, message);
+      await markSubscriptionUsed(sub.endpoint);
+      delivered++;
+    } catch (err) {
+      if (err instanceof ExpiredSubscriptionError) await deleteDeadSubscription(sub.endpoint);
+      else lastError = err;
+    }
+  }
+  if (delivered === 0 && lastError !== undefined) throw lastError;
+  return delivered;
 }
 
 let draining = false;

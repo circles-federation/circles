@@ -9,10 +9,12 @@ import { UserFacingError } from "./errors";
 import * as events from "./events";
 import * as invitations from "./invitations";
 import * as members from "./members";
+import * as push from "./push";
 import * as resources from "./resources";
 import { sendEmail } from "@/lib/email";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail } from "@/lib/email/templates.util";
-import { deliverAnnouncementNotifications, deliverEventNotifications } from "@/lib/notify";
+import { deliverAnnouncementNotifications, deliverEventNotifications, pushToMember } from "@/lib/notify";
+import type { PushSubscriptionKeys } from "@/lib/push";
 import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
@@ -195,4 +197,30 @@ export async function acceptInvitationAction(id: string) {
 
 export async function deleteInvitationAction(id: string) {
   return asMember((memberId) => invitations.deleteInvitation(memberId, id));
+}
+
+/* This device's push subscription (lib/push-client.ts), always as the session
+   member: the browser hands over the subscription, never a member id. */
+export async function savePushSubscriptionAction(sub: PushSubscriptionKeys) {
+  return asMember((memberId) => push.saveSubscription(memberId, sub));
+}
+
+export async function deletePushSubscriptionAction(endpoint: string) {
+  return asMember((memberId) => push.deleteSubscription(memberId, endpoint));
+}
+
+// development only: a notification to every device the session member has
+// turned push on for, to check the whole path end to end
+export async function sendTestPushAction() {
+  if (process.env.NODE_ENV === "production") return { ok: false as const, error: "Not available." };
+  return asMember(async (memberId) => {
+    const devices = await pushToMember(memberId, {
+      title: "Circles test notification",
+      body: "Push notifications are working on this device.",
+      url: "/home",
+      tag: "test",
+    });
+    if (devices === 0) throw new UserFacingError("No device has notifications turned on.");
+    return devices;
+  });
 }

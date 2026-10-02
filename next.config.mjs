@@ -16,6 +16,11 @@ function appVersion() {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: { NEXT_PUBLIC_APP_VERSION: appVersion() },
+  // the service worker is always checked for a newer copy, so a deploy's
+  // changes to it reach installed apps without waiting out a cache
+  async headers() {
+    return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] }];
+  },
 };
 
 export default nextConfig;

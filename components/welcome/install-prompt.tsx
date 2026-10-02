@@ -3,14 +3,13 @@
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { ArrowUpOnSquareIcon, EllipsisHorizontalIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, Modal } from "@/components/shared";
+import { isInstalledApp } from "@/lib/viewport";
 
 // an iPhone browser tab, not the installed app. iOS has no install API (no
 // beforeinstallprompt), so the best a page can do is walk someone through
 // Add to Home Screen themselves.
 function isIPhoneTab() {
-  const standalone = (navigator as Navigator & { standalone?: boolean }).standalone === true
-    || window.matchMedia("(display-mode: standalone)").matches;
-  return /iPhone|iPod/.test(navigator.userAgent) && !standalone;
+  return /iPhone|iPod/.test(navigator.userAgent) && !isInstalledApp();
 }
 
 const noSubscribe = () => () => {};

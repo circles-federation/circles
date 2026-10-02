@@ -5,6 +5,7 @@ import { Home } from "@/components/home/home.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { logout } from "@/lib/auth";
 import { useAppNav } from "@/lib/hooks";
+import { unsubscribeThisDevice } from "@/lib/push-client";
 
 export default function Page() {
   const router = useRouter();
@@ -19,7 +20,10 @@ export default function Page() {
   // matching this app's convention that mutators never navigate — so the
   // caller does the redirect once it resolves. Moved here from top-bar.jsx
   // so logout is reachable on mobile too, not just the desktop nav bar.
+  // this device stops getting the member's notifications first, while there's
+  // still a session to tell the server with
   async function handleLogout() {
+    await unsubscribeThisDevice();
     await logout();
     router.push("/");
   }
