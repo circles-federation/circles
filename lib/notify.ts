@@ -1,4 +1,5 @@
 import {
+  type PendingEventNotification,
   claimAnnouncementNotifications,
   claimDigests,
   claimEventNotifications,
@@ -13,13 +14,15 @@ import {
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
+import { eventNotificationPush } from "@/lib/push/messages.util";
 import { announcementEmail, eventChanges, eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
 
-/* Sends the queued event emails (see lib/db/notifications.ts for who's queued
-   and why). Two things call drain: the create-event action, right after its
+/* Sends the queued event notifications, by email and by push (see
+   lib/db/notifications.ts for who's queued and why; each channel's rows are
+   drained separately). Two things call drain: the create-event action, right after its
    response goes out — so members hear about a new event within a second or
    two — and a poller started at server boot (instrumentation.ts), which is the
    safety net for anything that failed, was left over from before a restart, or
@@ -81,45 +84,78 @@ export async function pushToMember(memberId: number, message: PushMessage): Prom
   return delivered;
 }
 
-let draining = false;
 let digesting = false;
-let drainAgain = false;
 
-export async function deliverEventNotifications(): Promise<void> {
-  // one drain at a time per process; a call that lands mid-drain asks it to
-  // look once more instead of being dropped
-  if (draining) {
-    drainAgain = true;
-    return;
-  }
-  draining = true;
-  try {
-    do {
-      drainAgain = false;
-      for (let batch = await claimEventNotifications(BATCH, "email"); batch.length > 0; batch = await claimEventNotifications(BATCH, "email")) {
-        for (const n of batch) {
-          // edited and then put back before it went out: there's no news; and a
-          // reminder that's been retrying past the start is too late to help.
-          // Nor can anyone be emailed who's since removed their address.
-          if (!n.email || (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) || (n.notice === "reminder" && eventStartsAt(n) <= new Date())) {
-            await markNotificationSent(n);
-            continue;
-          }
-          try {
-            await sendEmail({ to: n.email, ...eventNotificationEmail({ ...n, url: eventUrl(n.eventId), today: localDay() }) });
-            await markNotificationSent(n);
-          } catch (err) {
-            console.error(`Couldn't email event ${n.eventId} to member ${n.memberId}:`, err);
-            await markNotificationFailed(n, err instanceof Error ? err.message : String(err));
-          }
-        }
+/* Wraps one pass over a queue so only one runs at a time per process: a call
+   that lands mid-drain asks it to look once more instead of being dropped. */
+function drainer(name: string, drainOnce: () => Promise<void>): () => Promise<void> {
+  let running = false;
+  let again = false;
+  return async () => {
+    if (running) {
+      again = true;
+      return;
+    }
+    running = true;
+    try {
+      do {
+        again = false;
+        await drainOnce();
+      } while (again);
+    } catch (err) {
+      console.error(`${name} drain failed:`, err);
+    } finally {
+      running = false;
+    }
+  };
+}
+
+// an event notification with nothing left to say: edited and then put back
+// before it went out, or a reminder that's been retrying past the start, too
+// late to help
+const isMoot = (n: PendingEventNotification) =>
+  (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) || (n.notice === "reminder" && eventStartsAt(n) <= new Date());
+
+const deliverEventEmails = drainer("Event email", async () => {
+  for (let batch = await claimEventNotifications(BATCH, "email"); batch.length > 0; batch = await claimEventNotifications(BATCH, "email")) {
+    for (const n of batch) {
+      // nor can anyone be emailed who's since removed their address
+      if (!n.email || isMoot(n)) {
+        await markNotificationSent(n);
+        continue;
       }
-    } while (drainAgain);
-  } catch (err) {
-    console.error("Event notification drain failed:", err);
-  } finally {
-    draining = false;
+      try {
+        await sendEmail({ to: n.email, ...eventNotificationEmail({ ...n, url: eventUrl(n.eventId), today: localDay() }) });
+        await markNotificationSent(n);
+      } catch (err) {
+        console.error(`Couldn't email event ${n.eventId} to member ${n.memberId}:`, err);
+        await markNotificationFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
   }
+});
+
+const deliverEventPushes = drainer("Event push", async () => {
+  for (let batch = await claimEventNotifications(BATCH, "push"); batch.length > 0; batch = await claimEventNotifications(BATCH, "push")) {
+    for (const n of batch) {
+      if (isMoot(n)) {
+        await markNotificationSent(n);
+        continue;
+      }
+      try {
+        await pushToMember(n.memberId, eventNotificationPush({ ...n, today: localDay() }));
+        await markNotificationSent(n);
+      } catch (err) {
+        console.error(`Couldn't push event ${n.eventId} to member ${n.memberId}:`, err);
+        await markNotificationFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
+
+// both channels side by side, so a slow mail relay never holds up a push
+export async function deliverEventNotifications(): Promise<void> {
+  await Promise.all([deliverEventEmails(), deliverEventPushes()]);
 }
 
 let drainingAnnouncements = false;

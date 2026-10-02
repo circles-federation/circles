@@ -27,6 +27,13 @@ export function fmtTime(t: string): string {
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return m === 0 ? `${h12}${ampm}` : `${h12}:${String(m).padStart(2, "0")}${ampm}`;
 }
+// an event's day and times, "Thu, Sep 24 · 6pm–8pm", the same shape as the
+// event page's masthead (for messages sent about it: emails and pushes)
+export function fmtEventWhen(d: { date: string; start: string; end: string }): string {
+  const day = parseDay(d.date);
+  const time = `${fmtTime(d.start)}–${fmtTime(d.end)}`;
+  return isNaN(day.getTime()) ? time : `${WEEKDAYS[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()} · ${time}`;
+}
 // compact "edited" date like "Jun 29, 2026" from an ISO timestamp
 export function fmtEditDate(iso: string): string {
   const d = new Date(iso);

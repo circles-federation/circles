@@ -1,4 +1,4 @@
-import { MONTHS, parseDay } from "./format.util";
+import { MONTHS, WEEKDAYS, parseDay } from "./format.util";
 import type { EventRepeat, RepeatFrequency } from "./types";
 
 /* When a repeating event's dates fall. A series is read from its first date:
@@ -35,6 +35,15 @@ const fromUtc = (d: Date) => d.toISOString().slice(0, 10);
 
 export function addDays(iso: string, n: number): string {
   return fromUtc(new Date(toUtc(iso).getTime() + n * DAY_MS));
+}
+
+// "today", "tomorrow" or "on Thu": how a reminder sent on `today` names the
+// day of an event on `date`
+export function relativeDayWord(date: string, today: string | undefined): string {
+  if (today === date) return "today";
+  if (today && addDays(today, 1) === date) return "tomorrow";
+  const day = parseDay(date);
+  return isNaN(day.getTime()) ? "soon" : `on ${WEEKDAYS[day.getDay()]}`;
 }
 
 // today in this machine's own timezone, as isPastEvent reckons it

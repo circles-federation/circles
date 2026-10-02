@@ -1,7 +1,7 @@
 import type { EmailMessage } from "./index";
-import { MONTHS, WEEKDAYS, fmtNumericDate, fmtTime, parseDay } from "@/lib/format.util";
+import { MONTHS, WEEKDAYS, fmtEventWhen, fmtNumericDate, fmtTime, parseDay } from "@/lib/format.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
-import { addDays, endedBefore, repeatSummary } from "@/lib/recurrence.util";
+import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
 import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
@@ -110,13 +110,6 @@ export interface EventNotificationData {
 
 const EXCERPT_CHARS = 400;
 
-// "Thu, Sep 24 · 6:00 PM–8:00 PM", the same shape as the event page's masthead
-function whenLabel(d: Pick<EventNotificationData, "date" | "start" | "end">): string {
-  const day = parseDay(d.date);
-  const time = `${fmtTime(d.start)}–${fmtTime(d.end)}`;
-  return isNaN(day.getTime()) ? time : `${WEEKDAYS[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()} · ${time}`;
-}
-
 export function eventNotificationEmail(n: EventNotificationData): Body {
   if (n.notice === "cancelled") return cancelledEventEmail(n);
   if (n.notice === "updated") return updatedEventEmail(n);
@@ -145,7 +138,7 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
   const Lead = lead.charAt(0).toUpperCase() + lead.slice(1);
   const accent = voting ? FLAME : INK;
   const tone = decided ? LEAF : voting ? FLAME : SOFT;
-  const when = whenLabel(n);
+  const when = fmtEventWhen(n);
   const excerpt = n.description.length > EXCERPT_CHARS ? `${n.description.slice(0, EXCERPT_CHARS).trimEnd()}…` : n.description;
   const action = voting ? "View and vote" : "View event";
   const why = `You're getting this because you're a member of ${because}.`;
@@ -301,7 +294,7 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
   // cast or meetings approved
   const allNew = events.every((e) => e.notice === "new");
   const heading = allNew ? `${count} new event${count === 1 ? "" : "s"}` : `${count} update${count === 1 ? "" : "s"}`;
-  const meta = (e: DigestEventData) => `${whenLabel(e)} · ${e.location}`;
+  const meta = (e: DigestEventData) => `${fmtEventWhen(e)} · ${e.location}`;
   const by = (e: DigestEventData) =>
     (e.notice === "proposed"
       ? `Proposed by ${e.organizerName} for ${e.circleName}`
@@ -373,7 +366,7 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
    and there's no call to act on beyond seeing it in the app. */
 function cancelledEventEmail(n: EventNotificationData): Body {
   const noun = n.kind === "meeting" ? "meeting" : "event";
-  const when = whenLabel(n);
+  const when = fmtEventWhen(n);
   // a date of a repeating event is cancelled alone, or with every later date
   // (its series then ends before it)
   const note = !n.repeat
@@ -426,9 +419,9 @@ function updatedEventEmail(n: EventNotificationData): Body {
       ? `${n.organizerName} changed the ${what} of this ${n.repeat.frequency} ${noun}, from this date on.`
       : `${n.organizerName} changed the ${what} of this ${noun}.`;
   const why = `You're getting this because you're going to it.`;
-  const when = whenLabel(n);
+  const when = fmtEventWhen(n);
   const was = n.change?.was;
-  const wasWhen = was && (changed.date || changed.time) ? whenLabel(was) : "";
+  const wasWhen = was && (changed.date || changed.time) ? fmtEventWhen(was) : "";
   const wasWhere = was && changed.location ? was.location : "";
   const detail = (label: string, value: string, before: string) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(before ? `${label} · changed` : label, before ? INK : SOFT)}` +
@@ -463,9 +456,7 @@ function updatedEventEmail(n: EventNotificationData): Body {
    empty an hour before it starts is called off (lib/roles.util.ts). */
 function reminderEmail(n: EventNotificationData): Body {
   const noun = n.kind === "meeting" ? "meeting" : "event";
-  const day = parseDay(n.date);
-  const dayWord =
-    n.today === n.date ? "today" : n.today && addDays(n.today, 1) === n.date ? "tomorrow" : isNaN(day.getTime()) ? "soon" : `on ${WEEKDAYS[day.getDay()]}`;
+  const dayWord = relativeDayWord(n.date, n.today);
   const at = `${dayWord} at ${fmtTime(n.start)}`;
   const mine = n.mySlots ?? [];
   const note = mine.length > 0
@@ -476,7 +467,7 @@ function reminderEmail(n: EventNotificationData): Body {
   const openNote = "If a required slot is still empty an hour before the start, the event is called off.";
   const Day = dayWord.charAt(0).toUpperCase() + dayWord.slice(1);
   const why = `You're getting this because you're going to it.`;
-  const when = whenLabel(n);
+  const when = fmtEventWhen(n);
   const agenda = n.agenda ?? [];
   const detail = (label: string, value: string) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
