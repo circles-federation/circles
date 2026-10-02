@@ -5,7 +5,7 @@ import { UserFacingError } from "./errors";
 import { circleMembers, memberPhotos, members } from "./schema";
 import { validateLanguages } from "@/lib/languages.util";
 import { isBirthDecade } from "@/lib/members.util";
-import type { Member, Profile } from "@/lib/types";
+import type { Member, NotificationSettings, Profile } from "@/lib/types";
 
 export class MemberError extends UserFacingError {}
 
@@ -61,10 +61,22 @@ export async function getMembersForViewer(viewerId: number): Promise<Member[]> {
   });
 }
 
-// whether a member lets others see their email, for their own profile
-export async function isEmailPublic(id: number): Promise<boolean> {
-  const [row] = await db.select({ emailPublic: members.emailPublic }).from(members).where(eq(members.id, id));
-  return row?.emailPublic ?? true;
+// the settings only a member themself sees, for their own profile: whether
+// others may see their email, and how they're told about things
+export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications">> {
+  const [row] = await db
+    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush })
+    .from(members)
+    .where(eq(members.id, id));
+  return { emailPublic: row?.emailPublic ?? true, notifications: { email: row?.email ?? true, push: row?.push ?? true } };
+}
+
+// Settings → Notifications, always the member's own: the action supplies the
+// session's id, as updateMember's does
+export async function setNotificationSettings(id: number, settings: NotificationSettings): Promise<NotificationSettings> {
+  if (typeof settings?.email !== "boolean" || typeof settings?.push !== "boolean") throw new MemberError("Those notification settings weren't recognized.");
+  await db.update(members).set({ notifyEmail: settings.email, notifyPush: settings.push }).where(eq(members.id, id));
+  return { email: settings.email, push: settings.push };
 }
 
 export async function getMemberById(id: number): Promise<Member | null> {

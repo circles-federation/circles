@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
-import { pushSubscriptions } from "./schema";
+import { members, pushSubscriptions } from "./schema";
 import type { PushSubscriptionKeys } from "@/lib/push";
 
 export class PushError extends UserFacingError {}
@@ -42,11 +42,14 @@ export async function deleteSubscription(memberId: number, endpoint: string): Pr
   await db.delete(pushSubscriptions).where(and(eq(pushSubscriptions.endpoint, endpoint), eq(pushSubscriptions.memberId, memberId)));
 }
 
+// the devices to push to: none at all if the member has turned push off
+// (Settings → Notifications), which also stops anything already queued
 export async function getSubscriptions(memberId: number): Promise<PushSubscriptionKeys[]> {
   return db
     .select({ endpoint: pushSubscriptions.endpoint, p256dh: pushSubscriptions.p256dh, auth: pushSubscriptions.auth })
     .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.memberId, memberId));
+    .innerJoin(members, eq(members.id, pushSubscriptions.memberId))
+    .where(and(eq(pushSubscriptions.memberId, memberId), eq(members.notifyPush, true)));
 }
 
 // the push service said the device is gone for good

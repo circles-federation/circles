@@ -20,7 +20,7 @@ import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle } from "@/lib/types";
+import type { Circle, NotificationSettings } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
    connection — Drizzle's Postgres driver is Node-only. These thin wrappers
@@ -34,6 +34,11 @@ import type { Circle } from "@/lib/types";
    session member to belong to the circle (lib/db/circles.ts). */
 export async function updateMemberAction(patch: members.ProfilePatch) {
   return asMember((memberId) => members.updateMember(memberId, patch));
+}
+
+// Settings → Notifications: always the session member's own
+export async function saveNotificationSettingsAction(settings: NotificationSettings) {
+  return asMember((memberId) => members.setNotificationSettings(memberId, settings));
 }
 
 // like updateMemberAction, always the session member's own photo; the file

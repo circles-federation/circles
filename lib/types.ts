@@ -43,7 +43,14 @@ export interface Member {
 // the current user's own editable profile — a Member plus whether their
 // email is shared publicly (see AppStateProvider, which seeds this from the
 // signed-in member's own record)
-export type Profile = Member & { emailPublic: boolean };
+// how a member is told about the app's goings-on: by email, by push, both or
+// neither (Settings → Notifications). Their own, so it's on Profile, not Member.
+export interface NotificationSettings {
+  email: boolean;
+  push: boolean;
+}
+
+export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings };
 
 // a role a member can hold in a circle (Secretary, Leader, ...) — see
 // lib/circle-roles.util.ts. `builtin` roles exist on every circle that can have

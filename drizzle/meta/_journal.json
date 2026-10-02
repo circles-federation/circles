@@ -218,6 +218,13 @@
       "when": 1790957601964,
       "tag": "0030_notification_channels",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790983454544,
+      "tag": "0031_notification_settings",
+      "breakpoints": true
     }
   ]
 }

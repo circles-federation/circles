@@ -3,23 +3,18 @@
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { ArrowUpOnSquareIcon, EllipsisHorizontalIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, Modal } from "@/components/shared";
-import { isInstalledApp } from "@/lib/viewport";
-
-// an iPhone browser tab, not the installed app. iOS has no install API (no
-// beforeinstallprompt), so the best a page can do is walk someone through
-// Add to Home Screen themselves.
-function isIPhoneTab() {
-  return /iPhone|iPod/.test(navigator.userAgent) && !isInstalledApp();
-}
+import { isIPhoneBrowserTab } from "@/lib/viewport";
 
 const noSubscribe = () => () => {};
 
-/* Offers the installed app to someone on an iPhone before they sign in —
-   before, because the installed app keeps its own cookies apart from
-   Safari's, so a session started here wouldn't carry over to it. */
+/* Offers the installed app to someone on an iPhone before they sign in. iOS
+   has no install API (no beforeinstallprompt), so the best a page can do is
+   walk them through Add to Home Screen themselves. Before signing in,
+   because the installed app keeps its own cookies apart from Safari's, so a
+   session started here wouldn't carry over to it. */
 export function InstallPrompt() {
   // false on the server and during hydration, so the markup matches
-  const show = useSyncExternalStore(noSubscribe, isIPhoneTab, () => false);
+  const show = useSyncExternalStore(noSubscribe, isIPhoneBrowserTab, () => false);
   const [open, setOpen] = useState(false);
 
   if (!show) return null;

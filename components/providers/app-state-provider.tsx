@@ -21,6 +21,7 @@ import {
   createInvitationAction as dbCreateInvitation,
   acceptInvitationAction as dbAcceptInvitation,
   deleteInvitationAction as dbDeleteInvitation,
+  saveNotificationSettingsAction as dbSaveNotificationSettings,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
@@ -29,7 +30,7 @@ import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { isProposal, voteThreshold } from "@/lib/governance.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, CircleInvitation, CircleResource, Event, Member, Profile } from "@/lib/types";
+import type { Circle, CircleInvitation, CircleResource, Event, Member, NotificationSettings, Profile } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -58,6 +59,7 @@ export interface AppStateValue {
   saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult>;
   saveProfile(next: Profile): void;
   savePhoto(photo: Blob): Promise<MutationResult>;
+  saveNotificationSettings(settings: NotificationSettings): Promise<MutationResult>;
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
   removeResource(id: string): Promise<MutationResult>;
@@ -534,6 +536,16 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  // await-then-update: Settings → Notifications stays open to say why if the
+  // server refuses, and its own page shows the toast once it's done
+  async function saveNotificationSettings(settings: NotificationSettings): Promise<MutationResult> {
+    const result = await dbSaveNotificationSettings(settings).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    const notifications = result.value;
+    setProfile((p) => ({ ...p, notifications }));
+    return { ok: true };
+  }
+
   async function addResource(circleId: string, input: ResourceInput): Promise<MutationResult> {
     const result = await dbCreateResource(circleId, input);
     if (!result.ok) return result;
@@ -614,6 +626,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         saveCircleRoles: tracked(saveCircleRoles),
         saveProfile: tracked(saveProfile),
         savePhoto: tracked(savePhoto),
+        saveNotificationSettings: tracked(saveNotificationSettings),
         addResource: tracked(addResource),
         updateResource: tracked(updateResource),
         removeResource: tracked(removeResource),

@@ -66,6 +66,7 @@ interface PageAction {
 // button on the right, on every screen size
 function pageAction(pathname: string, circles: Circle[], events: Event[], profile: Profile): PageAction | null {
   if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon };
+  if (pathname === "/home") return { href: "/settings", label: "Settings", icon: Cog6ToothIcon };
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section === "events" && id && id !== "new" && !sub) {
     // an event's own page, which only its organizer can edit, until it's
@@ -111,6 +112,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     return members.find((m) => String(m.id) === id)?.name ?? "Profile";
   }
   if (section === "game") return "Name game";
+  if (section === "settings") return id === "notifications" ? "Notifications" : "Settings";
   if (section === "admin") return sub ? "Application" : "Applications";
   if (section === "invitations") return "Invitation";
   return "Home";
@@ -142,7 +144,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // under /circles regardless of how deep the circle sits in the hierarchy
   // — see lib/hooks.ts's openCircle — so the generic case below covers it.
   function isActive(href: string): boolean {
-    if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile") || pathname.startsWith("/admin") || pathname.startsWith("/invitations");
+    if (href === "/home") return pathname === "/home" || pathname === "/game" || pathname.startsWith("/profile") || pathname.startsWith("/admin") || pathname.startsWith("/invitations") || pathname.startsWith("/settings");
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 

@@ -12,3 +12,9 @@ export function isPhoneWidth(): boolean {
 export function isInstalledApp(): boolean {
   return window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
+
+// an iPhone's browser tab rather than the installed app: where iOS offers
+// neither installing (no install API) nor push, short of Add to Home Screen
+export function isIPhoneBrowserTab(): boolean {
+  return /iPhone|iPod/.test(navigator.userAgent) && !isInstalledApp();
+}

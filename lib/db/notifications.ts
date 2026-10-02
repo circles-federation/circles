@@ -25,14 +25,15 @@ type Recipient = { memberId: number; channel: NotificationChannel };
 
 /* How each member matching `who` can be told: by email if they have an
    address (it's optional on a member), and by push if they've turned it on
-   for a device, unless `push` is false (a digest line is email only). Someone
-   with neither can't be told at all. */
+   for a device, unless `push` is false (a digest line is email only) — in
+   each case only if they haven't turned that channel off (Settings →
+   Notifications). Someone with neither can't be told at all. */
 async function channelsFor(tx: Tx, who: SQL | undefined, { push = true } = {}): Promise<Recipient[]> {
   const rows = await tx
     .select({
       id: members.id,
-      email: isNotNull(members.email),
-      push: sql<boolean>`exists (select 1 from ${pushSubscriptions} where ${pushSubscriptions.memberId} = ${members.id})`,
+      email: sql<boolean>`${members.email} is not null and ${members.notifyEmail}`,
+      push: sql<boolean>`${members.notifyPush} and exists (select 1 from ${pushSubscriptions} where ${pushSubscriptions.memberId} = ${members.id})`,
     })
     .from(members)
     .where(who);
@@ -41,6 +42,10 @@ async function channelsFor(tx: Tx, who: SQL | undefined, { push = true } = {}): 
     ...(push && r.push ? [{ memberId: r.id, channel: "push" as const }] : []),
   ]);
 }
+
+// a member's address to email, or null if they've turned email off since this
+// was queued: the drain then drops the row instead of sending it
+const emailIfWanted = sql<string | null>`case when ${members.notifyEmail} then ${members.email} end`;
 
 // how many members `recipients` reaches, on whatever channels
 const membersIn = (recipients: Recipient[]) => new Set(recipients.map((r) => r.memberId)).size;
@@ -297,7 +302,7 @@ export async function claimEventNotifications(limit: number, channel: Notificati
         notice: eventNotifications.kind,
         channel: eventNotifications.channel,
         change: eventNotifications.change,
-        email: members.email,
+        email: emailIfWanted,
         title: events.title,
         kind: events.kind,
         date: events.date,
@@ -429,7 +434,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
         eventId: events.id,
         memberId: members.id,
         notice: eventNotifications.kind,
-        email: members.email,
+        email: emailIfWanted,
         title: events.title,
         kind: events.kind,
         date: events.date,
@@ -540,7 +545,7 @@ export async function claimAnnouncementNotifications(limit: number, channel: Not
         circleId: circleResources.circleId,
         memberId: members.id,
         channel: announcementNotifications.channel,
-        email: members.email,
+        email: emailIfWanted,
         title: circleResources.title,
         message: circleResources.message,
         createdAt: circleResources.createdAt,

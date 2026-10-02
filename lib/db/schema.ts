@@ -56,6 +56,12 @@ export const members = pgTable("members", {
   // whether other members may see the email (Edit myself's Visible/Hidden);
   // when they may not, it's left out of what's sent to them (getMembersForViewer)
   emailPublic: boolean("email_public").notNull().default(true),
+  // whether they're told about the app's goings-on (events, announcements,
+  // invitations, the daily digest) by email, and by push on the devices
+  // they've turned it on for — Settings → Notifications. Sign-in codes are
+  // emailed regardless.
+  notifyEmail: boolean("notify_email").notNull().default(true),
+  notifyPush: boolean("notify_push").notNull().default(true),
   // a system admin: a worker of the foundation running the platform, who
   // reviews applications (see applications below). Set by `npm run admin`.
   isAdmin: boolean("is_admin").notNull().default(false),

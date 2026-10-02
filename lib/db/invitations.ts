@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
@@ -97,14 +97,15 @@ export async function deleteInvitation(memberId: number, id: string): Promise<vo
   await db.delete(circleInvitations).where(eq(circleInvitations.id, id));
 }
 
-// what the invitee is told, by email (if they have an address) and by push:
+// what the invitee is told, by email (if they have an address and haven't
+// turned email off) and by push:
 // who they are, who invited them, and to what. Null once it's gone.
 export async function getInvitationNoticeData(
   id: string
 ): Promise<{ memberId: number; email: string | null; name: string; inviterName?: string; circleName: string; tagline: string } | null> {
   const inviter = alias(members, "inviter");
   const [row] = await db
-    .select({ memberId: members.id, email: members.email, name: members.name, inviterName: inviter.name, circleName: circles.name, tagline: circles.tagline })
+    .select({ memberId: members.id, email: sql<string | null>`case when ${members.notifyEmail} then ${members.email} end`, name: members.name, inviterName: inviter.name, circleName: circles.name, tagline: circles.tagline })
     .from(circleInvitations)
     .innerJoin(members, eq(members.id, circleInvitations.memberId))
     .innerJoin(circles, eq(circles.id, circleInvitations.circleId))

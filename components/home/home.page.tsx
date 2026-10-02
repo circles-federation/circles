@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
-import { ArrowRightStartOnRectangleIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
+import { PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
-import { AlertModal, AttentionDot, Avatar, Button, Chip, ConfirmModal, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup } from "@/components/shared";
+import { AlertModal, AttentionDot, Avatar, Chip, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { EventFeed } from "@/components/events/event-feed";
-import { PushPrompt } from "./push-prompt";
 import { StatCard } from "./stat-card";
 import { fmtNumericDate, isPastEvent, parseDay } from "@/lib/format.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
@@ -28,13 +26,12 @@ interface HomeProps {
   onOpenCircle: (c: Circle) => void;
   onEditProfile: () => void;
   onOpenProfile: () => void;
-  onLogout: () => void;
 }
 
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their circles (speed
    dial), and their events. Profile editing lives on a separate page. */
-export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onEditProfile, onOpenProfile, onLogout }: HomeProps) {
+export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onEditProfile, onOpenProfile }: HomeProps) {
   const members = useMembers();
   const { pendingApplications, invitations } = useAppState();
   const memberById = useMemberById();
@@ -47,7 +44,6 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   // no one else there (or no neighborhood) there's nothing to play: say why
   // instead of opening an empty game
   const [noGame, setNoGame] = useState(false);
-  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const canPlay = neighbors.some((m) => m.id !== profile.id);
   function playGame() {
     if (canPlay) onPlayGame();
@@ -98,7 +94,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-[auto_1fr] gap-2.5 min-[720px]:grid-cols-[auto_auto]">
+        <div className="flex">
           <button
             onClick={onEditProfile}
             title="Edit profile"
@@ -107,26 +103,15 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
           >
             <PencilIcon className="size-3.5" strokeWidth={2.5} />
           </button>
-          <Button variant="danger" onClick={() => setConfirmingLogout(true)}>
-            <ArrowRightStartOnRectangleIcon className="size-3.5" strokeWidth={2.5} />
-            Log out
-          </Button>
         </div>
       </div>
 
       <SectionGroup>
-        <PushPrompt />
-
         {/* a system admin's way into the applications waiting for them */}
         {pendingApplications !== null && (
           <Section>
             <EyebrowGroup label={<AttentionLabel on={pendingApplications > 0}>Applications</AttentionLabel>}>
-              <Link href="/admin/applications" className="ink-press flex items-center justify-between gap-3 border border-ink bg-paper px-4.5 py-4 text-ink no-underline">
-                <span className="font-sans text-base font-bold">
-                  {pendingApplications === 0 ? "Nothing waiting for review" : `${pendingApplications} waiting for review`}
-                </span>
-                <ChevronRightIcon className="size-4 shrink-0" strokeWidth={2.5} />
-              </Link>
+              <MenuRow href="/admin/applications" label={pendingApplications === 0 ? "Nothing waiting for review" : `${pendingApplications} waiting for review`} />
             </EyebrowGroup>
           </Section>
         )}
@@ -209,17 +194,6 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
       <p className="mt-16 -mb-14 text-center font-sans text-label tracking-wide text-soft opacity-60 select-none">
         Circles R1 Beta 1
       </p>
-
-      {confirmingLogout && (
-        <ConfirmModal
-          title="Log out?"
-          message="You'll need a new code from your email to sign back in."
-          confirmLabel="Log out"
-          cancelLabel="Stay"
-          onConfirm={onLogout}
-          onCancel={() => setConfirmingLogout(false)}
-        />
-      )}
 
       {noGame && (
         <AlertModal
