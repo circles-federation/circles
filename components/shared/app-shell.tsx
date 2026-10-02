@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useBlockEdgeSwipe();
   useBlockPinchZoom();
   useServiceWorker();
-  useKeyboard(mainRef);
+  useIosKeyboard(mainRef);
 
   // a tab tapped again while its page is showing: back to the top, whichever
   // of the document or <main> is what scrolls
@@ -74,67 +74,109 @@ function useServiceWorker() {
   }, [router]);
 }
 
-const FIELD = "input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]), textarea, select, [contenteditable]";
+// fields that bring up the keyboard. Pickers (a select, a date) are left out:
+// iOS only opens one for a real tap, not for focus().
+const TYPED_FIELD = "textarea, [contenteditable], input:not([type]), input[type=text], input[type=search], input[type=email], input[type=url], input[type=tel], input[type=password], input[type=number]";
 // how far below TopBar a field being typed in sits
 const FIELD_MARGIN_PX = 24;
 // a field lower than this share of the screen would end up under the keyboard
 const KEYBOARD_LINE = 0.4;
+// a touch that moved further than this was a scroll, not a tap
+const TAP_SLOP_PX = 6;
 
-/* Installed as an app, the iOS keyboard doesn't make the page any shorter:
+// iOS, where the keyboard slides the page rather than shortening it (iPadOS
+// reports itself as a Mac, but a Mac has no touchscreen)
+function isIos(): boolean {
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function fieldAt(target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof Element)) return null;
+  const field = target.closest(TYPED_FIELD) ?? target.closest("label")?.control ?? null;
+  return field instanceof HTMLElement && field.matches(TYPED_FIELD) ? field : null;
+}
+
+/* Installed as an app on iOS, the keyboard doesn't make the page any shorter:
    Safari slides the whole screen up to keep the field being typed in above
-   it, TopBar and all. It only slides when the field would end up under the
-   keyboard, so the moment a field in <main> is focused (before the keyboard
-   animates in) it's scrolled up to just below TopBar, with room added under
-   the page (--keyboard-room) so a field near the end can go that high too.
-   Then, once the keyboard is up, the shell is sized to what's still visible
-   (the visual viewport, as --app-height), so <main> ends at the keyboard and
-   the field stays in view as more is typed; any slide that happened anyway
-   is undone. Both are put back once the keyboard is gone. Android already
-   shrinks the page for its keyboard, so there this only confirms the height
-   it has. A browser tab is left to the browser. */
-function useKeyboard(mainRef: RefObject<HTMLElement | null>) {
+   it, TopBar and all. The viewport's interactiveWidget (app/layout.tsx) is
+   the real fix, and does it on Android, but Safari doesn't support it yet, so
+   this is Ionic's "scroll assist" until it does — then it can go.
+
+   Safari decides whether to slide at the moment a field is focused, and only
+   slides if the field would end up under the keyboard. So a tap on a field
+   low in <main> is taken over before it focuses anything: room is added
+   under the page (--keyboard-room) so even the last field can rise, <main> is
+   scrolled to put the field just below TopBar, and only then is it focused —
+   somewhere Safari has no reason to slide from. Once the keyboard is up the
+   shell is sized to what's still visible (the visual viewport, as
+   --app-height), so <main> ends at the keyboard and the field stays in view
+   as more is typed, and any slide that happened anyway is undone. Both are
+   put back once the keyboard is gone. */
+function useIosKeyboard(mainRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const viewport = window.visualViewport;
     const main = mainRef.current;
-    if (!viewport || !main || !isInstalledApp()) return;
+    if (!viewport || !main || !isInstalledApp() || !isIos()) return;
     const root = document.documentElement;
     // the visual viewport is as tall as the layout one unless something (the
     // keyboard) is covering it
     const keyboardUp = () => !!viewport && viewport.height < window.innerHeight - 1;
+    let start: { x: number; y: number } | null = null;
 
-    function onFocusIn(e: FocusEvent) {
-      const field = e.target;
-      if (!(field instanceof HTMLElement) || !field.matches(FIELD) || !main?.contains(field)) return;
+    function onTouchStart(e: TouchEvent) {
+      const t = e.touches[0];
+      start = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY } : null;
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      const t = e.changedTouches[0];
+      const tapped = start && t && Math.hypot(t.clientX - start.x, t.clientY - start.y) <= TAP_SLOP_PX;
+      start = null;
+      const field = fieldAt(e.target);
+      if (!tapped || !e.cancelable || !field || field === document.activeElement || !main?.contains(field)) return;
+      if (field.matches(":disabled, [readonly]")) return;
       root.style.setProperty("--keyboard-room", "60dvh");
       const rect = field.getBoundingClientRect();
+      // high enough already: the keyboard won't cover it, so nothing slides
       if (rect.bottom < window.innerHeight * KEYBOARD_LINE) return;
+      // no native focus (or the click after it), which would slide the page
+      e.preventDefault();
       const topBar = parseFloat(getComputedStyle(root).getPropertyValue("--top-bar-height")) || 0;
       main.scrollTop += rect.top - topBar - FIELD_MARGIN_PX;
+      field.focus({ preventScroll: true });
+      // a tap would have put the caret where it landed; at the end is the
+      // nearest a programmatic focus can do (some input types can't be set)
+      if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+        try {
+          field.setSelectionRange(field.value.length, field.value.length);
+        } catch {}
+      }
     }
 
     // left every field with no keyboard showing (a hardware keyboard, say):
     // the room isn't needed. With the keyboard up, fit() takes it away once
     // the keyboard has gone, so the page doesn't jump while it's closing.
     function onFocusOut(e: FocusEvent) {
-      const next = e.relatedTarget;
-      if (!(next instanceof HTMLElement && next.matches(FIELD)) && !keyboardUp()) root.style.setProperty("--keyboard-room", "0px");
+      if (!fieldAt(e.relatedTarget) && !keyboardUp()) root.style.setProperty("--keyboard-room", "0px");
     }
 
     function fit() {
       if (!viewport) return;
       root.style.setProperty("--app-height", `${viewport.height}px`);
       if (window.scrollY !== 0) window.scrollTo(0, 0);
-      // the keyboard's gone: no more room needed under the page
       if (!keyboardUp()) root.style.setProperty("--keyboard-room", "0px");
     }
 
     fit();
-    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    // not passive: a passive listener can't stop the native focus
+    document.addEventListener("touchend", onTouchEnd, { passive: false });
     document.addEventListener("focusout", onFocusOut);
     viewport.addEventListener("resize", fit);
     viewport.addEventListener("scroll", fit);
     return () => {
-      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", onTouchEnd);
       document.removeEventListener("focusout", onFocusOut);
       viewport.removeEventListener("resize", fit);
       viewport.removeEventListener("scroll", fit);

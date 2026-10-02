@@ -13,10 +13,14 @@ export const metadata: Metadata = {
 
 // viewportFit "cover" draws under the home indicator and a landscape notch, so
 // the app's edges pad themselves with env(safe-area-inset-*) — see AppShell,
-// TopBar, BottomNav and FloatingActionButton
+// TopBar, BottomNav and FloatingActionButton. interactiveWidget makes the
+// on-screen keyboard shorten the page rather than slide it up, so the top bar
+// stays put as in a native app; Safari doesn't support it yet, which is what
+// AppShell's useIosKeyboard stands in for until it does.
 export const viewport: Viewport = {
   themeColor: "#ffffff",
   viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 // AppStateProvider/AppShell live in app/(app)/layout.jsx
