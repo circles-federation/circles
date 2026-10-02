@@ -5,7 +5,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack } from "@/components/providers/back-handler-provider";
 
 export default function Page() {
-  // back to wherever it was opened from: Home, or your own profile page
+  // back to wherever it was opened from: Settings, or your own profile page
   const goBack = useGoBack();
   const { profile, saveProfile, savePhoto } = useAppState();
 

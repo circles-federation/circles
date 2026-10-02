@@ -70,6 +70,8 @@ export function useRunBackHandler(): () => boolean {
 // segment up, except for pages that only Home links to, whose own parent
 // segment isn't a route
 function parentRoute(pathname: string): string {
+  // Edit profile is reached from Settings (or your own profile page)
+  if (pathname === "/profile/edit") return "/settings";
   const parent = pathname.replace(/\/[^/]+\/?$/, "");
   if (parent === "" || parent === "/profile" || parent === "/admin" || parent === "/invitations") return "/home";
   // a bulletin item's form is reached from its circle's Bulletin tab

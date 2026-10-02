@@ -28,7 +28,10 @@ export function SettingsPage({ notifications, onLogout }: SettingsPageProps) {
       <SectionGroup>
         {/* pt-0: the top bar's title (Settings) is the page's only heading */}
         <Section className="pt-0">
-          <MenuRow href="/settings/notifications" label="Notifications" detail={notificationsSummary(notifications)} />
+          <div className="flex flex-col gap-3">
+            <MenuRow href="/profile/edit" label="Edit profile" detail="Your photo, bio, and more" />
+            <MenuRow href="/settings/notifications" label="Notifications" detail={notificationsSummary(notifications)} />
+          </div>
         </Section>
 
         <Section>

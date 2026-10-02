@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { PencilIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import { AlertModal, AttentionDot, Avatar, Chip, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
@@ -24,14 +23,13 @@ interface HomeProps {
   onOpenLocalCircles: () => void;
   onPlayGame: () => void;
   onOpenCircle: (c: Circle) => void;
-  onEditProfile: () => void;
   onOpenProfile: () => void;
 }
 
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their circles (speed
    dial), and their events. Profile editing lives on a separate page. */
-export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onEditProfile, onOpenProfile }: HomeProps) {
+export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onOpenProfile }: HomeProps) {
   const members = useMembers();
   const { pendingApplications, invitations } = useAppState();
   const memberById = useMemberById();
@@ -93,16 +91,6 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
               {homeCircle && <Chip title="Your neighborhood">{homeCircle.name}</Chip>}
             </div>
           </div>
-        </div>
-        <div className="flex">
-          <button
-            onClick={onEditProfile}
-            title="Edit profile"
-            aria-label="Edit profile"
-            className="ink-press inline-flex aspect-square cursor-pointer items-center justify-center border border-ink bg-paper p-3.25"
-          >
-            <PencilIcon className="size-3.5" strokeWidth={2.5} />
-          </button>
         </div>
       </div>
 

@@ -24,7 +24,6 @@ export default function Page() {
       onOpenLocalCircles={() => myNeighborhood && nav.openCircle(myNeighborhood, ["Circles", "Organizations"])}
       onPlayGame={() => nav.setView("game")}
       onOpenCircle={(c) => nav.openCircle(c)}
-      onEditProfile={() => nav.setView("editMyself")}
       onOpenProfile={() => nav.openMember(profile)}
     />
   );
