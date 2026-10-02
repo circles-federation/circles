@@ -23,7 +23,7 @@ export function BetaPrivacy() {
       <LegalHeading>Who sees it</LegalHeading>
       <LegalList>
         <li>Nothing is public on the web. Only signed-in members can see anything.</li>
-        <li>Every member can see your name, profile, email address, neighborhood, the circles you belong to and roles you hold. A private group, and who&apos;s in it, is seen only by its members.</li>
+        <li>Every member can see your name, profile, email address (unless you hide it from your profile, when no one else is sent it), neighborhood, the circles you belong to and roles you hold. A private group, and who&apos;s in it, is seen only by its members.</li>
         <li>Your photo is seen by members who share a circle with you, including your neighborhood.</li>
         <li>Events, bulletin posts, and who&apos;s going to or voted for something are seen by the members of the circle they belong to. Votes aren&apos;t secret.</li>
         <li>Your home address is seen only by the person reviewing your application, and deleted once it&apos;s decided.</li>

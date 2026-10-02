@@ -83,12 +83,14 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
         <Section>
           <Label htmlFor="email">Email</Label>
           <div className="flex items-stretch border border-ink">
+            {/* read-only: it's also what they sign in with (lib/session.ts finds
+                their member by it), so changing it here would lock them out */}
             <input
               id="email"
               value={draft.email || ""}
-              onChange={(e) => set({ email: e.target.value })}
-              placeholder="you@duck.com"
-              className="min-w-0 flex-1 border-none bg-paper px-3 py-2.75 font-serif text-base outline-none"
+              readOnly
+              aria-readonly="true"
+              className="min-w-0 flex-1 cursor-default border-none bg-faint/40 px-3 py-2.75 font-serif text-base text-soft outline-none"
             />
             <div className="flex items-stretch border-l border-ink">
               <button
@@ -118,7 +120,8 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
           <p className="mt-2.5 font-serif text-sm leading-normal text-soft">
             {draft.emailPublic
               ? "Your email is shown here so neighbors can reach you directly."
-              : "Your email is private. Neighbors won't see a way to email you."}
+              : "Your email is private. Neighbors won't see a way to email you."}{" "}
+            It&apos;s also how you sign in, so it can&apos;t be changed here.
           </p>
         </Section>
 

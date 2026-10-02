@@ -48,6 +48,9 @@ export const members = pgTable("members", {
   interests: text("interests").array().notNull().default(sql`'{}'::text[]`),
   bio: text("bio").notNull(),
   email: text("email").unique(),
+  // whether other members may see the email (Edit myself's Visible/Hidden);
+  // when they may not, it's left out of what's sent to them (getMembersForViewer)
+  emailPublic: boolean("email_public").notNull().default(true),
   // a system admin: a worker of the foundation running the platform, who
   // reviews applications (see applications below). Set by `npm run admin`.
   isAdmin: boolean("is_admin").notNull().default(false),

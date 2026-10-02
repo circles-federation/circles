@@ -183,6 +183,13 @@
       "when": 1790865661512,
       "tag": "0025_announcement_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790902750113,
+      "tag": "0026_member_email_public",
+      "breakpoints": true
     }
   ]
 }

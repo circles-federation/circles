@@ -2,9 +2,9 @@ import { countPendingApplications } from "./applications";
 import { getCirclesForMember } from "./circles";
 import { getEventsForMember } from "./events";
 import { getInvitationsForMember } from "./invitations";
-import { getMembers } from "./members";
+import { getMembersForViewer, isEmailPublic } from "./members";
 import { getResourcesForMember } from "./resources";
-import type { Circle, CircleInvitation, CircleResource, Event, Member } from "@/lib/types";
+import type { Circle, CircleInvitation, CircleResource, Event, Member, Profile } from "@/lib/types";
 
 export interface AppStateData {
   events: Event[];
@@ -13,7 +13,8 @@ export interface AppStateData {
   resources: CircleResource[];
   // their own invitations, and those to the circles they're in
   invitations: CircleInvitation[];
-  profile: Member;
+  // the member themself, with whether they let others see their email
+  profile: Profile;
   // applications waiting for review, for a system admin; null for anyone else
   pendingApplications: number | null;
 }
@@ -28,11 +29,13 @@ export async function getAppStateForMember(memberId: number): Promise<AppStateDa
   const [events, circles, members, resources, invitations, pendingApplications] = await Promise.all([
     getEventsForMember(memberId),
     getCirclesForMember(memberId),
-    getMembers(),
+    getMembersForViewer(memberId),
     getResourcesForMember(memberId),
     getInvitationsForMember(memberId),
     countPendingApplications(memberId),
   ]);
-  const profile = members.find((m) => m.id === memberId);
-  return profile ? { events, circles, members, resources, invitations, profile, pendingApplications } : null;
+  const me = members.find((m) => m.id === memberId);
+  if (!me) return null;
+  const profile: Profile = { ...me, emailPublic: await isEmailPublic(memberId) };
+  return { events, circles, members, resources, invitations, profile, pendingApplications };
 }

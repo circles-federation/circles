@@ -1,6 +1,6 @@
 "use client";
 
-import { EnvelopeIcon } from "@heroicons/react/24/outline";
+import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { Avatar, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -22,6 +22,9 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
   // the neighborhood is the masthead's chip, so it isn't repeated in the grid
   const memberCircles = circlesForMember(m.id, circles).filter((c) => c.type !== "neighborhood");
   const home = m.homeCircleId ? byId[m.homeCircleId] : undefined;
+  // you're still sent your own email when it's hidden, but this page is your
+  // profile as others see it, so it isn't shown here either
+  const ownHidden = m.id === profile.id && !profile.emailPublic;
 
   return (
     <PageContainer size="normal">
@@ -48,7 +51,16 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
       </div>
 
       <SectionGroup>
-        {m.email && (
+        {ownHidden ? (
+          <Section>
+            <EyebrowGroup label="Get in touch">
+              <p className="inline-flex items-center gap-2 font-serif text-base text-soft">
+                <LockClosedIcon className="size-4 shrink-0" strokeWidth={2} />
+                Your email is hidden from other members.
+              </p>
+            </EyebrowGroup>
+          </Section>
+        ) : m.email && (
           <Section>
             <EyebrowGroup label="Get in touch">
               <a

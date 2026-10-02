@@ -3,7 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, memberPhotos, members } from "./schema";
-import type { Member } from "@/lib/types";
+import type { Member, Profile } from "@/lib/types";
 
 export class MemberError extends UserFacingError {}
 
@@ -43,6 +43,26 @@ export async function getMembers(): Promise<Member[]> {
   return rows.map((r) => toMember(r.member, r.homeCircleId, r.photoUpdatedAt));
 }
 
+/* The roster as one member may see it: everyone, but without the email of
+   anyone who's hidden theirs — left out here, on the server, so it never
+   reaches anyone else's browser at all. Their own always stays. What AppState
+   is seeded and refreshed with. */
+export async function getMembersForViewer(viewerId: number): Promise<Member[]> {
+  const rows = await selectMembers();
+  return rows.map((r) => {
+    const m = toMember(r.member, r.homeCircleId, r.photoUpdatedAt);
+    if (r.member.emailPublic || r.member.id === viewerId) return m;
+    const { email: _hidden, ...rest } = m;
+    return rest;
+  });
+}
+
+// whether a member lets others see their email, for their own profile
+export async function isEmailPublic(id: number): Promise<boolean> {
+  const [row] = await db.select({ emailPublic: members.emailPublic }).from(members).where(eq(members.id, id));
+  return row?.emailPublic ?? true;
+}
+
 export async function getMemberById(id: number): Promise<Member | null> {
   const [row] = await selectMembers().where(eq(members.id, id));
   return row ? toMember(row.member, row.homeCircleId, row.photoUpdatedAt) : null;
@@ -56,7 +76,7 @@ export async function getMemberByEmail(email: string): Promise<Member | null> {
 
 /* Only the member's own columns are written — a caller may hand this a whole
    Profile (AppStateProvider.saveProfile does), which carries fields that
-   aren't columns (emailPublic, homeCircleId, photoVersion). Changing a
+   aren't columns (homeCircleId, photoVersion). Changing a
    member's home circle is a membership change, not a column edit, and their
    photo goes through setMemberPhoto.
 
@@ -64,9 +84,11 @@ export async function getMemberByEmail(email: string): Promise<Member | null> {
    takes no id from the client at all and supplies the session's own, so
    there's no id to check here — a member can only ever reach their own row.
    Reads (getMemberById) stay open to any id; only the write is narrowed. */
-export async function updateMember(id: number, patch: Partial<Member>): Promise<Member | null> {
-  const { name, lastName, pronouns, role, skills, interests, bio, email } = patch;
-  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, email };
+export async function updateMember(id: number, patch: Partial<Profile>): Promise<Member | null> {
+  // never the email itself: it's what they sign in with, and the session finds
+  // their member by it (lib/session.ts), so changing it would lock them out
+  const { name, lastName, pronouns, role, skills, interests, bio, emailPublic } = patch;
+  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, emailPublic };
   if (Object.values(columnPatch).some((v) => v !== undefined)) {
     await db.update(members).set(columnPatch).where(eq(members.id, id));
   }

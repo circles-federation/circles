@@ -1,0 +1,1 @@
+ALTER TABLE "members" ADD COLUMN "email_public" boolean DEFAULT true NOT NULL;

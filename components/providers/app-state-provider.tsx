@@ -128,7 +128,7 @@ interface AppStateProviderProps {
   initialResources: CircleResource[];
   initialPendingApplications: number | null;
   initialInvitations: CircleInvitation[];
-  initialProfile: Member;
+  initialProfile: Profile;
 }
 
 export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingApplications, initialInvitations }: AppStateProviderProps) {
@@ -152,7 +152,6 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     ...initialProfile,
     skills: [...initialProfile.skills],
     interests: [...initialProfile.interests],
-    emailPublic: !!initialProfile.email, // they have an email shared by default
   }));
 
   // when this session last changed anything, so a refresh that might predate
@@ -191,8 +190,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setPendingApplications(fresh.pendingApplications);
     setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
     setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
-    // whether their email shows isn't stored on the server
-    setProfile((p) => ({ ...fresh.profile, emailPublic: p.emailPublic }));
+    setProfile(fresh.profile);
   }
 
   const refresh = useEffectEvent(async (checkVersion: boolean) => {
