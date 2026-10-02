@@ -32,6 +32,9 @@ export default defineRailway(() => {
       EMAIL_FROM: preserve(),
       DIGEST_HOUR: preserve(),
       TZ: preserve(),
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: preserve(),
+      VAPID_PRIVATE_KEY: preserve(),
+      VAPID_SUBJECT: preserve(),
     },
     build: {
       builder: "RAILPACK",
