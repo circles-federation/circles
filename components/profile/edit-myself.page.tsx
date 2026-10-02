@@ -8,6 +8,7 @@ import { useTopBarAction } from "@/components/providers/top-bar-action-provider"
 import { ConfirmModal, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
 import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
+import { LanguagesEditor } from "./languages-editor";
 import { PhotoPicker } from "./photo-picker";
 import { BIRTH_DECADES, birthDecadeLabel } from "@/lib/members.util";
 import type { Profile } from "@/lib/types";
@@ -22,7 +23,7 @@ interface EditMyselfPageProps {
 /* Edit Myself — the editing form, reached from the Myself page's Edit button.
    Saves back to the profile and returns to the view. */
 export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMyselfPageProps) {
-  const [draft, setDraft] = useState<Profile>({ ...profile, skills: [...profile.skills], interests: [...profile.interests] });
+  const [draft, setDraft] = useState<Profile>({ ...profile, skills: [...profile.skills], interests: [...profile.interests], languages: [...(profile.languages ?? [])] });
   const set = (patch: Partial<Profile>) => setDraft((p) => ({ ...p, ...patch }));
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [saving, setSaving] = useState(false);
@@ -33,6 +34,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
     (draft.email || "") !== (profile.email || "") ||
     draft.emailPublic !== profile.emailPublic ||
     draft.birthDecade !== profile.birthDecade ||
+    JSON.stringify(draft.languages ?? []) !== JSON.stringify(profile.languages ?? []) ||
     draft.skills.join(" ") !== profile.skills.join(" ") ||
     draft.interests.join(" ") !== profile.interests.join(" ");
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -107,6 +109,12 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
             })}
           </div>
           <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Just the decade, never a birthdate. It shows on your profile.</p>
+        </Section>
+
+        <Section>
+          <Label>Languages</Label>
+          <LanguagesEditor value={draft.languages ?? []} onChange={(languages) => set({ languages })} />
+          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Tap a bar to say how well you speak each one, from beginner to native.</p>
         </Section>
 
         {/* email + visibility */}

@@ -9,6 +9,14 @@
    circle, at most one per member); the rest are display/filter labels. */
 export type CircleType = "neighborhood" | "circle" | "collective" | "cooperative" | "other" | "group";
 
+// a language a member speaks (a BCP 47 code) and how well, 1 (beginner) to 5
+// (native) — see lib/languages.util.ts
+export type LanguageLevel = 1 | 2 | 3 | 4 | 5;
+export interface MemberLanguage {
+  code: string;
+  level: LanguageLevel;
+}
+
 export interface Member {
   id: number;
   name: string;
@@ -22,6 +30,9 @@ export interface Member {
   bio: string;
   // the decade they were born in, as its first year (1990 for the '90s), if
   // they've chosen to say (see lib/members.util.ts)
+  // in the order they listed them; always present from the database, absent
+  // only from the seed fixtures, which start everyone with none
+  languages?: MemberLanguage[];
   birthDecade?: number;
   email?: string;
   // set once they've uploaded a photo (its upload time, in ms) — part of the

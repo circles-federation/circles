@@ -507,7 +507,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setMembers((prev) =>
       prev.map((m) =>
         m.id === next.id
-          ? { ...m, name: next.name, lastName: next.lastName, pronouns: next.pronouns, role: next.role, skills: next.skills, interests: next.interests, bio: next.bio, email: next.email, birthDecade: next.birthDecade }
+          ? { ...m, name: next.name, lastName: next.lastName, pronouns: next.pronouns, role: next.role, skills: next.skills, interests: next.interests, bio: next.bio, email: next.email, birthDecade: next.birthDecade, languages: next.languages }
           : m
       )
     );

@@ -197,6 +197,13 @@
       "when": 1790903512506,
       "tag": "0027_member_birth_decade",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790904099068,
+      "tag": "0028_member_languages",
+      "breakpoints": true
     }
   ]
 }

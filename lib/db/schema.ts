@@ -19,7 +19,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { RoleDraft } from "@/lib/events.util";
-import type { AgendaCategory, EventChange, EventKindKey, NotificationKind, RepeatFrequency } from "@/lib/types";
+import type { AgendaCategory, EventChange, EventKindKey, MemberLanguage, NotificationKind, RepeatFrequency } from "@/lib/types";
 
 /* Drizzle table definitions — the only file besides lib/db/client.ts and
    lib/better-auth.ts that lib/db/*.ts may import from directly (see the
@@ -47,6 +47,8 @@ export const members = pgTable("members", {
   skills: text("skills").array().notNull().default(sql`'{}'::text[]`),
   interests: text("interests").array().notNull().default(sql`'{}'::text[]`),
   bio: text("bio").notNull(),
+  // the languages they speak and how well, in their own order
+  languages: jsonb("languages").$type<MemberLanguage[]>().notNull().default(sql`'[]'::jsonb`),
   // the decade they were born in, as its first year (1990 for the '90s), if
   // they've chosen to say — never a birthdate
   birthDecade: integer("birth_decade"),

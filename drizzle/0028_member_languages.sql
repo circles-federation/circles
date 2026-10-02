@@ -1,0 +1,1 @@
+ALTER TABLE "members" ADD COLUMN "languages" jsonb DEFAULT '[]'::jsonb NOT NULL;

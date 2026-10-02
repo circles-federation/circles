@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, memberPhotos, members } from "./schema";
+import { validateLanguages } from "@/lib/languages.util";
 import { isBirthDecade } from "@/lib/members.util";
 import type { Member, Profile } from "@/lib/types";
 
@@ -21,6 +22,7 @@ function toMember(row: MemberRow, homeCircleId: string | null, photoUpdatedAt: D
     skills: row.skills,
     interests: row.interests,
     bio: row.bio,
+    languages: row.languages,
     ...(row.birthDecade !== null ? { birthDecade: row.birthDecade } : {}),
     email: row.email ?? undefined,
     photoVersion: photoUpdatedAt?.getTime(),
@@ -93,10 +95,15 @@ export type ProfilePatch = Omit<Partial<Profile>, "birthDecade"> & { birthDecade
 export async function updateMember(id: number, patch: ProfilePatch): Promise<Member | null> {
   // never the email itself: it's what they sign in with, and the session finds
   // their member by it (lib/session.ts), so changing it would lock them out
-  const { name, lastName, pronouns, role, skills, interests, bio, emailPublic } = patch;
+  const { name, lastName, pronouns, role, skills, interests, bio, emailPublic, languages } = patch;
+  if (languages !== undefined) {
+    const problem = validateLanguages(languages);
+    if (problem) throw new MemberError(problem);
+  }
   const birthDecade = patch.birthDecade;
   if (birthDecade !== undefined && birthDecade !== null && !isBirthDecade(birthDecade)) throw new MemberError("Pick one of the decades listed.");
-  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, emailPublic, birthDecade };
+  // only the two fields of each, whatever else a request carried
+  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, emailPublic, birthDecade, languages: languages?.map(({ code, level }) => ({ code, level })) };
   if (Object.values(columnPatch).some((v) => v !== undefined)) {
     await db.update(members).set(columnPatch).where(eq(members.id, id));
   }

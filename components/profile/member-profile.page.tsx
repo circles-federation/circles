@@ -6,6 +6,8 @@ import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { circlesForMember } from "@/lib/circles.util";
 import { birthDecadeLabel } from "@/lib/members.util";
+import { LANGUAGE_LEVELS, languageEndonym, languageName } from "@/lib/languages.util";
+import { LanguageLevelBar } from "./language-level";
 import { useCirclesById } from "@/lib/hooks";
 import type { Circle, Member } from "@/lib/types";
 
@@ -59,6 +61,32 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
               <span className="inline-block -rotate-3 bg-ink px-4 pt-2 pb-1.5 font-sans text-title leading-none font-extrabold tracking-[-0.04em] text-paper">
                 {birthDecadeLabel(m.birthDecade)}
               </span>
+            </EyebrowGroup>
+          </Section>
+        )}
+
+        {m.languages && m.languages.length > 0 && (
+          <Section>
+            <EyebrowGroup label="Languages">
+              <div className="border-t border-ink">
+                {m.languages.map((l) => {
+                  const endonym = languageEndonym(l.code);
+                  const english = languageName(l.code);
+                  return (
+                    <div key={l.code} className="flex items-center gap-4 border-b border-faint py-3 last:border-b-ink">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-sans text-lg leading-tight font-extrabold tracking-[-0.01em]">{endonym}</div>
+                        {/* always a second line, so every row is the same height: the
+                            English name where it differs, and the level's word */}
+                        <div className="truncate font-serif text-sm text-soft">
+                          {endonym === english ? LANGUAGE_LEVELS[l.level] : `${english} · ${LANGUAGE_LEVELS[l.level]}`}
+                        </div>
+                      </div>
+                      <LanguageLevelBar level={l.level} language={english} />
+                    </div>
+                  );
+                })}
+              </div>
             </EyebrowGroup>
           </Section>
         )}
