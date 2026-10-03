@@ -10,6 +10,16 @@ import type { Circle, CircleRole } from "./types";
 // them: they can be assigned and cleared but never removed or renamed
 export const BUILTIN_CIRCLE_ROLES = ["Secretary", "Leader", "Facilitator"] as const;
 
+/* What each built-in role looks after, after Sociocracy for All's circle
+   roles (sociocracyforall.org/process-roles): in sociocracy a role isn't about
+   power but about paying attention to one part of how the circle works.
+   Shown under each on Manage circle. */
+export const BUILTIN_ROLE_DESCRIPTION: Record<(typeof BUILTIN_CIRCLE_ROLES)[number], string> = {
+  Secretary: "Keeps the circle's records and tracks what's due back on the agenda.",
+  Leader: "Oversees the circle's work and makes day-to-day decisions between meetings.",
+  Facilitator: "Plans the agenda and runs meetings so decisions are made by consent.",
+};
+
 export const CIRCLE_ROLE_LABEL_MAX = 40;
 export const MAX_CUSTOM_CIRCLE_ROLES = 20;
 
@@ -30,6 +40,13 @@ export function circleHasRoles(circle: Pick<Circle, "type" | "parentId">): boole
 const sameLabel = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 const builtinLabel = (label: string) => BUILTIN_CIRCLE_ROLES.find((b) => sameLabel(b, label));
+
+// a built-in role's description, by its name (any case); undefined for a
+// circle's own role
+export function builtinRoleDescription(label: string): string | undefined {
+  const builtin = builtinLabel(label);
+  return builtin ? BUILTIN_ROLE_DESCRIPTION[builtin] : undefined;
+}
 
 /* The full, ordered list a circle shows: the built-in roles first (always all
    of them, holders filled in from `saved`), then its own, in the order saved.

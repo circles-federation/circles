@@ -8,7 +8,7 @@ import { useTopBarAction } from "@/components/providers/top-bar-action-provider"
 import { Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, SimpleTabs, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { CIRCLE_ROLE_LABEL_MAX, circleHasRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
+import { CIRCLE_ROLE_LABEL_MAX, builtinRoleDescription, circleHasRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL, circleHasWiki } from "@/lib/circles.util";
 import { useMemberById } from "@/lib/hooks";
 import type { Circle, CircleType, Member } from "@/lib/types";
@@ -377,7 +377,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
             <Section>
               <Label>Roles</Label>
               <p className="mb-3 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-                Optional. Pick who fills each role in {o.name}; a member with a role shows it on their card here instead of their occupation. Secretary, Leader and Facilitator are always listed — leave any empty — and you can add your own.
+                Optional. A Secretary, Leader or Facilitator can approve meetings and events without a vote.
               </p>
               <div className="border border-ink">
                 <div className="hidden border-b border-ink px-3.5 py-2 min-[720px]:grid min-[720px]:grid-cols-2 min-[720px]:gap-3.5">
@@ -385,9 +385,14 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                   <Eyebrow className="text-soft">Member</Eyebrow>
                 </div>
                 {roleRows.map((r) => (
-                  <div key={r.key} className="grid grid-cols-1 gap-2 border-b border-faint px-3.5 py-3 last:border-b-0 min-[720px]:grid-cols-2 min-[720px]:items-center min-[720px]:gap-3.5">
+                  <div key={r.key} className="grid grid-cols-1 gap-2 border-b border-faint px-3.5 py-3 last:border-b-0 min-[720px]:grid-cols-2 min-[720px]:items-start min-[720px]:gap-3.5">
                     {r.builtin ? (
-                      <div className="font-sans text-sm font-bold">{r.label}</div>
+                      <div>
+                        <div className="font-sans text-sm font-bold">{r.label}</div>
+                        {builtinRoleDescription(r.label) && (
+                          <p className="mt-1 font-serif text-sm leading-snug text-soft">{builtinRoleDescription(r.label)}</p>
+                        )}
+                      </div>
                     ) : (
                       <div className="flex items-center gap-2">
                         <input
