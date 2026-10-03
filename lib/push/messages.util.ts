@@ -1,6 +1,6 @@
 import type { PushMessage } from "./index";
 import { eventChanges, type EventNotificationData } from "@/lib/email/templates.util";
-import { fmtDateTime, fmtEventWhen, fmtTime } from "@/lib/format.util";
+import { fmtDateTime, fmtEventWhen, fmtTime, withArticle } from "@/lib/format.util";
 import { proposalTitle } from "@/lib/proposals.util";
 import type { ProposalChanges, ProposalNoticeKind } from "@/lib/types";
 import { endedBefore, relativeDayWord } from "@/lib/recurrence.util";
@@ -56,7 +56,7 @@ export function eventNotificationPush(n: EventPushData): PushMessage {
 
   // to its host: a required slot is still short an hour before the start
   if (n.notice === "short") {
-    const needs = short.map((l) => `a ${l}`).join(" and ") || "someone";
+    const needs = short.map(withArticle).join(" and ") || "someone";
     const unless = n.autoCancel ? ` Cancels at ${autoCancelClock(n.start)} unless someone signs up.` : "";
     return message(`Needs ${needs}: ${n.title}`, `Starts at ${fmtTime(n.start)}.${unless} Know someone who could cover it?`, url, tag);
   }

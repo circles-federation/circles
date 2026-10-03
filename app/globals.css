@@ -23,6 +23,7 @@
   --color-agenda: #008480; /* a meeting's agenda cards: a turquoise teal, as bright as it goes and still reads as text on white (4.5:1) */
   --color-action: #1f5fbf; /* a primary icon button, like the top bar's Save (the same blue as file, for a different job) */
   --color-accept: #f0b400; /* a proposal's yellow answer, "Accept this": between leaf ("Like this") and danger ("Object"), with ink text on it */
+  --color-warning: #f0b400; /* a heads-up that something may not go ahead (a slot still short): yellow, kept apart from flame, which means a decision is waiting. Too light for text on white, so it fills, rules and tints, with ink on it */
 
   --font-sans: "Helvetica Neue", Arial, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;

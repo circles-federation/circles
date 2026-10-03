@@ -1,6 +1,5 @@
 import { RsvpButton } from "./rsvp-button";
 import { Avatar, Eyebrow } from "@/components/shared";
-import { audienceLabel } from "@/lib/circles.util";
 import { isPastEvent } from "@/lib/format.util";
 import { isProposal, isScheduledMeeting, isVoting } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
@@ -27,7 +26,6 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   const byId = useCirclesById();
   const memberById = useMemberById();
   const host = memberById(e.organizerId);
-  const circle = byId[e.circleId];
   const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
   const voting = isVoting(e);
   const proposal = isProposal(e);
@@ -35,7 +33,9 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   const votesToAttend = e.kind === "meeting" && !isScheduledMeeting(e);
   const past = isPastEvent(e);
   const roleStatus = e.cancelled ? "Not running" : shiftAtRisk(e) ? "At risk" : shiftNeedsSlots(e) ? "Needs slots" : "Shift on";
-  const roleStatusClass = e.cancelled ? "text-soft" : shiftAtRisk(e) || shiftNeedsSlots(e) ? "text-flame" : "text-leaf";
+  // a short slot is a heads-up, so yellow — as a highlight under ink, since
+  // yellow text wouldn't read on white
+  const roleStatusClass = e.cancelled ? "text-soft" : shiftAtRisk(e) || shiftNeedsSlots(e) ? "bg-warning px-1.5 py-0.5 text-ink" : "text-leaf";
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-faint py-4.5">
@@ -67,14 +67,6 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
               className="mt-0.5 block cursor-pointer border-none bg-transparent p-0 text-left font-serif text-sm text-soft underline underline-offset-2"
             >
               {e.approvedByRole ? `approved by the ${e.approvedByRole}, ${host.name}` : `${proposal ? "proposed" : "organized"} by ${host.name}`}
-            </button>
-          )}
-          {circle && (
-            <button
-              onClick={() => onOpenCircle(circle)}
-              className="mt-0.5 block cursor-pointer border-none bg-transparent p-0 text-left font-serif text-sm text-soft underline underline-offset-2"
-            >
-              for {audienceLabel(circle)}
             </button>
           )}
         </div>

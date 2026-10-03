@@ -34,6 +34,11 @@ export function fmtEventWhen(d: { date: string; start: string; end: string }): s
   const time = `${fmtTime(d.start)}–${fmtTime(d.end)}`;
   return isNaN(day.getTime()) ? time : `${WEEKDAYS[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()} · ${time}`;
 }
+// "a Leader", "an Attendee": a slot or role's name with its article, by
+// whether it starts with a vowel (near enough for the names people give them)
+export function withArticle(label: string): string {
+  return `${/^[aeiou]/i.test(label.trim()) ? "an" : "a"} ${label}`;
+}
 // a moment as "Sat, Oct 5 at 3pm", in this machine's time — a proposal's
 // deadline, say
 export function fmtDateTime(d: Date): string {

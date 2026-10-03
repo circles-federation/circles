@@ -1,5 +1,5 @@
 import type { EmailMessage } from "./index";
-import { MONTHS, WEEKDAYS, fmtDateTime, fmtEventWhen, fmtNumericDate, fmtTime, parseDay } from "@/lib/format.util";
+import { MONTHS, WEEKDAYS, fmtDateTime, fmtEventWhen, fmtNumericDate, fmtTime, parseDay, withArticle } from "@/lib/format.util";
 import { proposalTitle } from "@/lib/proposals.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
@@ -28,6 +28,7 @@ const INK = "#0a0a0a";
 const SOFT = "#6b6b6b";
 const FAINT = "#e4e4e4";
 const FLAME = "#e1530b"; // governance events, as in the app
+const WARNING = "#f0b400"; // a heads-up, like a slot still short (the app's warning yellow): rules and fills, never text
 const AGENDA = "#008480"; // a meeting's agenda items
 const LEAF = "#2e7d32"; // approved ones
 const DANGER = "#c0392b"; // a cancelled event, as the app's destructive red
@@ -503,10 +504,10 @@ function reminderEmail(n: EventNotificationData): Body {
         detail("Where", n.location) +
         detail(host[0], host[1]) +
         `</table></td></tr>` +
-        // the app's "needs slots" warning: orange, with what each slot is short
+        // the app's "needs slots" warning: yellow, with what each slot is short
         (openLines.length > 0
-          ? `<tr><td style="padding-bottom:24px"><div style="border-left:3px solid ${FLAME};padding-left:12px">` +
-            eyebrow("Still short of people", FLAME) +
+          ? `<tr><td style="padding-bottom:24px"><div style="border-left:3px solid ${WARNING};padding-left:12px">` +
+            eyebrow("Still short of people", INK) +
             `<div style="margin-top:6px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${openLines.map(esc).join("<br>")}</div>` +
             `<div style="margin-top:6px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${openNote}</div>` +
             `</div></td></tr>`
@@ -523,10 +524,10 @@ const shortLabels = (n: Pick<EventNotificationData, "openSlots">) => (n.openSlot
 
 /* To an event's host (its organizer, and a host circle's members): an hour
    before the start, a required slot is still short, so they can reach out to
-   someone who could cover it before it's cancelled automatically. The orange
-   of the app's at-risk banner, since it's a call to act. */
+   someone who could cover it before it's cancelled automatically. The yellow
+   of the app's at-risk banner: a heads-up, not a decision. */
 function shortSlotsEmail(n: EventNotificationData): Body {
-  const needs = listOf(shortLabels(n).map((l) => `a ${l}`)) || "someone in a required slot";
+  const needs = listOf(shortLabels(n).map(withArticle)) || "someone in a required slot";
   const lines = (n.openSlots ?? []).map((s) => `${s.label}: ${s.filled} of ${s.min} needed`);
   const note = n.autoCancel
     ? `${n.title} starts at ${fmtTime(n.start)} and still needs ${needs}. If no one signs up by ${autoCancelClock(n.start)}, it's cancelled automatically and everyone going is told.`
@@ -543,19 +544,19 @@ function shortSlotsEmail(n: EventNotificationData): Body {
       (lines.length > 0 ? `${lines.map((l) => `- ${l}`).join("\n")}\n\n` : "") +
       `When: ${when}\nWhere: ${n.location}\n\nView it: ${n.url}\n\n${why}`,
     html: shell(
-      `<tr><td style="border-top:3px solid ${FLAME};padding-top:18px">` +
-        eyebrow(`Still short · ${esc(n.hostCircleName ?? n.circleName)}`, FLAME) +
+      `<tr><td style="border-top:3px solid ${WARNING};padding-top:18px">` +
+        eyebrow(`Still short · ${esc(n.hostCircleName ?? n.circleName)}`, INK) +
         `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
         `</td></tr>` +
-        `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${FLAME};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}<br><br>${esc(ask)}</div></td></tr>` +
+        `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${WARNING};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}<br><br>${esc(ask)}</div></td></tr>` +
         (lines.length > 0
-          ? `<tr><td style="padding-top:20px">${eyebrow("Still short of people", FLAME)}<div style="margin-top:6px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${lines.map(esc).join("<br>")}</div></td></tr>`
+          ? `<tr><td style="padding-top:20px">${eyebrow("Still short of people", INK)}<div style="margin-top:6px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${lines.map(esc).join("<br>")}</div></td></tr>`
           : "") +
         `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
         detail("When", when) +
         detail("Where", n.location) +
         `</table></td></tr>` +
-        `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${FLAME};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${WARNING};color:${INK};font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };
