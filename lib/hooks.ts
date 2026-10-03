@@ -142,3 +142,18 @@ export function usePushSubscription() {
   }
   return { status, subscribe, unsubscribe };
 }
+
+/* The time now, to the last `CLOCK_STEP_MS`, re-rendering as it moves on —
+   for things that appear or count down by the clock (Home's starting-soon
+   card). null on the server and while hydrating, where there's no "now" the
+   two could agree on. Rounded down to the step, so every read within one
+   step returns the same value, as useSyncExternalStore needs. */
+const CLOCK_STEP_MS = 15_000;
+const clockNow = () => Math.floor(Date.now() / CLOCK_STEP_MS) * CLOCK_STEP_MS;
+function subscribeClock(onChange: () => void) {
+  const timer = setInterval(onChange, CLOCK_STEP_MS);
+  return () => clearInterval(timer);
+}
+export function useClock(): number | null {
+  return useSyncExternalStore(subscribeClock, clockNow, () => null);
+}

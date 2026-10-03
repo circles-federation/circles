@@ -5,6 +5,7 @@ import { PlayIcon } from "@heroicons/react/24/solid";
 import { AlertModal, AttentionDot, Avatar, Chip, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { EventFeed } from "@/components/events/event-feed";
+import { StartingSoon } from "./starting-soon";
 import { StatCard } from "./stat-card";
 import { fmtNumericDate, isPastEvent, parseDay } from "@/lib/format.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
@@ -95,6 +96,8 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
       </div>
 
       <SectionGroup>
+        <StartingSoon events={events} memberId={profile.id} rsvpState={rsvpState} />
+
         {/* a system admin's way into the applications waiting for them */}
         {pendingApplications !== null && (
           <Section>
