@@ -68,6 +68,9 @@ interface PageAction {
 function pageAction(pathname: string, circles: Circle[], events: Event[], profile: Profile): PageAction | null {
   if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon };
   if (pathname === "/home") return { href: "/settings", label: "Settings", icon: Cog6ToothIcon };
+  // creating a circle starts it wherever Create was pressed: the city here,
+  // or the neighborhood whose page it's pressed on (below)
+  if (pathname === "/circles") return { href: "/circles/new", label: "Create circle", icon: PlusIcon };
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section === "events" && id && id !== "new" && !sub) {
     // an event's own page, which only its organizer can edit, until it's
@@ -83,7 +86,8 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
     // a circle's own page, which only its members can manage (a
     // neighborhood's folder view has nothing to manage)
     const circle = circles.find((c) => c.id === id);
-    if (circle && circle.type !== "neighborhood" && isCircleMember(circle, profile.id)) {
+    if (circle?.type === "neighborhood") return { href: `/circles/new?parent=${id}`, label: "Create circle", icon: PlusIcon };
+    if (circle && isCircleMember(circle, profile.id)) {
       return { href: `/circles/${id}/manage`, label: "Manage circle", icon: Cog6ToothIcon };
     }
   }
@@ -97,6 +101,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
   const [section, id, sub, item] = pathname.split("/").slice(1);
   if (section === "circles") {
     if (!id) return "Circles";
+    if (id === "new") return "New circle";
     if (sub === "manage") return "Manage circle";
     if (sub === "bulletin") return resourceFormTitle(resources.find((r) => r.id === item)?.icon);
     if (sub === "invite") return "Invite";

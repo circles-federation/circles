@@ -8,9 +8,9 @@ export type Tab = "/home" | "/circles" | "/events";
    pages only it leads to (the name game, profiles). A page for doing
    something belongs to none, however it was reached, from the top bar's
    action or a button in the page: Settings and its pages, Edit profile, a
-   new or edited event, a circle's Manage, Invite and bulletin forms, an
-   invitation (to accept or decline), and an admin's applications (to
-   review). */
+   new circle, a new or edited event, a circle's Manage, Invite and bulletin
+   forms, an invitation (to accept or decline), and an admin's applications
+   (to review). */
 export function activeTab(pathname: string): Tab | null {
   const [section, id, sub] = pathname.split("/").slice(1);
   switch (section) {
@@ -20,7 +20,7 @@ export function activeTab(pathname: string): Tab | null {
     case "profile":
       return id === "edit" ? null : "/home";
     case "circles":
-      return sub ? null : "/circles";
+      return id === "new" || sub ? null : "/circles";
     case "events":
       return id === "new" || sub ? null : "/events";
     default:

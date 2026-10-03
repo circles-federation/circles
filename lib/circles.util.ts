@@ -17,6 +17,56 @@ export const CIRCLE_TYPE_LABEL: Record<CircleType, string> = {
   group: "Group",
 };
 
+/* The types a member can create a circle as (Create circle), in the order
+   offered. Not a neighborhood: its type carries real behavior (members' home
+   circles, the folder view) that a new one isn't set up for yet. Nor Other:
+   a new circle should say what it is. Existing ones keep it, and Manage
+   circle offers it only to them. */
+export const CREATABLE_CIRCLE_TYPES: CircleType[] = ["circle", "collective", "cooperative", "group"];
+
+// what each creatable type is, for the info box beside Create circle's Type
+export const CIRCLE_TYPE_DESCRIPTION: Partial<Record<CircleType, string>> = {
+  circle: "A council or working group whose members decide things together, like a neighborhood council or a finance committee.",
+  collective: "People organized around a shared project or service, run by its members, like a tool library or a community garden.",
+  cooperative: "An enterprise its members own and run together, like a food co-op or a worker co-op.",
+  group: "A private circle: only its members know it exists. It has a bulletin and its members' events, but it can't host events or hold meetings.",
+};
+
+export const CIRCLE_NAME_MAX = 80;
+export const CIRCLE_TAGLINE_MAX = 140;
+
+export interface NewCircleInput {
+  type: CircleType;
+  name: string;
+  tagline: string;
+  parentId: string;
+}
+
+/* Where a circle can sit: in a neighborhood, or citywide, under the root —
+   general nesting under any circle is future work. Neighborhoods first,
+   alphabetically, then the city; `except` leaves out the circle being edited.
+   Shared by Create circle and Manage circle's Parent Circle field, and the
+   server's check of either. */
+export function parentCircleOptions(circles: Circle[], except?: string): Circle[] {
+  const root = circles.find((c) => c.parentId === null);
+  return circles
+    .filter((c) => c.type === "neighborhood" && c.id !== except)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .concat(root && root.id !== except ? [root] : []);
+}
+
+// what's wrong with a new circle, or null if nothing: the form shows it as
+// you go, and lib/db/circles.ts's createCircle is the real check
+export function validateNewCircle(input: NewCircleInput, circles: Circle[]): string | null {
+  if (!CREATABLE_CIRCLE_TYPES.includes(input.type)) return "Choose what kind of circle this is.";
+  const name = input.name.trim();
+  if (!name) return "Give the circle a name.";
+  if (name.length > CIRCLE_NAME_MAX) return `Keep the name to ${CIRCLE_NAME_MAX} characters.`;
+  if (input.tagline.trim().length > CIRCLE_TAGLINE_MAX) return `Keep the tagline to ${CIRCLE_TAGLINE_MAX} characters.`;
+  if (!parentCircleOptions(circles).some((c) => c.id === input.parentId)) return "Choose where this circle sits.";
+  return null;
+}
+
 /* A group is a circle with fewer features, and private: only its own members
    know it exists (lib/db/circles.ts never sends it to anyone else). It has a
    bulletin, members and invitations, and members may post their own events to

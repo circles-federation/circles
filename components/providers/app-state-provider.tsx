@@ -22,10 +22,12 @@ import {
   acceptInvitationAction as dbAcceptInvitation,
   deleteInvitationAction as dbDeleteInvitation,
   saveNotificationSettingsAction as dbSaveNotificationSettings,
+  createCircleAction as dbCreateCircle,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
+import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { isProposal, voteThreshold } from "@/lib/governance.util";
 import { repeatSummary } from "@/lib/recurrence.util";
@@ -55,6 +57,8 @@ export interface AppStateValue {
   updateEventDetails(id: string, details: EventDetails, scope?: SeriesScope): Promise<MutationResult>;
   cancelEvent(id: string, scope?: SeriesScope): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }>;
   toggleVote(eventId: string): void;
+  // resolves to the new circle, for the caller to go to
+  createCircle(input: NewCircleInput): Promise<{ ok: true; circle: Circle } | { ok: false; error: string }>;
   saveCircle(id: string, patch: Partial<Circle>): void;
   saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult>;
   saveProfile(next: Profile): void;
@@ -482,6 +486,16 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  // await-then-update, like resources: the server can refuse, and it chooses
+  // the id the new circle's page is reached by
+  async function createCircle(input: NewCircleInput): Promise<{ ok: true; circle: Circle } | { ok: false; error: string }> {
+    const result = await dbCreateCircle(input).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    const circle = result.value;
+    setCircles((prev) => [...prev, circle]);
+    return { ok: true, circle };
+  }
+
   // save edits to a circle and record who edited it and when
   function saveCircle(id: string, patch: Partial<Circle>) {
     const fullPatch: Partial<Circle> = { ...patch, lastEditedBy: currentUserId, lastEditedAt: new Date().toISOString() };
@@ -622,6 +636,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         updateEventDetails: tracked(updateEventDetails),
         cancelEvent: tracked(cancelEvent),
         toggleVote: tracked(toggleVote),
+        createCircle: tracked(createCircle),
         saveCircle: tracked(saveCircle),
         saveCircleRoles: tracked(saveCircleRoles),
         saveProfile: tracked(saveProfile),

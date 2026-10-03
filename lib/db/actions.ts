@@ -18,6 +18,7 @@ import type { PushSubscriptionKeys } from "@/lib/push";
 import { invitationPush } from "@/lib/push/messages.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
+import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { Circle, NotificationSettings } from "@/lib/types";
@@ -55,6 +56,11 @@ export async function loadAppStateAction(): Promise<{ ok: true; value: AppStateD
   const memberId = await getCurrentUserId();
   const state = memberId ? await getAppStateForMember(memberId) : null;
   return state ? { ok: true, value: state } : { ok: false, signedOut: true };
+}
+
+// Create circle: the session member creates it and becomes its first member
+export async function createCircleAction(input: NewCircleInput) {
+  return asMember((memberId) => circles.createCircle(memberId, input));
 }
 
 export async function updateCircleAction(id: string, patch: Partial<Circle>) {

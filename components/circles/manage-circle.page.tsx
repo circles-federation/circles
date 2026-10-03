@@ -12,13 +12,16 @@ import { CIRCLE_ROLE_LABEL_MAX, circleHasRoles, validateCircleRoles, type Circle
 import { CIRCLE_TYPE_LABEL, circleHasWiki } from "@/lib/circles.util";
 import { useMemberById } from "@/lib/hooks";
 import type { Circle, CircleType, Member } from "@/lib/types";
+import { ParentCircleSelect } from "./parent-circle-select";
 
 // neighborhood isn't offered here for now — its type carries real behavior
 // (home circles, the folder view, no roles) that switching into or out of
 // isn't safe to do from this generic form yet.
 // a group's type is fixed, and nothing else can become one (see updateCircle)
+// Other is only kept, never chosen: a circle should say what it is, so it's
+// offered only to one that's Other already (see typeOptions below)
 const CIRCLE_TYPE_OPTIONS = (Object.entries(CIRCLE_TYPE_LABEL) as [CircleType, string][]).filter(
-  ([value]) => value !== "neighborhood" && value !== "group"
+  ([value]) => value !== "neighborhood" && value !== "group" && value !== "other"
 );
 
 // matches circle.page.tsx's read-only facts grid (label above a bold value,
@@ -59,17 +62,10 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
   const { profile } = useAppState();
   const memberById = useMemberById();
   const [parentId, setParentId] = useState<string | null>(o.parentId ?? null);
-  // neighborhoods first (sorted), then the city root last — only
-  // neighborhoods and the root are offered as a parent for now — general
-  // reparenting under any circle is future work. The root circle itself has
-  // no parent, so the Parent Circle field below is hidden for it.
-  const root = circles.find((c) => c.parentId === null);
-  const parentOptions: { id: string; label: string }[] = circles
-    .filter((c) => c.type === "neighborhood" && c.id !== o.id)
-    .map((c) => ({ id: c.id, label: c.name }))
-    .sort((a, b) => a.label.localeCompare(b.label))
-    .concat(root && root.id !== o.id ? [{ id: root.id, label: root.name }] : []);
+  // the root circle itself has no parent, so the Parent Circle field below
+  // (ParentCircleSelect) is hidden for it
   const [type, setType] = useState<CircleType>(o.type);
+  const typeOptions = o.type === "other" ? [...CIRCLE_TYPE_OPTIONS, ["other", CIRCLE_TYPE_LABEL.other] as [CircleType, string]] : CIRCLE_TYPE_OPTIONS;
   const [name, setName] = useState(o.name);
   const [tagline, setTagline] = useState(o.tagline);
   const [about, setAbout] = useState(o.about);
@@ -343,24 +339,14 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
           <Section>
             <div className="flex flex-col gap-5.5">
               {o.parentId !== null && (
-                <div>
-                  <Label htmlFor="circle-parent">Parent Circle</Label>
-                  <Select id="circle-parent" value={parentId ?? ""} onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)} className="min-[720px]:max-w-90">
-                    {parentOptions.map((p) => (
-                      <option key={p.id} value={p.id}>{p.label}</option>
-                    ))}
-                  </Select>
-                  <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-                    Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
-                  </p>
-                </div>
+                <ParentCircleSelect circles={circles} value={parentId ?? ""} onChange={(id) => setParentId(id === "" ? null : id)} except={o.id} />
               )}
 
               {o.type !== "neighborhood" && o.type !== "group" && (
                 <div>
                   <Label htmlFor="circle-type">Type</Label>
                   <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} className="min-[720px]:max-w-90">
-                    {CIRCLE_TYPE_OPTIONS.map(([value, label]) => (
+                    {typeOptions.map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </Select>
