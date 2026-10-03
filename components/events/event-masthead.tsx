@@ -28,26 +28,32 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
     : (past ? "border-t-soft" : "border-t-ink");
 
   return (
-    <div className={clsx("flex flex-col items-stretch gap-4.5 border-t-[3px] border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5.5", topBorderClass)}>
-      <div className="flex min-w-0 flex-1 items-start gap-5.5">
-        <DateTile iso={e.date} large accent={gov ? govAccent : undefined} />
-        <div className="min-w-0 flex-1">
-          {/* the circle is who can see this event — shown as a place chip, so
-              it reads the same as everywhere else a circle's name appears */}
-          <div className="mb-2.5 flex flex-wrap items-center gap-2">
-            {gov && <Eyebrow className={approved ? "text-leaf" : "text-flame"}>{approved ? "Approved" : "Proposed"}</Eyebrow>}
-            {circle && <Chip title="Who can see this event">{circle.name}</Chip>}
+    <div className={clsx("border-t-[3px] border-b border-b-ink pt-4.5 pb-5.5", topBorderClass)}>
+      {/* the date tile and what's beside it start just under the top rule, and
+          the circle — who can see this event, shown as a place chip so it reads
+          the same as everywhere else a circle's name appears — sits opposite
+          them, as a circle page puts its parent opposite its type */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-5.5">
+          <DateTile iso={e.date} large accent={gov ? govAccent : undefined} />
+          <div className="min-w-0 flex-1">
+            {gov && <Eyebrow className={clsx("mb-1.5", approved ? "text-leaf" : "text-flame")}>{approved ? "Approved" : "Proposed"}</Eyebrow>}
+            {/* just the time: the date tile beside it already gives the date
+                and weekday (or TBD) — and how it repeats, unless its series
+                ended before this date (it was cancelled along with the rest) */}
+            <Eyebrow className="text-soft">
+              {fmtTime(e.start)}–{fmtTime(e.end)}
+              {e.repeat && !endedBefore(e.repeat, e.date) && <> · {repeatSummary(e.repeat)}</>}
+            </Eyebrow>
+            <h1 className="mt-3 font-sans text-heading min-[720px]:text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{e.title}</h1>
+            <p className="mt-3 font-serif text-lg text-[#222]">{e.location}</p>
           </div>
-          {/* just the time: the date tile beside it already gives the date and
-              weekday (or TBD) — and how it repeats, unless its series ended
-              before this date (it was cancelled along with the rest) */}
-          <Eyebrow className="text-soft">
-            {fmtTime(e.start)}–{fmtTime(e.end)}
-            {e.repeat && !endedBefore(e.repeat, e.date) && <> · {repeatSummary(e.repeat)}</>}
-          </Eyebrow>
-          <h1 className="mt-3 font-sans text-heading min-[720px]:text-title font-extrabold tracking-[-0.035em] leading-[0.95]">{e.title}</h1>
-          <p className="mt-3 font-serif text-lg text-[#222]">{e.location}</p>
         </div>
+        {circle && (
+          <span className="flex max-w-[40%] min-w-0 shrink-0 justify-end">
+            <Chip title="Who can see this event">{circle.name}</Chip>
+          </span>
+        )}
       </div>
     </div>
   );
