@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
 import { announcementNotifications, circleMembers, circleResources, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, members, events, pushSubscriptions, roleMembers, roles } from "./schema";
@@ -179,7 +179,7 @@ export async function enqueueUpdateNotifications(tx: Tx, eventId: string, member
 
 // a timestamp-without-zone literal for `d` in this machine's timezone, to set
 // against an event's date + start, which are the community's wall-clock time
-const wallClock = (d: Date) => `${localDay(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+export const wallClock = (d: Date) => `${localDay(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 
 // everyone going to an event, organizer included: its RSVPs (a meeting's
 // voters among them) and its slot holders
@@ -216,6 +216,10 @@ export async function enqueueReminders(now: Date = new Date()): Promise<number> 
         isNull(events.remindedAt),
         isNull(events.cancelledAt),
         isNotNull(events.approvedAt),
+        // the dates it can fall on, so the date index narrows this to a day
+        // or two before the start time (which no index covers) is compared
+        gte(events.date, localDay(now)),
+        lte(events.date, localDay(later)),
         sql`${startsAt} > ${wallClock(now)}::timestamp`,
         sql`${startsAt} <= ${wallClock(later)}::timestamp`
       )
@@ -242,6 +246,32 @@ export async function enqueueReminders(now: Date = new Date()): Promise<number> 
     });
   }
   return queued;
+}
+
+/* Tell an event's host (its organizer, and for a circle-hosted one every
+   member of the host circle) that a required slot is still short an hour
+   before it starts, so they can find someone to cover it — see
+   checkUnfilledSlots in lib/db/events.ts. On its own, straight away. One
+   already sent is due again, for an event that was moved since. */
+export async function enqueueSlotWarnings(tx: Tx, eventId: string, memberIds: number[]): Promise<number> {
+  if (memberIds.length === 0) return 0;
+  const recipients = await channelsFor(tx, inArray(members.id, memberIds));
+  if (recipients.length === 0) return 0;
+  await tx
+    .insert(eventNotifications)
+    .values(recipients.map((r) => ({ eventId, ...r, kind: "short" as const, digest: false })))
+    .onConflictDoUpdate({
+      target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind, eventNotifications.channel],
+      set: { createdAt: sql`now()`, sentAt: null, attempts: 0, lastAttemptAt: null, lastError: null },
+    });
+  return membersIn(recipients);
+}
+
+// an event was moved: a warning not yet sent would name the old time
+export async function withdrawSlotWarnings(tx: Tx, eventId: string): Promise<void> {
+  await tx
+    .delete(eventNotifications)
+    .where(and(eq(eventNotifications.eventId, eventId), eq(eventNotifications.kind, "short"), isNull(eventNotifications.sentAt)));
 }
 
 // an event was moved: a reminder not yet sent would name the old time, so
@@ -315,6 +345,8 @@ export async function claimEventNotifications(limit: number, channel: Notificati
         hostCircleName: hostCircle.name,
         approvedAt: events.approvedAt,
         approvedByRole: events.approvedByRole,
+        cancelledAutomatically: events.cancelledAutomatically,
+        autoCancel: events.autoCancel,
         hostSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.hostCircleId})`,
         circleSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.circleId})`,
         organizerName: organizer.name,
@@ -335,7 +367,9 @@ export async function claimEventNotifications(limit: number, channel: Notificati
       : [];
     const agendaByEvent = groupBy(agendaRows, (a) => a.eventId, (a): AgendaItem => ({ category: a.category, title: a.title, ...(a.details !== null ? { details: a.details } : {}) }));
     // a reminder names the reader's own slots and any still short of people
-    const reminderIds = [...new Set(rows.filter((r) => r.notice === "reminder").map((r) => r.eventId))];
+    // so does a host's warning of a short slot, and an automatic cancellation
+    const withSlots = (r: { notice: NotificationKind; cancelledAutomatically: boolean }) => r.notice === "reminder" || r.notice === "short" || (r.notice === "cancelled" && r.cancelledAutomatically);
+    const reminderIds = [...new Set(rows.filter(withSlots).map((r) => r.eventId))];
     const slotRows = reminderIds.length > 0
       ? await tx
           .select({
@@ -366,7 +400,7 @@ export async function claimEventNotifications(limit: number, channel: Notificati
               ...(approvedByRole ? { approvedByRole } : {}),
               ...toRepeat({ frequency, startsOn, until }),
               ...(r.kind === "meeting" ? { agenda: agendaByEvent.get(r.eventId) ?? [] } : {}),
-              ...(r.notice === "reminder" ? reminderSlots(r.eventId, r.memberId) : {}),
+              ...(withSlots(r) ? reminderSlots(r.eventId, r.memberId) : {}),
               // read now, not when queued: it may have been approved since
               proposed: !!hostCircleName && approvedAt === null,
               // a proposal is voted on by its host circle, a meeting by its own

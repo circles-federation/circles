@@ -1,10 +1,12 @@
 import { XCircleIcon } from "@heroicons/react/24/outline";
 import { useMemberById } from "@/lib/hooks";
+import { unmetRoleLabels } from "@/lib/roles.util";
 import type { Event } from "@/lib/types";
 
-/* Heads an event its organizer cancelled (see cancelEvent in lib/db/events.ts)
-   — solid, like ShiftStatusBanner's own cancelled state, since it changes
-   what the whole page means. Renders nothing for an event that isn't. */
+/* Heads a cancelled event — by its organizer (cancelEvent in
+   lib/db/events.ts), or automatically, because a required slot was still
+   short 15 minutes before the start (checkUnfilledSlots). Solid, since it
+   changes what the whole page means. Renders nothing for an event that isn't. */
 export function CancelledBanner({ event: e }: { event: Event }) {
   const memberById = useMemberById();
   if (!e.cancelled) return null;
@@ -16,7 +18,9 @@ export function CancelledBanner({ event: e }: { event: Event }) {
       <div>
         <div className="font-sans text-sm font-extrabold tracking-[0.02em]">This {noun} has been cancelled</div>
         <p className="mt-1.5 font-serif text-sm leading-relaxed text-paper">
-          {organizer ? `${organizer.name} cancelled it` : "It was cancelled"}, so it won&apos;t be going ahead.
+          {e.cancelledAutomatically
+            ? `It was cancelled automatically, since no one signed up as ${unmetRoleLabels(e).join(" or ") || "a required slot"} in time.`
+            : `${organizer ? `${organizer.name} cancelled it` : "It was cancelled"}, so it won\u2019t be going ahead.`}
         </p>
       </div>
     </div>

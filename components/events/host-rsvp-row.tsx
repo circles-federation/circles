@@ -4,7 +4,7 @@ import { audienceLabel } from "@/lib/circles.util";
 import { isPastEvent } from "@/lib/format.util";
 import { isProposal, isScheduledMeeting, isVoting } from "@/lib/governance.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
-import { hasRoles, roleShort, shiftCancelled, shiftNeedsSlots } from "@/lib/roles.util";
+import { hasRoles, roleShort, shiftAtRisk, shiftNeedsSlots } from "@/lib/roles.util";
 import type { Circle, Event, Member } from "@/lib/types";
 
 interface HostRsvpRowProps {
@@ -34,7 +34,8 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   // attended by voting: a meeting, unless it was scheduled without a vote
   const votesToAttend = e.kind === "meeting" && !isScheduledMeeting(e);
   const past = isPastEvent(e);
-  const roleStatusClass = shiftCancelled(e) ? "text-soft" : (shiftNeedsSlots(e) ? "text-flame" : "text-leaf");
+  const roleStatus = e.cancelled ? "Not running" : shiftAtRisk(e) ? "At risk" : shiftNeedsSlots(e) ? "Needs slots" : "Shift on";
+  const roleStatusClass = e.cancelled ? "text-soft" : shiftAtRisk(e) || shiftNeedsSlots(e) ? "text-flame" : "text-leaf";
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-faint py-4.5">
@@ -84,7 +85,7 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
       {!hasRoles(e) && !votesToAttend && !proposal && !e.cancelled && <RsvpButton going={going} count={attendeeCount} onToggle={onToggleRsvp} big past={past} />}
       {hasRoles(e) && !proposal && (
         <div className="text-right">
-          <Eyebrow className={roleStatusClass}>{shiftCancelled(e) ? "Not running" : (shiftNeedsSlots(e) ? "Needs slots" : "Shift on")}</Eyebrow>
+          <Eyebrow className={roleStatusClass}>{roleStatus}</Eyebrow>
           <div className="font-sans text-base font-extrabold">{e.roles.reduce((n, r) => n + roleShort(r), 0)} signed up</div>
         </div>
       )}

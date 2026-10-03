@@ -149,6 +149,12 @@ export interface Event {
   // cancelled by its organizer while others were going: still shown, labelled
   // so, but closed to RSVPs, votes, signups and edits (see cancelEvent)
   cancelled?: boolean;
+  // cancelled by the app, not its organizer: a required slot was still short
+  // 15 minutes before the start
+  cancelledAutomatically?: true;
+  // created or moved to start within the hour, so a short slot doesn't
+  // cancel it (its host is still warned)
+  noAutoCancel?: true;
   organizerId: number;
   date: string;
   start: string;
@@ -207,10 +213,11 @@ export interface CircleResource {
 // ("proposed"), that a proposal or meeting was approved ("approved" — a
 // meeting when it reaches its vote threshold), or, to the people going, that
 // its organizer moved it ("updated") or cancelled it ("cancelled"), or that
-// it's coming up within a day ("reminder"). Separate from *how* it's delivered
+// it's coming up within a day ("reminder"), or, to its host, that a
+// required slot is still short an hour before it starts ("short"). Separate from *how* it's delivered
 // (an email of its own, or a line in the daily digest), and one member can be
 // owed more than one of these for the same event.
-export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "cancelled" | "reminder";
+export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "cancelled" | "reminder" | "short";
 
 // which way a queued notification goes out: each channel is its own queue
 // row, sent and retried on its own, so a failed push never resends an email

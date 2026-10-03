@@ -2,6 +2,7 @@ import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtEventWhen, fmtNumericDate, fmtTime, parseDay } from "@/lib/format.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
+import { autoCancelClock } from "@/lib/roles.util";
 import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
@@ -99,6 +100,12 @@ export interface EventNotificationData {
   agenda?: AgendaItem[];
   // an "updated" notice's when and where from before the change
   change?: EventChange;
+  // cancelled by the app, because a required slot was still short 15 minutes
+  // before the start
+  cancelledAutomatically?: boolean;
+  // whether a short slot still gets it cancelled automatically (a "short"
+  // warning says when, or that it won't be)
+  autoCancel?: boolean;
   // a reminder's: the slots the reader holds, the slots still short of their
   // minimum, and the day it's sent (to say "today" or "tomorrow")
   mySlots?: string[];
@@ -114,6 +121,7 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
   if (n.notice === "cancelled") return cancelledEventEmail(n);
   if (n.notice === "updated") return updatedEventEmail(n);
   if (n.notice === "reminder") return reminderEmail(n);
+  if (n.notice === "short") return shortSlotsEmail(n);
   const meeting = n.kind === "meeting";
   // five flavors:
   // - approved meeting: it just reached the votes it needed, told to its circle;
@@ -369,12 +377,15 @@ function cancelledEventEmail(n: EventNotificationData): Body {
   const when = fmtEventWhen(n);
   // a date of a repeating event is cancelled alone, or with every later date
   // (its series then ends before it)
-  const note = !n.repeat
+  const note = n.cancelledAutomatically
+    ? `This ${noun} was cancelled automatically, since no one signed up as ${listOf(shortLabels(n)) || "a required slot"} by 15 minutes before the start.`
+    : !n.repeat
     ? `${n.organizerName} cancelled this ${noun}, so it won't be going ahead.`
     : endedBefore(n.repeat, n.date)
       ? `${n.organizerName} cancelled this ${n.repeat.frequency} ${noun} from this date on, so neither this date nor any after it will be going ahead.`
       : `${n.organizerName} cancelled this date of a ${n.repeat.frequency} ${noun}. The other dates are still on.`;
-  const why = `You're getting this because you were going to it.`;
+  // an automatic cancellation also tells its host, who may not have been going
+  const why = n.cancelledAutomatically ? `You're getting this because you were going to it or help host it.` : `You're getting this because you were going to it.`;
   const detail = (label: string, value: string) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
   return {
@@ -453,7 +464,7 @@ function updatedEventEmail(n: EventNotificationData): Body {
 /* To someone going: it's coming up within a day. The when and where again,
    their own slot if they hold one, and — where it can still make a difference
    — the slots still short of people, since an event whose required slot is
-   empty an hour before it starts is called off (lib/roles.util.ts). */
+   empty 15 minutes before it starts is cancelled (lib/roles.util.ts). */
 function reminderEmail(n: EventNotificationData): Body {
   const noun = n.kind === "meeting" ? "meeting" : "event";
   const dayWord = relativeDayWord(n.date, n.today);
@@ -464,7 +475,7 @@ function reminderEmail(n: EventNotificationData): Body {
     : `You're going to this ${noun}, ${at}.`;
   const open = n.openSlots ?? [];
   const openLines = open.map((s) => `${s.label}: ${s.filled} of ${s.min} needed`);
-  const openNote = "If a required slot is still empty an hour before the start, the event is called off.";
+  const openNote = "If a required slot is still empty 15 minutes before the start, the event is cancelled automatically.";
   const Day = dayWord.charAt(0).toUpperCase() + dayWord.slice(1);
   const why = `You're getting this because you're going to it.`;
   const when = fmtEventWhen(n);
@@ -501,6 +512,49 @@ function reminderEmail(n: EventNotificationData): Body {
           : "") +
         (agenda.length > 0 ? agendaHtml(agenda) : "") +
         `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+    ),
+  };
+}
+
+// the required slots still short, by name ("Leader")
+const shortLabels = (n: Pick<EventNotificationData, "openSlots">) => (n.openSlots ?? []).map((s) => s.label);
+
+/* To an event's host (its organizer, and a host circle's members): an hour
+   before the start, a required slot is still short, so they can reach out to
+   someone who could cover it before it's cancelled automatically. The orange
+   of the app's at-risk banner, since it's a call to act. */
+function shortSlotsEmail(n: EventNotificationData): Body {
+  const needs = listOf(shortLabels(n).map((l) => `a ${l}`)) || "someone in a required slot";
+  const lines = (n.openSlots ?? []).map((s) => `${s.label}: ${s.filled} of ${s.min} needed`);
+  const note = n.autoCancel
+    ? `${n.title} starts at ${fmtTime(n.start)} and still needs ${needs}. If no one signs up by ${autoCancelClock(n.start)}, it's cancelled automatically and everyone going is told.`
+    : `${n.title} starts at ${fmtTime(n.start)} and still needs ${needs}.`;
+  const ask = "Know someone who could cover it? They can sign up on the event's page.";
+  const why = n.hostCircleName ? `You're getting this because you're a member of ${n.hostCircleName}, which hosts it.` : `You're getting this because you're hosting it.`;
+  const when = fmtEventWhen(n);
+  const detail = (label: string, value: string) =>
+    `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
+  return {
+    subject: `Needs ${needs}: ${n.title}`,
+    text:
+      `Still short: ${n.title}\n\n${note}\n\n${ask}\n\n` +
+      (lines.length > 0 ? `${lines.map((l) => `- ${l}`).join("\n")}\n\n` : "") +
+      `When: ${when}\nWhere: ${n.location}\n\nView it: ${n.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${FLAME};padding-top:18px">` +
+        eyebrow(`Still short · ${esc(n.hostCircleName ?? n.circleName)}`, FLAME) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${FLAME};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}<br><br>${esc(ask)}</div></td></tr>` +
+        (lines.length > 0
+          ? `<tr><td style="padding-top:20px">${eyebrow("Still short of people", FLAME)}<div style="margin-top:6px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${lines.map(esc).join("<br>")}</div></td></tr>`
+          : "") +
+        `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
+        detail("When", when) +
+        detail("Where", n.location) +
+        `</table></td></tr>` +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${FLAME};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };

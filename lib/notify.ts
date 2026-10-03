@@ -11,6 +11,7 @@ import {
   markNotificationFailed,
   markNotificationSent,
 } from "@/lib/db/notifications";
+import { checkUnfilledSlots } from "@/lib/db/events";
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
@@ -111,10 +112,13 @@ function drainer(name: string, drainOnce: () => Promise<void>): () => Promise<vo
 }
 
 // an event notification with nothing left to say: edited and then put back
-// before it went out, or a reminder that's been retrying past the start, too
-// late to help
+// before it went out, a reminder or short-slot warning that's been retrying
+// past the start, too late to help, or a warning whose slots have been
+// filled since it was queued
 const isMoot = (n: PendingEventNotification) =>
-  (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) || (n.notice === "reminder" && eventStartsAt(n) <= new Date());
+  (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) ||
+  ((n.notice === "reminder" || n.notice === "short") && eventStartsAt(n) <= new Date()) ||
+  (n.notice === "short" && (n.openSlots ?? []).length === 0);
 
 const deliverEventEmails = drainer("Event email", async () => {
   for (let batch = await claimEventNotifications(BATCH, "email"); batch.length > 0; batch = await claimEventNotifications(BATCH, "email")) {
@@ -235,13 +239,19 @@ export async function deliverDigests(now: Date = new Date()): Promise<void> {
   }
 }
 
-// queue reminders for whatever has come within a day of starting, then send
-// them along with anything else waiting
+// queue reminders for whatever has come within a day of starting, warn
+// hosts of slots still short within the hour (and cancel what's still short
+// at 15 minutes), then send all that along with anything else waiting
 async function remindThenDeliver(): Promise<void> {
   try {
     await enqueueReminders();
   } catch (err) {
     console.error("Queueing event reminders failed:", err);
+  }
+  try {
+    await checkUnfilledSlots();
+  } catch (err) {
+    console.error("Checking for unfilled slots failed:", err);
   }
   await deliverEventNotifications();
 }

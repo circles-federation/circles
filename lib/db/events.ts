@@ -1,16 +1,23 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type Column, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, or, sql, type Column, type SQL } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
-import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, withdrawEventNotifications, withdrawReminders } from "./notifications";
+import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, enqueueSlotWarnings, wallClock, withdrawEventNotifications, withdrawReminders, withdrawSlotWarnings } from "./notifications";
 import { circleCanHost, isWithinCircle } from "@/lib/circles.util";
-import { roleKey, startsWithinReminder, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
+import { eventStartsAt, roleKey, startsWithinReminder, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import { REPEAT_HORIZON_DAYS, addDays, datesBetween, localDay } from "@/lib/recurrence.util";
+import { AUTO_CANCEL_MS, SLOT_WARNING_MS } from "@/lib/roles.util";
 import type { AgendaItem, Event, EventRepeat, Role } from "@/lib/types";
+
+// starts within the hour (or has started): too close to be cancelled
+// automatically for a short slot (see checkUnfilledSlots)
+function startsWithinTheHour(e: Pick<Event, "date" | "start">): boolean {
+  return eventStartsAt(e).getTime() - Date.now() <= SLOT_WARNING_MS;
+}
 
 /* An event belongs to one circle, and that circle is its audience: only the
    circle's members (and, for the city root, everyone) can see it or RSVP to
@@ -58,6 +65,8 @@ function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, ev
     ...(row.hostCircleId !== null && row.approvedAt === null ? { proposed: true } : {}),
     ...(row.approvedByRole !== null ? { approvedByRole: row.approvedByRole } : {}),
     ...(row.cancelledAt !== null ? { cancelled: true } : {}),
+    ...(row.cancelledAutomatically ? { cancelledAutomatically: true as const } : {}),
+    ...(!row.autoCancel ? { noAutoCancel: true as const } : {}),
     organizerId: row.organizerId,
     date: row.date,
     start: toClockTime(row.start),
@@ -299,6 +308,7 @@ async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boole
     description: event.description,
     // created less than a day out, its people have only just heard of it
     remindedAt: startsWithinReminder(event) ? new Date() : null,
+    autoCancel: !startsWithinTheHour(event),
     seriesId: event.repeat?.seriesId ?? null,
   });
   if (event.rsvps.length > 0) {
@@ -543,13 +553,24 @@ export async function updateEventDetails(memberId: number, id: string, details: 
       // moved further out, and skipped when it's moved to within a day, since
       // the change email just told everyone
       const rescheduled = !!before && date !== undefined && (date !== before.date || fields.start !== before.start);
-      if (rescheduled) await withdrawReminders(tx, target);
+      if (rescheduled) {
+        await withdrawReminders(tx, target);
+        await withdrawSlotWarnings(tx, target);
+      }
       await tx
         .update(events)
         .set({
           ...fields,
           ...(target === id ? { date: details.date } : {}),
-          ...(rescheduled ? { remindedAt: startsWithinReminder({ date, start: fields.start }) ? new Date() : null } : {}),
+          // and the short-slot check starts over for the new time: warned
+          // afresh, and not cancelled automatically if it's now within the hour
+          ...(rescheduled
+            ? {
+                remindedAt: startsWithinReminder({ date, start: fields.start }) ? new Date() : null,
+                slotsWarnedAt: null,
+                autoCancel: !startsWithinTheHour({ date, start: fields.start }),
+              }
+            : {}),
         })
         .where(eq(events.id, target));
       // a slot that keeps its name keeps the people already in it, per date
@@ -759,4 +780,105 @@ async function cancelOne(tx: Tx, id: string, organizerId: number): Promise<{ del
   }
   await tx.update(events).set({ cancelledAt: new Date() }).where(eq(events.id, id));
   return { deleted: false, going };
+}
+
+// an event's start, as a timestamp-without-zone in the community's wall-clock
+// time, to set against wallClock(now)
+const startsAtSql = sql`(${events.date} + ${events.start})`;
+// it has slots at all
+const hasSlots = sql`exists (select 1 from ${roles} where ${roles.eventId} = ${events.id})`;
+// it has a required slot short of its minimum
+const hasShortSlot = sql`exists (select 1 from ${roles} where ${roles.eventId} = ${events.id} and ${roles.min} > (select count(*) from ${roleMembers} where ${roleMembers.roleId} = ${roles.id}))`;
+
+/* An event's host, who's told about a short slot: its organizer, and for a
+   circle-hosted one the host circle's role holders (its Leader, Secretary,
+   Facilitator and its own roles) if any are assigned, or else every member,
+   any of whom might know someone who can cover. Roles keep a big circle from
+   messaging everyone; a holder who's since left the circle doesn't count, as
+   they read as unassigned everywhere else. */
+async function hostOf(tx: Tx, row: { organizerId: number; hostCircleId: string | null }): Promise<number[]> {
+  if (row.hostCircleId === null) return [row.organizerId];
+  const holders = await tx
+    .select({ id: circleRoles.memberId })
+    .from(circleRoles)
+    .innerJoin(circleMembers, and(eq(circleMembers.circleId, circleRoles.circleId), eq(circleMembers.memberId, circleRoles.memberId)))
+    .where(eq(circleRoles.circleId, row.hostCircleId));
+  const told = holders.length > 0
+    ? holders.flatMap((h) => (h.id !== null ? [h.id] : []))
+    : (await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, row.hostCircleId))).map((r) => r.id);
+  return [...new Set([row.organizerId, ...told])];
+}
+
+/* Events with a required slot still short as they come up, run by the
+   notification poller (lib/notify.ts) every 15 seconds, since this happens
+   just by time passing (see lib/roles.util.ts's lifecycle):
+
+   - An hour before the start (SLOT_WARNING_MS), its host is told, once
+     (slots_warned_at), so they can find someone to cover it. One created or
+     moved to within the hour is told straight away.
+   - 15 minutes before (AUTO_CANCEL_MS), if a required slot is still short,
+     it's cancelled — for good, like an organizer's cancellation, but marked
+     as automatic and never deleted — and everyone going and its host are
+     told. That's decided once: one whose slots are filled at that point is
+     no longer cancelled automatically, so someone dropping out after it
+     doesn't call it off at the last minute (they only bring the warning
+     back). Nor is one created or moved to within the hour (auto_cancel).
+
+   Each event is locked while it's decided, so two servers can't both act on
+   it. Returns the ids it cancelled. */
+export async function checkUnfilledSlots(now: Date = new Date()): Promise<string[]> {
+  const nowSql = sql`${wallClock(now)}::timestamp`;
+  const warnFrom = sql`${wallClock(new Date(now.getTime() + SLOT_WARNING_MS))}::timestamp`;
+  const cancelFrom = sql`${wallClock(new Date(now.getTime() + AUTO_CANCEL_MS))}::timestamp`;
+  const upcoming = and(
+    isNull(events.cancelledAt),
+    isNotNull(events.approvedAt),
+    // the dates it can fall on, so the date index narrows this to a day or
+    // two before the start time (which no index covers) is compared
+    gte(events.date, localDay(now)),
+    lte(events.date, localDay(new Date(now.getTime() + SLOT_WARNING_MS))),
+    sql`${startsAtSql} > ${nowSql}`
+  );
+
+  // past the 15-minute point with every required slot filled: it runs. Only
+  // events with slots, since one without has nothing to decide.
+  await db
+    .update(events)
+    .set({ autoCancel: false })
+    .where(and(upcoming, eq(events.autoCancel, true), sql`${startsAtSql} <= ${cancelFrom}`, hasSlots, sql`not ${hasShortSlot}`));
+
+  const due = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(and(upcoming, sql`${startsAtSql} <= ${warnFrom}`, hasShortSlot, or(isNull(events.slotsWarnedAt), and(eq(events.autoCancel, true), sql`${startsAtSql} <= ${cancelFrom}`))));
+
+  const cancelled: string[] = [];
+  for (const { id } of due) {
+    const didCancel = await db.transaction(async (tx) => {
+      const [row] = await tx.select().from(events).where(eq(events.id, id)).for("update", { skipLocked: true });
+      if (!row || row.cancelledAt !== null || row.approvedAt === null) return false;
+      const ms = eventStartsAt({ date: row.date, start: toClockTime(row.start) }).getTime() - now.getTime();
+      const short = await tx
+        .select({ id: roles.id })
+        .from(roles)
+        .where(and(eq(roles.eventId, id), sql`${roles.min} > (select count(*) from ${roleMembers} where ${roleMembers.roleId} = ${roles.id})`))
+        .limit(1);
+      if (ms <= 0 || short.length === 0) return false;
+      const hosts = await hostOf(tx, row);
+      if (row.autoCancel && ms <= AUTO_CANCEL_MS) {
+        const { going } = await goingTo(tx, id, row.organizerId);
+        await withdrawEventNotifications(tx, id);
+        await tx.update(events).set({ cancelledAt: new Date(), cancelledAutomatically: true }).where(eq(events.id, id));
+        await enqueueCancellationNotifications(tx, id, [...new Set([...going, ...hosts])]);
+        return true;
+      }
+      if (row.slotsWarnedAt === null) {
+        await tx.update(events).set({ slotsWarnedAt: new Date() }).where(eq(events.id, id));
+        await enqueueSlotWarnings(tx, id, hosts);
+      }
+      return false;
+    });
+    if (didCancel) cancelled.push(id);
+  }
+  return cancelled;
 }

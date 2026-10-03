@@ -224,6 +224,18 @@ export const events = pgTable(
     // else is going to is deleted instead). Final: a cancelled event stays
     // visible, labelled so, but takes no RSVPs, votes, signups or edits.
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    // cancelled by the app rather than its organizer: a required slot was
+    // still short 15 minutes before the start (see checkUnfilledSlots)
+    cancelledAutomatically: boolean("cancelled_automatically").notNull().default(false),
+    // set once its host has been told a required slot is still short an hour
+    // before the start (checkUnfilledSlots), so they're told once; cleared
+    // when it's moved
+    slotsWarnedAt: timestamp("slots_warned_at", { withTimezone: true }),
+    // whether it's cancelled automatically if a required slot is still short
+    // 15 minutes before the start. False for one created, or moved, to start
+    // within the hour: whoever did that knows the slot's empty, and an event
+    // made at 9:40 shouldn't vanish at 9:45. Its host is still warned.
+    autoCancel: boolean("auto_cancel").notNull().default(true),
     // set once the people going have been queued a reminder, or when there's
     // nothing to remind them of: it was created, or moved, already within a
     // day of starting (see enqueueReminders in lib/db/notifications.ts).
@@ -234,6 +246,9 @@ export const events = pgTable(
   },
   (t) => [
     index("events_series_id_idx").on(t.seriesId),
+    // the notification poller's checks look at today's and tomorrow's events
+    // every 15 seconds (enqueueReminders, checkUnfilledSlots)
+    index("events_date_idx").on(t.date),
     // an event with no host circle is hosted by its organizer and is live
     // from the start; only a circle-hosted one can be awaiting approval
     check("events_live_or_proposed", sql`${t.hostCircleId} is not null or ${t.approvedAt} is not null`),

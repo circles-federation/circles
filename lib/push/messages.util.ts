@@ -2,6 +2,7 @@ import type { PushMessage } from "./index";
 import { eventChanges, type EventNotificationData } from "@/lib/email/templates.util";
 import { fmtEventWhen, fmtTime } from "@/lib/format.util";
 import { endedBefore, relativeDayWord } from "@/lib/recurrence.util";
+import { autoCancelClock } from "@/lib/roles.util";
 
 /* The app's push notifications, as pure functions from data to a message —
    the counterparts of lib/email/templates.util.ts's emails, saying the same
@@ -33,8 +34,14 @@ export function eventNotificationPush(n: EventPushData): PushMessage {
   const when = fmtEventWhen(n);
   const repeats = n.repeat && `repeats ${n.repeat.frequency}`;
 
+  const short = (n.openSlots ?? []).map((s) => s.label);
+
   if (n.notice === "cancelled") {
-    const rest = n.repeat && endedBefore(n.repeat, n.date) ? "This date and the ones after it won't go ahead." : `${n.organizerName} called it off.`;
+    const rest = n.cancelledAutomatically
+      ? `No one signed up as ${short.join(" or ") || "a required slot"} in time.`
+      : n.repeat && endedBefore(n.repeat, n.date)
+        ? "This date and the ones after it won't go ahead."
+        : `${n.organizerName} called it off.`;
     return message(`Cancelled: ${n.title}`, `Was ${when}. ${rest}`, url, tag);
   }
 
@@ -43,6 +50,13 @@ export function eventNotificationPush(n: EventPushData): PushMessage {
     const moved = [(changed.date || changed.time) && when, changed.location && `at ${n.location}`].filter(Boolean).join(", ");
     const scope = n.change?.andLater && n.repeat ? " From this date on." : "";
     return message(`Changed: ${n.title}`, `Now ${moved || line(when, n.location)}.${scope}`, url, tag);
+  }
+
+  // to its host: a required slot is still short an hour before the start
+  if (n.notice === "short") {
+    const needs = short.map((l) => `a ${l}`).join(" and ") || "someone";
+    const unless = n.autoCancel ? ` Cancels at ${autoCancelClock(n.start)} unless someone signs up.` : "";
+    return message(`Needs ${needs}: ${n.title}`, `Starts at ${fmtTime(n.start)}.${unless} Know someone who could cover it?`, url, tag);
   }
 
   if (n.notice === "reminder") {

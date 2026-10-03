@@ -225,6 +225,20 @@
       "when": 1790983454544,
       "tag": "0031_notification_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790989910596,
+      "tag": "0032_auto_cancel_short_slots",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790991157137,
+      "tag": "0033_events_date_index",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,6 @@ import { isPastEvent, fmtTime } from "@/lib/format.util";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending } from "@/lib/events.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
-import { hasRoles, shiftCancelled } from "@/lib/roles.util";
 import { REPEAT_SHORT_LABEL } from "@/lib/recurrence.util";
 import type { Event } from "@/lib/types";
 
@@ -28,8 +27,6 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
   const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
   const past = isPastEvent(e);
   const attending = isAttending(e, profile.id);
-  // called off by its organizer, or a slotted shift that couldn't be filled
-  const cancelled = !!e.cancelled || (!past && hasRoles(e) && shiftCancelled(e));
 
   return (
     <EventRow
@@ -51,7 +48,7 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
       }
       right={
         <>
-          {cancelled && <CancelledBadge />}
+          {e.cancelled && <CancelledBadge />}
           {attending && <ParticipationBadge kind="attending" past={past} />}
         </>
       }
