@@ -31,8 +31,13 @@ const TABS = [
    paint (a visible jump, and a hydration mismatch).
 
    Tapping the tab whose page is already showing calls onReselect (back to
-   the top, as in a native app) rather than navigating to where you are. */
-export function BottomNav({ onReselect }: { onReselect: () => void }) {
+   the top, as in a native app) rather than navigating to where you are.
+
+   `away` (a page that belongs to no tab, see AppShell) slides it down off the
+   screen and fades it, and back again after. It stays mounted for that, so
+   while it's away it's inert: no taps, and out of the tab order and
+   screen readers. */
+export function BottomNav({ onReselect, away }: { onReselect: () => void; away: boolean }) {
   const pathname = usePathname();
   const needsAttention = useHomeNeedsAttention();
 
@@ -46,7 +51,14 @@ export function BottomNav({ onReselect }: { onReselect: () => void }) {
     // landscape notch, with the page scrolling
     // on underneath it (AppShell's bottom padding clears it at the end). The
     // blur keeps the labels readable over what shows through.
-    <nav className="app-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-[0_6px_20px_rgba(10,10,10,0.28)]">
+    <nav
+      inert={away}
+      className={clsx(
+        "app-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-[0_6px_20px_rgba(10,10,10,0.28)]",
+        "transition-[translate,opacity] duration-300 ease-out motion-reduce:transition-none",
+        away && "pointer-events-none translate-y-[calc(100%+var(--bottom-nav-gap))] opacity-0"
+      )}
+    >
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
         const active = currentTab === href;
         const Icon = active ? Solid : Outline;

@@ -2,6 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject, type UIEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import clsx from "clsx";
+import { activeTab } from "@/lib/nav.util";
 import { registerServiceWorker } from "@/lib/push-client";
 import { isInstalledApp } from "@/lib/viewport";
 import { BottomNav } from "./bottom-nav";
@@ -16,7 +18,10 @@ import { TopBar } from "./top-bar";
    The side padding keeps content clear of a landscape phone's notch, and the
    bottom padding lets the end of the page scroll clear of the floating
    BottomNav and the home indicator beneath it (the insets are zero outside
-   an installed app or on a phone without them).
+   an installed app or on a phone without them). BottomNav only shows on a
+   page that belongs to one of its tabs (activeTab): a page for doing
+   something, such as a form or Settings, is left by Back, as a native app's
+   pushed screens are, so the nav slides away and the room for it goes.
 
    Installed as an app, the page no longer scrolls: <main> does, under a
    TopBar laid over its top that stays put while the content bounces (see
@@ -25,6 +30,7 @@ import { TopBar } from "./top-bar";
    block and the document scrolls as usual. */
 export function AppShell({ children }: { children: ReactNode }) {
   const mainRef = useRef<HTMLElement>(null);
+  const showNav = activeTab(usePathname()) !== null;
   const onScroll = useScrollRestoration(mainRef);
   useBlockEdgeSwipe();
   useBlockPinchZoom();
@@ -45,13 +51,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main
         ref={mainRef}
         onScroll={onScroll}
-        className="max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.75rem)] standalone:flex-1 standalone:overflow-y-auto standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
+        className={clsx(
+          showNav ? "max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.75rem)]" : "max-[719px]:pb-[env(safe-area-inset-bottom)]",
+          "standalone:flex-1 standalone:overflow-y-auto standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
+        )}
       >
         {children}
         <div aria-hidden className="h-(--keyboard-room)" />
       </main>
 
-      <BottomNav onReselect={scrollToTop} />
+      <BottomNav onReselect={scrollToTop} away={!showNav} />
     </div>
   );
 }
