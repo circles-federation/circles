@@ -178,6 +178,59 @@ export type ResourceIcon = "folder" | "file" | "video" | "announcement";
 // or an announcement, a message typed out for them. Members-only: never a
 // field on Circle, since the circles array is sent to every signed-in member;
 // AppStateProvider's `resources` only ever holds the viewer's own circles'.
+/* A change to a circle that needs its members' consent, as sociocracy decides
+   things (see lib/proposals.util.ts): proposed by a member, open for a few
+   days, and made only if no one objects. */
+// green "like this", yellow "accept this" (both consent: they differ in
+// enthusiasm, not reservations), or red, an objection
+export type ConsentResponse = "like" | "accept" | "object";
+export type ProposalStatus = "open" | "passed" | "objected";
+
+// what a proposal would change, each only if it does: the circle's own fields,
+// and its roles as a whole (each role's name and holder, in order)
+export interface ProposalChanges {
+  name?: string;
+  tagline?: string;
+  type?: CircleType;
+  parentId?: string;
+  roles?: { label: string; memberId: number | null }[];
+}
+
+// one line of what it changes, as it read when proposed ("Name": "Ona
+// Garden" → "Ona Community Garden"), so it reads the same however things
+// are renamed later; `before` is empty for a role being added
+export interface ProposalLine {
+  label: string;
+  before: string;
+  after: string;
+}
+
+// what a member is told about a proposal: it's open for their response, or
+// how it ended
+export type ProposalNoticeKind = "opened" | "objected" | "passed";
+
+export interface ProposalResponse {
+  memberId: number;
+  response: ConsentResponse;
+  // why they object, required with an objection
+  reason?: string;
+  respondedAt: string;
+}
+
+export interface CircleProposal {
+  id: string;
+  circleId: string;
+  proposerId: number;
+  changes: ProposalChanges;
+  lines: ProposalLine[];
+  status: ProposalStatus;
+  createdAt: string;
+  // when it passes, if no one has objected by then
+  closesAt: string;
+  decidedAt?: string;
+  responses: ProposalResponse[];
+}
+
 // an invitation for a member to join a circle, from one of its members; seen
 // by the invitee and the circle's members
 export interface CircleInvitation {

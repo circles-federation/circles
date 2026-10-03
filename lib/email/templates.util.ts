@@ -1,9 +1,10 @@
 import type { EmailMessage } from "./index";
-import { MONTHS, WEEKDAYS, fmtEventWhen, fmtNumericDate, fmtTime, parseDay } from "@/lib/format.util";
+import { MONTHS, WEEKDAYS, fmtDateTime, fmtEventWhen, fmtNumericDate, fmtTime, parseDay } from "@/lib/format.util";
+import { proposalTitle } from "@/lib/proposals.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
-import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind } from "@/lib/types";
+import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind, ProposalChanges, ProposalLine, ProposalNoticeKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
    Each returns everything but the recipient, so the caller (which knows who
@@ -555,6 +556,69 @@ function shortSlotsEmail(n: EventNotificationData): Body {
         detail("Where", n.location) +
         `</table></td></tr>` +
         `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${FLAME};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+    ),
+  };
+}
+
+export interface ProposalEmailData {
+  // which email this is: it's open for an answer, or how it ended
+  notice: ProposalNoticeKind;
+  proposalId: string;
+  circleName: string;
+  changes: ProposalChanges;
+  lines: ProposalLine[];
+  closesAt: Date;
+  proposerName: string;
+  // an "objected" notice's: who objected, and why
+  objectorName?: string;
+  reason?: string;
+  url: string;
+}
+
+const lineText = (l: ProposalLine) => (l.before && l.after ? `${l.label}: ${l.before} → ${l.after}` : l.after ? `${l.label}: ${l.after}` : l.label);
+
+/* A proposal to change a circle, to its members (see lib/proposals.util.ts):
+   that it's open for their answer, that someone objected (with why), or that
+   it passed. Each lists what it changes, before and after. */
+export function proposalEmail(d: ProposalEmailData): Body {
+  const title = proposalTitle(d);
+  const deadline = fmtDateTime(d.closesAt);
+  const [subject, eyebrowText, accent, note, action] =
+    d.notice === "opened"
+      ? [
+          `Proposal for ${d.circleName}: ${title}`,
+          `Proposal · ${d.circleName}`,
+          INK,
+          `${d.proposerName} proposes a change to ${d.circleName}, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's made then.`,
+          "Respond",
+        ]
+      : d.notice === "objected"
+        ? [
+            `Objection: ${title}`,
+            `Objected · ${d.circleName}`,
+            DANGER,
+            `${d.objectorName ?? "A member"} objected to ${d.proposerName}'s proposal, so it won't be made.${d.reason ? ` Their reason: “${d.reason}”.` : ""} It can be proposed again, changed to meet the objection.`,
+            "View proposal",
+          ]
+        : [`Passed: ${title}`, `Passed · ${d.circleName}`, LEAF, `No one objected to ${d.proposerName}'s proposal, so the change has been made to ${d.circleName}.`, "View proposal"];
+  const why = `You're getting this because you're a member of ${d.circleName}.`;
+  const line = (l: ProposalLine) =>
+    `<tr><td style="padding-bottom:14px">${eyebrow(esc(l.label))}` +
+    (l.after ? `<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(l.after)}</div>` : "") +
+    (l.before ? `<div style="margin-top:2px;font-family:${SERIF};font-size:15px;line-height:1.4;color:${SOFT};text-decoration:line-through">${esc(l.before)}</div>` : "") +
+    `</td></tr>`;
+  return {
+    subject,
+    text: `${title}\n\n${note}\n\n${d.lines.map((l) => `- ${lineText(l)}`).join("\n")}\n\n${action}: ${d.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${accent};padding-top:18px">` +
+        eyebrow(esc(eyebrowText), accent === INK ? SOFT : accent) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(title)}</div>` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${accent};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}</div></td></tr>` +
+        `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${d.lines.map(line).join("")}</table></td></tr>` +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(d.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">${action}</a></td></tr>` +
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };

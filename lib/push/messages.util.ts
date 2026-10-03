@@ -1,6 +1,8 @@
 import type { PushMessage } from "./index";
 import { eventChanges, type EventNotificationData } from "@/lib/email/templates.util";
-import { fmtEventWhen, fmtTime } from "@/lib/format.util";
+import { fmtDateTime, fmtEventWhen, fmtTime } from "@/lib/format.util";
+import { proposalTitle } from "@/lib/proposals.util";
+import type { ProposalChanges, ProposalNoticeKind } from "@/lib/types";
 import { endedBefore, relativeDayWord } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
 
@@ -97,6 +99,25 @@ export function eventNotificationPush(n: EventPushData): PushMessage {
 export function announcementPush(a: { resourceId: string; circleId: string; circleName: string; title: string; message: string; posterName?: string }): PushMessage {
   const text = a.message.replace(/\s+/g, " ").trim();
   return message(`${a.circleName}: ${a.title}`, a.posterName ? `${a.posterName}: ${text}` : text, `/circles/${a.circleId}`, `announcement-${a.resourceId}`);
+}
+
+// a proposal to change a circle: open for an answer, or how it ended
+export function proposalPush(d: {
+  proposalId: string;
+  notice: ProposalNoticeKind;
+  circleName: string;
+  changes: ProposalChanges;
+  closesAt: Date;
+  proposerName: string;
+  objectorName?: string;
+  reason?: string;
+}): PushMessage {
+  const title = proposalTitle(d);
+  const url = `/proposals/${d.proposalId}`;
+  const tag = `proposal-${d.proposalId}`;
+  if (d.notice === "opened") return message(`Proposal: ${title}`, `${d.circleName} · from ${d.proposerName}. Respond by ${fmtDateTime(d.closesAt)}.`, url, tag);
+  if (d.notice === "objected") return message(`Objected: ${title}`, `${d.objectorName ?? "A member"}: ${d.reason ?? "objected"}`, url, tag);
+  return message(`Passed: ${title}`, `No one objected, so ${d.circleName} has made the change.`, url, tag);
 }
 
 // an invitation to join a circle, opened where it's accepted or declined

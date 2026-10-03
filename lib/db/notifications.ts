@@ -1,14 +1,31 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
-import { announcementNotifications, circleMembers, circleResources, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, members, events, pushSubscriptions, roleMembers, roles } from "./schema";
+import {
+  announcementNotifications,
+  circleMembers,
+  circleProposals,
+  circleResources,
+  circles,
+  eventAgendaItems,
+  eventNotifications,
+  eventRsvps,
+  eventSeries,
+  members,
+  events,
+  proposalNotifications,
+  proposalResponses,
+  pushSubscriptions,
+  roleMembers,
+  roles,
+} from "./schema";
 import { groupBy } from "./util";
-import type { AnnouncementEmailData, DigestEventData, EventNotificationData } from "@/lib/email/templates.util";
+import type { AnnouncementEmailData, DigestEventData, EventNotificationData, ProposalEmailData } from "@/lib/email/templates.util";
 import { REMINDER_HOURS } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import { localDay } from "@/lib/recurrence.util";
-import type { AgendaItem, Event, EventChange, EventRepeat, NotificationChannel, NotificationKind } from "@/lib/types";
+import type { AgendaItem, Event, EventChange, EventRepeat, NotificationChannel, NotificationKind, ProposalNoticeKind } from "@/lib/types";
 
 /* The queues behind "tell a circle's members about a new event" (and the
    rest of an event's news) and "…about a new announcement". Deciding who is
@@ -607,4 +624,101 @@ export async function markAnnouncementSent(n: AnnouncementKey): Promise<void> {
 
 export async function markAnnouncementFailed(n: AnnouncementKey, error: string): Promise<void> {
   await db.update(announcementNotifications).set({ lastError: error.slice(0, 500) }).where(isAnnouncementRow(n));
+}
+
+/* Tell `memberIds` about a proposal (lib/db/proposals.ts): that it's open for
+   their answer, that someone objected, or that it passed. Always on its own,
+   straight away — a proposal has a deadline, so a digest line a day later
+   would eat into it. Runs in the transaction that earns it. */
+export async function enqueueProposalNotifications(tx: Tx, proposalId: string, kind: ProposalNoticeKind, memberIds: number[]): Promise<number> {
+  if (memberIds.length === 0) return 0;
+  const recipients = await channelsFor(tx, inArray(members.id, memberIds));
+  if (recipients.length === 0) return 0;
+  await tx
+    .insert(proposalNotifications)
+    .values(recipients.map((r) => ({ proposalId, ...r, kind })))
+    .onConflictDoNothing();
+  return membersIn(recipients);
+}
+
+export type ProposalKey = { proposalId: string; memberId: number; notice: ProposalNoticeKind; channel: NotificationChannel };
+
+export type PendingProposalNotification = Omit<ProposalEmailData, "url"> &
+  ProposalKey & {
+    // null if they've since removed their address or turned email off
+    email: string | null;
+  };
+
+// claimEventNotifications' counterpart for proposals: the same leasing, and
+// rendered from the proposal as it stands when it's sent
+export async function claimProposalNotifications(limit: number, channel: NotificationChannel): Promise<PendingProposalNotification[]> {
+  const proposer = alias(members, "proposer");
+  const objector = alias(members, "objector");
+  return db.transaction(async (tx) => {
+    const due = await tx
+      .select({ proposalId: proposalNotifications.proposalId, memberId: proposalNotifications.memberId, kind: proposalNotifications.kind })
+      .from(proposalNotifications)
+      .where(
+        and(
+          eq(proposalNotifications.channel, channel),
+          isNull(proposalNotifications.sentAt),
+          lt(proposalNotifications.attempts, MAX_ATTEMPTS),
+          or(isNull(proposalNotifications.lastAttemptAt), lt(proposalNotifications.lastAttemptAt, sql`now() - ${RETRY_AFTER}`))
+        )
+      )
+      .orderBy(proposalNotifications.createdAt)
+      .limit(limit)
+      .for("update", { skipLocked: true });
+    if (due.length === 0) return [];
+    const isDue = and(
+      eq(proposalNotifications.channel, channel),
+      or(...due.map((d) => and(eq(proposalNotifications.proposalId, d.proposalId), eq(proposalNotifications.memberId, d.memberId), eq(proposalNotifications.kind, d.kind))))
+    );
+    await tx.update(proposalNotifications).set({ attempts: sql`${proposalNotifications.attempts} + 1`, lastAttemptAt: sql`now()` }).where(isDue);
+    const rows = await tx
+      .select({
+        proposalId: proposalNotifications.proposalId,
+        memberId: members.id,
+        notice: proposalNotifications.kind,
+        channel: proposalNotifications.channel,
+        email: emailIfWanted,
+        circleName: circles.name,
+        changes: circleProposals.changes,
+        lines: circleProposals.lines,
+        closesAt: circleProposals.closesAt,
+        proposerName: proposer.name,
+        objectorName: objector.name,
+        reason: proposalResponses.reason,
+      })
+      .from(proposalNotifications)
+      .innerJoin(circleProposals, eq(circleProposals.id, proposalNotifications.proposalId))
+      .innerJoin(circles, eq(circles.id, circleProposals.circleId))
+      .innerJoin(members, eq(members.id, proposalNotifications.memberId))
+      .innerJoin(proposer, eq(proposer.id, circleProposals.proposerId))
+      // the objection, for an "objected" notice (one closes it, so there's one)
+      .leftJoin(proposalResponses, and(eq(proposalResponses.proposalId, circleProposals.id), eq(proposalResponses.response, "object")))
+      .leftJoin(objector, eq(objector.id, proposalResponses.memberId))
+      .where(isDue);
+    return rows.map(({ objectorName, reason, ...r }) => ({
+      ...r,
+      ...(objectorName ? { objectorName } : {}),
+      ...(reason ? { reason } : {}),
+    }));
+  });
+}
+
+const isProposalRow = (n: ProposalKey) =>
+  and(
+    eq(proposalNotifications.proposalId, n.proposalId),
+    eq(proposalNotifications.memberId, n.memberId),
+    eq(proposalNotifications.kind, n.notice),
+    eq(proposalNotifications.channel, n.channel)
+  );
+
+export async function markProposalSent(n: ProposalKey): Promise<void> {
+  await db.update(proposalNotifications).set({ sentAt: sql`now()`, lastError: null }).where(isProposalRow(n));
+}
+
+export async function markProposalFailed(n: ProposalKey, error: string): Promise<void> {
+  await db.update(proposalNotifications).set({ lastError: error.slice(0, 500) }).where(isProposalRow(n));
 }

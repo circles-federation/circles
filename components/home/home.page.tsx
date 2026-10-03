@@ -4,10 +4,12 @@ import { useState, type ReactNode } from "react";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import { AlertModal, AttentionDot, Avatar, Chip, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
+import { ProposalBanner } from "@/components/circles/proposal-banner";
 import { EventFeed } from "@/components/events/event-feed";
 import { StartingSoon } from "./starting-soon";
 import { StatCard } from "./stat-card";
 import { fmtNumericDate, isPastEvent, parseDay } from "@/lib/format.util";
+import { awaitingResponse } from "@/lib/proposals.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
 import { useMemberById, useMembers } from "@/lib/hooks";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -32,7 +34,9 @@ interface HomeProps {
    dial), and their events. Profile editing lives on a separate page. */
 export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onOpenProfile }: HomeProps) {
   const members = useMembers();
-  const { pendingApplications, invitations } = useAppState();
+  const { pendingApplications, invitations, proposals } = useAppState();
+  // proposals in my circles still waiting on my answer, soonest to close first
+  const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
   const memberById = useMemberById();
   // invitations to join a circle, sent to me
   const myInvitations = invitations.filter((i) => i.memberId === profile.id);
@@ -125,6 +129,20 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
                     />
                   );
                 })}
+              </div>
+            </EyebrowGroup>
+          </Section>
+        )}
+
+        {awaitingMe.length > 0 && (
+          <Section>
+            <EyebrowGroup label={<AttentionLabel on>{awaitingMe.length === 1 ? "1 proposal" : `${awaitingMe.length} proposals`}</AttentionLabel>}>
+              {/* the same banner as on the circle's page, naming the circle,
+                  since these can come from any of them */}
+              <div className="flex flex-col gap-3">
+                {awaitingMe.map((p) => (
+                  <ProposalBanner key={p.id} proposal={p} memberId={profile.id} circleName={byId[p.circleId]?.name} />
+                ))}
               </div>
             </EyebrowGroup>
           </Section>

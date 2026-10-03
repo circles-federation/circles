@@ -12,7 +12,8 @@ import {
   setRsvpAction as dbSetRsvp,
   setVoteAction as dbSetVote,
   toggleRoleSlotAction as dbToggleRoleSlot,
-  saveCircleRolesAction as dbSaveCircleRoles,
+  createProposalAction as dbCreateProposal,
+  respondToProposalAction as dbRespondToProposal,
   updateCircleAction as dbUpdateCircle,
   updateEventDetailsAction as dbUpdateEventDetails,
   updateMemberAction as dbUpdateMember,
@@ -32,7 +33,7 @@ import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { isProposal, voteThreshold } from "@/lib/governance.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, CircleInvitation, CircleResource, Event, Member, NotificationSettings, Profile } from "@/lib/types";
+import type { Circle, CircleInvitation, CircleProposal, CircleResource, ConsentResponse, Event, Member, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -46,6 +47,8 @@ export interface AppStateValue {
   resources: CircleResource[];
   // their own invitations to circles, and those to the circles they're in
   invitations: CircleInvitation[];
+  // the proposals of their circles: open ones, and those decided lately
+  proposals: CircleProposal[];
   // applications waiting for review: a number for a system admin, else null
   pendingApplications: number | null;
   rsvpState: Record<string, boolean>;
@@ -60,7 +63,10 @@ export interface AppStateValue {
   // resolves to the new circle, for the caller to go to
   createCircle(input: NewCircleInput): Promise<{ ok: true; circle: Circle } | { ok: false; error: string }>;
   saveCircle(id: string, patch: Partial<Circle>): void;
-  saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult>;
+  // propose changes to a circle, for its members' consent; `passed` when it
+  // was decided at once (a circle of one)
+  proposeCircleChanges(circleId: string, changes: ProposalChanges): Promise<{ ok: true; proposal: CircleProposal; passed: boolean } | { ok: false; error: string }>;
+  respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult>;
   saveProfile(next: Profile): void;
   savePhoto(photo: Blob): Promise<MutationResult>;
   saveNotificationSettings(settings: NotificationSettings): Promise<MutationResult>;
@@ -134,10 +140,11 @@ interface AppStateProviderProps {
   initialResources: CircleResource[];
   initialPendingApplications: number | null;
   initialInvitations: CircleInvitation[];
+  initialProposals: CircleProposal[];
   initialProfile: Profile;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingApplications, initialInvitations }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingApplications, initialInvitations, initialProposals }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
@@ -149,6 +156,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   const [resources, setResources] = useState<CircleResource[]>(initialResources);
   const [pendingApplications, setPendingApplications] = useState(initialPendingApplications);
   const [invitations, setInvitations] = useState<CircleInvitation[]>(initialInvitations);
+  const [proposals, setProposals] = useState<CircleProposal[]>(initialProposals);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
   const [rsvpState, setRsvpState] = useState<Record<string, boolean>>(() => ownFlags(initialEvents, (e) => e.rsvps.includes(currentUserId)));
   // voteState: { [eventId]: true } — the current user's votes on meetings
@@ -193,6 +201,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setMembers(fresh.members);
     setResources(fresh.resources);
     setInvitations(fresh.invitations);
+    setProposals(fresh.proposals);
     setPendingApplications(fresh.pendingApplications);
     setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
     setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
@@ -476,13 +485,25 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     }
   }
 
-  // replace a circle's roles. Awaits the server, which checks the caller is a
-  // member of the circle and decides the final list, then adopts what it saved;
-  // no toast, since it's saved along with the rest of the Manage form
-  async function saveCircleRoles(circleId: string, roles: CircleRoleDraft[]): Promise<MutationResult> {
-    const result = await dbSaveCircleRoles(circleId, roles);
+  // a proposal's latest, and the circle as it now is if it just passed
+  function takeProposal(proposal: CircleProposal, circle: Circle | null) {
+    setProposals((prev) => [proposal, ...prev.filter((p) => p.id !== proposal.id)]);
+    if (circle) setCircles((prev) => prev.map((c) => (c.id === circle.id ? circle : c)));
+  }
+
+  // await-then-update: the server checks the change and can refuse (one's
+  // already open, say), and may decide it at once for a circle of one
+  async function proposeCircleChanges(circleId: string, changes: ProposalChanges): Promise<{ ok: true; proposal: CircleProposal; passed: boolean } | { ok: false; error: string }> {
+    const result = await dbCreateProposal(circleId, changes).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
-    setCircles((prev) => prev.map((c) => (c.id === circleId ? { ...c, roles: result.value } : c)));
+    takeProposal(result.value.proposal, result.value.circle);
+    return { ok: true, proposal: result.value.proposal, passed: result.value.proposal.status === "passed" };
+  }
+
+  async function respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult> {
+    const result = await dbRespondToProposal(id, response, reason).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    takeProposal(result.value.proposal, result.value.circle);
     return { ok: true };
   }
 
@@ -625,7 +646,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events, circles, members, resources, invitations, pendingApplications, rsvpState, voteState, profile,
+        events, circles, members, resources, invitations, proposals, pendingApplications, rsvpState, voteState, profile,
         inviteToCircle: tracked(inviteToCircle),
         acceptInvitation: tracked(acceptInvitation),
         deleteInvitation: tracked(deleteInvitation),
@@ -638,7 +659,8 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         toggleVote: tracked(toggleVote),
         createCircle: tracked(createCircle),
         saveCircle: tracked(saveCircle),
-        saveCircleRoles: tracked(saveCircleRoles),
+        proposeCircleChanges: tracked(proposeCircleChanges),
+        respondToProposal: tracked(respondToProposal),
         saveProfile: tracked(saveProfile),
         savePhoto: tracked(savePhoto),
         saveNotificationSettings: tracked(saveNotificationSettings),

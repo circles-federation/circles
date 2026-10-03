@@ -13,6 +13,7 @@ import { CIRCLE_TYPE_LABEL, circleChildren, circleHasWiki, circleWebsiteUrl, isC
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, Event, Member } from "@/lib/types";
 import { isPhoneWidth } from "@/lib/viewport";
+import { ProposalBanner } from "./proposal-banner";
 
 const CIRCLE_TABS = ["bulletin", "wiki", "members", "events"] as const;
 type CircleTab = (typeof CIRCLE_TABS)[number];
@@ -42,7 +43,8 @@ interface CirclePageProps {
 }
 
 export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, onInvitePage, onOpenInvitation, initialTab, onTabChange }: CirclePageProps) {
-  const { profile, circles, invitations } = useAppState();
+  const { profile, circles, invitations, proposals } = useAppState();
+  const openProposal = proposals.find((p) => p.circleId === c.id && p.status === "open");
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
@@ -121,6 +123,8 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
           </div>
         ))}
       </div>}
+
+      {openProposal && <ProposalBanner proposal={openProposal} memberId={profile.id} className="mt-6" />}
 
       <SimpleTabs
         className="mt-6"

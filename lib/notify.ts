@@ -3,6 +3,9 @@ import {
   claimAnnouncementNotifications,
   claimDigests,
   claimEventNotifications,
+  claimProposalNotifications,
+  markProposalFailed,
+  markProposalSent,
   enqueueReminders,
   markAnnouncementFailed,
   markAnnouncementSent,
@@ -12,11 +15,12 @@ import {
   markNotificationSent,
 } from "@/lib/db/notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
+import { closeDueProposals } from "@/lib/db/proposals";
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
-import { announcementPush, digestPush, eventNotificationPush } from "@/lib/push/messages.util";
-import { announcementEmail, eventChanges, eventDigestEmail, eventNotificationEmail } from "@/lib/email/templates.util";
+import { announcementPush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
+import { announcementEmail, eventChanges, eventDigestEmail, eventNotificationEmail, proposalEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
@@ -194,6 +198,56 @@ const deliverAnnouncementPushes = drainer("Announcement push", async () => {
   }
 });
 
+const proposalUrl = (id: string) => `${appUrl}/proposals/${id}`;
+
+const deliverProposalEmails = drainer("Proposal email", async () => {
+  for (let batch = await claimProposalNotifications(BATCH, "email"); batch.length > 0; batch = await claimProposalNotifications(BATCH, "email")) {
+    for (const n of batch) {
+      if (!n.email) {
+        await markProposalSent(n);
+        continue;
+      }
+      try {
+        await sendEmail({ to: n.email, ...proposalEmail({ ...n, url: proposalUrl(n.proposalId) }) });
+        await markProposalSent(n);
+      } catch (err) {
+        console.error(`Couldn't email proposal ${n.proposalId} to member ${n.memberId}:`, err);
+        await markProposalFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
+
+const deliverProposalPushes = drainer("Proposal push", async () => {
+  for (let batch = await claimProposalNotifications(BATCH, "push"); batch.length > 0; batch = await claimProposalNotifications(BATCH, "push")) {
+    for (const n of batch) {
+      try {
+        await pushToMember(n.memberId, proposalPush(n));
+        await markProposalSent(n);
+      } catch (err) {
+        console.error(`Couldn't push proposal ${n.proposalId} to member ${n.memberId}:`, err);
+        await markProposalFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
+
+// a proposal's news (opened, objected, passed): called right after an action
+// that earns some, and by the poller, which also passes proposals whose
+// window has ended
+export async function deliverProposalNotifications(): Promise<void> {
+  await Promise.all([deliverProposalEmails(), deliverProposalPushes()]);
+}
+
+async function closeThenDeliverProposals(): Promise<void> {
+  try {
+    await closeDueProposals();
+  } catch (err) {
+    console.error("Closing due proposals failed:", err);
+  }
+  await deliverProposalNotifications();
+}
+
 // deliverEventNotifications' counterpart for bulletin announcements: called
 // right after one is posted, and by the poller as the safety net
 export async function deliverAnnouncementNotifications(): Promise<void> {
@@ -263,6 +317,7 @@ export function startNotificationWorker(): void {
   const tick = () => {
     void remindThenDeliver();
     void deliverAnnouncementNotifications();
+    void closeThenDeliverProposals();
     void deliverDigests();
   };
   g.__notificationPoller = setInterval(tick, POLL_MS);

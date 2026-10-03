@@ -34,6 +34,12 @@ export function fmtEventWhen(d: { date: string; start: string; end: string }): s
   const time = `${fmtTime(d.start)}–${fmtTime(d.end)}`;
   return isNaN(day.getTime()) ? time : `${WEEKDAYS[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()} · ${time}`;
 }
+// a moment as "Sat, Oct 5 at 3pm", in this machine's time — a proposal's
+// deadline, say
+export function fmtDateTime(d: Date): string {
+  const time = fmtTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
+  return `${WEEKDAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()} at ${time}`;
+}
 // compact "edited" date like "Jun 29, 2026" from an ISO timestamp
 export function fmtEditDate(iso: string): string {
   const d = new Date(iso);

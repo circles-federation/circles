@@ -3,25 +3,24 @@
 import { after } from "next/server";
 import * as applications from "./applications";
 import { getAppStateForMember, type AppStateData } from "./app-state";
-import * as circleRoles from "./circle-roles";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
 import * as events from "./events";
 import * as invitations from "./invitations";
 import * as members from "./members";
+import * as proposals from "./proposals";
 import * as push from "./push";
 import * as resources from "./resources";
 import { sendEmail } from "@/lib/email";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail } from "@/lib/email/templates.util";
-import { deliverAnnouncementNotifications, deliverEventNotifications, pushToMember } from "@/lib/notify";
+import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
 import { invitationPush } from "@/lib/push/messages.util";
 import { getCurrentUserId } from "@/lib/session";
-import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, NotificationSettings } from "@/lib/types";
+import type { Circle, ConsentResponse, NotificationSettings, ProposalChanges } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
    connection — Drizzle's Postgres driver is Node-only. These thin wrappers
@@ -63,6 +62,22 @@ export async function createCircleAction(input: NewCircleInput) {
   return asMember((memberId) => circles.createCircle(memberId, input));
 }
 
+/* Proposals: changes to a circle its members decide by consent
+   (lib/db/proposals.ts checks who may do each). Both may have queued news for
+   the circle, sent once the response is out, and both hand back the circle as
+   it now is if the proposal passed then and there. */
+export async function createProposalAction(circleId: string, changes: ProposalChanges) {
+  const result = await asMember((memberId) => proposals.createProposal(memberId, circleId, changes));
+  if (result.ok) after(() => deliverProposalNotifications());
+  return result;
+}
+
+export async function respondToProposalAction(id: string, response: ConsentResponse, reason?: string) {
+  const result = await asMember((memberId) => proposals.respondToProposal(memberId, id, response, reason));
+  if (result.ok) after(() => deliverProposalNotifications());
+  return result;
+}
+
 export async function updateCircleAction(id: string, patch: Partial<Circle>) {
   return asMember((memberId) => circles.updateCircle(memberId, id, patch));
 }
@@ -86,9 +101,6 @@ async function asMember<T>(run: (memberId: number) => Promise<T>): Promise<{ ok:
   }
 }
 
-export async function saveCircleRolesAction(circleId: string, drafts: CircleRoleDraft[]) {
-  return asMember((memberId) => circleRoles.setCircleRoles(memberId, circleId, drafts));
-}
 
 // a new announcement has queued emails to the circle's members, sent once the
 // response is out

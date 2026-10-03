@@ -239,6 +239,13 @@
       "when": 1790991157137,
       "tag": "0033_events_date_index",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790998432645,
+      "tag": "0034_circle_proposals",
+      "breakpoints": true
     }
   ]
 }

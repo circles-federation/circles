@@ -22,6 +22,7 @@
   --color-announcement: #c0392b; /* circle resources: the announcement icon (the same red as danger, for a different job) */
   --color-agenda: #008480; /* a meeting's agenda cards: a turquoise teal, as bright as it goes and still reads as text on white (4.5:1) */
   --color-action: #1f5fbf; /* a primary icon button, like the top bar's Save (the same blue as file, for a different job) */
+  --color-accept: #f0b400; /* a proposal's yellow answer, "Accept this": between leaf ("Like this") and danger ("Object"), with ink text on it */
 
   --font-sans: "Helvetica Neue", Arial, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
@@ -198,6 +199,11 @@ body {
 .danger-press { transition: background 0.08s, color 0.08s; }
 .danger-press[data-pressed] { background: var(--color-danger) !important; color: var(--color-paper) !important; }
 .danger-press[data-pressed] * { color: var(--color-paper) !important; }
+/* ink-press for something waiting on members' decision (an open proposal's
+   banner): it fills with the governance orange rather than black */
+.flame-press { transition: background 0.08s, color 0.08s; }
+.flame-press[data-pressed] { background: var(--color-flame) !important; color: var(--color-paper) !important; border-color: var(--color-flame) !important; }
+.flame-press[data-pressed] * { color: var(--color-paper) !important; }
 .btn-invert { transition: background 0.08s, color 0.08s; }
 .btn-ink[data-pressed] { background: var(--color-paper) !important; color: var(--color-ink) !important; }
 .btn-teal[data-pressed] { background: var(--color-paper) !important; color: var(--color-teal) !important; }

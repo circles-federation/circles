@@ -73,7 +73,7 @@ function parentRoute(pathname: string): string {
   // Edit profile is reached from Settings (or your own profile page)
   if (pathname === "/profile/edit") return "/settings";
   const parent = pathname.replace(/\/[^/]+\/?$/, "");
-  if (parent === "" || parent === "/profile" || parent === "/admin" || parent === "/invitations") return "/home";
+  if (parent === "" || parent === "/profile" || parent === "/admin" || parent === "/invitations" || parent === "/proposals") return "/home";
   // a bulletin item's form is reached from its circle's Bulletin tab
   const bulletin = parent.match(/^(\/circles\/[^/]+)\/bulletin$/);
   if (bulletin) return `${bulletin[1]}?tab=bulletin`;

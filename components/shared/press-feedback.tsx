@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 
 // what gets a pressed look: tiles, cards and outlined buttons (ink-press),
-// destructive ones (danger-press), filled buttons (btn-invert), and images
-// (press-invert) — see the press styles in app/globals.css
-const PRESSABLE = ".ink-press, .danger-press, .btn-invert, .press-invert";
+// destructive ones (danger-press), ones awaiting a decision (flame-press),
+// filled buttons (btn-invert), and images (press-invert) — see the press
+// styles in app/globals.css
+const PRESSABLE = ".ink-press, .danger-press, .flame-press, .btn-invert, .press-invert";
 // a touch has to be held this long, without moving, before it looks pressed,
 // so the start of a scroll never flashes a tile
 const TOUCH_DELAY_MS = 80;

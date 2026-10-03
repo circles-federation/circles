@@ -92,7 +92,11 @@ export async function updateCircle(memberId: number, id: string, patch: Partial<
   if (patch.type === "other" && circle.type !== "other") {
     throw new CircleError("Choose what kind of circle this is.");
   }
-  const { members: _members, roles: _roles, lastEditedAt, ...columnPatch } = patch;
+  // its name, tagline, type and parent are its members' to decide by
+  // consent: a proposal makes them (lib/db/proposals.ts), never this edit
+  const consentNeeded = (["name", "tagline", "type", "parentId"] as const).find((k) => patch[k] !== undefined && patch[k] !== circle[k]);
+  if (consentNeeded) throw new CircleError("That change needs the circle's consent: propose it from Manage circle.");
+  const { members: _members, roles: _roles, lastEditedAt, name: _name, tagline: _tagline, type: _type, parentId: _parentId, ...columnPatch } = patch;
   if (Object.keys(columnPatch).length > 0 || lastEditedAt !== undefined) {
     await db
       .update(circles)

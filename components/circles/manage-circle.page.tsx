@@ -8,11 +8,13 @@ import { useTopBarAction } from "@/components/providers/top-bar-action-provider"
 import { Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, SectionGroup, Select, SimpleTabs, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { CIRCLE_ROLE_LABEL_MAX, builtinRoleDescription, circleHasRoles, validateCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
+import { CIRCLE_ROLE_LABEL_MAX, builtinRoleDescription, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
+import { changedFields, hasChanges, validateChanges } from "@/lib/proposals.util";
 import { CIRCLE_TYPE_LABEL, circleHasWiki } from "@/lib/circles.util";
 import { useMemberById } from "@/lib/hooks";
-import type { Circle, CircleType, Member } from "@/lib/types";
+import type { Circle, CircleProposal, CircleType, Member, ProposalChanges } from "@/lib/types";
 import { ParentCircleSelect } from "./parent-circle-select";
+import { ProposalBanner } from "./proposal-banner";
 
 // neighborhood isn't offered here for now — its type carries real behavior
 // (home circles, the folder view, no roles) that switching into or out of
@@ -51,14 +53,18 @@ interface RoleRow {
 interface ManageCirclePageProps {
   circle: Circle;
   circles: Circle[];
+  // a proposal already open for this circle, which holds its consent fields
+  // until it's decided
+  openProposal?: CircleProposal;
+  // the page's own fields, edited freely
   onSave: (patch: Partial<Circle>) => void;
-  // roles are saved separately from the page's own fields: the server checks
-  // the caller belongs to the circle, and can refuse
-  onSaveRoles: (roles: CircleRoleDraft[]) => Promise<{ ok: true } | { ok: false; error: string }>;
+  // its name, tagline, type, parent and roles, which its members decide by
+  // consent: proposed, not saved (the route goes on to the proposal)
+  onPropose: (changes: ProposalChanges) => Promise<{ ok: true } | { ok: false; error: string }>;
   onBack: () => void;
 }
 
-export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBack }: ManageCirclePageProps) {
+export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onPropose, onBack }: ManageCirclePageProps) {
   const { profile } = useAppState();
   const memberById = useMemberById();
   const [parentId, setParentId] = useState<string | null>(o.parentId ?? null);
@@ -101,17 +107,23 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
   const newRoleKey = useRef(0);
   // a role row left with no name is dropped, like a blank fact or hours row
   const rolePairs: CircleRoleDraft[] = roleRows.map((r) => ({ label: r.label.trim(), memberId: r.memberId })).filter((r) => r.label !== "");
-  const savedRolePairs: CircleRoleDraft[] = (o.roles ?? []).map((r) => ({ label: r.label, memberId: r.memberId }));
-  const rolesDirty = showRoles && JSON.stringify(rolePairs) !== JSON.stringify(savedRolePairs);
-  const [rolesError, setRolesError] = useState("");
+  const [consentError, setConsentError] = useState("");
+  // locked while a proposal is open: one at a time, so two can't change the same thing
+  const locked = !!openProposal;
   const [saving, setSaving] = useState(false);
   const roleMembers = o.members.map(memberById).filter((m): m is Member => Boolean(m)).sort((a, b) => a.name.localeCompare(b.name));
 
-  const pageDirty =
-    parentId !== (o.parentId ?? null) ||
-    type !== o.type ||
-    name.trim() !== o.name ||
-    tagline.trim() !== o.tagline ||
+  // what would need the members' consent: only what actually changes
+  const proposed = changedFields(o, {
+    name,
+    tagline,
+    type,
+    ...(o.parentId !== null && parentId !== null ? { parentId } : {}),
+    ...(showRoles ? { roles: rolePairs } : {}),
+  });
+  const proposing = hasChanges(proposed);
+  // the rest of the page, saved directly
+  const freeDirty =
     about !== o.about ||
     offers.join("\u0000") !== o.offers.join("\u0000") ||
     needs.join("\u0000") !== o.needs.join("\u0000") ||
@@ -121,7 +133,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
     website.trim() !== (o.website || "") ||
     address.trim() !== (o.address || "") ||
     JSON.stringify(hoursPairs) !== JSON.stringify(o.hours || []);
-  const dirty = pageDirty || rolesDirty;
+  const dirty = freeDirty || proposing;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   // a group has no wiki or quick facts (see circleHasWiki), so only the Circle part
   const hasWiki = circleHasWiki(o);
@@ -157,32 +169,41 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
 
   async function handleSave() {
     if (saving) return;
-    setRolesError("");
-    if (rolesDirty) {
-      // instant feedback only — the server re-validates and is the real check
-      const problem = validateCircleRoles(rolePairs, o.members);
+    setConsentError("");
+    if (proposing) {
+      // instant feedback only — the server checks again, and is the real check
+      const problem = validateChanges(o, proposed, circles);
       if (problem) {
         setActiveTab("circle");
-        return setRolesError(problem);
+        return setConsentError(problem);
       }
+    }
+    // the rest of the page (and who last edited it), only if any of it changed
+    if (freeDirty) {
+      onSave({ about: about.trim(), offers, needs, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
+    }
+    if (proposing) {
       setSaving(true);
-      const result = await onSaveRoles(rolePairs);
+      const result = await onPropose(proposed);
       setSaving(false);
       if (!result.ok) {
         setActiveTab("circle");
-        return setRolesError(result.error);
+        setConsentError(result.error);
       }
-    }
-    // only touch the page (and who last edited it) if its own fields changed
-    if (pageDirty) {
-      onSave({ parentId, type, name: name.trim(), tagline: tagline.trim(), about: about.trim(), offers, needs, facts: factPairs, join: join.trim(), contact: contact.trim(), website: website.trim(), address: address.trim(), hours: hoursPairs });
+      return;
     }
     onBack();
   }
 
   // leaving is the top bar's Back, which asks before discarding changes
-  useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
-  useTopBarAction({ label: saving ? "Saving" : "Save", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving, variant: "primary" });
+  useBackHandler(dirty && !saving ? () => setConfirmingDiscard(true) : null);
+  useTopBarAction({
+    label: saving ? "Saving" : proposing ? "Propose changes" : "Save",
+    icon: CheckIcon,
+    onAction: handleSave,
+    disabled: !dirty || saving,
+    variant: "primary",
+  });
 
   return (
     <PageContainer size="normal">
@@ -337,15 +358,28 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
       {activeTab === "circle" && (
         <SectionGroup>
           <Section>
+            {/* these fields are the members' to decide, by consent */}
+            {openProposal ? (
+              <div className="mb-5.5">
+                <ProposalBanner proposal={openProposal} memberId={profile.id} />
+                <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
+                  These can be changed again once it&rsquo;s decided.
+                </p>
+              </div>
+            ) : (
+              <p className="mb-5.5 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
+                Changes here need {o.name}&rsquo;s consent: saving proposes them to its members.
+              </p>
+            )}
             <div className="flex flex-col gap-5.5">
               {o.parentId !== null && (
-                <ParentCircleSelect circles={circles} value={parentId ?? ""} onChange={(id) => setParentId(id === "" ? null : id)} except={o.id} />
+                <ParentCircleSelect circles={circles} value={parentId ?? ""} onChange={(id) => setParentId(id === "" ? null : id)} except={o.id} disabled={locked} />
               )}
 
               {o.type !== "neighborhood" && o.type !== "group" && (
                 <div>
                   <Label htmlFor="circle-type">Type</Label>
-                  <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} className="min-[720px]:max-w-90">
+                  <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} disabled={locked} className="min-[720px]:max-w-90">
                     {typeOptions.map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
@@ -358,6 +392,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  disabled={locked}
                   placeholder="Organization name"
                 />
               </div>
@@ -367,6 +402,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                 <Input
                   value={tagline}
                   onChange={(e) => setTagline(e.target.value)}
+                  disabled={locked}
                   placeholder="A short line under the name"
                 />
               </div>
@@ -398,6 +434,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                         <input
                           value={r.label}
                           onChange={(e) => updateRole(r.key, { label: e.target.value })}
+                          disabled={locked}
                           maxLength={CIRCLE_ROLE_LABEL_MAX}
                           placeholder="Role name"
                           aria-label="Role name"
@@ -405,6 +442,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                         />
                         <button
                           onClick={() => removeRole(r.key)}
+                          disabled={locked}
                           aria-label={`Remove ${r.label || "role"}`}
                           className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-soft hover:text-ink"
                         >
@@ -415,6 +453,7 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                     <Select
                       value={r.memberId ?? ""}
                       onChange={(e) => updateRole(r.key, { memberId: e.target.value === "" ? null : Number(e.target.value) })}
+                      disabled={locked}
                       aria-label={`Member for ${r.label || "new role"}`}
                       className="w-full"
                     >
@@ -426,11 +465,15 @@ export function ManageCirclePage({ circle: o, circles, onSave, onSaveRoles, onBa
                   </div>
                 ))}
               </div>
-              <Button variant="secondary" size="compact" onClick={addRole} className="mt-3">
+              <Button variant="secondary" size="compact" onClick={addRole} disabled={locked} className="mt-3">
                 <PlusIcon className="size-3.5" strokeWidth={2.5} />
                 Add role
               </Button>
-              {rolesError && <p className="mt-3 font-sans text-sm font-bold text-danger">{rolesError}</p>}
+            </Section>
+          )}
+          {consentError && (
+            <Section>
+              <p className="font-sans text-sm font-bold text-danger">{consentError}</p>
             </Section>
           )}
         </SectionGroup>

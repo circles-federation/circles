@@ -121,6 +121,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
   if (section === "settings") return id === "notifications" ? "Notifications" : "Settings";
   if (section === "admin") return sub ? "Application" : "Applications";
   if (section === "invitations") return "Invitation";
+  if (section === "proposals") return "Proposal";
   return "Home";
 }
 

@@ -19,7 +19,20 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { RoleDraft } from "@/lib/events.util";
-import type { AgendaCategory, EventChange, EventKindKey, MemberLanguage, NotificationChannel, NotificationKind, RepeatFrequency } from "@/lib/types";
+import type {
+  AgendaCategory,
+  ConsentResponse,
+  EventChange,
+  EventKindKey,
+  MemberLanguage,
+  NotificationChannel,
+  NotificationKind,
+  ProposalChanges,
+  ProposalLine,
+  ProposalNoticeKind,
+  ProposalStatus,
+  RepeatFrequency,
+} from "@/lib/types";
 
 /* Drizzle table definitions — the only file besides lib/db/client.ts and
    lib/better-auth.ts that lib/db/*.ts may import from directly (see the
@@ -484,6 +497,67 @@ export const announcementNotifications = pgTable(
   (t) => [
     primaryKey({ columns: [t.resourceId, t.memberId, t.channel] }),
     index("announcement_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
+  ]
+);
+
+/* A change to a circle that needs its members' consent (lib/db/proposals.ts):
+   its name, tagline, type, parent or roles. Open until `closes_at`, when it
+   passes if no one has objected; one objection closes it as objected, and it
+   passes early once every member has consented. Only one open at a time per
+   circle, so two can't change the same thing at once. */
+export const circleProposals = pgTable(
+  "circle_proposals",
+  {
+    id: text("id").primaryKey(),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    proposerId: integer("proposer_id").notNull().references(() => members.id),
+    // what it would change (ProposalChanges), and how that read when proposed
+    changes: jsonb("changes").$type<ProposalChanges>().notNull(),
+    lines: jsonb("lines").$type<ProposalLine[]>().notNull(),
+    status: text("status").$type<ProposalStatus>().notNull().default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("circle_proposals_circle_idx").on(t.circleId),
+    uniqueIndex("circle_proposals_one_open").on(t.circleId).where(sql`${t.status} = 'open'`),
+    index("circle_proposals_open_idx").on(t.closesAt).where(sql`${t.status} = 'open'`),
+  ]
+);
+
+// each member's answer to a proposal; they can change it while it's open
+export const proposalResponses = pgTable(
+  "proposal_responses",
+  {
+    proposalId: text("proposal_id").notNull().references(() => circleProposals.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    response: text("response").$type<ConsentResponse>().notNull(),
+    reason: text("reason"),
+    respondedAt: timestamp("responded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.proposalId, t.memberId] })]
+);
+
+/* The queue behind telling a circle's members about a proposal: that one's
+   been opened ("opened"), that someone objected ("objected"), or that it
+   passed ("passed"). Leased and retried exactly as event_notifications is. */
+export const proposalNotifications = pgTable(
+  "proposal_notifications",
+  {
+    proposalId: text("proposal_id").notNull().references(() => circleProposals.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<ProposalNoticeKind>().notNull(),
+    channel: text("channel").$type<NotificationChannel>().notNull().default("email"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastError: text("last_error"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.proposalId, t.memberId, t.kind, t.channel] }),
+    index("proposal_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
   ]
 );
 

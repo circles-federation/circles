@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { indexCircles, type CirclesById } from "./circles.util";
+import { awaitingResponse } from "./proposals.util";
 import { currentSubscription, pushPermission, pushSupported, subscribeThisDevice, unsubscribeThisDevice } from "./push-client";
 import type { Circle, CircleInvitation, CircleResource, Event, Member } from "./types";
 
@@ -38,8 +39,8 @@ export function useCirclesById(): CirclesById {
    (admins only) or invitations sent to them — for the dot on its nav tab.
    Stands in for a notifications screen until there is one. */
 export function useHomeNeedsAttention(): boolean {
-  const { pendingApplications, invitations, profile } = useAppState();
-  return (pendingApplications ?? 0) > 0 || invitations.some((i) => i.memberId === profile.id);
+  const { pendingApplications, invitations, proposals, profile } = useAppState();
+  return (pendingApplications ?? 0) > 0 || invitations.some((i) => i.memberId === profile.id) || proposals.some((p) => awaitingResponse(p, profile.id));
 }
 
 function subscribeToConnection(onChange: () => void) {
