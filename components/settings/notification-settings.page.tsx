@@ -22,9 +22,9 @@ interface NotificationSettingsPageProps {
 const noSubscribe = () => () => {};
 const dev = process.env.NODE_ENV !== "production";
 
-/* How a member is told about things: by email and by push, each on or off
-   for them everywhere, plus whether this device gets pushes at all (a
-   browser's own subscription, kept apart from the member's settings). Like
+/* How a member is told about things: by email, on or off for them
+   everywhere, and by push, on or off for this device (its browser's own
+   subscription). Like
    any form here, nothing changes until the top bar's Save, and Back asks
    before discarding. */
 export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }: NotificationSettingsPageProps) {
@@ -40,7 +40,11 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
 
   const deviceOn = device.status === "on";
   const deviceChanged = deviceWanted !== null && deviceWanted !== deviceOn;
-  const settingsChanged = draft.email !== settings.email || draft.push !== settings.push;
+  // the member-wide push switch isn't shown (each device's own switch says
+  // where pushes go), but it still gates them, so turning push on here turns
+  // it back on for someone who switched it off when it was shown
+  const toSave = { ...draft, push: draft.push || deviceWanted === true };
+  const settingsChanged = toSave.email !== settings.email || toSave.push !== settings.push;
   const dirty = deviceChanged || settingsChanged;
 
   async function handleSave() {
@@ -69,7 +73,7 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
       }
     }
     if (settingsChanged) {
-      const result = await onSave(draft);
+      const result = await onSave(toSave);
       if (!result.ok) {
         setError(result.error);
         setSaving(false);
@@ -110,19 +114,7 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
         <Section>
           <EyebrowGroup label="Push">
             <SettingRows>
-              <SettingRow
-                label="Push notifications"
-                detail="Receive notifications directly on this device."
-                checked={draft.push}
-                onChange={(push) => setDraft((d) => ({ ...d, push }))}
-              />
-              <DeviceRow
-                status={device.status}
-                iPhoneTab={iPhoneTab}
-                checked={deviceWanted ?? deviceOn}
-                onChange={setDeviceWanted}
-                pushOff={!draft.push}
-              />
+              <DeviceRow status={device.status} iPhoneTab={iPhoneTab} checked={deviceWanted ?? deviceOn} onChange={setDeviceWanted} />
             </SettingRows>
             {dev && deviceOn && deviceWanted === null && (
               <Button variant="secondary" onClick={sendTest} className="mt-4">
@@ -174,32 +166,25 @@ function SettingRow({ label, detail, checked, onChange, disabled }: { label: str
   );
 }
 
-/* Whether this device gets pushes: a switch where it can, and otherwise why
-   not — an iPhone only offers push to the installed app, and a member who's
-   blocked notifications can only undo that in their device's settings. */
-function DeviceRow({ status, iPhoneTab, checked, onChange, pushOff }: { status: ReturnType<typeof usePushSubscription>["status"]; iPhoneTab: boolean; checked: boolean; onChange: (on: boolean) => void; pushOff: boolean }) {
+/* Push is per device, as on a phone: this one gets pushes or it doesn't. A
+   switch where it can, and otherwise why not — an iPhone only offers push to
+   the installed app, and notifications blocked in the device's own settings
+   can only be unblocked there. */
+function DeviceRow({ status, iPhoneTab, checked, onChange }: { status: ReturnType<typeof usePushSubscription>["status"]; iPhoneTab: boolean; checked: boolean; onChange: (on: boolean) => void }) {
   if (status === "unknown") return null;
   if (status === "on" || status === "off") {
-    return (
-      <SettingRow
-        label="This device"
-        detail={pushOff ? "Turn on push notifications to get them here." : "Get push notifications on this device."}
-        checked={checked && !pushOff}
-        onChange={onChange}
-        disabled={pushOff}
-      />
-    );
+    return <SettingRow label="Push notifications" detail="Get notifications on this device." checked={checked} onChange={onChange} />;
   }
   const why =
     status === "denied"
-      ? "Notifications are blocked for Circles on this device. To get them, turn them on for Circles in your device's Settings."
+      ? "Blocked for Circles on this device. Turn them on in your device's Settings."
       : iPhoneTab
-        ? "To get push notifications on this iPhone, add Circles to your Home Screen and open it from there."
-        : "This browser can't get push notifications.";
+        ? "Add Circles to your Home Screen to get them on this iPhone."
+        : "This browser can't get them.";
   return (
     <RowShell>
       <div className="min-w-0 flex-1">
-        <div className="font-sans text-base font-bold">This device</div>
+        <div className="font-sans text-base font-bold">Push notifications</div>
         <div className="mt-0.5 font-serif text-sm leading-snug text-soft">{why}</div>
       </div>
     </RowShell>
