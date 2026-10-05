@@ -26,10 +26,23 @@ const SIZES: Record<ButtonSize, string> = {
   inline: "py-1.5 px-3",
 };
 
-interface ButtonProps extends ComponentPropsWithoutRef<"button"> {
+interface ButtonStyle {
   variant?: ButtonVariant;
   accent?: ButtonAccent;
   size?: ButtonSize;
+}
+
+interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonStyle {}
+
+function buttonClass({ variant = "primary", accent = "ink", size = "default" }: ButtonStyle, disabled: boolean, className?: string): string {
+  const variantClass = variant === "primary" ? PRIMARY_ACCENTS[accent] : NON_PRIMARY_VARIANTS[variant];
+  return clsx(
+    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap border",
+    "font-sans text-xs font-bold uppercase tracking-wide",
+    SIZES[size],
+    disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer", variantClass),
+    className,
+  );
 }
 
 /* Shared action button — encapsulates the filled/invert-on-press primary
@@ -42,32 +55,20 @@ interface ButtonProps extends ComponentPropsWithoutRef<"button"> {
    icon-only controls (row-remove ✕, dismiss ✕, etc.) — this component
    always renders a visible text label; bespoke icon-only buttons stay
    bespoke. */
-export function Button({
-  variant = "primary",
-  accent = "ink",
-  size = "default",
-  disabled = false,
-  className,
-  type = "button",
-  children,
-  ...rest
-}: ButtonProps) {
-  const variantClass = variant === "primary" ? PRIMARY_ACCENTS[accent] : NON_PRIMARY_VARIANTS[variant];
-
+export function Button({ variant, accent, size, disabled = false, className, type = "button", children, ...rest }: ButtonProps) {
   return (
-    <button
-      type={type}
-      disabled={disabled}
-      className={clsx(
-        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap border",
-        "font-sans text-xs font-bold uppercase tracking-wide",
-        SIZES[size],
-        disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer", variantClass),
-        className,
-      )}
-      {...rest}
-    >
+    <button type={type} disabled={disabled} className={buttonClass({ variant, accent, size }, disabled, className)} {...rest}>
       {children}
     </button>
+  );
+}
+
+// Button's look on a link, for an action that opens somewhere (an online
+// event's Join meeting) rather than running something on the page
+export function ButtonLink({ variant, accent, size, className, children, ...rest }: ComponentPropsWithoutRef<"a"> & ButtonStyle) {
+  return (
+    <a className={buttonClass({ variant, accent, size }, false, clsx("no-underline", className))} {...rest}>
+      {children}
+    </a>
   );
 }

@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
-import { Chip, Eyebrow } from "@/components/shared";
+import { VideoCameraIcon } from "@heroicons/react/24/outline";
+import { ButtonLink, Chip, Eyebrow } from "@/components/shared";
+import { meetingLink } from "@/lib/events.util";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
 import { isApproved, isVoting } from "@/lib/governance.util";
 import { endedBefore, repeatSummary } from "@/lib/recurrence.util";
@@ -27,6 +29,7 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
     ? (past && !approved ? "border-t-soft" : (approved ? "border-t-leaf" : "border-t-flame"))
     : (past ? "border-t-soft" : "border-t-ink");
 
+  const link = meetingLink(e.location);
   const govLabel = gov && <span className={approved ? "text-leaf" : "text-flame"}>{approved ? "Approved" : "Proposed"}</span>;
   const time = `${fmtTime(e.start)}–${fmtTime(e.end)}`;
   // how it repeats, unless its series ended before this date (it was
@@ -76,7 +79,17 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
       <h1 className="row-start-2 mt-3 font-sans text-heading leading-[0.95] font-extrabold tracking-[-0.035em] min-[720px]:col-start-2 min-[720px]:text-title">
         {e.title}
       </h1>
-      <p className="row-start-3 mt-3 font-serif text-lg text-[#222] min-[720px]:col-start-2">{e.location}</p>
+      {/* an online event's location is its link: a button to it, not the address */}
+      {link ? (
+        <div className="row-start-3 mt-4 min-[720px]:col-start-2">
+          <ButtonLink href={link} target="_blank" rel="noopener noreferrer">
+            <VideoCameraIcon className="size-4" strokeWidth={2.5} aria-hidden />
+            Join meeting
+          </ButtonLink>
+        </div>
+      ) : (
+        <p className="row-start-3 mt-3 font-serif text-lg text-[#222] min-[720px]:col-start-2">{e.location}</p>
+      )}
     </div>
   );
 }

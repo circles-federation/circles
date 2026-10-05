@@ -8,7 +8,7 @@ export { AppShell } from "./app-shell";
 export { AttentionDot } from "./attention-dot";
 export { Avatar } from "./avatar";
 export { BottomNav } from "./bottom-nav";
-export { Button } from "./button";
+export { Button, ButtonLink } from "./button";
 export { Chip } from "./chip";
 export { ConfirmModal } from "./confirm-modal";
 export { Eyebrow } from "./eyebrow";

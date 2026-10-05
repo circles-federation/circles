@@ -85,6 +85,20 @@ const isClock = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 const toClock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
+/* An online event's link: its location, when that's a web address and
+   nothing else (so a place's name that mentions a website stays a place).
+   null for anywhere in person. */
+export function meetingLink(location: string): string | null {
+  const text = location.trim();
+  if (/\s/.test(text)) return null;
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 /* Where the end goes when the start moves, as a calendar app does it: along
    with the start, keeping the event as long as it was (an hour, if it wasn't
    a valid length to begin with). An event is a single day, so it stops at

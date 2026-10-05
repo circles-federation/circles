@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import { Eyebrow, Section } from "@/components/shared";
-import { eventStartsAt, isAttending } from "@/lib/events.util";
+import { eventStartsAt, isAttending, meetingLink } from "@/lib/events.util";
 import { fmtTime } from "@/lib/format.util";
 import { eventDateTime } from "@/lib/roles.util";
 import { useClock } from "@/lib/hooks";
@@ -62,7 +62,7 @@ export function StartingSoon({ events, memberId, rsvpState }: { events: Event[];
           <div className="mt-2.5 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">{e.title}</div>
           <div className="mt-3 flex items-end justify-between gap-4">
             <div className="min-w-0 font-serif text-lg leading-snug text-paper/85">
-              {fmtTime(e.start)} · {e.location}
+              {fmtTime(e.start)} · {meetingLink(e.location) ? "Online" : e.location}
             </div>
             <ArrowRightIcon className="size-6 shrink-0" strokeWidth={2.5} />
           </div>
