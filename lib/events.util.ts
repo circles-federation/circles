@@ -1,6 +1,6 @@
 import { validateAgenda } from "./agenda.util";
 import { isPastEvent } from "./format.util";
-import { REPEAT_FREQUENCIES } from "./recurrence.util";
+import { REPEAT_FREQUENCIES, localDay } from "./recurrence.util";
 import type { AgendaItem, Event, EventKindKey, RepeatFrequency } from "./types";
 
 /* What a person submits to create an event, and the checks on it — shared by
@@ -84,6 +84,20 @@ const isClock = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
 const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 const toClock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+// how long a new event runs unless it's changed
+export const DEFAULT_EVENT_MINUTES = 120;
+
+/* When a new event starts unless it's changed: the next quarter hour after
+   `now` (6:00 exactly gives 6:15, since now isn't in the future), and that
+   day — tomorrow, once it's past 11:45pm. It ends DEFAULT_EVENT_MINUTES
+   later, no later than 11:59pm, since an event is a single day. */
+export function defaultEventTimes(now: Date = new Date()): { date: string; start: string; end: string } {
+  const quarter = 15 * 60_000;
+  const next = new Date((Math.floor(now.getTime() / quarter) + 1) * quarter);
+  const start = toClock(next.getHours() * 60 + next.getMinutes());
+  return { date: localDay(next), start, end: toClock(Math.min(toMinutes(start) + DEFAULT_EVENT_MINUTES, 23 * 60 + 59)) };
+}
 
 /* An online event's link: its location, when that's a web address and
    nothing else (so a place's name that mentions a website stays a place).

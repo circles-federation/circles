@@ -9,14 +9,12 @@ import { useTopBarAction } from "@/components/providers/top-bar-action-provider"
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { audienceLabel, circleCanHost, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
-import { attendeeIds, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
+import { attendeeIds, defaultEventTimes, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { EVENT_KINDS, isProposal, majority } from "@/lib/governance.util";
-import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, localDay, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
+import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
 import type { Circle, Event, EventKindKey, Profile, RepeatFrequency } from "@/lib/types";
 
-const DEFAULT_START = "18:00";
-const DEFAULT_END = "20:00";
 
 interface SlotDraft {
   label: string;
@@ -98,6 +96,9 @@ export function EventFormPage(props: EventFormPageProps) {
   // event's own current values when editing. `dirty` (below) diffs live
   // state against these, not hardcoded blanks, so opening the edit form
   // doesn't itself count as a change.
+  // read once, when the form opens, so the defaults (and what counts as a
+  // change from them) don't move with the clock
+  const [defaultTimes] = useState(() => defaultEventTimes());
   const initialValues = event
     ? {
         type: (event.kind === "meeting" ? "meeting" : "ordinary") as EventKindKey,
@@ -122,11 +123,9 @@ export function EventFormPage(props: EventFormPageProps) {
         title: "",
         circleId: initialHost?.id ?? requestedCircle?.id ?? postable[0]?.id ?? "",
         hostCircleId: initialHost?.id ?? "",
-        // today, the soonest it can be; a starting value, so leaving the form
-        // untouched still has nothing to discard
-        date: localDay(),
-        start: DEFAULT_START,
-        end: DEFAULT_END,
+        // the next quarter hour from now, for two hours; starting values, so
+        // leaving the form untouched still has nothing to discard
+        ...defaultTimes,
         location: "",
         description: "",
         agenda: [BLANK_AGENDA_ITEM],
