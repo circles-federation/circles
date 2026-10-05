@@ -82,6 +82,20 @@ export function roleKey(label: string, index: number): string {
 const isDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(`${s}T00:00:00`).getTime());
 const isClock = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
+const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+const toClock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+/* Where the end goes when the start moves, as a calendar app does it: along
+   with the start, keeping the event as long as it was (an hour, if it wasn't
+   a valid length to begin with). An event is a single day, so it stops at
+   11:59pm rather than running into the next. The end as it was while the new
+   start isn't a whole time yet (a field mid-edit). */
+export function endAfterStartMoves(start: string, end: string, newStart: string): string {
+  if (!isClock(newStart)) return end;
+  const length = isClock(start) && isClock(end) && toMinutes(end) > toMinutes(start) ? toMinutes(end) - toMinutes(start) : 60;
+  return toClock(Math.min(toMinutes(newStart) + length, 23 * 60 + 59));
+}
+
 // the first problem with a draft, or null when it's fine
 export function validateEventDraft(d: EventDraft): string | null {
   const noun = d.kind === "meeting" ? "meeting" : "event";

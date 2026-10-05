@@ -9,7 +9,7 @@ import { useTopBarAction } from "@/components/providers/top-bar-action-provider"
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
 import { audienceLabel, circleCanHost, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
-import { attendeeIds, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
+import { attendeeIds, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { EVENT_KINDS, isProposal, majority } from "@/lib/governance.util";
 import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, localDay, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
@@ -522,7 +522,16 @@ export function EventFormPage(props: EventFormPageProps) {
           <div className="grid grid-cols-2 gap-3.5 min-[720px]:col-span-2">
             <div>
               <Label htmlFor="start">Start</Label>
-              <Input id="start" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+              <Input
+                id="start"
+                type="time"
+                value={start}
+                onChange={(e) => {
+                  // the end moves with it, keeping the event's length
+                  setEnd(endAfterStartMoves(start, end, e.target.value));
+                  setStart(e.target.value);
+                }}
+              />
             </div>
             <div>
               <Label htmlFor="end">End</Label>
