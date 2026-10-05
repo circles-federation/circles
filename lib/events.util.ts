@@ -125,7 +125,9 @@ export function endAfterStartMoves(start: string, end: string, newStart: string)
 }
 
 // the first problem with a draft, or null when it's fine
-export function validateEventDraft(d: EventDraft): string | null {
+// `creating`: a new event must also start after `now`; an edit needn't, so
+// an organizer can still fix an event that's already under way today
+export function validateEventDraft(d: EventDraft, { creating = false, now = new Date() }: { creating?: boolean; now?: Date } = {}): string | null {
   const noun = d.kind === "meeting" ? "meeting" : "event";
   if (!d.title.trim()) return `Give the ${noun} a title.`;
   if (d.title.trim().length > EVENT_TITLE_MAX) return `Keep the title under ${EVENT_TITLE_MAX} characters.`;
@@ -136,6 +138,7 @@ export function validateEventDraft(d: EventDraft): string | null {
   // created in, or moved into, the past either
   if (isPastEvent(d)) return `Pick today or a later date for the ${noun}.`;
   if (!isClock(d.start) || !isClock(d.end)) return "Pick a start and end time.";
+  if (creating && eventStartsAt(d) <= now) return "Pick a start time that hasn't passed yet.";
   if (!d.location.trim()) return "Add a location.";
   if (d.location.trim().length > EVENT_LOCATION_MAX) return `Keep the location under ${EVENT_LOCATION_MAX} characters.`;
   if (d.description.length > EVENT_DESCRIPTION_MAX) return "That description is too long.";

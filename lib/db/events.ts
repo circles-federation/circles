@@ -338,7 +338,7 @@ async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boole
    the first date notifies anyone; the email says how it repeats. Returns
    every date created, soonest (the one asked for) first. */
 export async function createEvent(memberId: number, draft: EventDraft): Promise<Event[]> {
-  const problem = validateEventDraft(draft);
+  const problem = validateEventDraft(draft, { creating: true });
   if (problem) throw new EventError(problem);
   const viewer = await viewerCircles(memberId);
   const { isRoot, canHost } = await assertCanPost(viewer, draft.circleId);

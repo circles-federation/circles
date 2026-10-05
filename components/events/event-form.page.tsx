@@ -12,7 +12,7 @@ import { approvingRole } from "@/lib/circle-roles.util";
 import { attendeeIds, defaultEventTimes, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { EVENT_KINDS, isProposal, majority } from "@/lib/governance.util";
-import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
+import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, localDay, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
 import type { Circle, Event, EventKindKey, Profile, RepeatFrequency } from "@/lib/types";
 
 
@@ -281,7 +281,13 @@ export function EventFormPage(props: EventFormPageProps) {
       roles,
     };
     if (!gov && useSlots && roles.length === 0) return { details, problem: "Add at least one slot, or turn off slots." };
-    return { details, problem: validateEventDraft({ ...details, kind: type, circleId, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}), ...repeatDraft() }) };
+    return {
+      details,
+      problem: validateEventDraft(
+        { ...details, kind: type, circleId, ...(hostCircle ? { hostCircleId: hostCircle.id } : {}), ...repeatDraft() },
+        { creating: mode === "create" }
+      ),
+    };
   }
   function repeatDraft(): Pick<EventDraft, "repeat"> {
     return repeat ? { repeat: { frequency: repeat, ...(until ? { until } : {}) } } : {};
@@ -516,7 +522,16 @@ export function EventFormPage(props: EventFormPageProps) {
           <div>
             <Label htmlFor="date">Date</Label>
             {/* the day only moves one date at a time */}
-            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={seriesLive && scope === "upcoming"} />
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              // the date picker greys out days before today; the time is
+              // checked when the form is (validateEventDraft)
+              min={localDay()}
+              onChange={(e) => setDate(e.target.value)}
+              disabled={seriesLive && scope === "upcoming"}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3.5 min-[720px]:col-span-2">
             <div>
