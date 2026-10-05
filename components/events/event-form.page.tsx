@@ -12,7 +12,7 @@ import { approvingRole } from "@/lib/circle-roles.util";
 import { attendeeIds, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { EVENT_KINDS, isProposal, majority } from "@/lib/governance.util";
-import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
+import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, localDay, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
 import type { Circle, Event, EventKindKey, Profile, RepeatFrequency } from "@/lib/types";
 
 const DEFAULT_START = "18:00";
@@ -122,7 +122,9 @@ export function EventFormPage(props: EventFormPageProps) {
         title: "",
         circleId: initialHost?.id ?? requestedCircle?.id ?? postable[0]?.id ?? "",
         hostCircleId: initialHost?.id ?? "",
-        date: "",
+        // today, the soonest it can be; a starting value, so leaving the form
+        // untouched still has nothing to discard
+        date: localDay(),
         start: DEFAULT_START,
         end: DEFAULT_END,
         location: "",
