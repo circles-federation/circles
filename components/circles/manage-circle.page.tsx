@@ -246,33 +246,6 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
         </div>
       </div>
 
-      {/* right under the masthead, whose bottom rule is its top, and above the
-          tabs, as on the circle's own page */}
-      {hasWiki && <div className="grid grid-cols-1 min-[720px]:grid-cols-4 border-b border-ink">
-        {facts.map((f, i) => (
-          <div
-            key={i}
-            className={clsx(
-              "p-3.5",
-              i < facts.length - 1 && "border-b min-[720px]:border-b-0 min-[720px]:border-r border-faint",
-            )}
-          >
-            <input
-              value={f.label}
-              onChange={(e) => updateFact(i, "label", e.target.value)}
-              placeholder="Label"
-              className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink touch:text-base touch:tracking-[0.06em]"
-            />
-            <input
-              value={f.value}
-              onChange={(e) => updateFact(i, "value", e.target.value)}
-              placeholder="Value"
-              className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
-            />
-          </div>
-        ))}
-      </div>}
-
       {hasWiki && (
         <SimpleTabs
           className="mt-6"
@@ -283,105 +256,137 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
       )}
 
       {activeTab === "wiki" && (
-        <SectionGroup>
-          <Section>
-            <Label>About</Label>
-            <TextArea
-              value={about}
-              onChange={(e) => setAbout(e.target.value)}
-              placeholder={`Write a short description of your ${typeNoun(type)}, its purpose, and what it does.`}
-              rows={5}
-            />
-          </Section>
+        <>
+          {/* the quick facts open the wiki, as they do on the circle's page:
+              before the sections rather than one of them, since the box ends on
+              its own ink rule and needs no hairline after it */}
+          <div className="pt-8">
+            <Label>Quick facts</Label>
+            <div className="grid grid-cols-1 border border-ink min-[720px]:grid-cols-4">
+              {facts.map((f, i) => (
+                <div
+                  key={i}
+                  className={clsx("p-3.5", i < facts.length - 1 && "border-b border-faint min-[720px]:border-r min-[720px]:border-b-0")}
+                >
+                  <input
+                    value={f.label}
+                    onChange={(e) => updateFact(i, "label", e.target.value)}
+                    placeholder="Label"
+                    aria-label={`Fact ${i + 1} label`}
+                    className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink touch:text-base touch:tracking-[0.06em]"
+                  />
+                  <input
+                    value={f.value}
+                    onChange={(e) => updateFact(i, "value", e.target.value)}
+                    placeholder="Value"
+                    aria-label={`Fact ${i + 1} value`}
+                    className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
 
-          <Section>
-            <Label>What we offer</Label>
-            <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
-          </Section>
+          <SectionGroup>
+            <Section>
+              <Label>About</Label>
+              <TextArea
+                value={about}
+                onChange={(e) => setAbout(e.target.value)}
+                placeholder={`Write a short description of your ${typeNoun(type)}, its purpose, and what it does.`}
+                rows={5}
+              />
+            </Section>
 
-          <Section>
-            <Label>What we need</Label>
-            <EditableTags values={needs} onChange={setNeeds} placeholder="Add a need and press Enter" />
-          </Section>
+            <Section>
+              <Label>What we offer</Label>
+              <EditableTags values={offers} onChange={setOffers} placeholder="Add an offering and press Enter" />
+            </Section>
 
-          <Section>
-            <div className="flex flex-col gap-5.5">
-              <div>
-                <Label>Website</Label>
-                <Input
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder={`yourorg.${domainEnding(type)}`}
-                />
-              </div>
+            <Section>
+              <Label>What we need</Label>
+              <EditableTags values={needs} onChange={setNeeds} placeholder="Add a need and press Enter" />
+            </Section>
 
-              <div>
-                <Label>Address</Label>
-                <Input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="123 Main St, Providence, RI"
-                />
-              </div>
+            <Section>
+              <div className="flex flex-col gap-5.5">
+                <div>
+                  <Label>Website</Label>
+                  <Input
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    placeholder={`yourorg.${domainEnding(type)}`}
+                  />
+                </div>
 
-              <div>
-                <Label>Open hours</Label>
-                <div className="flex flex-col gap-2.5">
-                  {hours.map((h, i) => (
-                    <div key={i} className="flex items-stretch border border-ink">
-                      <input
-                        value={h.day}
-                        onChange={(e) => updateHour(i, "day", e.target.value)}
-                        placeholder="Day (e.g. Tue or Mon–Fri)"
-                        className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
-                      />
-                      <input
-                        value={h.time}
-                        onChange={(e) => updateHour(i, "time", e.target.value)}
-                        placeholder="Hours (e.g. 4–8pm)"
-                        className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
-                      />
-                      <button
-                        onClick={() => removeHourRow(i)}
-                        aria-label="Remove"
-                        className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-paper px-3.5 text-soft"
-                      >
-                        <XMarkIcon className="size-3.5" strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  ))}
-                  <Button variant="secondary" size="compact" onClick={addHourRow} className="self-start">
-                    <PlusIcon className="size-3.5" strokeWidth={2.5} />
-                    Add hours
-                  </Button>
+                <div>
+                  <Label>Address</Label>
+                  <Input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="123 Main St, Providence, RI"
+                  />
+                </div>
+
+                <div>
+                  <Label>Open hours</Label>
+                  <div className="flex flex-col gap-2.5">
+                    {hours.map((h, i) => (
+                      <div key={i} className="flex items-stretch border border-ink">
+                        <input
+                          value={h.day}
+                          onChange={(e) => updateHour(i, "day", e.target.value)}
+                          placeholder="Day (e.g. Tue or Mon–Fri)"
+                          className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
+                        />
+                        <input
+                          value={h.time}
+                          onChange={(e) => updateHour(i, "time", e.target.value)}
+                          placeholder="Hours (e.g. 4–8pm)"
+                          className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
+                        />
+                        <button
+                          onClick={() => removeHourRow(i)}
+                          aria-label="Remove"
+                          className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-paper px-3.5 text-soft"
+                        >
+                          <XMarkIcon className="size-3.5" strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    ))}
+                    <Button variant="secondary" size="compact" onClick={addHourRow} className="self-start">
+                      <PlusIcon className="size-3.5" strokeWidth={2.5} />
+                      Add hours
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Section>
+            </Section>
 
-          <Section>
-            <div className="flex flex-col gap-5.5">
-              <div>
-                <Label>How to join</Label>
-                <TextArea
-                  value={join}
-                  onChange={(e) => setJoin(e.target.value)}
-                  placeholder={`How does someone become part of this ${typeNoun(type)}?`}
-                  rows={3}
-                />
-              </div>
+            <Section>
+              <div className="flex flex-col gap-5.5">
+                <div>
+                  <Label>How to join</Label>
+                  <TextArea
+                    value={join}
+                    onChange={(e) => setJoin(e.target.value)}
+                    placeholder={`How does someone become part of this ${typeNoun(type)}?`}
+                    rows={3}
+                  />
+                </div>
 
-              <div>
-                <Label>Get in touch</Label>
-                <Input
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value)}
-                  placeholder={`hello@yourorg.${domainEnding(type)}`}
-                />
+                <div>
+                  <Label>Get in touch</Label>
+                  <Input
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder={`hello@yourorg.${domainEnding(type)}`}
+                  />
+                </div>
               </div>
-            </div>
-          </Section>
-        </SectionGroup>
+            </Section>
+          </SectionGroup>
+        </>
       )}
 
       {activeTab === "circle" && (

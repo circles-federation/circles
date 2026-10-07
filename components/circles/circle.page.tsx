@@ -128,15 +128,6 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         </div>
       </div>
 
-      {hasWiki && <div className="grid grid-cols-1 min-[480px]:grid-cols-2 min-[720px]:grid-cols-4 gap-px bg-faint border-b border-ink">
-        {c.facts.map(([k, v]) => (
-          <div key={k} className="bg-paper py-4 px-3.5">
-            <Eyebrow className="text-soft">{k}</Eyebrow>
-            <div className="mt-2 font-sans text-lg font-extrabold tracking-[-0.01em]">{v}</div>
-          </div>
-        ))}
-      </div>}
-
       {openProposal && <ProposalBanner proposal={openProposal} memberId={profile.id} className="mt-6" />}
 
       <SimpleTabs
@@ -156,6 +147,20 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
 
       {activeTab === "wiki" && (
         <>
+          {/* the circle's quick facts open its wiki, as a small table: each
+              fact's own label is its heading. Before the sections rather than
+              one of them, since it ends on its own ink rule and needs no
+              hairline after it */}
+          {c.facts.length > 0 && (
+            <div className="mt-8 grid grid-cols-1 gap-px border-y border-ink bg-faint min-[480px]:grid-cols-2 min-[720px]:grid-cols-4">
+              {c.facts.map(([k, v]) => (
+                <div key={k} className="bg-paper px-3.5 py-4">
+                  <Eyebrow className="text-soft">{k}</Eyebrow>
+                  <div className="mt-2 font-sans text-lg font-extrabold tracking-[-0.01em]">{v}</div>
+                </div>
+              ))}
+            </div>
+          )}
           <SectionGroup>
             <Section>
               <EyebrowGroup label="About">
