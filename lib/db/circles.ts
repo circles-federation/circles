@@ -1,7 +1,7 @@
-import { and, eq, inArray, like, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, like, or } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
-import { circleMembers, circleRoles, circles } from "./schema";
+import { circleInvitations, circleMembers, circleRoles, circles } from "./schema";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
@@ -48,9 +48,10 @@ async function attachMembers(rows: CircleRow[]): Promise<Circle[]> {
 /* Every circle this member may know of: all of them, except a group they
    don't belong to — a group is private to its members (see isGroup in
    lib/circles.util.ts), so it, and its roster, never reach anyone else's
-   browser. What AppState is seeded and refreshed with. */
+   browser — and an archived one (its last member left), which reaches no
+   one's. What AppState is seeded and refreshed with. */
 export async function getCirclesForMember(memberId: number): Promise<Circle[]> {
-  const rows = await db.select().from(circles);
+  const rows = await db.select().from(circles).where(isNull(circles.archivedAt));
   const all = await attachMembers(rows);
   return all.filter((c) => c.type !== "group" || c.members.includes(memberId));
 }
@@ -159,4 +160,31 @@ export async function createCircle(memberId: number, input: NewCircleInput): Pro
   const created = await getCircleById(id);
   if (!created) throw new CircleError("The circle couldn't be created. Try again.");
   return created;
+}
+
+/* `memberId` leaves a circle they belong to, deliberately (Manage circle).
+   Any role they hold there is left empty, rather than coming back if they
+   rejoin. A neighborhood is their home and the city everyone's, so neither
+   can be left this way. The last member out archives it: it's kept, but
+   sent to no one any more (getCirclesForMember), and its pending invitations
+   go, since there's no one left to welcome anyone in. Their proposals, and
+   events they organize for it, stand. Locked on the circle, so two last
+   members leaving at once can't both miss archiving it. */
+export async function leaveCircle(memberId: number, circleId: string): Promise<{ archived: boolean }> {
+  return db.transaction(async (tx) => {
+    const [circle] = await tx.select().from(circles).where(and(eq(circles.id, circleId), isNull(circles.archivedAt))).for("update");
+    if (!circle) throw new CircleError("That circle doesn't exist.");
+    if (circle.type === "neighborhood" || circle.parentId === null) throw new CircleError("Your neighborhood and the city can't be left this way.");
+    const left = await tx
+      .delete(circleMembers)
+      .where(and(eq(circleMembers.circleId, circleId), eq(circleMembers.memberId, memberId)))
+      .returning({ id: circleMembers.memberId });
+    if (left.length === 0) throw new CircleError(`You're not a member of ${circle.name}.`);
+    await tx.update(circleRoles).set({ memberId: null }).where(and(eq(circleRoles.circleId, circleId), eq(circleRoles.memberId, memberId)));
+    const [remaining] = await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId)).limit(1);
+    if (remaining) return { archived: false };
+    await tx.update(circles).set({ archivedAt: new Date() }).where(eq(circles.id, circleId));
+    await tx.delete(circleInvitations).where(eq(circleInvitations.circleId, circleId));
+    return { archived: true };
+  });
 }

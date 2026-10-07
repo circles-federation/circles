@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { ManageCirclePage } from "@/components/circles/manage-circle.page";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -14,14 +15,20 @@ export default function Page() {
   // after saving or cancelling: back where they came from, or up to the
   // circle's own page if they opened this directly (never out of the app)
   const goBack = useGoBack();
-  const { circles, proposals, profile, saveCircle, proposeCircleChanges } = useAppState();
+  const { circles, proposals, profile, saveCircle, proposeCircleChanges, leaveCircle } = useAppState();
 
   // only a member can manage a circle's page (the server enforces this too —
   // see updateCircle in lib/db/circles.ts); CirclePage only shows the Manage
   // button under the same condition, but the route itself is reachable
   // directly, so it needs the same gate a non-member would otherwise sail past
+  // set while leaving: they stop being a member before this page has gone,
+  // and that moment shouldn't read as a 404
+  const [leaving, setLeaving] = useState(false);
   const circle = circles.find((c) => c.id === id);
-  if (!circle || !isCircleMember(circle, profile.id)) notFound();
+  if (!circle || !isCircleMember(circle, profile.id)) {
+    if (leaving) return null;
+    notFound();
+  }
 
   return (
     <ManageCirclePage
@@ -44,6 +51,19 @@ export default function Page() {
         return { ok: true };
       }}
       onBack={goBack}
+      // replace, not push: this page is gone for them once they've left. Back
+      // to the circle's page, now as a non-member, or to the Circles browser
+      // if they were its last member and it's archived
+      onLeave={async () => {
+        setLeaving(true);
+        const result = await leaveCircle(circle.id);
+        if (!result.ok) {
+          setLeaving(false);
+          return result;
+        }
+        router.replace(result.archived ? "/circles" : `/circles/${circle.id}`);
+        return { ok: true };
+      }}
     />
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowRightStartOnRectangleIcon, CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
@@ -75,9 +75,11 @@ interface ManageCirclePageProps {
   // consent: proposed, not saved (the route goes on to the proposal)
   onPropose: (changes: ProposalChanges) => Promise<{ ok: true } | { ok: false; error: string }>;
   onBack: () => void;
+  // leave the circle (the route goes on from it once it's done)
+  onLeave: () => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
-export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onPropose, onBack }: ManageCirclePageProps) {
+export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onPropose, onBack, onLeave }: ManageCirclePageProps) {
   const { profile } = useAppState();
   const memberById = useMemberById();
   const [parentId, setParentId] = useState<string | null>(o.parentId ?? null);
@@ -148,6 +150,20 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
     JSON.stringify(hoursPairs) !== JSON.stringify(o.hours || []);
   const dirty = freeDirty || proposing;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+  // what leaving means for them: what they lose, the roles they'd leave
+  // empty, and, for the last member, that it's archived
+  const myRoles = (o.roles ?? []).filter((r) => r.memberId === profile.id).map((r) => r.label);
+  const leaveMessage = [
+    "You'll no longer see its bulletin or the events shown only to its members.",
+    myRoles.length > 0 &&
+      `You're its ${myRoles.length > 1 ? `${myRoles.slice(0, -1).join(", ")} and ${myRoles[myRoles.length - 1]}` : myRoles[0]}; ${myRoles.length > 1 ? "those roles" : "that role"} will be left empty.`,
+    o.members.length <= 1 && "You're its last member, so it will be archived and hidden from everyone.",
+  ]
+    .filter(Boolean)
+    .join(" ");
   // a group has no wiki or quick facts (see circleHasWiki), so only the Circle part
   const hasWiki = circleHasWiki(o);
   const [activeTab, setActiveTab] = useState<"wiki" | "circle">(hasWiki ? "wiki" : "circle");
@@ -490,6 +506,36 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
             </Section>
           )}
         </SectionGroup>
+      )}
+
+      {/* leaving: one-way, so at the foot, apart from the rest, and asked
+          about first */}
+      <div className="mt-10 border-t border-faint pt-8">
+        <Button variant="danger" onClick={() => setConfirmingLeave(true)} disabled={leaving}>
+          <ArrowRightStartOnRectangleIcon className="size-3.5" strokeWidth={2.5} />
+          Leave {o.name}
+        </Button>
+        {leaveError && <p className="mt-3 font-sans text-sm font-bold text-danger">{leaveError}</p>}
+      </div>
+
+      {confirmingLeave && (
+        <ConfirmModal
+          title={`Leave ${o.name}?`}
+          message={leaveMessage}
+          confirmLabel="Leave"
+          cancelLabel="Stay"
+          onConfirm={async () => {
+            setConfirmingLeave(false);
+            setLeaving(true);
+            setLeaveError(null);
+            const result = await onLeave();
+            if (!result.ok) {
+              setLeaveError(result.error);
+              setLeaving(false);
+            }
+          }}
+          onCancel={() => setConfirmingLeave(false)}
+        />
       )}
 
       {confirmingDiscard && (

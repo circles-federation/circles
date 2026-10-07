@@ -21,6 +21,7 @@ import {
   updateResourceAction as dbUpdateResource,
   createInvitationAction as dbCreateInvitation,
   acceptInvitationAction as dbAcceptInvitation,
+  leaveCircleAction as dbLeaveCircle,
   deleteInvitationAction as dbDeleteInvitation,
   saveNotificationSettingsAction as dbSaveNotificationSettings,
   createCircleAction as dbCreateCircle,
@@ -78,6 +79,8 @@ export interface AppStateValue {
   inviteToCircle(circleId: string, memberId: number): Promise<MutationResult>;
   // resolves to the circle joined, for the caller to go to
   acceptInvitation(id: string): Promise<{ ok: true; circleId: string } | { ok: false; error: string }>;
+  // `archived` when they were its last member (see leaveCircle)
+  leaveCircle(circleId: string): Promise<{ ok: true; archived: boolean } | { ok: false; error: string }>;
   // `declining`: the invitee turning it down, rather than a member deleting it
   deleteInvitation(id: string, declining: boolean): Promise<MutationResult>;
 }
@@ -617,6 +620,22 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  // await-then-update, adopting the whole app state the server hands back,
+  // as accepting an invitation does: leaving closes off the circle's
+  // bulletin and the events shown only to it
+  async function leaveCircle(circleId: string): Promise<{ ok: true; archived: boolean } | { ok: false; error: string }> {
+    const name = circles.find((c) => c.id === circleId)?.name ?? "the circle";
+    const result = await dbLeaveCircle(circleId).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    adopt(result.value.state);
+    showToast(
+      result.value.archived
+        ? { tone: "success", title: `You've left ${name}`, message: "You were its last member, so it's been archived." }
+        : { tone: "success", title: `You've left ${name}` }
+    );
+    return { ok: true, archived: result.value.archived };
+  }
+
   async function acceptInvitation(id: string): Promise<{ ok: true; circleId: string } | { ok: false; error: string }> {
     const result = await dbAcceptInvitation(id);
     if (!result.ok) return result;
@@ -649,6 +668,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         events, circles, members, resources, invitations, proposals, pendingApplications, rsvpState, voteState, profile,
         inviteToCircle: tracked(inviteToCircle),
         acceptInvitation: tracked(acceptInvitation),
+        leaveCircle: tracked(leaveCircle),
         deleteInvitation: tracked(deleteInvitation),
         applicationDecided: tracked(() => setPendingApplications((n) => (n === null ? n : Math.max(0, n - 1)))),
         toggleRsvp: tracked(toggleRsvp),

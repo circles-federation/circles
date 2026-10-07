@@ -246,6 +246,13 @@
       "when": 1790998432645,
       "tag": "0034_circle_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791357251535,
+      "tag": "0035_circle_archived_at",
+      "breakpoints": true
     }
   ]
 }

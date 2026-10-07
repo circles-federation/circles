@@ -214,6 +214,18 @@ async function tellInvitee(id: string) {
   ]);
 }
 
+/* Leaving a circle (lib/db/circles.ts checks who may): it hands back the
+   whole of the member's app state, as accepting an invitation does, since
+   leaving closes off the circle's bulletin and the events shown only to it. */
+export async function leaveCircleAction(circleId: string) {
+  return asMember(async (memberId) => {
+    const { archived } = await circles.leaveCircle(memberId, circleId);
+    const state = await getAppStateForMember(memberId);
+    if (!state) throw new UserFacingError("Sign in again to do that.");
+    return { archived, state };
+  });
+}
+
 export async function acceptInvitationAction(id: string) {
   return asMember(async (memberId) => {
     const { circleId } = await invitations.acceptInvitation(memberId, id);

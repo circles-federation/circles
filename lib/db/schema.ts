@@ -141,6 +141,10 @@ export const circles = pgTable(
     website: text("website"),
     address: text("address"),
     hours: jsonb("hours").$type<[string, string][]>(),
+    // set when its last member leaves (leaveCircle): it's kept, but hidden
+    // from everyone — sent to no one, so its page 404s and it's in no list —
+    // until there's a way to revive or delete it
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [
     // target of circle_members' composite FK, which is what lets that table
