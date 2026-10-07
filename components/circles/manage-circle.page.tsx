@@ -26,6 +26,19 @@ const CIRCLE_TYPE_OPTIONS = (Object.entries(CIRCLE_TYPE_LABEL) as [CircleType, s
   ([value]) => value !== "neighborhood" && value !== "group" && value !== "other"
 );
 
+// the domain ending its website and email placeholders suggest: .coop for a
+// co-op, .org for a collective or circle, .com for anything else
+function domainEnding(type: CircleType): string {
+  if (type === "cooperative") return "coop";
+  if (type === "collective" || type === "circle") return "org";
+  return "com";
+}
+
+// what to call it in a placeholder: its type, or "organization" for Other
+function typeNoun(type: CircleType): string {
+  return type === "other" ? "organization" : CIRCLE_TYPE_LABEL[type].toLowerCase();
+}
+
 // matches circle.page.tsx's read-only facts grid (label above a bold value,
 // evenly split columns) — kept fixed at 4 slots since that's what the
 // reference display grid assumes today.
@@ -260,7 +273,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
             <TextArea
               value={about}
               onChange={(e) => setAbout(e.target.value)}
-              placeholder="Write a short description of your organization, its purpose, and what it does."
+              placeholder={`Write a short description of your ${typeNoun(type)}, its purpose, and what it does.`}
               rows={5}
             />
           </Section>
@@ -282,7 +295,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
                 <Input
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="yourorg.coop"
+                  placeholder={`yourorg.${domainEnding(type)}`}
                 />
               </div>
 
@@ -337,7 +350,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
                 <TextArea
                   value={join}
                   onChange={(e) => setJoin(e.target.value)}
-                  placeholder="How does someone become part of this organization?"
+                  placeholder={`How does someone become part of this ${typeNoun(type)}?`}
                   rows={3}
                 />
               </div>
@@ -347,7 +360,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
                 <Input
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
-                  placeholder="hello@yourorg.coop"
+                  placeholder={`hello@yourorg.${domainEnding(type)}`}
                 />
               </div>
             </div>
@@ -393,7 +406,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={locked}
-                  placeholder="Organization name"
+                  placeholder={`${typeNoun(type).charAt(0).toUpperCase()}${typeNoun(type).slice(1)} name`}
                 />
               </div>
 
