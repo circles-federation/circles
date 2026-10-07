@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { ArrowTopRightOnSquareIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, Chip, Eyebrow, EyebrowGroup, GhostIconButton, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
+import { Avatar, Chip, Eyebrow, EyebrowGroup, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
 import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { useFloatingAction } from "@/components/providers/floating-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL, circleChildren, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
@@ -81,6 +82,18 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   // this circle's invitations not yet accepted
   const invited = invitations.filter((i) => i.circleId === c.id);
 
+  // the active tab's floating action: add to the bulletin, invite someone,
+  // or host an event (only a member can); none on the wiki
+  useFloatingAction(
+    activeTab === "bulletin"
+      ? { label: "Add to bulletin", icon: PlusIcon, onAction: startAdding }
+      : activeTab === "members" && isMember
+        ? { label: "Invite", icon: UserPlusIcon, onAction: startInviting }
+        : activeTab === "events" && isMember
+          ? { label: "New event", icon: PlusIcon, onAction: onNewEvent }
+          : null
+  );
+
   return (
     <PageContainer size="normal">
       <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
@@ -131,16 +144,6 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         tabs={tabs}
         active={activeTab}
         onChange={(key) => changeTab(key as CircleTab)}
-        actions={
-          activeTab === "bulletin" ? (
-            <GhostIconButton icon={PlusIcon} label="Add item" onClick={startAdding} className="-my-2.5 -mr-2.5" />
-          ) : activeTab === "members" && isMember ? (
-            <GhostIconButton icon={UserPlusIcon} label="Invite" onClick={startInviting} className="-my-2.5 -mr-2.5" />
-          ) : activeTab === "events" && isMember ? (
-            // only a member can host from the circle
-            <GhostIconButton icon={PlusIcon} label="New event" onClick={onNewEvent} className="-my-2.5 -mr-2.5" />
-          ) : null
-        }
       />
 
       {activeTab === "bulletin" && (

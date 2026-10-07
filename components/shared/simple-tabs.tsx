@@ -1,7 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import type { ReactNode } from "react";
+import { useCurrentFloatingAction } from "@/components/providers/floating-action-provider";
+import { FloatingActionButton } from "./floating-action-button";
 
 interface SimpleTab {
   key: string;
@@ -12,9 +13,6 @@ interface SimpleTabsProps {
   tabs: SimpleTab[];
   active: string;
   onChange: (key: string) => void;
-  // what the active tab offers to do (the bulletin's +), at the row's right
-  // end, on the labels' line
-  actions?: ReactNode;
   className?: string;
 }
 
@@ -22,10 +20,16 @@ interface SimpleTabsProps {
    caller renders itself — gray inactive labels, a bold black label plus a
    thin underline for the active one, all sitting on a single hairline.
    Unlike TabbedPanel (a boxed panel with equal-width tabs, a colored accent
-   bar, and an attached content box), this is navigation only. */
-export function SimpleTabs({ tabs, active, onChange, actions, className }: SimpleTabsProps) {
+   bar, and an attached content box), this is navigation only.
+
+   What the active tab offers to do is the page's floating action button (see
+   useFloatingAction). Wider, it sits here, at the row's right end on the
+   labels' line, beside the tabs it changes with, so that's plain to see; on a
+   phone it floats above the bottom nav instead (AppShell). */
+export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProps) {
+  const fab = useCurrentFloatingAction();
   return (
-    <div className={clsx("flex gap-6 border-b border-faint", className)}>
+    <div className={clsx("relative flex gap-6 border-b border-faint", className)}>
       {tabs.map((t) => {
         const on = t.key === active;
         return (
@@ -41,9 +45,14 @@ export function SimpleTabs({ tabs, active, onChange, actions, className }: Simpl
           </button>
         );
       })}
-      {/* pb-3 like the labels, so an action is centred on their line; a 44px
-          tap area inside it takes -my-2.5 so the row is no taller */}
-      {actions && <div className="ml-auto flex items-center gap-1 pb-3">{actions}</div>}
+      {/* laid over the row rather than in it, centred on the labels' line (a
+          base-size line is 1.5rem), so the row is the same height whichever
+          tab is showing, button or not */}
+      {fab.shown && (
+        <div className="absolute top-0 right-0 hidden h-6 items-center min-[720px]:flex">
+          <FloatingActionButton icon={fab.shown.icon} label={fab.shown.label} onClick={fab.run} size="small" />
+        </div>
+      )}
     </div>
   );
 }

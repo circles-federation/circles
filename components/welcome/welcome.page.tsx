@@ -161,10 +161,13 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
       </div>
 
       {demoMembers.length > 0 && (
+        // outside the app, so it places itself: the bottom-right corner, clear
+        // of the home indicator
         <FloatingActionButton
           onClick={() => setDemoOpen(true)}
-          title="Demo accounts"
-          icon={<UsersIcon className="size-5 text-ink" strokeWidth={2} />}
+          label="Demo accounts"
+          icon={UsersIcon}
+          className="fixed right-6 bottom-[calc(24px+env(safe-area-inset-bottom))] z-40"
         />
       )}
 
