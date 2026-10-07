@@ -14,6 +14,7 @@ import {
   describeChanges,
   everyoneConsented,
   hasChanges,
+  missingCircleBasics,
   validateChanges,
 } from "@/lib/proposals.util";
 import type { Circle, CircleProposal, ConsentResponse, ProposalChanges, ProposalResponse } from "@/lib/types";
@@ -129,7 +130,7 @@ export async function createProposal(memberId: number, circleId: string, draft: 
   if (!circle || !circle.members.includes(memberId)) throw new ProposalError("Only a circle's members can propose changes to it.");
   const changes = changedFields(circle, draft);
   if (!hasChanges(changes)) throw new ProposalError("There's nothing to propose: nothing would change.");
-  const problem = validateChanges(circle, changes, visible);
+  const problem = validateChanges(circle, changes, visible) ?? missingCircleBasics(circle, changes);
   if (problem) throw new ProposalError(problem);
   const names = await memberNames([...(changes.roles ?? []), ...(circle.roles ?? [])].flatMap((r) => (r.memberId !== null ? [r.memberId] : [])));
   const lines = describeChanges(circle, changes, visible, (id) => names.get(id) ?? "A former member");

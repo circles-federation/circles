@@ -72,6 +72,10 @@ export interface Circle {
   offers: string[];
   // what the circle is asking for — donations, hands, space — the other side of offers
   needs: string[];
+  // a Circle's (type "circle") domain, the area it decides in, and its aims;
+  // required of one, decided by consent, shown only on Manage circle for now
+  domain?: string;
+  aims?: string[];
   // member ids — explicit membership rows, for every circle type
   members: number[];
   // only on circles that can have roles (not a neighborhood or the city): every
@@ -193,6 +197,8 @@ export interface ProposalChanges {
   tagline?: string;
   type?: CircleType;
   parentId?: string;
+  domain?: string;
+  aims?: string[];
   roles?: { label: string; memberId: number | null }[];
 }
 

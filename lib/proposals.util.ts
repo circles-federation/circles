@@ -4,7 +4,8 @@ import type { Circle, CircleProposal, CircleType, ConsentResponse, ProposalChang
 
 /* Consent, as Sociocracy for All describes it: a decision is made unless
    someone has a reasoned objection to it. Some changes to a circle are its
-   members' to decide that way — its name, tagline, type, parent and roles —
+   members' to decide that way — its name, tagline, type, parent and roles,
+   and a Circle's domain and aims —
    so Manage circle proposes them rather than making them (lib/db/proposals.ts).
 
    A proposal is open for PROPOSAL_WINDOW_MS. Each member answers green (like
@@ -24,7 +25,14 @@ export const RESPONSE_LABEL: Record<ConsentResponse, string> = {
 
 // the changes a circle's members decide by consent, as Manage circle edits
 // them; anything else on its page is edited freely
-export const CONSENT_FIELDS = ["name", "tagline", "type", "parentId", "roles"] as const;
+export const CONSENT_FIELDS = ["name", "tagline", "type", "parentId", "domain", "aims", "roles"] as const;
+
+export const CIRCLE_DOMAIN_MAX = 500;
+export const CIRCLE_AIM_MAX = 200;
+export const MAX_CIRCLE_AIMS = 10;
+
+const aimsOf = (c: Pick<Circle, "aims">) => c.aims ?? [];
+const sameAims = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);
 
 type Roles = NonNullable<ProposalChanges["roles"]>;
 const isBuiltinRole = (label: string) => BUILTIN_CIRCLE_ROLES.some((b) => b.toLowerCase() === label.toLowerCase());
@@ -40,6 +48,11 @@ export function changedFields(circle: Circle, draft: ProposalChanges): ProposalC
   if (draft.tagline !== undefined && draft.tagline.trim() !== circle.tagline) out.tagline = draft.tagline.trim();
   if (draft.type !== undefined && draft.type !== circle.type) out.type = draft.type;
   if (draft.parentId !== undefined && draft.parentId !== circle.parentId) out.parentId = draft.parentId;
+  if (draft.domain !== undefined && draft.domain.trim() !== (circle.domain ?? "")) out.domain = draft.domain.trim();
+  if (draft.aims !== undefined) {
+    const aims = draft.aims.map((a) => a.trim()).filter((a) => a !== "");
+    if (!sameAims(aims, aimsOf(circle))) out.aims = aims;
+  }
   if (draft.roles !== undefined) {
     const roles = draft.roles.map((r) => ({ label: r.label.trim(), memberId: r.memberId })).filter((r) => r.label !== "");
     if (!sameRoles(roles, rolesOf(circle))) out.roles = roles;
@@ -49,28 +62,64 @@ export function changedFields(circle: Circle, draft: ProposalChanges): ProposalC
 
 export const hasChanges = (c: ProposalChanges) => Object.keys(c).length > 0;
 
-/* What's wrong with a proposal's changes to `circle`, or null: the same rules
-   Manage circle has always applied, checked by the form as it's filled in and
-   by the server when it's proposed and again when it's made. */
-export function validateChanges(circle: Circle, changes: ProposalChanges, circles: Circle[]): string | null {
+// which of the fields a proposal can change a problem is about, so a form can
+// show it there
+export type ConsentField = (typeof CONSENT_FIELDS)[number];
+export interface ChangeProblem {
+  field: ConsentField;
+  message: string;
+}
+
+/* What's wrong with a proposal's changes to `circle`, and which field it's
+   about, or null: the same rules Manage circle has always applied, checked by
+   the form as it's filled in and by the server when it's proposed and again
+   when it's made. validateChanges is the same, as just the message. */
+export function checkChanges(circle: Circle, changes: ProposalChanges, circles: Circle[]): ChangeProblem | null {
+  const problem = (field: ConsentField, message: string): ChangeProblem => ({ field, message });
   if (changes.name !== undefined) {
-    if (!changes.name) return "Give the circle a name.";
-    if (changes.name.length > CIRCLE_NAME_MAX) return `Keep the name to ${CIRCLE_NAME_MAX} characters.`;
+    if (!changes.name) return problem("name", "Give the circle a name.");
+    if (changes.name.length > CIRCLE_NAME_MAX) return problem("name", `Keep the name to ${CIRCLE_NAME_MAX} characters.`);
   }
-  if (changes.tagline !== undefined && changes.tagline.length > CIRCLE_TAGLINE_MAX) return `Keep the tagline to ${CIRCLE_TAGLINE_MAX} characters.`;
+  if (changes.tagline !== undefined && changes.tagline.length > CIRCLE_TAGLINE_MAX) return problem("tagline", `Keep the tagline to ${CIRCLE_TAGLINE_MAX} characters.`);
   if (changes.type !== undefined) {
     const allowed: CircleType[] = ["circle", "collective", "cooperative"];
-    if (circle.type === "group" || circle.type === "neighborhood" || !allowed.includes(changes.type)) return "That circle can't become that kind of circle.";
+    if (circle.type === "group" || circle.type === "neighborhood" || !allowed.includes(changes.type)) return problem("type", "That circle can't become that kind of circle.");
   }
   if (changes.parentId !== undefined) {
-    if (circle.parentId === null || !parentCircleOptions(circles, circle.id).some((c) => c.id === changes.parentId)) return "Choose where this circle sits.";
+    if (circle.parentId === null || !parentCircleOptions(circles, circle.id).some((c) => c.id === changes.parentId)) return problem("parentId", "Choose where this circle sits.");
+  }
+  if (changes.domain !== undefined && changes.domain.length > CIRCLE_DOMAIN_MAX) return problem("domain", `Keep the domain to ${CIRCLE_DOMAIN_MAX} characters.`);
+  if (changes.aims !== undefined) {
+    if (changes.aims.length > MAX_CIRCLE_AIMS) return problem("aims", `Keep it to ${MAX_CIRCLE_AIMS} aims or fewer.`);
+    if (changes.aims.some((a) => a.length > CIRCLE_AIM_MAX)) return problem("aims", `Keep each aim to ${CIRCLE_AIM_MAX} characters.`);
   }
   if (changes.roles !== undefined) {
-    if (!circleHasRoles(circle)) return "This circle doesn't have roles.";
-    const problem = validateCircleRoles(changes.roles, circle.members);
-    if (problem) return problem;
+    if (!circleHasRoles(circle)) return problem("roles", "This circle doesn't have roles.");
+    const message = validateCircleRoles(changes.roles, circle.members);
+    if (message) return problem("roles", message);
   }
   return null;
+}
+
+export function validateChanges(circle: Circle, changes: ProposalChanges, circles: Circle[]): string | null {
+  return checkChanges(circle, changes, circles)?.message ?? null;
+}
+
+/* What a Circle (type "circle") still lacks once a proposal's made, or null:
+   sociocracy defines one by its domain and at least one aim, so a proposal
+   can't leave a Circle without them — including the first proposal for one
+   that has neither yet, for anything. Checked when it's proposed (the form,
+   and createProposal), not again when it passes, so a rename agreed to before
+   doesn't fail on it. */
+export function checkCircleBasics(circle: Circle, changes: ProposalChanges): ChangeProblem | null {
+  if ((changes.type ?? circle.type) !== "circle") return null;
+  if (!(changes.domain ?? circle.domain ?? "").trim()) return { field: "domain", message: "Give the circle a domain: the area it decides in." };
+  if ((changes.aims ?? aimsOf(circle)).length === 0) return { field: "aims", message: "Give the circle at least one aim." };
+  return null;
+}
+
+export function missingCircleBasics(circle: Circle, changes: ProposalChanges): string | null {
+  return checkCircleBasics(circle, changes)?.message ?? null;
 }
 
 /* The proposal's changes as lines to read (label, before, after), worked out
@@ -86,6 +135,8 @@ export function describeChanges(circle: Circle, changes: ProposalChanges, circle
   if (changes.tagline !== undefined) lines.push({ label: "Tagline", before: circle.tagline, after: changes.tagline });
   if (changes.type !== undefined) lines.push({ label: "Type", before: CIRCLE_TYPE_LABEL[circle.type], after: CIRCLE_TYPE_LABEL[changes.type] });
   if (changes.parentId !== undefined) lines.push({ label: "Parent Circle", before: circleName(circle.parentId), after: circleName(changes.parentId) });
+  if (changes.domain !== undefined) lines.push({ label: "Domain", before: circle.domain ?? "", after: changes.domain });
+  if (changes.aims !== undefined) lines.push({ label: "Aims", before: aimsOf(circle).join("; "), after: changes.aims.join("; ") });
   if (changes.roles !== undefined) {
     const holder = (id: number | null) => (id === null ? "Unassigned" : memberName(id));
     const before = rolesOf(circle);
@@ -107,7 +158,7 @@ export function describeChanges(circle: Circle, changes: ProposalChanges, circle
 // "Change the name, type and roles"
 export function proposalTitle(p: Pick<CircleProposal, "changes">): string {
   const c = p.changes;
-  const parts = [c.name !== undefined && "name", c.tagline !== undefined && "tagline", c.type !== undefined && "type", c.parentId !== undefined && "parent circle", c.roles !== undefined && "roles"].filter(
+  const parts = [c.name !== undefined && "name", c.tagline !== undefined && "tagline", c.type !== undefined && "type", c.parentId !== undefined && "parent circle", c.domain !== undefined && "domain", c.aims !== undefined && "aims", c.roles !== undefined && "roles"].filter(
     (x): x is string => !!x
   );
   if (parts.length === 1 && c.name !== undefined) return `Rename to ${c.name}`;

@@ -133,6 +133,12 @@ export const circles = pgTable(
     about: text("about").notNull(),
     offers: text("offers").array().notNull().default(sql`'{}'::text[]`),
     needs: text("needs").array().notNull().default(sql`'{}'::text[]`),
+    // a Circle's (type "circle") domain — the area it has the authority to
+    // decide in — and its aims, what it's there to achieve, as sociocracy
+    // defines a circle. Required of a Circle, decided by consent (see
+    // lib/proposals.util.ts); not shown anywhere but Manage circle yet.
+    domain: text("domain"),
+    aims: text("aims").array().notNull().default(sql`'{}'::text[]`),
     lastEditedBy: integer("last_edited_by").references(() => members.id),
     lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
     facts: jsonb("facts").$type<[string, string][]>().notNull().default(sql`'[]'::jsonb`),

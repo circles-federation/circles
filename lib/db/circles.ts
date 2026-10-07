@@ -21,6 +21,8 @@ function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDra
     about: row.about,
     offers: row.offers,
     needs: row.needs,
+    ...(row.domain ? { domain: row.domain } : {}),
+    aims: row.aims,
     members: memberIds,
     ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds) } : {}),
     lastEditedBy: row.lastEditedBy ?? undefined,
@@ -97,7 +99,8 @@ export async function updateCircle(memberId: number, id: string, patch: Partial<
   // consent: a proposal makes them (lib/db/proposals.ts), never this edit
   const consentNeeded = (["name", "tagline", "type", "parentId"] as const).find((k) => patch[k] !== undefined && patch[k] !== circle[k]);
   if (consentNeeded) throw new CircleError("That change needs the circle's consent: propose it from Manage circle.");
-  const { members: _members, roles: _roles, lastEditedAt, name: _name, tagline: _tagline, type: _type, parentId: _parentId, ...columnPatch } = patch;
+  // and a Circle's domain and aims too, which are only ever proposed, so dropped here
+  const { members: _members, roles: _roles, lastEditedAt, name: _name, tagline: _tagline, type: _type, parentId: _parentId, domain: _domain, aims: _aims, ...columnPatch } = patch;
   if (Object.keys(columnPatch).length > 0 || lastEditedAt !== undefined) {
     await db
       .update(circles)

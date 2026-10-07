@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRightStartOnRectangleIcon, CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
@@ -9,7 +9,7 @@ import { Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, Se
 import { EditableTags } from "@/components/profile/editable-tags";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { CIRCLE_ROLE_LABEL_MAX, builtinRoleDescription, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { changedFields, hasChanges, validateChanges } from "@/lib/proposals.util";
+import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, MAX_CIRCLE_AIMS, changedFields, checkChanges, checkCircleBasics, hasChanges, type ConsentField } from "@/lib/proposals.util";
 import { CIRCLE_TYPE_LABEL, circleHasWiki } from "@/lib/circles.util";
 import { useMemberById } from "@/lib/hooks";
 import type { Circle, CircleProposal, CircleType, Member, ProposalChanges } from "@/lib/types";
@@ -89,6 +89,11 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
   const typeOptions = o.type === "other" ? [...CIRCLE_TYPE_OPTIONS, ["other", CIRCLE_TYPE_LABEL.other] as [CircleType, string]] : CIRCLE_TYPE_OPTIONS;
   const [name, setName] = useState(o.name);
   const [tagline, setTagline] = useState(o.tagline);
+  // a Circle's domain and aims (only while its type is Circle); one aim row
+  // to start with if it has none, since it needs at least one
+  const [domain, setDomain] = useState(o.domain ?? "");
+  const [aims, setAims] = useState<string[]>(() => (o.aims && o.aims.length > 0 ? [...o.aims] : [""]));
+  const isCircleType = type === "circle";
   const [about, setAbout] = useState(o.about);
   const [offers, setOffers] = useState([...o.offers]);
   const [needs, setNeeds] = useState([...o.needs]);
@@ -122,7 +127,19 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
   const newRoleKey = useRef(0);
   // a role row left with no name is dropped, like a blank fact or hours row
   const rolePairs: CircleRoleDraft[] = roleRows.map((r) => ({ label: r.label.trim(), memberId: r.memberId })).filter((r) => r.label !== "");
-  const [consentError, setConsentError] = useState("");
+  // a problem with what's proposed: shown under its field (or, from the
+  // server, which doesn't say which, at the top of the Circle tab), scrolled
+  // to, and cleared as soon as that field's edited
+  const [consentError, setConsentError] = useState<{ field: ConsentField | null; message: string } | null>(null);
+  const clearError = (field: ConsentField) => setConsentError((e) => (e && (e.field === field || e.field === null) ? null : e));
+  useEffect(() => {
+    if (!consentError) return;
+    const el = document.getElementById(consentError.field ? `field-${consentError.field}` : "circle-tab-top");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)")?.focus({ preventScroll: true });
+  }, [consentError]);
+  const fieldError = (field: ConsentField) =>
+    consentError?.field === field && <p className="mt-2 font-sans text-sm font-bold text-danger">{consentError.message}</p>;
   // locked while a proposal is open: one at a time, so two can't change the same thing
   const locked = !!openProposal;
   const [saving, setSaving] = useState(false);
@@ -134,6 +151,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
     tagline,
     type,
     ...(o.parentId !== null && parentId !== null ? { parentId } : {}),
+    ...(isCircleType ? { domain, aims } : {}),
     ...(showRoles ? { roles: rolePairs } : {}),
   });
   const proposing = hasChanges(proposed);
@@ -185,23 +203,26 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
   }
 
   function updateRole(key: string, patch: Partial<RoleRow>) {
+    clearError("roles");
     setRoleRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
   function addRole() {
+    clearError("roles");
     setRoleRows((prev) => [...prev, { key: `n:${newRoleKey.current++}`, label: "", builtin: false, memberId: null }]);
   }
 
   function removeRole(key: string) {
+    clearError("roles");
     setRoleRows((prev) => prev.filter((r) => r.key !== key));
   }
 
   async function handleSave() {
     if (saving) return;
-    setConsentError("");
+    setConsentError(null);
     if (proposing) {
       // instant feedback only — the server checks again, and is the real check
-      const problem = validateChanges(o, proposed, circles);
+      const problem = checkChanges(o, proposed, circles) ?? checkCircleBasics(o, proposed);
       if (problem) {
         setActiveTab("circle");
         return setConsentError(problem);
@@ -217,7 +238,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
       setSaving(false);
       if (!result.ok) {
         setActiveTab("circle");
-        setConsentError(result.error);
+        setConsentError({ field: null, message: result.error });
       }
       return;
     }
@@ -391,7 +412,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
 
       {activeTab === "circle" && (
         <SectionGroup>
-          <Section>
+          <Section id="circle-tab-top">
             {/* these fields are the members' to decide, by consent */}
             {openProposal ? (
               <div className="mb-5.5">
@@ -405,46 +426,140 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
                 Changes here need {o.name}&rsquo;s consent: saving proposes them to its members.
               </p>
             )}
+            {consentError?.field === null && <p className="mb-5.5 font-sans text-sm font-bold text-danger">{consentError.message}</p>}
             <div className="flex flex-col gap-5.5">
               {o.parentId !== null && (
-                <ParentCircleSelect circles={circles} value={parentId ?? ""} onChange={(id) => setParentId(id === "" ? null : id)} except={o.id} disabled={locked} />
+                <div id="field-parentId">
+                  <ParentCircleSelect
+                    circles={circles}
+                    value={parentId ?? ""}
+                    onChange={(id) => {
+                      clearError("parentId");
+                      setParentId(id === "" ? null : id);
+                    }}
+                    except={o.id}
+                    disabled={locked}
+                  />
+                  {fieldError("parentId")}
+                </div>
               )}
 
               {o.type !== "neighborhood" && o.type !== "group" && (
-                <div>
+                <div id="field-type">
                   <Label htmlFor="circle-type">Type</Label>
-                  <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} disabled={locked} className="min-[720px]:max-w-90">
+                  <Select
+                    id="circle-type"
+                    value={type}
+                    onChange={(e) => {
+                      clearError("type");
+                      setType(e.target.value as CircleType);
+                    }}
+                    disabled={locked}
+                    className="min-[720px]:max-w-90"
+                  >
                     {typeOptions.map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </Select>
+                  {fieldError("type")}
                 </div>
               )}
 
-              <div>
+              <div id="field-name">
                 <Label>Name</Label>
                 <Input
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    clearError("name");
+                    setName(e.target.value);
+                  }}
                   disabled={locked}
                   placeholder={`${typeNoun(type).charAt(0).toUpperCase()}${typeNoun(type).slice(1)} name`}
                 />
+                {fieldError("name")}
               </div>
 
-              <div>
+              <div id="field-tagline">
                 <Label>Tagline</Label>
                 <Input
                   value={tagline}
-                  onChange={(e) => setTagline(e.target.value)}
+                  onChange={(e) => {
+                    clearError("tagline");
+                    setTagline(e.target.value);
+                  }}
                   disabled={locked}
                   placeholder="A short line under the name"
                 />
+                {fieldError("tagline")}
               </div>
+
+              {/* what makes it a circle, in sociocracy's terms */}
+              {isCircleType && (
+                <>
+                  <div id="field-domain">
+                    <Label htmlFor="circle-domain">Domain</Label>
+                    <p className="mb-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">The area this circle has the authority to decide in.</p>
+                    <TextArea
+                      id="circle-domain"
+                      value={domain}
+                      onChange={(e) => {
+                        clearError("domain");
+                        setDomain(e.target.value);
+                      }}
+                      disabled={locked}
+                      maxLength={CIRCLE_DOMAIN_MAX}
+                      rows={3}
+                      placeholder="e.g. The block's shared budget: what it's spent on, and how"
+                    />
+                    {fieldError("domain")}
+                  </div>
+
+                  <div id="field-aims">
+                    <Label>Aims</Label>
+                    <p className="mb-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">What this circle is there to achieve. At least one.</p>
+                    <div className="flex flex-col gap-2.5">
+                      {aims.map((a, i) => (
+                        <div key={i} className="flex items-stretch border border-ink">
+                          <input
+                            value={a}
+                            onChange={(e) => {
+                              clearError("aims");
+                              setAims((prev) => prev.map((x, j) => (j === i ? e.target.value : x)));
+                            }}
+                            disabled={locked}
+                            maxLength={CIRCLE_AIM_MAX}
+                            placeholder={i === 0 ? "e.g. Keep the block's money transparent" : "Another aim"}
+                            aria-label={`Aim ${i + 1}`}
+                            className="min-w-0 flex-1 border-0 px-3 py-2.75 font-serif text-base outline-none"
+                          />
+                          {aims.length > 1 && (
+                            <button
+                              onClick={() => setAims((prev) => prev.filter((_, j) => j !== i))}
+                              disabled={locked}
+                              aria-label={`Remove aim ${i + 1}`}
+                              className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 border-l border-ink bg-paper px-3.5 text-soft"
+                            >
+                              <XMarkIcon className="size-3.5" strokeWidth={2.5} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {aims.length < MAX_CIRCLE_AIMS && (
+                        <Button variant="secondary" size="compact" onClick={() => setAims((prev) => [...prev, ""])} disabled={locked} className="self-start">
+                          <PlusIcon className="size-3.5" strokeWidth={2.5} />
+                          Add aim
+                        </Button>
+                      )}
+                    </div>
+                    {fieldError("aims")}
+                  </div>
+                </>
+              )}
             </div>
           </Section>
 
           {showRoles && (
-            <Section>
+            <Section id="field-roles">
               <Label>Roles</Label>
               <p className="mb-3 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
                 Optional. A Secretary, Leader or Facilitator can approve meetings and events without a vote.
@@ -503,11 +618,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
                 <PlusIcon className="size-3.5" strokeWidth={2.5} />
                 Add role
               </Button>
-            </Section>
-          )}
-          {consentError && (
-            <Section>
-              <p className="font-sans text-sm font-bold text-danger">{consentError}</p>
+              {fieldError("roles")}
             </Section>
           )}
         </SectionGroup>
