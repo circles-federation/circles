@@ -1,5 +1,5 @@
 import { BUILTIN_CIRCLE_ROLES, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
-import { CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, parentCircleOptions } from "./circles.util";
+import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, parentCircleOptions } from "./circles.util";
 import type { Circle, CircleProposal, CircleType, ConsentResponse, ProposalChanges, ProposalLine, ProposalResponse } from "./types";
 
 /* Consent, as Sociocracy for All describes it: a decision is made unless
@@ -26,10 +26,6 @@ export const RESPONSE_LABEL: Record<ConsentResponse, string> = {
 // the changes a circle's members decide by consent, as Manage circle edits
 // them; anything else on its page is edited freely
 export const CONSENT_FIELDS = ["name", "tagline", "type", "parentId", "domain", "aims", "roles"] as const;
-
-export const CIRCLE_DOMAIN_MAX = 500;
-export const CIRCLE_AIM_MAX = 200;
-export const MAX_CIRCLE_AIMS = 10;
 
 const aimsOf = (c: Pick<Circle, "aims">) => c.aims ?? [];
 const sameAims = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);

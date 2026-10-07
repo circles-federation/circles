@@ -4,7 +4,7 @@ import { UserFacingError } from "./errors";
 import { circleInvitations, circleMembers, circleRoles, circles } from "./schema";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
+import { cleanAims, validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
 
 type CircleRow = typeof circles.$inferSelect;
@@ -154,6 +154,7 @@ export async function createCircle(memberId: number, input: NewCircleInput): Pro
       parentId: input.parentId,
       tagline: input.tagline.trim(),
       about: "",
+      ...(input.type === "circle" ? { domain: (input.domain ?? "").trim(), aims: cleanAims(input.aims) } : {}),
       lastEditedBy: memberId,
       lastEditedAt: new Date(),
     });

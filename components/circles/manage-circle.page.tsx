@@ -9,10 +9,11 @@ import { Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Section, Se
 import { EditableTags } from "@/components/profile/editable-tags";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { CIRCLE_ROLE_LABEL_MAX, builtinRoleDescription, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, MAX_CIRCLE_AIMS, changedFields, checkChanges, checkCircleBasics, hasChanges, type ConsentField } from "@/lib/proposals.util";
+import { changedFields, checkChanges, checkCircleBasics, hasChanges, type ConsentField } from "@/lib/proposals.util";
 import { CIRCLE_TYPE_LABEL, circleHasWiki } from "@/lib/circles.util";
 import { useMemberById } from "@/lib/hooks";
 import type { Circle, CircleProposal, CircleType, Member, ProposalChanges } from "@/lib/types";
+import { CircleBasicsFields } from "./circle-basics-fields";
 import { ParentCircleSelect } from "./parent-circle-select";
 import { ProposalBanner } from "./proposal-banner";
 
@@ -495,65 +496,21 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
 
               {/* what makes it a circle, in sociocracy's terms */}
               {isCircleType && (
-                <>
-                  <div id="field-domain">
-                    <Label htmlFor="circle-domain">Domain</Label>
-                    <p className="mb-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">The area this circle has the authority to decide in.</p>
-                    <TextArea
-                      id="circle-domain"
-                      value={domain}
-                      onChange={(e) => {
-                        clearError("domain");
-                        setDomain(e.target.value);
-                      }}
-                      disabled={locked}
-                      maxLength={CIRCLE_DOMAIN_MAX}
-                      rows={3}
-                      placeholder="e.g. The block's shared budget: what it's spent on, and how"
-                    />
-                    {fieldError("domain")}
-                  </div>
-
-                  <div id="field-aims">
-                    <Label>Aims</Label>
-                    <p className="mb-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">What this circle is there to achieve. At least one.</p>
-                    <div className="flex flex-col gap-2.5">
-                      {aims.map((a, i) => (
-                        <div key={i} className="flex items-stretch border border-ink">
-                          <input
-                            value={a}
-                            onChange={(e) => {
-                              clearError("aims");
-                              setAims((prev) => prev.map((x, j) => (j === i ? e.target.value : x)));
-                            }}
-                            disabled={locked}
-                            maxLength={CIRCLE_AIM_MAX}
-                            placeholder={i === 0 ? "e.g. Keep the block's money transparent" : "Another aim"}
-                            aria-label={`Aim ${i + 1}`}
-                            className="min-w-0 flex-1 border-0 px-3 py-2.75 font-serif text-base outline-none"
-                          />
-                          {aims.length > 1 && (
-                            <button
-                              onClick={() => setAims((prev) => prev.filter((_, j) => j !== i))}
-                              disabled={locked}
-                              aria-label={`Remove aim ${i + 1}`}
-                              className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 border-l border-ink bg-paper px-3.5 text-soft"
-                            >
-                              <XMarkIcon className="size-3.5" strokeWidth={2.5} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      {aims.length < MAX_CIRCLE_AIMS && (
-                        <Button variant="secondary" size="compact" onClick={() => setAims((prev) => [...prev, ""])} disabled={locked} className="self-start">
-                          <PlusIcon className="size-3.5" strokeWidth={2.5} />
-                          Add aim
-                        </Button>
-                      )}
-                    </div>
-                    {fieldError("aims")}
-                  </div>
-                </>
+                <CircleBasicsFields
+                  domain={domain}
+                  onDomainChange={(v) => {
+                    clearError("domain");
+                    setDomain(v);
+                  }}
+                  aims={aims}
+                  onAimsChange={(v) => {
+                    clearError("aims");
+                    setAims(v);
+                  }}
+                  disabled={locked}
+                  domainError={fieldError("domain")}
+                  aimsError={fieldError("aims")}
+                />
               )}
             </div>
           </Section>

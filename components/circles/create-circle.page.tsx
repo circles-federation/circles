@@ -17,6 +17,7 @@ import {
   type NewCircleInput,
 } from "@/lib/circles.util";
 import type { Circle, CircleType } from "@/lib/types";
+import { CircleBasicsFields } from "./circle-basics-fields";
 import { ParentCircleSelect } from "./parent-circle-select";
 
 interface CreateCirclePageProps {
@@ -27,11 +28,12 @@ interface CreateCirclePageProps {
   onBack: () => void;
 }
 
-/* A new circle: what kind it is, its name and tagline, and where it sits —
-   the rest of its page is filled in from Manage circle once it exists. The
-   parent starts as wherever Create was pressed (a neighborhood's page, or the
-   Circles root for the city), and can be changed. Created by the top bar's
-   check, disabled until it's valid; Back asks before discarding. */
+/* A new circle: what kind it is, its name and tagline, where it sits, and,
+   for a Circle, its domain and aims — the rest of its page is filled in from
+   Manage circle once it exists. The parent starts as wherever Create was
+   pressed (a neighborhood's page, or the Circles root for the city), and can
+   be changed. Created by the top bar's check, disabled until every required
+   field has a value; Back asks before discarding. */
 export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }: CreateCirclePageProps) {
   const parents = parentCircleOptions(circles);
   const root = circles.find((c) => c.parentId === null);
@@ -41,13 +43,16 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
   const [name, setName] = useState("");
   const [tagline, setTagline] = useState("");
   const [parentId, setParentId] = useState(startingParent);
+  // a Circle's domain and aims, asked for only while the type is Circle
+  const [domain, setDomain] = useState("");
+  const [aims, setAims] = useState<string[]>([""]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
-  const input: NewCircleInput | null = type ? { type, name, tagline, parentId } : null;
+  const input: NewCircleInput | null = type ? { type, name, tagline, parentId, ...(type === "circle" ? { domain, aims } : {}) } : null;
   const problem = input ? validateNewCircle(input, circles) : "Choose what kind of circle this is.";
-  const dirty = type !== "" || name !== "" || tagline !== "" || parentId !== startingParent;
+  const dirty = type !== "" || name !== "" || tagline !== "" || parentId !== startingParent || domain !== "" || aims.some((a) => a !== "");
 
   async function create() {
     if (!input || problem || creating) return;
@@ -98,6 +103,10 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
                 placeholder="A short line under the name (optional)"
               />
             </div>
+            {/* what makes it a circle, in sociocracy's terms: a Circle needs both */}
+            {type === "circle" && (
+              <CircleBasicsFields domain={domain} onDomainChange={setDomain} aims={aims} onAimsChange={setAims} />
+            )}
           </div>
         </Section>
 

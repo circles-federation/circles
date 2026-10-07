@@ -35,11 +35,20 @@ export const CIRCLE_TYPE_DESCRIPTION: Partial<Record<CircleType, string>> = {
 export const CIRCLE_NAME_MAX = 80;
 export const CIRCLE_TAGLINE_MAX = 140;
 
+// a Circle's (type "circle") domain and aims, which sociocracy defines one by:
+// required of one, and decided by consent once it exists (lib/proposals.util.ts)
+export const CIRCLE_DOMAIN_MAX = 500;
+export const CIRCLE_AIM_MAX = 200;
+export const MAX_CIRCLE_AIMS = 10;
+
 export interface NewCircleInput {
   type: CircleType;
   name: string;
   tagline: string;
   parentId: string;
+  // a Circle's (type "circle"); ignored for any other type
+  domain?: string;
+  aims?: string[];
 }
 
 /* Where a circle can sit: in a neighborhood, or citywide, under the root —
@@ -55,16 +64,38 @@ export function parentCircleOptions(circles: Circle[], except?: string): Circle[
     .concat(root && root.id !== except ? [root] : []);
 }
 
-// what's wrong with a new circle, or null if nothing: the form shows it as
-// you go, and lib/db/circles.ts's createCircle is the real check
-export function validateNewCircle(input: NewCircleInput, circles: Circle[]): string | null {
-  if (!CREATABLE_CIRCLE_TYPES.includes(input.type)) return "Choose what kind of circle this is.";
+export type NewCircleField = "type" | "name" | "tagline" | "parentId" | "domain" | "aims";
+
+/* What's wrong with a new circle, and which field it's about, or null: the
+   form shows it under that field, and lib/db/circles.ts's createCircle is the
+   real check (validateNewCircle, the same as just the message). A Circle
+   needs a domain and at least one aim, as it does once it exists. */
+export function checkNewCircle(input: NewCircleInput, circles: Circle[]): { field: NewCircleField; message: string } | null {
+  if (!CREATABLE_CIRCLE_TYPES.includes(input.type)) return { field: "type", message: "Choose what kind of circle this is." };
   const name = input.name.trim();
-  if (!name) return "Give the circle a name.";
-  if (name.length > CIRCLE_NAME_MAX) return `Keep the name to ${CIRCLE_NAME_MAX} characters.`;
-  if (input.tagline.trim().length > CIRCLE_TAGLINE_MAX) return `Keep the tagline to ${CIRCLE_TAGLINE_MAX} characters.`;
-  if (!parentCircleOptions(circles).some((c) => c.id === input.parentId)) return "Choose where this circle sits.";
+  if (!name) return { field: "name", message: "Give the circle a name." };
+  if (name.length > CIRCLE_NAME_MAX) return { field: "name", message: `Keep the name to ${CIRCLE_NAME_MAX} characters.` };
+  if (input.tagline.trim().length > CIRCLE_TAGLINE_MAX) return { field: "tagline", message: `Keep the tagline to ${CIRCLE_TAGLINE_MAX} characters.` };
+  if (input.type === "circle") {
+    const domain = (input.domain ?? "").trim();
+    const aims = cleanAims(input.aims);
+    if (!domain) return { field: "domain", message: "Give the circle a domain: the area it decides in." };
+    if (domain.length > CIRCLE_DOMAIN_MAX) return { field: "domain", message: `Keep the domain to ${CIRCLE_DOMAIN_MAX} characters.` };
+    if (aims.length === 0) return { field: "aims", message: "Give the circle at least one aim." };
+    if (aims.length > MAX_CIRCLE_AIMS) return { field: "aims", message: `Keep it to ${MAX_CIRCLE_AIMS} aims or fewer.` };
+    if (aims.some((a) => a.length > CIRCLE_AIM_MAX)) return { field: "aims", message: `Keep each aim to ${CIRCLE_AIM_MAX} characters.` };
+  }
+  if (!parentCircleOptions(circles).some((c) => c.id === input.parentId)) return { field: "parentId", message: "Choose where this circle sits." };
   return null;
+}
+
+export function validateNewCircle(input: NewCircleInput, circles: Circle[]): string | null {
+  return checkNewCircle(input, circles)?.message ?? null;
+}
+
+// aims as they're kept: trimmed, with blank rows dropped
+export function cleanAims(aims: string[] | undefined): string[] {
+  return (aims ?? []).map((a) => a.trim()).filter((a) => a !== "");
 }
 
 /* A group is a circle with fewer features, and private: only its own members
