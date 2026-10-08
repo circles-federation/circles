@@ -12,6 +12,9 @@ import * as proposals from "./proposals";
 import * as push from "./push";
 import * as resources from "./resources";
 import { sendEmail } from "@/lib/email";
+import { sendSms } from "@/lib/sms";
+import { phoneCodeText } from "@/lib/sms/messages.util";
+import { normalizePhone } from "@/lib/phone.util";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail } from "@/lib/email/templates.util";
 import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
@@ -263,4 +266,37 @@ export async function sendTestPushAction() {
     if (devices === 0) throw new UserFacingError("No device has notifications turned on.");
     return devices;
   });
+}
+
+/* Settings → Phone number, always the session member's own. Sending a code
+   texts it (one per number per minute, as for sign-in codes), and returns it
+   only outside production, as the page's dev-mode hint; confirming it makes
+   the number theirs, texts on. */
+const phoneCodeSentAt = new Map<string, number>();
+const PHONE_CODE_COOLDOWN_MS = 60_000;
+
+export async function requestPhoneCodeAction(phone: string) {
+  return asMember(async (memberId) => {
+    // checked before a new code replaces the one already sent, so a refusal
+    // leaves that one working
+    const wait = PHONE_CODE_COOLDOWN_MS - (Date.now() - (phoneCodeSentAt.get(normalizePhone(phone) ?? "") ?? 0));
+    if (wait > 0) throw new UserFacingError(`A code was just sent — check your texts, or try again in ${Math.ceil(wait / 1000)} seconds.`);
+    const pending = await members.requestPhoneVerification(memberId, phone);
+    try {
+      await sendSms({ to: pending.phone, body: phoneCodeText(pending.code, pending.minutes) });
+    } catch (err) {
+      console.error("Couldn't text a phone code:", err);
+      throw new UserFacingError("We couldn't text that number — check it, or try again in a moment.");
+    }
+    phoneCodeSentAt.set(pending.phone, Date.now());
+    return { phone: pending.phone, ...(process.env.NODE_ENV === "production" ? {} : { code: pending.code }) };
+  });
+}
+
+export async function confirmPhoneCodeAction(code: string) {
+  return asMember((memberId) => members.confirmPhoneVerification(memberId, code));
+}
+
+export async function removePhoneAction() {
+  return asMember((memberId) => members.removePhone(memberId));
 }

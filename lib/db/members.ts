@@ -1,9 +1,11 @@
+import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
-import { circleMembers, memberPhotos, members } from "./schema";
+import { circleMembers, memberPhotos, members, phoneVerifications } from "./schema";
 import { validateLanguages } from "@/lib/languages.util";
+import { PHONE_INVALID, SMS_CONSENT_NOTICE, normalizePhone } from "@/lib/phone.util";
 import { isBirthDecade } from "@/lib/members.util";
 import type { Member, NotificationSettings, Profile } from "@/lib/types";
 
@@ -63,12 +65,70 @@ export async function getMembersForViewer(viewerId: number): Promise<Member[]> {
 
 // the settings only a member themself sees, for their own profile: whether
 // others may see their email, and how they're told about things
-export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications">> {
+export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications" | "phone">> {
   const [row] = await db
-    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush })
+    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush, phone: members.phone })
     .from(members)
     .where(eq(members.id, id));
-  return { emailPublic: row?.emailPublic ?? true, notifications: { email: row?.email ?? true, push: row?.push ?? true } };
+  return {
+    emailPublic: row?.emailPublic ?? true,
+    notifications: { email: row?.email ?? true, push: row?.push ?? true },
+    ...(row?.phone ? { phone: row.phone } : {}),
+  };
+}
+
+/* A member's own mobile number (Settings → Phone number), always their own:
+   the actions supply the session's id. A new number is confirmed by a texted
+   code before it's theirs: requestPhoneVerification keeps it pending (one at
+   a time) with the opt-in shown, and returns the code for the caller to text;
+   confirmPhoneVerification moves it onto them, texts on. One member per
+   number. */
+const PHONE_CODE_MINUTES = 30;
+const PHONE_CODE_MAX_ATTEMPTS = 5;
+const hashPhoneCode = (code: string) => createHash("sha256").update(code).digest("hex");
+
+export class PhoneError extends UserFacingError {}
+
+export async function requestPhoneVerification(memberId: number, typed: string): Promise<{ phone: string; code: string; minutes: number }> {
+  const phone = normalizePhone(typed);
+  if (!phone) throw new PhoneError(PHONE_INVALID);
+  const [owner] = await db.select({ id: members.id }).from(members).where(eq(members.phone, phone));
+  if (owner?.id === memberId) throw new PhoneError("That's already your number.");
+  if (owner) throw new PhoneError("That number belongs to another member.");
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const row = { phone, codeHash: hashPhoneCode(code), expiresAt: new Date(Date.now() + PHONE_CODE_MINUTES * 60_000), attempts: 0, smsConsent: SMS_CONSENT_NOTICE, createdAt: new Date() };
+  await db.insert(phoneVerifications).values({ memberId, ...row }).onConflictDoUpdate({ target: phoneVerifications.memberId, set: row });
+  return { phone, code, minutes: PHONE_CODE_MINUTES };
+}
+
+export async function confirmPhoneVerification(memberId: number, code: string): Promise<string> {
+  return db.transaction(async (tx) => {
+    const [pending] = await tx.select().from(phoneVerifications).where(eq(phoneVerifications.memberId, memberId)).for("update");
+    if (!pending) throw new PhoneError("Send yourself a code first.");
+    if (pending.attempts >= PHONE_CODE_MAX_ATTEMPTS) throw new PhoneError("Too many wrong codes — send yourself a new one.");
+    if (pending.expiresAt < new Date()) throw new PhoneError("That code has expired — send yourself a new one.");
+    if (!timingSafeEqual(Buffer.from(hashPhoneCode(code.trim())), Buffer.from(pending.codeHash))) {
+      await tx.update(phoneVerifications).set({ attempts: pending.attempts + 1 }).where(eq(phoneVerifications.memberId, memberId));
+      throw new PhoneError("That code doesn't match — check the text and try again.");
+    }
+    const [owner] = await tx.select({ id: members.id }).from(members).where(eq(members.phone, pending.phone));
+    if (owner && owner.id !== memberId) throw new PhoneError("That number belongs to another member.");
+    const now = new Date();
+    await tx
+      .update(members)
+      .set({ phone: pending.phone, phoneVerifiedAt: now, smsConsent: pending.smsConsent, smsConsentAt: now, notifySms: true })
+      .where(eq(members.id, memberId));
+    await tx.delete(phoneVerifications).where(eq(phoneVerifications.memberId, memberId));
+    return pending.phone;
+  });
+}
+
+// no more texts, and no number kept: removing it withdraws the opt-in too
+export async function removePhone(memberId: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.update(members).set({ phone: null, phoneVerifiedAt: null, smsConsent: null, smsConsentAt: null }).where(eq(members.id, memberId));
+    await tx.delete(phoneVerifications).where(eq(phoneVerifications.memberId, memberId));
+  });
 }
 
 // Settings → Notifications, always the member's own: the action supplies the

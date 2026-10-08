@@ -24,6 +24,9 @@ import {
   leaveCircleAction as dbLeaveCircle,
   deleteInvitationAction as dbDeleteInvitation,
   saveNotificationSettingsAction as dbSaveNotificationSettings,
+  requestPhoneCodeAction as dbRequestPhoneCode,
+  confirmPhoneCodeAction as dbConfirmPhoneCode,
+  removePhoneAction as dbRemovePhone,
   createCircleAction as dbCreateCircle,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
@@ -71,6 +74,12 @@ export interface AppStateValue {
   saveProfile(next: Profile): void;
   savePhoto(photo: Blob): Promise<MutationResult>;
   saveNotificationSettings(settings: NotificationSettings): Promise<MutationResult>;
+  // their mobile number (Settings → Phone number): a texted code to confirm
+  // it (the code itself only outside production, for the dev-mode hint), then
+  // confirming it, or removing it
+  requestPhoneCode(phone: string): Promise<{ ok: true; phone: string; code?: string } | { ok: false; error: string }>;
+  confirmPhone(code: string): Promise<MutationResult>;
+  removePhone(): Promise<MutationResult>;
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
   removeResource(id: string): Promise<MutationResult>;
@@ -584,6 +593,27 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  async function requestPhoneCode(phone: string): Promise<{ ok: true; phone: string; code?: string } | { ok: false; error: string }> {
+    const result = await dbRequestPhoneCode(phone).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    return result.ok ? { ok: true, ...result.value } : result;
+  }
+
+  // await-then-update: the number is theirs only once the server has checked the code
+  async function confirmPhone(code: string): Promise<MutationResult> {
+    const result = await dbConfirmPhoneCode(code).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    const phone = result.value;
+    setProfile((p) => ({ ...p, phone }));
+    return { ok: true };
+  }
+
+  async function removePhone(): Promise<MutationResult> {
+    const result = await dbRemovePhone().catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    setProfile(({ phone: _phone, ...p }) => p);
+    return { ok: true };
+  }
+
   async function addResource(circleId: string, input: ResourceInput): Promise<MutationResult> {
     const result = await dbCreateResource(circleId, input);
     if (!result.ok) return result;
@@ -684,6 +714,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         saveProfile: tracked(saveProfile),
         savePhoto: tracked(savePhoto),
         saveNotificationSettings: tracked(saveNotificationSettings),
+        requestPhoneCode: tracked(requestPhoneCode),
+        confirmPhone: tracked(confirmPhone),
+        removePhone: tracked(removePhone),
         addResource: tracked(addResource),
         updateResource: tracked(updateResource),
         removeResource: tracked(removeResource),

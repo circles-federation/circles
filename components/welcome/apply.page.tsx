@@ -9,6 +9,7 @@ import { confirmApplicationCode, resendApplicationCode, submitApplication } from
 import { BetaPrivacy } from "@/components/legal/beta-privacy";
 import { BetaTerms } from "@/components/legal/beta-terms";
 import { APPLICATION_ADDRESS_MAX, APPLICATION_NAME_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationErrors, type ApplicationInput } from "@/lib/applications.util";
+import { SMS_CONSENT_NOTICE, formatPhone, formatTypedPhone, normalizePhone } from "@/lib/phone.util";
 
 type Step = "form" | "agree" | "confirm" | "done";
 
@@ -20,18 +21,24 @@ interface ApplyPageProps {
    system admin, who checks the photo is a real face and the address is in the
    neighborhood. Four steps: the form; the beta terms and privacy notes, which
    they agree to by sending it; the code emailed to them, which proves the
-   address is theirs and sends the application for review; and a "thanks,
+   address is theirs (and the one texted to them, if they gave a mobile number
+   to get texts at) and sends the application for review; and a "thanks,
    we'll email you". Outside the signed-in app, so it's laid out like the
    welcome page rather than under a top bar. */
 export function ApplyPage({ neighborhoods }: ApplyPageProps) {
   const { showToast } = useToast();
   const [step, setStep] = useState<Step>("form");
-  const [input, setInput] = useState<ApplicationInput>({ firstName: "", lastName: "", email: "", neighborhoodId: "", address: "" });
+  const [input, setInput] = useState<ApplicationInput>({ firstName: "", lastName: "", email: "", neighborhoodId: "", address: "", phone: "" });
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [errors, setErrors] = useState<ApplicationErrors>({});
   const [applicationId, setApplicationId] = useState("");
   const [code, setCode] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
+  const [devPhoneCode, setDevPhoneCode] = useState<string | null>(null);
+  // the number they'll be texted at, once one that works has been typed
+  const phone = input.phone.trim() ? normalizePhone(input.phone) : null;
+  const codesReady = code.trim().length === 6 && (!phone || phoneCode.trim().length === 6);
   const [busy, setBusy] = useState(false);
 
   const set = (patch: Partial<ApplicationInput>) => setInput((prev) => ({ ...prev, ...patch }));
@@ -62,14 +69,15 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
     }
     setApplicationId(result.id);
     setDevCode(result.code ?? null);
+    setDevPhoneCode(result.phoneCode ?? null);
     setStep("confirm");
   }
 
   async function handleConfirm(e: FormEvent) {
     e.preventDefault();
-    if (busy || code.trim().length !== 6) return;
+    if (busy || !codesReady) return;
     setBusy(true);
-    const result = await confirmApplicationCode(applicationId, code);
+    const result = await confirmApplicationCode(applicationId, code, phone ? phoneCode : undefined);
     setBusy(false);
     if (!result.ok) {
       showToast({ tone: "error", title: "Couldn't confirm that code", message: result.error });
@@ -88,8 +96,10 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
       return;
     }
     setDevCode(result.code ?? null);
+    setDevPhoneCode(result.phoneCode ?? null);
     setCode("");
-    showToast({ tone: "success", title: "New code sent", message: `Check ${input.email.trim()} for it.` });
+    setPhoneCode("");
+    showToast({ tone: "success", title: phone ? "New codes sent" : "New code sent", message: phone ? "Check your email and your texts." : `Check ${input.email.trim()} for it.` });
   }
 
   return (
@@ -131,6 +141,21 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={input.email} onChange={(e) => set({ email: e.target.value })} placeholder="you@example.com" autoComplete="email" />
               <FieldError message={errors.email} hint="We'll send a code here to confirm it's yours, and you'll sign in with it." />
+            </div>
+
+            {/* optional: giving a number turns texts on, and says so right here */}
+            <div>
+              <Label htmlFor="phone">Mobile number (optional)</Label>
+              <Input id="phone" type="tel" value={input.phone} onChange={(e) => set({ phone: formatTypedPhone(e.target.value) })} placeholder="(401) 555-0123" autoComplete="tel" />
+              {errors.phone ? (
+                <FieldError message={errors.phone} />
+              ) : phone ? (
+                <p className="mt-1.5 border-l-2 border-ink pl-2.5 font-serif text-sm leading-normal text-[#222]">
+                  <strong className="font-sans">Text notifications on.</strong> {SMS_CONSENT_NOTICE} We&apos;ll text a code to confirm it&apos;s yours.
+                </p>
+              ) : (
+                <FieldError hint="Give one to get your notifications by text, so you don't need to sign in to keep up." />
+              )}
             </div>
 
             <div>
@@ -177,15 +202,29 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
         {step === "confirm" && (
           <form onSubmit={handleConfirm} className="mt-7">
             <p className="mb-4 font-serif text-lg leading-normal text-[#222]">
-              One more step. We sent a code to <strong className="text-ink">{input.email.trim()}</strong> — enter it here to send your application for review.
+              {phone ? (
+                <>
+                  One more step. We sent a code to <strong className="text-ink">{input.email.trim()}</strong> and texted another to{" "}
+                  <strong className="text-ink">{formatPhone(phone)}</strong> — enter both here to send your application for review.
+                </>
+              ) : (
+                <>
+                  One more step. We sent a code to <strong className="text-ink">{input.email.trim()}</strong> — enter it here to send your application for review.
+                </>
+              )}
             </p>
             {devCode && (
               <div className="mb-4 border border-dashed border-soft px-3 py-2.5 font-sans text-sm text-soft">
                 Dev mode — here&apos;s your code (production only emails it):{" "}
                 <strong className="tracking-[0.08em] text-ink">{devCode}</strong>
+                {devPhoneCode && (
+                  <>
+                    {" "}and the texted one: <strong className="tracking-[0.08em] text-ink">{devPhoneCode}</strong>
+                  </>
+                )}
               </div>
             )}
-            <Label htmlFor="code">Confirmation code</Label>
+            <Label htmlFor="code">{phone ? "Code from the email" : "Confirmation code"}</Label>
             <Input
               id="code"
               value={code}
@@ -195,13 +234,28 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
               autoFocus
               inputMode="numeric"
               autoComplete="one-time-code"
-              enterKeyHint="go"
+              enterKeyHint={phone ? "next" : "go"}
             />
-            <Button type="submit" disabled={busy || code.trim().length !== 6} className="mt-4 w-full">
+            {phone && (
+              <>
+                <Label htmlFor="phoneCode" className="mt-4">Code from the text</Label>
+                <Input
+                  id="phoneCode"
+                  value={phoneCode}
+                  onChange={(e) => setPhoneCode(e.target.value)}
+                  placeholder="123456"
+                  className="tracking-[0.2em]"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  enterKeyHint="go"
+                />
+              </>
+            )}
+            <Button type="submit" disabled={busy || !codesReady} className="mt-4 w-full">
               {busy ? "Confirming…" : "Confirm"}
             </Button>
             <Button type="button" variant="secondary" onClick={handleResend} disabled={busy} className="mt-3 w-full">
-              Send a new code
+              {phone ? "Send new codes" : "Send a new code"}
             </Button>
           </form>
         )}

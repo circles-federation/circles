@@ -50,7 +50,8 @@ export interface NotificationSettings {
   push: boolean;
 }
 
-export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings };
+// `phone` is their confirmed mobile number (E.164), which only they are sent
+export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings; phone?: string };
 
 // a role a member can hold in a circle (Secretary, Leader, ...) — see
 // lib/circle-roles.util.ts. `builtin` roles exist on every circle that can have

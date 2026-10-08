@@ -4,10 +4,12 @@ import { useState } from "react";
 import { ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
 import { Button, ConfirmModal, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { usePushSubscription } from "@/lib/hooks";
+import { formatPhone } from "@/lib/phone.util";
 import type { NotificationSettings } from "@/lib/types";
 
 interface SettingsPageProps {
   notifications: NotificationSettings;
+  phone?: string;
   onLogout: () => void;
 }
 
@@ -22,7 +24,7 @@ function notificationsSummary(email: boolean, push: boolean): string {
 
 /* Settings, reached from Home's top bar: a menu like iOS's Settings, each row
    opening a page of its own, with logging out at the foot. */
-export function SettingsPage({ notifications, onLogout }: SettingsPageProps) {
+export function SettingsPage({ notifications, phone, onLogout }: SettingsPageProps) {
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const device = usePushSubscription();
   // left blank until this device's push has been read, rather than changing
@@ -37,6 +39,7 @@ export function SettingsPage({ notifications, onLogout }: SettingsPageProps) {
           <div className="flex flex-col gap-3">
             <MenuRow href="/profile/edit" label="Edit profile" detail="Your photo, bio, and more" />
             <MenuRow href="/settings/notifications" label="Notifications" detail={summary} />
+            <MenuRow href="/settings/phone" label="Phone number" detail={phone ? formatPhone(phone) : "Add one to get texts"} />
           </div>
         </Section>
 

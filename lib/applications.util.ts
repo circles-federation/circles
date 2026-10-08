@@ -1,3 +1,5 @@
+import { PHONE_INVALID, normalizePhone } from "./phone.util";
+
 /* What an application to join needs, as pure rules shared by the apply form
    (instant feedback) and lib/db/applications.ts (the real check). */
 
@@ -8,7 +10,7 @@ export const APPLICATION_NOTE_MAX = 1000;
 /* The beta terms and privacy notes an applicant agrees to (components/legal/),
    named by the date they last changed. Each application records the version
    agreed to, so bump this whenever either one says something new. */
-export const BETA_AGREEMENT_VERSION = "2026-10-01";
+export const BETA_AGREEMENT_VERSION = "2026-10-07";
 
 // just the shape — name@domain.tld, no spaces. Whether it can be used is the server's call.
 export const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,6 +21,8 @@ export interface ApplicationInput {
   email: string;
   neighborhoodId: string;
   address: string;
+  // optional: a mobile number to be texted notifications at, once a member
+  phone: string;
 }
 
 export type ApplicationErrors = Partial<Record<keyof ApplicationInput | "photo", string>>;
@@ -35,5 +39,6 @@ export function validateApplication(input: ApplicationInput, hasPhoto: boolean):
   if (!input.address.trim()) errors.address = "Enter your home address, so we can check it's in the neighborhood.";
   else if (input.address.trim().length > APPLICATION_ADDRESS_MAX) errors.address = `Keep it under ${APPLICATION_ADDRESS_MAX} characters.`;
   if (!hasPhoto) errors.photo = "Add a photo of your face.";
+  if (input.phone.trim() && !normalizePhone(input.phone)) errors.phone = PHONE_INVALID;
   return errors;
 }

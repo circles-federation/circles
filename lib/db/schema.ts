@@ -75,6 +75,17 @@ export const members = pgTable("members", {
   // emailed regardless.
   notifyEmail: boolean("notify_email").notNull().default(true),
   notifyPush: boolean("notify_push").notNull().default(true),
+  // their mobile number, for text notifications (lib/sms/), confirmed by a
+  // texted code; E.164, one member per number. Private: only its owner's app
+  // is ever sent it. With it, the opt-in they agreed to (SMS_CONSENT_NOTICE's
+  // words at the time) and when, which US law and the carriers want kept.
+  phone: text("phone").unique(),
+  phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
+  smsConsent: text("sms_consent"),
+  smsConsentAt: timestamp("sms_consent_at", { withTimezone: true }),
+  // whether they're texted, while they have a number: on when it's added, off
+  // once they reply STOP
+  notifySms: boolean("notify_sms").notNull().default(true),
   // a system admin: a worker of the foundation running the platform, who
   // reviews applications (see applications below). Set by `npm run admin`.
   isAdmin: boolean("is_admin").notNull().default(false),
@@ -418,6 +429,14 @@ export const applications = pgTable(
     confirmCodeHash: text("confirm_code_hash"),
     confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
     confirmAttempts: integer("confirm_attempts").notNull().default(0),
+    // a mobile number to be texted at once they're a member (optional),
+    // confirmed by a texted code alongside the emailed one, with the opt-in
+    // agreed to and when; it moves to the member on approval
+    phone: text("phone"),
+    phoneCodeHash: text("phone_code_hash"),
+    phoneConfirmAttempts: integer("phone_confirm_attempts").notNull().default(0),
+    smsConsent: text("sms_consent"),
+    smsConsentAt: timestamp("sms_consent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     // the beta terms and privacy notes agreed to (BETA_AGREEMENT_VERSION), and
     // when — null only on applications from before there was an agreement
@@ -438,6 +457,21 @@ export const applications = pgTable(
     index("applications_status_idx").on(t.status),
   ]
 );
+
+/* A member confirming a mobile number in Settings: the number, its texted
+   code (hashed) and the opt-in shown, until they enter the code — when it
+   moves onto their member row — or it expires. One at a time per member. */
+export const phoneVerifications = pgTable("phone_verifications", {
+  memberId: integer("member_id")
+    .primaryKey()
+    .references(() => members.id, { onDelete: "cascade" }),
+  phone: text("phone").notNull(),
+  codeHash: text("code_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  smsConsent: text("sms_consent").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const resourceIcon = pgEnum("resource_icon", ["folder", "file", "video", "announcement"]);
 

@@ -5,6 +5,7 @@ import { UserFacingError } from "./errors";
 import { readPhoto } from "./members";
 import { applications, circleMembers, circles, memberPhotos, members, user } from "./schema";
 import { APPLICATION_NOTE_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationInput } from "@/lib/applications.util";
+import { SMS_CONSENT_NOTICE, normalizePhone } from "@/lib/phone.util";
 
 /* Applications to join (see the applications table in schema.ts). The public
    half — starting one and confirming its email — takes no member at all, since
@@ -23,6 +24,8 @@ const CONFIRM_MAX_ATTEMPTS = 5;
 const UNCONFIRMED_TTL_MS = 24 * 60 * 60 * 1000;
 
 const hashCode = (code: string) => createHash("sha256").update(code).digest("hex");
+const newCode = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
+const codeMatches = (given: string, hash: string) => timingSafeEqual(Buffer.from(hashCode(given.trim())), Buffer.from(hash));
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 // the neighborhoods someone can apply to live in, for the apply form
@@ -31,12 +34,18 @@ export async function getNeighborhoodsForApplying(): Promise<{ id: string; name:
 }
 
 /* Start an application: checked, stored unconfirmed, and given a confirmation
-   code for the caller to email. Starting again with the same address replaces
-   an unconfirmed one (a typo, a lost email), but not one already waiting for
-   review. `agreementVersion` is the version of the beta terms and privacy
-   notes the applicant agreed to, which must be the current one. Returns the
-   new application's id and its code. */
-export async function startApplication(input: ApplicationInput, photo: Blob, agreementVersion: string): Promise<{ id: string; code: string }> {
+   code for the caller to email — and, if they gave a mobile number, a second
+   code for the caller to text it, with the opt-in they were shown recorded.
+   Starting again with the same address replaces an unconfirmed one (a typo,
+   a lost email), but not one already waiting for review. `agreementVersion`
+   is the version of the beta terms and privacy notes the applicant agreed
+   to, which must be the current one. Returns the new application's id, its
+   codes and the number they go to. */
+export async function startApplication(
+  input: ApplicationInput,
+  photo: Blob,
+  agreementVersion: string
+): Promise<{ id: string; code: string; phone: string | null; phoneCode: string | null }> {
   const problems = validateApplication(input, photo.size > 0);
   const first = Object.values(problems)[0];
   if (first) throw new ApplicationError(first);
@@ -48,9 +57,15 @@ export async function startApplication(input: ApplicationInput, photo: Blob, agr
   if (!hood) throw new ApplicationError("Choose one of the neighborhoods listed.");
   const [member] = await db.select({ id: members.id }).from(members).where(sql`lower(${members.email}) = ${email}`);
   if (member) throw new ApplicationError("That email already belongs to a member — sign in instead.");
+  const phone = input.phone.trim() ? normalizePhone(input.phone) : null;
+  if (phone) {
+    const [owner] = await db.select({ id: members.id }).from(members).where(eq(members.phone, phone));
+    if (owner) throw new ApplicationError("That mobile number already belongs to a member.");
+  }
 
   const id = randomUUID();
-  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const code = newCode();
+  const phoneCode = phone ? newCode() : null;
   await db.transaction(async (tx) => {
     await tx.delete(applications).where(and(eq(applications.status, "unconfirmed"), lt(applications.createdAt, new Date(Date.now() - UNCONFIRMED_TTL_MS))));
     await tx.delete(applications).where(and(eq(applications.status, "unconfirmed"), sql`lower(${applications.email}) = ${email}`));
@@ -69,9 +84,10 @@ export async function startApplication(input: ApplicationInput, photo: Blob, agr
       agreedAt: new Date(),
       confirmCodeHash: hashCode(code),
       confirmExpiresAt: new Date(Date.now() + CONFIRM_CODE_MINUTES * 60_000),
+      ...(phone && phoneCode ? { phone, phoneCodeHash: hashCode(phoneCode), smsConsent: SMS_CONSENT_NOTICE, smsConsentAt: new Date() } : {}),
     });
   });
-  return { id, code };
+  return { id, code, phone, phoneCode };
 }
 
 // the address of an application still waiting to be confirmed
@@ -81,34 +97,47 @@ export async function unconfirmedApplicationEmail(id: string): Promise<string> {
   return row.email;
 }
 
-/* A fresh code for an application still waiting to be confirmed — when the
-   first email didn't arrive. Returns the address to send it to. */
-export async function renewConfirmationCode(id: string): Promise<{ email: string; code: string }> {
+/* Fresh codes for an application still waiting to be confirmed — when the
+   first email or text didn't arrive: a new emailed one, and a new texted one
+   if it has a number. Returns where to send them. */
+export async function renewConfirmationCode(id: string): Promise<{ email: string; code: string; phone: string | null; phoneCode: string | null }> {
   const email = await unconfirmedApplicationEmail(id);
-  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const [row] = await db.select({ phone: applications.phone }).from(applications).where(eq(applications.id, id));
+  const phone = row?.phone ?? null;
+  const code = newCode();
+  const phoneCode = phone ? newCode() : null;
   await db
     .update(applications)
-    .set({ confirmCodeHash: hashCode(code), confirmExpiresAt: new Date(Date.now() + CONFIRM_CODE_MINUTES * 60_000), confirmAttempts: 0 })
+    .set({
+      confirmCodeHash: hashCode(code),
+      confirmExpiresAt: new Date(Date.now() + CONFIRM_CODE_MINUTES * 60_000),
+      confirmAttempts: 0,
+      ...(phoneCode ? { phoneCodeHash: hashCode(phoneCode), phoneConfirmAttempts: 0 } : {}),
+    })
     .where(eq(applications.id, id));
-  return { email, code };
+  return { email, code, phone, phoneCode };
 }
 
-// the emailed code proves the address is theirs, and sends the application on
-// to the admins
-export async function confirmApplication(id: string, code: string): Promise<void> {
+/* The emailed code proves the address is theirs, and the texted one (if they
+   gave a number) that the number is; together they send the application on
+   to the admins. Each counts its own wrong tries. */
+export async function confirmApplication(id: string, code: string, phoneCode?: string): Promise<void> {
   await db.transaction(async (tx) => {
     const [row] = await tx.select().from(applications).where(eq(applications.id, id)).for("update");
     if (!row || row.status !== "unconfirmed" || !row.confirmCodeHash) throw new ApplicationError("That application has already been confirmed, or has expired — start again.");
-    if (row.confirmAttempts >= CONFIRM_MAX_ATTEMPTS) throw new ApplicationError("Too many wrong codes — send yourself a new one.");
-    if (!row.confirmExpiresAt || row.confirmExpiresAt < new Date()) throw new ApplicationError("That code has expired — send yourself a new one.");
-    const given = Buffer.from(hashCode(code.trim()));
-    if (!timingSafeEqual(given, Buffer.from(row.confirmCodeHash))) {
+    if (row.confirmAttempts >= CONFIRM_MAX_ATTEMPTS || row.phoneConfirmAttempts >= CONFIRM_MAX_ATTEMPTS) throw new ApplicationError("Too many wrong codes — send yourself new ones.");
+    if (!row.confirmExpiresAt || row.confirmExpiresAt < new Date()) throw new ApplicationError("Those codes have expired — send yourself new ones.");
+    if (!codeMatches(code, row.confirmCodeHash)) {
       await tx.update(applications).set({ confirmAttempts: row.confirmAttempts + 1 }).where(eq(applications.id, id));
-      throw new ApplicationError("That code doesn't match — check the email and try again.");
+      throw new ApplicationError("The emailed code doesn't match — check the email and try again.");
+    }
+    if (row.phoneCodeHash && !codeMatches(phoneCode ?? "", row.phoneCodeHash)) {
+      await tx.update(applications).set({ phoneConfirmAttempts: row.phoneConfirmAttempts + 1 }).where(eq(applications.id, id));
+      throw new ApplicationError("The texted code doesn't match — check the text and try again.");
     }
     await tx
       .update(applications)
-      .set({ status: "pending", submittedAt: new Date(), confirmCodeHash: null, confirmExpiresAt: null })
+      .set({ status: "pending", submittedAt: new Date(), confirmCodeHash: null, confirmExpiresAt: null, phoneCodeHash: null })
       .where(eq(applications.id, id));
   });
 }
@@ -206,9 +235,16 @@ export async function approveApplication(adminId: number, id: string): Promise<D
     const [hood] = await tx.select({ id: circles.id, name: circles.name }).from(circles).where(eq(circles.id, app.neighborhoodId));
     if (!hood) throw new ApplicationError("That neighborhood no longer exists.");
 
+    // their confirmed number comes with them, texts on — unless a member has
+    // claimed it since they applied, when they can add another in Settings
+    const [phoneTaken] = app.phone ? await tx.select({ id: members.id }).from(members).where(eq(members.phone, app.phone)) : [];
+    const phone =
+      app.phone && !phoneTaken
+        ? { phone: app.phone, phoneVerifiedAt: app.submittedAt ?? new Date(), smsConsent: app.smsConsent, smsConsentAt: app.smsConsentAt, notifySms: true }
+        : {};
     const [member] = await tx
       .insert(members)
-      .values({ name: app.firstName, lastName: app.lastName, pronouns: "", role: "", bio: "", email: app.email })
+      .values({ name: app.firstName, lastName: app.lastName, pronouns: "", role: "", bio: "", email: app.email, ...phone })
       .returning({ id: members.id });
     if (!member) throw new ApplicationError("Couldn't create the member — try again.");
     if (app.photo && app.photoType) await tx.insert(memberPhotos).values({ memberId: member.id, data: app.photo, contentType: app.photoType });
@@ -221,7 +257,7 @@ export async function approveApplication(adminId: number, id: string): Promise<D
       .onConflictDoNothing();
     await tx
       .update(applications)
-      .set({ status: "approved", decidedAt: new Date(), decidedBy: adminId, memberId: member.id, address: null, photo: null, photoType: null })
+      .set({ status: "approved", decidedAt: new Date(), decidedBy: adminId, memberId: member.id, address: null, photo: null, photoType: null, phone: null })
       .where(eq(applications.id, id));
     return { email: app.email, firstName: app.firstName, neighborhoodName: hood.name };
   });
@@ -238,7 +274,7 @@ export async function declineApplication(adminId: number, id: string, note: stri
     const [hood] = await tx.select({ name: circles.name }).from(circles).where(eq(circles.id, app.neighborhoodId));
     await tx
       .update(applications)
-      .set({ status: "declined", decidedAt: new Date(), decidedBy: adminId, note: trimmed || null, address: null, photo: null, photoType: null })
+      .set({ status: "declined", decidedAt: new Date(), decidedBy: adminId, note: trimmed || null, address: null, photo: null, photoType: null, phone: null })
       .where(eq(applications.id, id));
     return { email: app.email, firstName: app.firstName, neighborhoodName: hood?.name ?? "", ...(trimmed ? { note: trimmed } : {}) };
   });
