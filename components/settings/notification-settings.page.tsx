@@ -41,9 +41,18 @@ export function NotificationSettingsPage({ settings, hasEmail, phone, smsStopped
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [confirmingTexts, setConfirmingTexts] = useState(false);
 
   const deviceOn = device.status === "on";
   const deviceChanged = deviceWanted !== null && deviceWanted !== deviceOn;
+  const pushHere = deviceWanted ?? deviceOn;
+
+  // texts cost Circles money to send, so turning them on asks first (and
+  // where push already reaches them, which is free, says so)
+  function setTexts(sms: boolean) {
+    if (sms) setConfirmingTexts(true);
+    else setDraft((d) => ({ ...d, sms }));
+  }
   // the member-wide push switch isn't shown (each device's own switch says
   // where pushes go), but it still gates them, so turning push on here turns
   // it back on for someone who switched it off when it was shown
@@ -118,7 +127,7 @@ export function NotificationSettingsPage({ settings, hasEmail, phone, smsStopped
         <Section>
           <EyebrowGroup label="Text">
             <SettingRows>
-              <TextRow phone={phone} stopped={!!smsStopped} checked={draft.sms} onChange={(sms) => setDraft((d) => ({ ...d, sms }))} />
+              <TextRow phone={phone} stopped={!!smsStopped} checked={draft.sms} onChange={setTexts} />
             </SettingRows>
           </EyebrowGroup>
         </Section>
@@ -138,6 +147,24 @@ export function NotificationSettingsPage({ settings, hasEmail, phone, smsStopped
       </SectionGroup>
 
       {error && <p className="mt-2 font-sans text-sm font-bold text-danger">{error}</p>}
+
+      {confirmingTexts && (
+        <ConfirmModal
+          title={pushHere ? "You already get push notifications" : "Turn on text notifications?"}
+          message={
+            pushHere
+              ? "Push notifications on this device tell you everything a text would, just as fast, and they're free. Every text costs Circles money to send, so we keep them for people who can't get push."
+              : "Every text costs Circles money to send, so please only turn them on if they're the way you'll actually hear from us."
+          }
+          confirmLabel={pushHere ? "Text me too" : "Turn on texts"}
+          cancelLabel={pushHere ? "Keep push only" : "Not now"}
+          onConfirm={() => {
+            setDraft((d) => ({ ...d, sms: true }));
+            setConfirmingTexts(false);
+          }}
+          onCancel={() => setConfirmingTexts(false)}
+        />
+      )}
 
       {confirmingDiscard && (
         <ConfirmModal
