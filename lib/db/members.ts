@@ -131,6 +131,13 @@ export async function removePhone(memberId: number): Promise<void> {
   });
 }
 
+/* They've replied STOP to a text (the provider refuses to text them until
+   they reply START), so stop queueing texts for them; the number stays, so
+   Settings can offer to turn texts back on. */
+export async function stopTexting(memberId: number): Promise<void> {
+  await db.update(members).set({ notifySms: false }).where(eq(members.id, memberId));
+}
+
 // Settings → Notifications, always the member's own: the action supplies the
 // session's id, as updateMember's does
 export async function setNotificationSettings(id: number, settings: NotificationSettings): Promise<NotificationSettings> {

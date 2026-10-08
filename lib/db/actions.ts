@@ -13,10 +13,10 @@ import * as push from "./push";
 import * as resources from "./resources";
 import { sendEmail } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
-import { phoneCodeText } from "@/lib/sms/messages.util";
+import { phoneCodeText, textFromPush } from "@/lib/sms/messages.util";
 import { normalizePhone } from "@/lib/phone.util";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail } from "@/lib/email/templates.util";
-import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember } from "@/lib/notify";
+import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember, textMember } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
 import { invitationPush } from "@/lib/push/messages.util";
 import { getCurrentUserId } from "@/lib/session";
@@ -194,7 +194,7 @@ export async function declineApplicationAction(id: string, note: string) {
 /* Invitations to a circle (lib/db/invitations.ts checks who may do each).
    Accepting hands back the whole of the member's app state, since joining a
    circle opens up its events and bulletin to them. */
-// the invitee is told once, by email and by push, right after the response is
+// the invitee is told once, by email, by push and by text, right after the response is
 // sent; a failed send isn't retried — the invitation is on their Home either way
 export async function createInvitationAction(circleId: string, memberId: number) {
   const result = await asMember((inviterId) => invitations.createInvitation(inviterId, circleId, memberId));
@@ -210,10 +210,13 @@ async function tellInvitee(id: string) {
   if (!data) return;
   const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const email = data.email;
+  const phone = data.phone;
+  const push = invitationPush({ ...data, invitationId: id });
   await Promise.all([
     email &&
       sendEmail({ to: email, ...invitationEmail({ ...data, url: `${base}/invitations/${id}` }) }).catch((err) => console.error("Couldn't email an invitee:", err)),
-    pushToMember(data.memberId, invitationPush({ ...data, invitationId: id })).catch((err) => console.error("Couldn't push to an invitee:", err)),
+    pushToMember(data.memberId, push).catch((err) => console.error("Couldn't push to an invitee:", err)),
+    phone && textMember(data.memberId, phone, textFromPush(push, base)).catch((err) => console.error("Couldn't text an invitee:", err)),
   ]);
 }
 

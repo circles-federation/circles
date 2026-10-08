@@ -102,10 +102,10 @@ export async function deleteInvitation(memberId: number, id: string): Promise<vo
 // who they are, who invited them, and to what. Null once it's gone.
 export async function getInvitationNoticeData(
   id: string
-): Promise<{ memberId: number; email: string | null; name: string; inviterName?: string; circleName: string; tagline: string } | null> {
+): Promise<{ memberId: number; email: string | null; phone: string | null; name: string; inviterName?: string; circleName: string; tagline: string } | null> {
   const inviter = alias(members, "inviter");
   const [row] = await db
-    .select({ memberId: members.id, email: sql<string | null>`case when ${members.notifyEmail} then ${members.email} end`, name: members.name, inviterName: inviter.name, circleName: circles.name, tagline: circles.tagline })
+    .select({ memberId: members.id, email: sql<string | null>`case when ${members.notifyEmail} then ${members.email} end`, phone: sql<string | null>`case when ${members.notifySms} then ${members.phone} end`, name: members.name, inviterName: inviter.name, circleName: circles.name, tagline: circles.tagline })
     .from(circleInvitations)
     .innerJoin(members, eq(members.id, circleInvitations.memberId))
     .innerJoin(circles, eq(circles.id, circleInvitations.circleId))

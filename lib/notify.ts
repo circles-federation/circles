@@ -15,17 +15,20 @@ import {
   markNotificationSent,
 } from "@/lib/db/notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
+import { stopTexting } from "@/lib/db/members";
 import { closeDueProposals } from "@/lib/db/proposals";
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
+import { SmsOptedOutError, SmsUndeliverableError, sendSms } from "@/lib/sms";
+import { digestText, textFromPush } from "@/lib/sms/messages.util";
 import { announcementPush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
 import { announcementEmail, eventChanges, eventDigestEmail, eventNotificationEmail, proposalEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
 
-/* Sends the queued event notifications, by email and by push (see
+/* Sends the queued event notifications, by email, push and text (see
    lib/db/notifications.ts for who's queued and why; each channel's rows are
    drained separately). Two things call drain: the create-event action, right after its
    response goes out — so members hear about a new event within a second or
@@ -87,6 +90,23 @@ export async function pushToMember(memberId: number, message: PushMessage): Prom
   }
   if (delivered === 0 && lastError !== undefined) throw lastError;
   return delivered;
+}
+
+/* Text `body` to a member's number. Someone who's replied STOP can't be
+   texted until they reply START, and a number that can't take texts never
+   will, so either turns their texts off (stopTexting) and counts as done
+   rather than being retried; anything else throws, to be retried. Returns
+   whether it went. */
+export async function textMember(memberId: number, phone: string, body: string): Promise<boolean> {
+  try {
+    await sendSms({ to: phone, body });
+    return true;
+  } catch (err) {
+    if (!(err instanceof SmsOptedOutError || err instanceof SmsUndeliverableError)) throw err;
+    console.error(`Turning texts off for member ${memberId}:`, err.message);
+    await stopTexting(memberId);
+    return false;
+  }
 }
 
 let digesting = false;
@@ -161,9 +181,28 @@ const deliverEventPushes = drainer("Event push", async () => {
   }
 });
 
-// both channels side by side, so a slow mail relay never holds up a push
+const deliverEventTexts = drainer("Event text", async () => {
+  for (let batch = await claimEventNotifications(BATCH, "sms"); batch.length > 0; batch = await claimEventNotifications(BATCH, "sms")) {
+    for (const n of batch) {
+      // nor can anyone be texted who's since removed their number or turned texts off
+      if (!n.phone || isMoot(n)) {
+        await markNotificationSent(n);
+        continue;
+      }
+      try {
+        await textMember(n.memberId, n.phone, textFromPush(eventNotificationPush({ ...n, today: localDay() }), appUrl));
+        await markNotificationSent(n);
+      } catch (err) {
+        console.error(`Couldn't text event ${n.eventId} to member ${n.memberId}:`, err);
+        await markNotificationFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
+
+// every channel side by side, so a slow mail relay never holds up a push or a text
 export async function deliverEventNotifications(): Promise<void> {
-  await Promise.all([deliverEventEmails(), deliverEventPushes()]);
+  await Promise.all([deliverEventEmails(), deliverEventPushes(), deliverEventTexts()]);
 }
 
 const deliverAnnouncementEmails = drainer("Announcement email", async () => {
@@ -192,6 +231,24 @@ const deliverAnnouncementPushes = drainer("Announcement push", async () => {
         await markAnnouncementSent(n);
       } catch (err) {
         console.error(`Couldn't push announcement ${n.resourceId} to member ${n.memberId}:`, err);
+        await markAnnouncementFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
+
+const deliverAnnouncementTexts = drainer("Announcement text", async () => {
+  for (let batch = await claimAnnouncementNotifications(BATCH, "sms"); batch.length > 0; batch = await claimAnnouncementNotifications(BATCH, "sms")) {
+    for (const n of batch) {
+      if (!n.phone) {
+        await markAnnouncementSent(n);
+        continue;
+      }
+      try {
+        await textMember(n.memberId, n.phone, textFromPush(announcementPush(n), appUrl));
+        await markAnnouncementSent(n);
+      } catch (err) {
+        console.error(`Couldn't text announcement ${n.resourceId} to member ${n.memberId}:`, err);
         await markAnnouncementFailed(n, err instanceof Error ? err.message : String(err));
       }
     }
@@ -232,11 +289,29 @@ const deliverProposalPushes = drainer("Proposal push", async () => {
   }
 });
 
+const deliverProposalTexts = drainer("Proposal text", async () => {
+  for (let batch = await claimProposalNotifications(BATCH, "sms"); batch.length > 0; batch = await claimProposalNotifications(BATCH, "sms")) {
+    for (const n of batch) {
+      if (!n.phone) {
+        await markProposalSent(n);
+        continue;
+      }
+      try {
+        await textMember(n.memberId, n.phone, textFromPush(proposalPush(n), appUrl));
+        await markProposalSent(n);
+      } catch (err) {
+        console.error(`Couldn't text proposal ${n.proposalId} to member ${n.memberId}:`, err);
+        await markProposalFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
+
 // a proposal's news (opened, objected, passed): called right after an action
 // that earns some, and by the poller, which also passes proposals whose
 // window has ended
 export async function deliverProposalNotifications(): Promise<void> {
-  await Promise.all([deliverProposalEmails(), deliverProposalPushes()]);
+  await Promise.all([deliverProposalEmails(), deliverProposalPushes(), deliverProposalTexts()]);
 }
 
 async function closeThenDeliverProposals(): Promise<void> {
@@ -251,7 +326,7 @@ async function closeThenDeliverProposals(): Promise<void> {
 // deliverEventNotifications' counterpart for bulletin announcements: called
 // right after one is posted, and by the poller as the safety net
 export async function deliverAnnouncementNotifications(): Promise<void> {
-  await Promise.all([deliverAnnouncementEmails(), deliverAnnouncementPushes()]);
+  await Promise.all([deliverAnnouncementEmails(), deliverAnnouncementPushes(), deliverAnnouncementTexts()]);
 }
 
 export async function deliverDigests(now: Date = new Date()): Promise<void> {
@@ -259,30 +334,39 @@ export async function deliverDigests(now: Date = new Date()): Promise<void> {
   digesting = true;
   try {
     const cutoff = digestCutoff(now);
-    for (let batch = await claimDigests(cutoff, BATCH); batch.length > 0; batch = await claimDigests(cutoff, BATCH)) {
-      for (const digest of batch) {
-        // by the time it's due an event may already be over — skip those, and
-        // send nothing at all if that leaves nothing to say
-        // one line per event — a meeting that was proposed and then approved
-        // since the last digest is listed once, as approved
-        const byEvent = new Map<string, (typeof digest.events)[number]>();
-        for (const e of digest.events.filter((e) => !isPastEvent(e))) {
-          if (!byEvent.has(e.id) || e.notice === "approved") byEvent.set(e.id, e);
-        }
-        const upcoming = [...byEvent.values()];
-        if (!digest.email || upcoming.length === 0) {
-          await markDigestSent(digest.keys);
-          continue;
-        }
-        try {
-          await sendEmail({ to: digest.email, ...eventDigestEmail(upcoming.map((e) => ({ ...e, url: eventUrl(e.id) }))) });
-          await markDigestSent(digest.keys);
-          // a nudge toward the email just sent, on whatever devices have push
-          // on; best effort, since a late nudge would point at old news
-          await pushToMember(digest.memberId, digestPush()).catch((err) => console.error(`Couldn't push the digest nudge to member ${digest.memberId}:`, err));
-        } catch (err) {
-          console.error(`Couldn't email the digest to member ${digest.memberId}:`, err);
-          await markDigestFailed(digest.keys, err instanceof Error ? err.message : String(err));
+    // by email and by text, each member's rows on each claimed separately
+    for (const channel of ["email", "sms"] as const) {
+      for (let batch = await claimDigests(cutoff, BATCH, channel); batch.length > 0; batch = await claimDigests(cutoff, BATCH, channel)) {
+        for (const digest of batch) {
+          // by the time it's due an event may already be over — skip those, and
+          // send nothing at all if that leaves nothing to say
+          // one line per event — a meeting that was proposed and then approved
+          // since the last digest is listed once, as approved
+          const byEvent = new Map<string, (typeof digest.events)[number]>();
+          for (const e of digest.events.filter((e) => !isPastEvent(e))) {
+            if (!byEvent.has(e.id) || e.notice === "approved") byEvent.set(e.id, e);
+          }
+          const upcoming = [...byEvent.values()];
+          if (!digest.address || upcoming.length === 0) {
+            await markDigestSent(digest.keys);
+            continue;
+          }
+          const withUrls = upcoming.map((e) => ({ ...e, url: eventUrl(e.id) }));
+          try {
+            if (channel === "sms") {
+              await textMember(digest.memberId, digest.address, digestText(withUrls, appUrl));
+              await markDigestSent(digest.keys);
+              continue;
+            }
+            await sendEmail({ to: digest.address, ...eventDigestEmail(withUrls) });
+            await markDigestSent(digest.keys);
+            // a nudge toward the email just sent, on whatever devices have push
+            // on; best effort, since a late nudge would point at old news
+            await pushToMember(digest.memberId, digestPush()).catch((err) => console.error(`Couldn't push the digest nudge to member ${digest.memberId}:`, err));
+          } catch (err) {
+            console.error(`Couldn't ${channel === "sms" ? "text" : "email"} the digest to member ${digest.memberId}:`, err);
+            await markDigestFailed(digest.keys, err instanceof Error ? err.message : String(err));
+          }
         }
       }
     }

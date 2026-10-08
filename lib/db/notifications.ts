@@ -30,7 +30,7 @@ import type { AgendaItem, Event, EventChange, EventRepeat, NotificationChannel, 
 /* The queues behind "tell a circle's members about a new event" (and the
    rest of an event's news) and "…about a new announcement". Deciding who is
    told lives here (next to the data), sending lives in lib/notify.ts — this
-   file never touches SMTP or a push service. Each member is told on every
+   file never touches SMTP, a push service or the SMS provider. Each member is told on every
    channel they can be reached by (see channelsFor), one queue row each. */
 
 const MAX_ATTEMPTS = 5;
@@ -41,28 +41,34 @@ const RETRY_AFTER = sql`interval '5 minutes'`;
 type Recipient = { memberId: number; channel: NotificationChannel };
 
 /* How each member matching `who` can be told: by email if they have an
-   address (it's optional on a member), and by push if they've turned it on
-   for a device, unless `push` is false (a digest line is email only) — in
+   address (it's optional on a member), by push if they've turned it on for a
+   device, unless `push` is false (a digest line's push is only a nudge sent
+   with the email), and by text if they've confirmed a mobile number — in
    each case only if they haven't turned that channel off (Settings →
-   Notifications). Someone with neither can't be told at all. */
+   Notifications; texts also stop when they reply STOP). Someone with none of
+   them can't be told at all. */
 async function channelsFor(tx: Tx, who: SQL | undefined, { push = true } = {}): Promise<Recipient[]> {
   const rows = await tx
     .select({
       id: members.id,
       email: sql<boolean>`${members.email} is not null and ${members.notifyEmail}`,
       push: sql<boolean>`${members.notifyPush} and exists (select 1 from ${pushSubscriptions} where ${pushSubscriptions.memberId} = ${members.id})`,
+      sms: sql<boolean>`${members.phone} is not null and ${members.notifySms}`,
     })
     .from(members)
     .where(who);
   return rows.flatMap((r): Recipient[] => [
     ...(r.email ? [{ memberId: r.id, channel: "email" as const }] : []),
     ...(push && r.push ? [{ memberId: r.id, channel: "push" as const }] : []),
+    ...(r.sms ? [{ memberId: r.id, channel: "sms" as const }] : []),
   ]);
 }
 
 // a member's address to email, or null if they've turned email off since this
 // was queued: the drain then drops the row instead of sending it
 const emailIfWanted = sql<string | null>`case when ${members.notifyEmail} then ${members.email} end`;
+// the same for a text: their number, unless texts are off or it's been removed
+const phoneIfWanted = sql<string | null>`case when ${members.notifySms} then ${members.phone} end`;
 
 // how many members `recipients` reaches, on whatever channels
 const membersIn = (recipients: Recipient[]) => new Set(recipients.map((r) => r.memberId)).size;
@@ -81,9 +87,10 @@ async function hasSubCircle(tx: Tx, circleId: string): Promise<boolean> {
    means every member. How it's delivered depends on the circle: a circle with
    no sub-circles is small enough for an email of its own, right away; one with
    sub-circles — a neighborhood, the city — becomes a line in each member's
-   once-a-day digest instead (lib/notify.ts's deliverDigests). `immediate`
-   overrides that, for news that shouldn't wait a day. A digest line is
-   email only: its push is a nudge sent with the digest email itself. */
+   once-a-day digest instead (lib/notify.ts's deliverDigests), by email and by
+   text. `immediate` overrides that, for news that shouldn't wait a day. A
+   digest line has no push row: its push is a nudge sent with the digest
+   email itself. */
 async function queueFor(tx: Tx, eventId: string, kind: NotificationKind, circleId: string, exceptId: number, immediate = false): Promise<number> {
   const [circle] = await tx.select({ parentId: circles.parentId }).from(circles).where(eq(circles.id, circleId));
   if (!circle) return 0;
@@ -306,6 +313,8 @@ export type PendingEventNotification = Omit<EventNotificationData, "url"> &
   NotificationKey & {
     // null if they've since removed their address: an email row is then dropped
     email: string | null;
+    // likewise their number, for a text
+    phone: string | null;
   };
 
 // Take up to `limit` unsent notifications on `channel` that are due (never
@@ -350,6 +359,7 @@ export async function claimEventNotifications(limit: number, channel: Notificati
         channel: eventNotifications.channel,
         change: eventNotifications.change,
         email: emailIfWanted,
+        phone: phoneIfWanted,
         title: events.title,
         kind: events.kind,
         date: events.date,
@@ -437,11 +447,15 @@ export async function markNotificationFailed(n: NotificationKey, error: string):
   await db.update(eventNotifications).set({ lastError: error.slice(0, 500) }).where(isRow(n));
 }
 
-export type DigestKey = NotificationKey & { channel: "email" };
+// a digest goes out by email and by text, never by push (see queueFor)
+export type DigestChannel = "email" | "sms";
+export type DigestKey = NotificationKey & { channel: DigestChannel };
 
 export interface PendingDigest {
   memberId: number;
-  email: string;
+  // their address or number, as the channel needs; "" if they've since
+  // removed it or turned that channel off, and the digest is then dropped
+  address: string;
   // every queue row this digest covers — marked sent (or failed) together
   keys: DigestKey[];
   events: (Omit<DigestEventData, "url"> & { id: string })[];
@@ -451,16 +465,15 @@ export interface PendingDigest {
    once it was queued at or before `cutoff` (the most recent daily send time —
    see lib/notify.ts), so something that happened after this morning's send
    waits for tomorrow's. All of one member's due rows are taken together, so
-   they get one email, not several. Rows are stamped as attempted and only
-   retried after the usual delay. */
-export async function claimDigests(cutoff: Date, limit: number): Promise<PendingDigest[]> {
+   they get one email (or text), not several. Rows are stamped as attempted
+   and only retried after the usual delay. */
+export async function claimDigests(cutoff: Date, limit: number, channel: DigestChannel): Promise<PendingDigest[]> {
   const organizer = alias(members, "organizer");
   const hostCircle = alias(circles, "host_circle");
   return db.transaction(async (tx) => {
-    // digest rows are only ever queued for email (see queueFor)
     const due = and(
       eq(eventNotifications.digest, true),
-      eq(eventNotifications.channel, "email"),
+      eq(eventNotifications.channel, channel),
       isNull(eventNotifications.sentAt),
       lt(eventNotifications.attempts, MAX_ATTEMPTS),
       lte(eventNotifications.createdAt, cutoff),
@@ -476,7 +489,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
     if (taken.length === 0) return [];
     const isTaken = and(
       eq(eventNotifications.digest, true),
-      eq(eventNotifications.channel, "email"),
+      eq(eventNotifications.channel, channel),
       sql`(${eventNotifications.eventId}, ${eventNotifications.memberId}, ${eventNotifications.kind}) in (${sql.join(taken.map((t) => sql`(${t.eventId}, ${t.memberId}, ${t.kind})`), sql`, `)})`
     );
     await tx.update(eventNotifications).set({ attempts: sql`${eventNotifications.attempts} + 1`, lastAttemptAt: sql`now()` }).where(isTaken);
@@ -486,6 +499,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
         memberId: members.id,
         notice: eventNotifications.kind,
         email: emailIfWanted,
+        phone: phoneIfWanted,
         title: events.title,
         kind: events.kind,
         date: events.date,
@@ -508,15 +522,15 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
       .where(isTaken);
     const byMember = new Map<number, PendingDigest>();
     for (const t of taken) {
-      const key: DigestKey = { eventId: t.eventId, memberId: t.memberId, notice: t.kind, channel: "email" };
+      const key: DigestKey = { eventId: t.eventId, memberId: t.memberId, notice: t.kind, channel };
       const digest = byMember.get(t.memberId);
       if (digest) digest.keys.push(key);
-      else byMember.set(t.memberId, { memberId: t.memberId, email: "", keys: [key], events: [] });
+      else byMember.set(t.memberId, { memberId: t.memberId, address: "", keys: [key], events: [] });
     }
-    for (const { hostCircleName, approvedByRole, frequency, startsOn, until, ...r } of rows) {
+    for (const { hostCircleName, approvedByRole, frequency, startsOn, until, email, phone, ...r } of rows) {
       const digest = byMember.get(r.memberId);
       if (!digest) continue;
-      digest.email = r.email ?? "";
+      digest.address = (channel === "email" ? email : phone) ?? "";
       digest.events.push({
         ...r,
         id: r.eventId,
@@ -559,6 +573,8 @@ export type PendingAnnouncementNotification = Omit<AnnouncementEmailData, "url">
     circleId: string;
     // null if they've since removed their address: an email row is then dropped
     email: string | null;
+    // likewise their number, for a text
+    phone: string | null;
   };
 
 // claimEventNotifications' counterpart for announcements: the same leasing, so
@@ -597,6 +613,7 @@ export async function claimAnnouncementNotifications(limit: number, channel: Not
         memberId: members.id,
         channel: announcementNotifications.channel,
         email: emailIfWanted,
+        phone: phoneIfWanted,
         title: circleResources.title,
         message: circleResources.message,
         createdAt: circleResources.createdAt,
@@ -647,6 +664,8 @@ export type PendingProposalNotification = Omit<ProposalEmailData, "url"> &
   ProposalKey & {
     // null if they've since removed their address or turned email off
     email: string | null;
+    // likewise their number, for a text
+    phone: string | null;
   };
 
 // claimEventNotifications' counterpart for proposals: the same leasing, and
@@ -682,6 +701,7 @@ export async function claimProposalNotifications(limit: number, channel: Notific
         notice: proposalNotifications.kind,
         channel: proposalNotifications.channel,
         email: emailIfWanted,
+        phone: phoneIfWanted,
         circleName: circles.name,
         changes: circleProposals.changes,
         lines: circleProposals.lines,

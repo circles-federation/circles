@@ -281,8 +281,8 @@ export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "ca
 
 // which way a queued notification goes out: each channel is its own queue
 // row, sent and retried on its own, so a failed push never resends an email
-// or the reverse
-export type NotificationChannel = "email" | "push";
+// or the reverse. "sms" is a text to the member's confirmed mobile number.
+export type NotificationChannel = "email" | "push" | "sms";
 
 // what an "updated" notification remembers: when and where the event was
 // before the change, so the email can say what moved. `andLater` marks an edit
