@@ -39,4 +39,8 @@ export function formatTypedPhone(input: string): string {
   return phone ? formatPhone(phone) : input;
 }
 
+// why texts can't be turned back on from Settings: only START, texted back to
+// Circles, undoes a STOP (the provider holds to it, not the app)
+export const SMS_STOPPED = "You replied STOP to a text from Circles. Reply START to any of its texts to get them again.";
+
 export const PHONE_INVALID = "Enter a US or Canadian mobile number, like (401) 555-0123.";

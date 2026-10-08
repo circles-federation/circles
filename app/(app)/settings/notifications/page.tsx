@@ -9,5 +9,5 @@ export default function Page() {
   const goBack = useGoBack();
   const { profile, saveNotificationSettings } = useAppState();
 
-  return <NotificationSettingsPage settings={profile.notifications} hasEmail={!!profile.email} onSave={saveNotificationSettings} onBack={goBack} />;
+  return <NotificationSettingsPage settings={profile.notifications} hasEmail={!!profile.email} phone={profile.phone} smsStopped={profile.smsStopped} onSave={saveNotificationSettings} onBack={goBack} />;
 }

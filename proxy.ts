@@ -20,6 +20,8 @@ export function proxy(request: NextRequest) {
   // the welcome page, applying to join, and the beta terms and privacy notes
   // an applicant agrees to — all for people without a session
   if (pathname === "/" || pathname === "/apply" || pathname === "/terms" || pathname === "/privacy") return NextResponse.next();
+  // Twilio's webhooks, which have no session but are signed (lib/sms/)
+  if (pathname.startsWith("/api/sms/")) return NextResponse.next();
   if (!getSessionCookie(request)) {
     return NextResponse.redirect(new URL("/", request.url));
   }

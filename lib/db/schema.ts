@@ -83,9 +83,12 @@ export const members = pgTable("members", {
   phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
   smsConsent: text("sms_consent"),
   smsConsentAt: timestamp("sms_consent_at", { withTimezone: true }),
-  // whether they're texted, while they have a number: on when it's added, off
-  // once they reply STOP
+  // whether they're texted, while they have a number: on when it's added, and
+  // theirs to turn off (Settings → Notifications), or off when they reply STOP
   notifySms: boolean("notify_sms").notNull().default(true),
+  // when they replied STOP: the provider won't text them again until they
+  // reply START, so the switch can't turn texts back on until then
+  smsStoppedAt: timestamp("sms_stopped_at", { withTimezone: true }),
   // a system admin: a worker of the foundation running the platform, who
   // reviews applications (see applications below). Set by `npm run admin`.
   isAdmin: boolean("is_admin").notNull().default(false),

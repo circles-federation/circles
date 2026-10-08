@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
@@ -8,6 +9,7 @@ import type { MutationResult } from "@/components/providers/app-state-provider";
 import { Button, ConfirmModal, EyebrowGroup, PageContainer, Section, SectionGroup, Switch, useToast } from "@/components/shared";
 import { sendTestPushAction } from "@/lib/db/actions";
 import { usePushSubscription } from "@/lib/hooks";
+import { SMS_STOPPED, formatPhone } from "@/lib/phone.util";
 import type { NotificationSettings } from "@/lib/types";
 import { isIPhoneBrowserTab } from "@/lib/viewport";
 
@@ -15,6 +17,9 @@ interface NotificationSettingsPageProps {
   settings: NotificationSettings;
   // whether there's an address to email at all
   hasEmail: boolean;
+  // their confirmed number, if any, and whether they've replied STOP to a text
+  phone?: string;
+  smsStopped?: boolean;
   onSave: (settings: NotificationSettings) => Promise<MutationResult>;
   onBack: () => void;
 }
@@ -22,12 +27,11 @@ interface NotificationSettingsPageProps {
 const noSubscribe = () => () => {};
 const dev = process.env.NODE_ENV !== "production";
 
-/* How a member is told about things: by email, on or off for them
-   everywhere, and by push, on or off for this device (its browser's own
-   subscription). Like
-   any form here, nothing changes until the top bar's Save, and Back asks
-   before discarding. */
-export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }: NotificationSettingsPageProps) {
+/* How a member is told about things: by email and by text, each on or off
+   for them everywhere, and by push, on or off for this device (its browser's
+   own subscription). Like any form here, nothing changes until the top bar's
+   Save, and Back asks before discarding. */
+export function NotificationSettingsPage({ settings, hasEmail, phone, smsStopped, onSave, onBack }: NotificationSettingsPageProps) {
   const { showToast } = useToast();
   const device = usePushSubscription();
   const iPhoneTab = useSyncExternalStore(noSubscribe, isIPhoneBrowserTab, () => false);
@@ -44,7 +48,7 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
   // where pushes go), but it still gates them, so turning push on here turns
   // it back on for someone who switched it off when it was shown
   const toSave = { ...draft, push: draft.push || deviceWanted === true };
-  const settingsChanged = toSave.email !== settings.email || toSave.push !== settings.push;
+  const settingsChanged = toSave.email !== settings.email || toSave.push !== settings.push || toSave.sms !== settings.sms;
   const dirty = deviceChanged || settingsChanged;
 
   async function handleSave() {
@@ -112,6 +116,14 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
         </Section>
 
         <Section>
+          <EyebrowGroup label="Text">
+            <SettingRows>
+              <TextRow phone={phone} stopped={!!smsStopped} checked={draft.sms} onChange={(sms) => setDraft((d) => ({ ...d, sms }))} />
+            </SettingRows>
+          </EyebrowGroup>
+        </Section>
+
+        <Section>
           <EyebrowGroup label="Push">
             <SettingRows>
               <DeviceRow status={device.status} iPhoneTab={iPhoneTab} checked={deviceWanted ?? deviceOn} onChange={setDeviceWanted} />
@@ -162,6 +174,35 @@ function SettingRow({ label, detail, checked, onChange, disabled }: { label: str
         <div className="mt-0.5 font-serif text-sm leading-snug text-soft">{detail}</div>
       </div>
       <Switch checked={checked} onChange={onChange} labelledBy={id} disabled={disabled} />
+    </RowShell>
+  );
+}
+
+/* Texts go to the member's own number, so without one there's nothing to
+   switch: the row points to where one's added. After a STOP reply only a
+   START reply turns them back on (the provider holds to it), so the row says
+   that instead. */
+function TextRow({ phone, stopped, checked, onChange }: { phone?: string; stopped: boolean; checked: boolean; onChange: (on: boolean) => void }) {
+  if (phone && !stopped) {
+    return <SettingRow label="Text notifications" detail={`Sent to ${formatPhone(phone)}. Msg & data rates may apply.`} checked={checked} onChange={onChange} />;
+  }
+  return (
+    <RowShell>
+      <div className="min-w-0 flex-1">
+        <div className="font-sans text-base font-bold">Text notifications</div>
+        <div className="mt-0.5 font-serif text-sm leading-snug text-soft">
+          {phone ? (
+            SMS_STOPPED
+          ) : (
+            <>
+              <Link href="/settings/phone" className="font-bold text-ink underline">
+                Add your mobile number
+              </Link>{" "}
+              to get them by text.
+            </>
+          )}
+        </div>
+      </div>
     </RowShell>
   );
 }

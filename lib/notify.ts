@@ -104,7 +104,7 @@ export async function textMember(memberId: number, phone: string, body: string):
   } catch (err) {
     if (!(err instanceof SmsOptedOutError || err instanceof SmsUndeliverableError)) throw err;
     console.error(`Turning texts off for member ${memberId}:`, err.message);
-    await stopTexting(memberId);
+    await stopTexting(memberId, { stopped: err instanceof SmsOptedOutError });
     return false;
   }
 }

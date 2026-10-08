@@ -5,7 +5,7 @@ import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, memberPhotos, members, phoneVerifications } from "./schema";
 import { validateLanguages } from "@/lib/languages.util";
-import { PHONE_INVALID, SMS_CONSENT_NOTICE, normalizePhone } from "@/lib/phone.util";
+import { PHONE_INVALID, SMS_CONSENT_NOTICE, SMS_STOPPED, normalizePhone } from "@/lib/phone.util";
 import { isBirthDecade } from "@/lib/members.util";
 import type { Member, NotificationSettings, Profile } from "@/lib/types";
 
@@ -65,15 +65,16 @@ export async function getMembersForViewer(viewerId: number): Promise<Member[]> {
 
 // the settings only a member themself sees, for their own profile: whether
 // others may see their email, and how they're told about things
-export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications" | "phone">> {
+export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications" | "phone" | "smsStopped">> {
   const [row] = await db
-    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush, phone: members.phone })
+    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush, sms: members.notifySms, phone: members.phone, smsStoppedAt: members.smsStoppedAt })
     .from(members)
     .where(eq(members.id, id));
   return {
     emailPublic: row?.emailPublic ?? true,
-    notifications: { email: row?.email ?? true, push: row?.push ?? true },
+    notifications: { email: row?.email ?? true, push: row?.push ?? true, sms: row?.sms ?? true },
     ...(row?.phone ? { phone: row.phone } : {}),
+    ...(row?.phone && row.smsStoppedAt ? { smsStopped: true as const } : {}),
   };
 }
 
@@ -116,7 +117,7 @@ export async function confirmPhoneVerification(memberId: number, code: string): 
     const now = new Date();
     await tx
       .update(members)
-      .set({ phone: pending.phone, phoneVerifiedAt: now, smsConsent: pending.smsConsent, smsConsentAt: now, notifySms: true })
+      .set({ phone: pending.phone, phoneVerifiedAt: now, smsConsent: pending.smsConsent, smsConsentAt: now, notifySms: true, smsStoppedAt: null })
       .where(eq(members.id, memberId));
     await tx.delete(phoneVerifications).where(eq(phoneVerifications.memberId, memberId));
     return pending.phone;
@@ -126,24 +127,47 @@ export async function confirmPhoneVerification(memberId: number, code: string): 
 // no more texts, and no number kept: removing it withdraws the opt-in too
 export async function removePhone(memberId: number): Promise<void> {
   await db.transaction(async (tx) => {
-    await tx.update(members).set({ phone: null, phoneVerifiedAt: null, smsConsent: null, smsConsentAt: null }).where(eq(members.id, memberId));
+    await tx.update(members).set({ phone: null, phoneVerifiedAt: null, smsConsent: null, smsConsentAt: null, smsStoppedAt: null }).where(eq(members.id, memberId));
     await tx.delete(phoneVerifications).where(eq(phoneVerifications.memberId, memberId));
   });
 }
 
-/* They've replied STOP to a text (the provider refuses to text them until
-   they reply START), so stop queueing texts for them; the number stays, so
-   Settings can offer to turn texts back on. */
-export async function stopTexting(memberId: number): Promise<void> {
-  await db.update(members).set({ notifySms: false }).where(eq(members.id, memberId));
+/* Texting a member turned out to be impossible, so stop queueing texts for
+   them; the number stays. `stopped` is a STOP reply, which the provider holds
+   to until they reply START, so it's remembered (smsStoppedAt) and Settings
+   says how to undo it; otherwise the number can't take texts, and turning
+   them back on is up to them. */
+export async function stopTexting(memberId: number, { stopped }: { stopped: boolean }): Promise<void> {
+  await db
+    .update(members)
+    .set({ notifySms: false, ...(stopped ? { smsStoppedAt: sql`now()` } : {}) })
+    .where(eq(members.id, memberId));
+}
+
+/* A STOP or START texted to Circles (app/api/sms/inbound), by whoever has
+   that number, if anyone: STOP turns their texts off as above, START back
+   on, as the provider will now text them again. Returns whether a member
+   had the number. */
+export async function setTextingByNumber(phone: string, on: boolean): Promise<boolean> {
+  const rows = await db
+    .update(members)
+    .set(on ? { notifySms: true, smsStoppedAt: null } : { notifySms: false, smsStoppedAt: sql`now()` })
+    .where(eq(members.phone, phone))
+    .returning({ id: members.id });
+  return rows.length > 0;
 }
 
 // Settings → Notifications, always the member's own: the action supplies the
 // session's id, as updateMember's does
 export async function setNotificationSettings(id: number, settings: NotificationSettings): Promise<NotificationSettings> {
-  if (typeof settings?.email !== "boolean" || typeof settings?.push !== "boolean") throw new MemberError("Those notification settings weren't recognized.");
-  await db.update(members).set({ notifyEmail: settings.email, notifyPush: settings.push }).where(eq(members.id, id));
-  return { email: settings.email, push: settings.push };
+  if (typeof settings?.email !== "boolean" || typeof settings?.push !== "boolean" || typeof settings?.sms !== "boolean") {
+    throw new MemberError("Those notification settings weren't recognized.");
+  }
+  const [row] = await db.select({ notifySms: members.notifySms, smsStoppedAt: members.smsStoppedAt }).from(members).where(eq(members.id, id));
+  // the provider won't text someone who replied STOP, whatever this says
+  if (settings.sms && !row?.notifySms && row?.smsStoppedAt) throw new MemberError(SMS_STOPPED);
+  await db.update(members).set({ notifyEmail: settings.email, notifyPush: settings.push, notifySms: settings.sms }).where(eq(members.id, id));
+  return { email: settings.email, push: settings.push, sms: settings.sms };
 }
 
 export async function getMemberById(id: number): Promise<Member | null> {

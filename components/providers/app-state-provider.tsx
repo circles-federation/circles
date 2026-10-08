@@ -603,14 +603,14 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     const result = await dbConfirmPhoneCode(code).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
     const phone = result.value;
-    setProfile((p) => ({ ...p, phone }));
+    setProfile(({ smsStopped: _stopped, ...p }) => ({ ...p, phone, notifications: { ...p.notifications, sms: true } }));
     return { ok: true };
   }
 
   async function removePhone(): Promise<MutationResult> {
     const result = await dbRemovePhone().catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
-    setProfile(({ phone: _phone, ...p }) => p);
+    setProfile(({ phone: _phone, smsStopped: _stopped, ...p }) => p);
     return { ok: true };
   }
 

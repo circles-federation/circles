@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 /* The only file that talks to the SMS provider, Twilio (the same wrapping rule
    as lib/email/ and lib/push/): everything texts through sendSms(). Twilio's
    REST API is a single POST, so there's no SDK.
@@ -46,4 +48,38 @@ export async function sendSms(message: SmsMessage): Promise<void> {
   if (error?.code !== undefined && OPTED_OUT.has(error.code)) throw new SmsOptedOutError(text);
   if (error?.code !== undefined && UNDELIVERABLE.has(error.code)) throw new SmsUndeliverableError(text);
   throw new Error(text);
+}
+
+/* Whether a request to one of our webhooks really came from Twilio: it signs
+   each with the auth token, over the URL it called and the posted fields
+   (sorted by name, each name then its value), as X-Twilio-Signature. `url`
+   must be the public URL Twilio was given, not whatever this server sees
+   behind its proxy. Without a token, development takes anything, so the
+   webhook can be tried by hand; production takes nothing. */
+export function isFromTwilio(url: string, params: Record<string, string>, signature: string | null): boolean {
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!token) return process.env.NODE_ENV !== "production";
+  if (!signature) return false;
+  const data = url + Object.keys(params).sort().map((k) => k + params[k]).join("");
+  const expected = createHmac("sha1", token).update(data).digest();
+  const given = Buffer.from(signature, "base64");
+  return given.length === expected.length && timingSafeEqual(given, expected);
+}
+
+// the keywords carriers and Twilio treat as opting out of texts, and back in
+const STOP_WORDS = new Set(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "REVOKE"]);
+const START_WORDS = new Set(["START", "YES", "UNSTOP"]);
+
+/* What a text someone sent us means for their opt-in. Twilio replies to the
+   keywords itself and stops or resumes texting the number on its side; this
+   is so the app knows too. It names the keyword's kind in OptOutType where
+   Advanced Opt-Out is on, and otherwise the message is the keyword alone.
+   HELP and anything else are "none". */
+export function optOutIntent(params: Record<string, string>): "stop" | "start" | "none" {
+  const type = params.OptOutType?.toUpperCase();
+  if (type === "STOP") return "stop";
+  if (type === "START") return "start";
+  if (type) return "none";
+  const word = (params.Body ?? "").trim().toUpperCase();
+  return STOP_WORDS.has(word) ? "stop" : START_WORDS.has(word) ? "start" : "none";
 }
