@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
+import { ArrowRightStartOnRectangleIcon, BellIcon, DevicePhoneMobileIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { Button, ConfirmModal, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { usePushSubscription } from "@/lib/hooks";
 import { formatPhone } from "@/lib/phone.util";
@@ -38,9 +38,9 @@ export function SettingsPage({ notifications, phone, smsStopped, onLogout }: Set
         {/* pt-0: the top bar's title (Settings) is the page's only heading */}
         <Section className="pt-0">
           <div className="flex flex-col gap-3">
-            <MenuRow href="/profile/edit" label="Edit profile" detail="Your photo, bio, and more" />
-            <MenuRow href="/settings/notifications" label="Notifications" detail={summary} />
-            <MenuRow href="/settings/phone" label="Phone number" detail={phone ? formatPhone(phone) : "Add one to get texts"} />
+            <MenuRow href="/profile/edit" icon={UserCircleIcon} label="Edit profile" detail="Your photo, bio, and more" />
+            <MenuRow href="/settings/notifications" icon={BellIcon} label="Notifications" detail={summary} />
+            <MenuRow href="/settings/phone" icon={DevicePhoneMobileIcon} label="Phone number" detail={phone ? formatPhone(phone) : "Add one to get texts"} />
           </div>
         </Section>
 
