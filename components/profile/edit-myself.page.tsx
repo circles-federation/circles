@@ -5,12 +5,12 @@ import { CheckIcon, EyeIcon, LockClosedIcon } from "@heroicons/react/24/outline"
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { ConfirmModal, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
+import { ConfirmModal, Input, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
 import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
 import { LanguagesEditor } from "./languages-editor";
 import { PhotoPicker } from "./photo-picker";
-import { BIRTH_DECADES, birthDecadeLabel } from "@/lib/members.util";
+import { BIRTH_DECADES, PRONOUNS_MAX, birthDecadeLabel } from "@/lib/members.util";
 import type { Profile } from "@/lib/types";
 
 interface EditMyselfPageProps {
@@ -30,6 +30,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
   const [photoError, setPhotoError] = useState<string | null>(null);
   const dirty =
     photo !== null ||
+    draft.pronouns !== profile.pronouns ||
     draft.bio !== profile.bio ||
     (draft.email || "") !== (profile.email || "") ||
     draft.emailPublic !== profile.emailPublic ||
@@ -75,6 +76,12 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
             }}
           />
           {photoError && <p className="mt-2.5 font-sans text-xs font-bold text-danger">{photoError}</p>}
+        </Section>
+
+        <Section>
+          <Label htmlFor="pronouns">Pronouns</Label>
+          <Input id="pronouns" value={draft.pronouns} onChange={(e) => set({ pronouns: e.target.value })} maxLength={PRONOUNS_MAX} placeholder="e.g. she/her, he/him, they/them" />
+          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Optional. It shows beside your name on your profile.</p>
         </Section>
 
         {/* bio */}
