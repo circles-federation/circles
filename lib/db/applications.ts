@@ -62,7 +62,6 @@ export async function startApplication(input: ApplicationInput, photo: Blob, agr
       lastName: input.lastName.trim(),
       email,
       neighborhoodId: hood.id,
-      address: input.address.trim(),
       photo: data,
       photoType: contentType,
       agreementVersion,
@@ -129,7 +128,6 @@ export interface PendingApplication {
   email: string;
   neighborhoodId: string;
   neighborhoodName: string;
-  address: string;
   submittedAt: string;
 }
 
@@ -140,12 +138,11 @@ const pendingColumns = {
   email: applications.email,
   neighborhoodId: applications.neighborhoodId,
   neighborhoodName: circles.name,
-  address: applications.address,
   submittedAt: applications.submittedAt,
 };
 
-function toPending(r: { id: string; firstName: string; lastName: string; email: string; neighborhoodId: string; neighborhoodName: string; address: string | null; submittedAt: Date | null }): PendingApplication {
-  return { ...r, address: r.address ?? "", submittedAt: (r.submittedAt ?? new Date()).toISOString() };
+function toPending(r: { id: string; firstName: string; lastName: string; email: string; neighborhoodId: string; neighborhoodName: string; submittedAt: Date | null }): PendingApplication {
+  return { ...r, submittedAt: (r.submittedAt ?? new Date()).toISOString() };
 }
 
 // what's waiting for review, oldest first — without the photos, which the
@@ -221,7 +218,7 @@ export async function approveApplication(adminId: number, id: string): Promise<D
       .onConflictDoNothing();
     await tx
       .update(applications)
-      .set({ status: "approved", decidedAt: new Date(), decidedBy: adminId, memberId: member.id, address: null, photo: null, photoType: null })
+      .set({ status: "approved", decidedAt: new Date(), decidedBy: adminId, memberId: member.id, photo: null, photoType: null })
       .where(eq(applications.id, id));
     return { email: app.email, firstName: app.firstName, neighborhoodName: hood.name };
   });
@@ -238,7 +235,7 @@ export async function declineApplication(adminId: number, id: string, note: stri
     const [hood] = await tx.select({ name: circles.name }).from(circles).where(eq(circles.id, app.neighborhoodId));
     await tx
       .update(applications)
-      .set({ status: "declined", decidedAt: new Date(), decidedBy: adminId, note: trimmed || null, address: null, photo: null, photoType: null })
+      .set({ status: "declined", decidedAt: new Date(), decidedBy: adminId, note: trimmed || null, photo: null, photoType: null })
       .where(eq(applications.id, id));
     return { email: app.email, firstName: app.firstName, neighborhoodName: hood?.name ?? "", ...(trimmed ? { note: trimmed } : {}) };
   });

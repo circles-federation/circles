@@ -12,7 +12,7 @@ import { fmtNumericDate } from "@/lib/format.util";
 import type { PendingApplication } from "@/lib/db/applications";
 
 /* One application, for a system admin to decide: is the photo a real face,
-   and is the address in the neighborhood? Approve is the top bar's action;
+   and does the neighborhood fit? Approve is the top bar's action;
    Decline is at the foot, with a note for the applicant. Each asks first,
    since either one emails them. */
 export function ApplicationReviewPage({ application: a }: { application: PendingApplication }) {
@@ -63,16 +63,13 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
           <EyebrowGroup label="Neighborhood">
             <p className="font-sans text-lg font-bold">{a.neighborhoodName}</p>
           </EyebrowGroup>
-          <EyebrowGroup label="Home address">
-            <p className="font-serif text-lg">{a.address}</p>
-          </EyebrowGroup>
           <EyebrowGroup label="Email">
             <p className="font-serif text-lg break-all">{a.email}</p>
           </EyebrowGroup>
         </Section>
         <Section>
           <p className="mb-4 font-serif text-base leading-normal text-soft">
-            Approve if the photo clearly shows a real person&apos;s face and the address is in {a.neighborhoodName}. Either way, they&apos;re emailed, and the address and photo are no longer kept with the application.
+            Approve if the photo clearly shows a real person&apos;s face and they plausibly live in {a.neighborhoodName}. Either way, they&apos;re emailed, and the photo is no longer kept with the application.
           </p>
           <Button variant="danger" onClick={() => setConfirming("decline")} disabled={busy} className="w-full min-[480px]:w-auto">
             Decline
