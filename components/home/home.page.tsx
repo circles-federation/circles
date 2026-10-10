@@ -8,6 +8,7 @@ import { ProposalBanner } from "@/components/circles/proposal-banner";
 import { EventFeed } from "@/components/events/event-feed";
 import { StartingSoon } from "./starting-soon";
 import { StatCard } from "./stat-card";
+import { isAttending } from "@/lib/events.util";
 import { fmtNumericDate, isPastEvent, parseDay } from "@/lib/format.util";
 import { awaitingResponse } from "@/lib/proposals.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
@@ -71,8 +72,8 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   const myCircles = circlesForMember(profile.id, circles);
 
   // the user's events — created or RSVP'd, upcoming first then past
-  // the user's events — created or RSVP'd; EventFeed orders and paginates them
-  const myEvents = events.filter((e) => (e.rsvps || []).includes(profile.id) || rsvpState[e.id] || e.organizerId === profile.id);
+  // the user's events — created, RSVP'd or slotted; EventFeed orders and paginates them
+  const myEvents = events.filter((e) => isAttending(e, profile.id) || rsvpState[e.id] || e.organizerId === profile.id);
 
   return (
     <PageContainer size="wide">
