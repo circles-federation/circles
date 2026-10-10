@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-editor";
+import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, PageContainer, Select, TabbedPanel, TextArea } from "@/components/shared";
+import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, Section, SectionGroup, Select, TextArea } from "@/components/shared";
 import { audienceLabel, circleCanHost, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
 import { attendeeIds, defaultEventTimes, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
@@ -16,21 +17,13 @@ import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, localDay, repeatLabel, repeat
 import type { Circle, Event, EventKindKey, Profile, RepeatFrequency } from "@/lib/types";
 
 
-interface SlotDraft {
-  label: string;
-  description: string;
-  min: string;
-  max: string;
-}
-
 const DEFAULT_MEETING_TITLE = "Meeting";
-const DEFAULT_SLOTS: SlotDraft[] = [{ label: "", description: "", min: "1", max: "" }];
 
 // full literal class strings per key — Tailwind's static scan can't see
 // through a template-interpolated class name like `border-t-${accent}`.
-const ACCENT: Record<"ink" | "flame", { borderT: string; border: string; text: string }> = {
-  ink: { borderT: "border-t-ink", border: "border-ink", text: "text-ink" },
-  flame: { borderT: "border-t-flame", border: "border-flame", text: "text-flame" },
+const ACCENT: Record<"ink" | "flame", { bar: string; border: string; text: string }> = {
+  ink: { bar: "bg-ink", border: "border-ink", text: "text-ink" },
+  flame: { bar: "bg-flame", border: "border-flame", text: "text-flame" },
 };
 
 // what the route hands back once the server has answered, so a refusal shows inline
@@ -113,10 +106,7 @@ export function EventFormPage(props: EventFormPageProps) {
         agenda: event.agenda && event.agenda.length > 0
           ? event.agenda.map((a): AgendaDraft => ({ category: a.category, title: a.title, details: a.details ?? "" }))
           : [BLANK_AGENDA_ITEM],
-        useSlots: Array.isArray(event.roles) && event.roles.length > 0,
-        slots: event.roles && event.roles.length > 0
-          ? event.roles.map((r): SlotDraft => ({ label: r.label, description: r.description || "", min: String(r.min), max: r.max != null ? String(r.max) : "" }))
-          : DEFAULT_SLOTS,
+        slots: (event.roles ?? []).map((r): SlotDraft => ({ label: r.label, description: r.description || "", min: String(r.min), max: r.max != null ? String(r.max) : "" })),
       }
     : {
         type: "ordinary" as EventKindKey,
@@ -129,8 +119,7 @@ export function EventFormPage(props: EventFormPageProps) {
         location: "",
         description: "",
         agenda: [BLANK_AGENDA_ITEM],
-        useSlots: false,
-        slots: DEFAULT_SLOTS,
+        slots: [] as SlotDraft[],
       };
 
   const [type, setType] = useState<EventKindKey>(initialValues.type);
@@ -144,10 +133,12 @@ export function EventFormPage(props: EventFormPageProps) {
   const [location, setLocation] = useState(initialValues.location);
   const [description, setDescription] = useState(initialValues.description);
   // slots (roles) for an ordinary event: each { label, description, min, max }
-  const [useSlots, setUseSlots] = useState(initialValues.useSlots);
   const [slots, setSlots] = useState<SlotDraft[]>(initialValues.slots);
   // a meeting's agenda, which it has instead of a description
   const [agenda, setAgenda] = useState<AgendaDraft[]>(initialValues.agenda);
+  // the form, or a part of it (slots, a meeting's agenda) on a view of its own:
+  // too much to fit among the other fields on a phone
+  const [view, setView] = useState<"form" | "slots" | "agenda">("form");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -213,7 +204,6 @@ export function EventFormPage(props: EventFormPageProps) {
     end !== initialValues.end ||
     location.trim() !== initialValues.location.trim() ||
     description.trim() !== initialValues.description.trim() ||
-    useSlots !== initialValues.useSlots ||
     JSON.stringify(slots) !== JSON.stringify(initialValues.slots) ||
     (gov && JSON.stringify(agenda) !== JSON.stringify(initialValues.agenda)) ||
     repeat !== "" ||
@@ -246,16 +236,29 @@ export function EventFormPage(props: EventFormPageProps) {
     }
   }
 
-  // leaving is the top bar's Back, which asks before discarding changes
-  useBackHandler(dirty ? () => setConfirmingDiscard(true) : null);
+  const hasSlots = slots.some((x) => x.label.trim());
+  function openView(next: "slots" | "agenda") {
+    // a blank one to type into, if there's none yet
+    if (next === "slots" && slots.length === 0) setSlots([{ ...BLANK_SLOT }]);
+    setView(next);
+  }
+  function closeView() {
+    // slots nobody named are just dropped
+    if (view === "slots") setSlots(slots.filter((x) => x.label.trim()));
+    setView("form");
+  }
+
+  // leaving is the top bar's Back, which asks before discarding changes; from
+  // a view within the form it goes back to the form instead
+  useBackHandler(view !== "form" ? closeView : dirty ? () => setConfirmingDiscard(true) : null);
 
   // the event as it would be submitted, and the first thing wrong with it if
   // anything is — worked out on every render, so the submit buttons stay
   // disabled until it would pass. Instant feedback only: the server
   // re-validates and is the real check.
   function buildDraft(): { details: EventDetails; problem: string | null } {
-    // blank slot rows are just ignored, but turning slots on with none filled is a mistake
-    const roles: RoleDraft[] = !gov && useSlots
+    // blank slot rows are just ignored
+    const roles: RoleDraft[] = !gov
       ? slots
           .filter((x) => x.label.trim())
           .map((x) => ({
@@ -280,7 +283,6 @@ export function EventFormPage(props: EventFormPageProps) {
         : {}),
       roles,
     };
-    if (!gov && useSlots && roles.length === 0) return { details, problem: "Add at least one slot, or turn off slots." };
     return {
       details,
       problem: validateEventDraft(
@@ -331,7 +333,11 @@ export function EventFormPage(props: EventFormPageProps) {
     s === "upcoming" ? "Cancel this and later dates" : `${othersGoing > 0 ? "Cancel" : "Delete"} ${seriesLive ? "this date" : noun}`;
 
   const submitLabel = mode === "edit" ? "Save changes" : (gov ? (approverRole ? "Schedule meeting" : "Propose meeting") : hostCircle && !approverRole ? "Propose event" : "Create event");
-  useTopBarAction({ label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" });
+  useTopBarAction(
+    view !== "form"
+      ? { label: "Done", icon: CheckIcon, onAction: closeView, variant: "primary" }
+      : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" }
+  );
 
   // The error sits at the foot of the form, and on mobile the submit that
   // caused it is the top bar's check, so it's brought into view — on every
@@ -351,287 +357,246 @@ export function EventFormPage(props: EventFormPageProps) {
     ["meeting", "Meeting"],
   ];
 
+  const topics = agenda.filter((a) => a.title.trim());
+  const slotNames = slots.filter((x) => x.label.trim()).map((x) => x.label.trim());
+
+  if (view === "slots") {
+    return (
+      <PageContainer size="compact">
+        <h2 className="font-sans text-xl font-extrabold tracking-[-0.02em]">Slots</h2>
+        <p className="mt-2 mb-5 font-serif text-sm leading-normal text-soft">
+          Named roles people sign up for, like shift lead or greeter. Slots replace the normal RSVP. Leave none to keep it a simple RSVP.
+        </p>
+        <SlotsEditor slots={slots} onChange={setSlots} />
+      </PageContainer>
+    );
+  }
+
+  if (view === "agenda") {
+    return (
+      <PageContainer size="compact">
+        <h2 className="font-sans text-xl font-extrabold tracking-[-0.02em]">Agenda</h2>
+        <p className="mt-2 mb-5 font-serif text-sm leading-normal text-soft">
+          Mark each topic with what the circle will do with it: hear a report, explore it together, or decide it.
+        </p>
+        <AgendaEditor items={agenda} onChange={setAgenda} />
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer size="compact">
-      <div className={clsx("border-t-[3px] border-b border-b-ink pt-4 pb-5", accent.borderT)}>
-        <Eyebrow className={proposing ? "text-flame" : "text-soft"}>{mode === "edit" ? "Edit" : (proposing ? "Propose" : gov && approverRole ? "Schedule" : "Create")}</Eyebrow>
-        <h1 className="mt-3 font-sans text-title font-extrabold tracking-[-0.035em] leading-[0.95]">
-          {mode === "edit" ? initialValues.title : (type === "ordinary" ? "New event" : "New meeting")}
-        </h1>
-      </div>
+      {/* the kind can't change once an event exists, so only a new one asks */}
+      {mode === "create" && (
+        <div role="radiogroup" aria-label="What you're making" className="grid grid-cols-2 border border-ink">
+          {types.map(([key, label], i) => {
+            const on = key === type;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => changeType(key)}
+                className={clsx(
+                  "cursor-pointer py-3 font-sans text-eyebrow font-bold tracking-wide uppercase",
+                  i > 0 && "border-l border-ink",
+                  on ? (EVENT_KINDS[key].governance ? "bg-flame text-paper" : "bg-ink text-paper") : "bg-paper text-soft",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className={clsx("h-[3px]", accent.bar, mode === "create" && "mt-4")} />
 
-      {/* type selector — reusable tabbed panel wrapping the form fields.
-          In edit mode the kind can't change, so whichever tab doesn't match
-          the event's own kind is disabled rather than removed, keeping the
-          same two-tab shape as the create form. */}
-      <TabbedPanel
-        tabs={types.map(([key, label]) => ({
-          key, label,
-          variant: EVENT_KINDS[key].governance ? "flame" as const : "ink" as const,
-          disabled: mode === "edit" && key !== initialValues.type,
-        }))}
-        active={type}
-        onChange={(key) => changeType(key as EventKindKey)}
-        className="mt-6"
-      >
       {gov && circle && approverRole && (
-        <p className="mb-1 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-[#222]">
+        <p className="mt-5 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-[#222]">
           This is a governance meeting for <strong>{circle.name}</strong>. As its <strong>{approverRole}</strong>, you schedule it directly — it doesn&apos;t need a vote, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
         </p>
       )}
       {gov && circle && !approverRole && (
-        <p className="mb-1 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
+        <p className="mt-5 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
           This is a governance meeting for <strong>{circle.name}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {circle.type === "neighborhood" ? "residents" : "members"}</strong> to be approved. Your proposal counts as the first vote.
         </p>
       )}
 
-      <div className={clsx("flex flex-col gap-5.5", gov && "pt-5.5")}>
-        <div>
+      <SectionGroup>
+        <Section className="py-6">
           <Label htmlFor="title">Title</Label>
           <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={gov ? "What is this meeting about?" : "What's happening?"} />
-        </div>
+        </Section>
 
-        <div>
-          <Label htmlFor="circle">Circle</Label>
-          <Select id="circle" value={circleId} onChange={(e) => pickCircle(e.target.value)} disabled={mode === "edit"}>
-            {circleOptions.map((o) => (
-              <option key={o.id} value={o.id}>{o.label}</option>
-            ))}
-          </Select>
-          {circle && (
-            <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
-              {isRootCircle(circle)
-                ? `${proposing ? "Once approved, everyone" : "Everyone"} in the city can see this and RSVP.`
-                : `${proposing ? "Once approved, only" : "Only"} ${audienceLabel(circle)} can see this, RSVP and be notified about it.`}
-              {mode === "edit" && " The circle can't be changed once an event exists."}
-            </p>
-          )}
-        </div>
-
-        {gov ? (
-          <div>
-            <Label>{approverRole ? "Scheduled by" : "Proposed by"}</Label>
-            <div className="flex items-center gap-2.5 border border-ink bg-paper px-3 py-2.75">
-              <Avatar member={profile} size={26} />
-              <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
+        <Section className="flex flex-col gap-5 py-6">
+          <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
+            <div>
+              <Label htmlFor="date">Date</Label>
+              {/* the day only moves one date at a time */}
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                // the date picker greys out days before today; the time is
+                // checked when the form is (validateEventDraft)
+                min={localDay()}
+                onChange={(e) => setDate(e.target.value)}
+                disabled={seriesLive && scope === "upcoming"}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3.5 min-[720px]:col-span-2">
+              <div>
+                <Label htmlFor="start">Start</Label>
+                <Input
+                  id="start"
+                  type="time"
+                  value={start}
+                  onChange={(e) => {
+                    // the end moves with it, keeping the event's length
+                    setEnd(endAfterStartMoves(start, end, e.target.value));
+                    setStart(e.target.value);
+                  }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="end">End</Label>
+                <Input id="end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+              </div>
             </div>
           </div>
-        ) : (
+
+          {mode === "create" ? (!gov && (
+            <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
+              <div className={repeat ? "min-[720px]:col-span-2" : "min-[720px]:col-span-3"}>
+                <Label htmlFor="repeat">Repeats</Label>
+                <Select id="repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as RepeatFrequency | "")}>
+                  <option value="">Doesn&apos;t repeat</option>
+                  {REPEAT_FREQUENCIES.map((f) => (
+                    <option key={f} value={f}>{repeatLabel(f, date)}</option>
+                  ))}
+                </Select>
+              </div>
+              {repeat && (
+                <div>
+                  <Label htmlFor="until">Until (optional)</Label>
+                  <Input id="until" type="date" value={until} min={date || undefined} onChange={(e) => setUntil(e.target.value)} />
+                </div>
+              )}
+              {repeat && (
+                <p className="font-serif text-sm leading-[1.45] text-soft min-[720px]:col-span-3">
+                  Each date is its own event, with its own {hasSlots ? "slots" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
+                  {hostCircle && !approverRole
+                    ? `${hostCircle.name} votes once, on the first date: approving it approves them all.`
+                    : "Members are told once, when it's created."}
+                </p>
+              )}
+            </div>
+          )) : series && (
+            <div>
+              <Label htmlFor="scope">Repeats</Label>
+              <p className="mb-2.5 font-serif text-base">{repeatSummary(series)}</p>
+              {seriesLive ? (
+                <>
+                  <Select id="scope" value={scope} onChange={(e) => { setScope(e.target.value as SeriesScope); setDate(initialValues.date); }}>
+                    <option value="one">Save changes to this date only</option>
+                    <option value="upcoming">Save changes to this and later dates</option>
+                  </Select>
+                  <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+                    {scope === "upcoming"
+                      ? `Changes apply to this date${laterDates.length > 1 ? `, the ${laterDates.length === 2 ? "one" : laterDates.length - 1} after it,` : ""} and every date still to come. The day itself can only be moved one date at a time.`
+                      : "Only this date changes; the others stay as they are."}
+                  </p>
+                </>
+              ) : (
+                <p className="font-serif text-sm leading-[1.45] text-soft">
+                  While it&apos;s waiting on its vote, changes apply to the whole series.
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
-            <Label htmlFor="host">Hosted by</Label>
-            <Select id="host" value={hostCircleId} onChange={(e) => setHostCircleId(e.target.value)} disabled={mode === "edit"}>
-              {hostOptions.map((o) => (
+            <Label htmlFor="location">Location</Label>
+            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" />
+          </div>
+        </Section>
+
+        <Section className="flex flex-col gap-4 py-6">
+          {gov ? (
+            <MenuRow
+              onClick={() => openView("agenda")}
+              label="Agenda"
+              detail={topics.length > 0 ? `${topics.length} ${topics.length === 1 ? "topic" : "topics"}: ${topics.map((a) => a.title.trim()).join(", ")}` : "Add what you'll cover"}
+            />
+          ) : (
+            <>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="What's it about, what to bring, who it's for…" />
+              </div>
+              <MenuRow
+                onClick={() => openView("slots")}
+                label="Slots"
+                detail={hasSlots ? `${slotNames.length} ${slotNames.length === 1 ? "slot" : "slots"}: ${slotNames.join(", ")}` : "Everyone just RSVPs. Add roles to sign up for."}
+              />
+            </>
+          )}
+        </Section>
+
+        <Section className="flex flex-col gap-5 py-6">
+          <div>
+            <Label htmlFor="circle">Shown to</Label>
+            <Select id="circle" value={circleId} onChange={(e) => pickCircle(e.target.value)} disabled={mode === "edit"}>
+              {circleOptions.map((o) => (
                 <option key={o.id} value={o.id}>{o.label}</option>
               ))}
             </Select>
-            {hostCircle && circle && (
+            {circle && (
               <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
-                {mode === "edit"
-                  ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
-                  : approverRole
-                  ? `As ${hostCircle.name}'s ${approverRole}, you approve it yourself, with no vote. It opens to ${audienceLabel(circle)} as soon as you create it.`
-                  : `This is a proposal. It needs ${hostThresholdPreview} approving votes from ${hostCircle.type === "neighborhood" ? "residents" : "members"} of ${hostCircle.name}, and yours counts as the first. Until then only they can see it; once approved it opens to ${audienceLabel(circle)}.`}
+                {isRootCircle(circle)
+                  ? `${proposing ? "Once approved, everyone" : "Everyone"} in the city can see this and RSVP.`
+                  : `${proposing ? "Once approved, only" : "Only"} ${audienceLabel(circle)} can see this, RSVP and be notified about it.`}
+                {mode === "edit" && " The circle can't be changed once an event exists."}
               </p>
             )}
           </div>
-        )}
 
-        {!gov && (
-            <div className={clsx("border px-4 py-3.5", useSlots ? "border-ink" : "border-faint")}>
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <input
-                  type="checkbox"
-                  checked={useSlots}
-                  onChange={(e) => setUseSlots(e.target.checked)}
-                  className="mt-px size-4.5 shrink-0 cursor-pointer accent-ink"
-                />
-                <span>
-                  <span className="font-sans text-sm font-bold">Use slots</span>
-                  <span className="mt-0.75 block font-serif text-sm leading-[1.45] text-soft">
-                    Define named roles people sign up for (like shift lead, greeter). Slots replace the normal RSVP.
-                  </span>
-                </span>
-              </label>
-
-              {useSlots && (
-                <div className="mt-4 flex flex-col gap-3.5">
-                  {slots.map((s, i) => (
-                    <div key={i} className="border border-faint px-3.5 pt-3.5 pb-4">
-                      <div className="mb-2.5 flex items-center justify-between">
-                        <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase">Slot {i + 1}</span>
-                        {slots.length > 1 && (
-                          <button
-                            onClick={() => setSlots(slots.filter((_, j) => j !== i))}
-                            className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 font-sans text-eyebrow font-bold tracking-[0.06em] text-soft uppercase"
-                          >
-                            <XMarkIcon className="size-3" strokeWidth={3} />
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2.5">
-                        <Input
-                          value={s.label}
-                          onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
-                          placeholder="Slot name (e.g. Shift lead)"
-                        />
-                        <Input
-                          value={s.description}
-                          onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
-                          placeholder="Description (optional)"
-                        />
-                        <div className="flex gap-3">
-                          <div className="flex-1">
-                            <Label htmlFor={`slot-min-${i}`}>Min</Label>
-                            <Input
-                              id={`slot-min-${i}`}
-                              type="number" min="0"
-                              value={s.min}
-                              onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, min: e.target.value } : x))}
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <Label htmlFor={`slot-max-${i}`}>Max (optional)</Label>
-                            <Input
-                              id={`slot-max-${i}`}
-                              type="number" min="1"
-                              value={s.max}
-                              onChange={(e) => setSlots(slots.map((x, j) => j === i ? { ...x, max: e.target.value } : x))}
-                              placeholder="No limit"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <Button
-                    variant="secondary"
-                    size="compact"
-                    onClick={() => setSlots([...slots, { label: "", description: "", min: "1", max: "" }])}
-                    className="self-start"
-                  >
-                    <PlusIcon className="size-3.5" strokeWidth={2.5} />
-                    Add slot
-                  </Button>
-                </div>
-              )}
-            </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
-          <div>
-            <Label htmlFor="date">Date</Label>
-            {/* the day only moves one date at a time */}
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              // the date picker greys out days before today; the time is
-              // checked when the form is (validateEventDraft)
-              min={localDay()}
-              onChange={(e) => setDate(e.target.value)}
-              disabled={seriesLive && scope === "upcoming"}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3.5 min-[720px]:col-span-2">
+          {gov ? (
             <div>
-              <Label htmlFor="start">Start</Label>
-              <Input
-                id="start"
-                type="time"
-                value={start}
-                onChange={(e) => {
-                  // the end moves with it, keeping the event's length
-                  setEnd(endAfterStartMoves(start, end, e.target.value));
-                  setStart(e.target.value);
-                }}
-              />
+              <Label>{approverRole ? "Scheduled by" : "Proposed by"}</Label>
+              <div className="flex items-center gap-2.5 border border-ink bg-paper px-3 py-2.75">
+                <Avatar member={profile} size={26} />
+                <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
+              </div>
             </div>
+          ) : (
             <div>
-              <Label htmlFor="end">End</Label>
-              <Input id="end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
-            </div>
-          </div>
-        </div>
-
-        {mode === "create" ? (!gov && (
-          <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
-            <div className={repeat ? "min-[720px]:col-span-2" : "min-[720px]:col-span-3"}>
-              <Label htmlFor="repeat">Repeats</Label>
-              <Select id="repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as RepeatFrequency | "")}>
-                <option value="">Doesn&apos;t repeat</option>
-                {REPEAT_FREQUENCIES.map((f) => (
-                  <option key={f} value={f}>{repeatLabel(f, date)}</option>
+              <Label htmlFor="host">Hosted by</Label>
+              <Select id="host" value={hostCircleId} onChange={(e) => setHostCircleId(e.target.value)} disabled={mode === "edit"}>
+                {hostOptions.map((o) => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
                 ))}
               </Select>
-            </div>
-            {repeat && (
-              <div>
-                <Label htmlFor="until">Until (optional)</Label>
-                <Input id="until" type="date" value={until} min={date || undefined} onChange={(e) => setUntil(e.target.value)} />
-              </div>
-            )}
-            {repeat && (
-              <p className="font-serif text-sm leading-[1.45] text-soft min-[720px]:col-span-3">
-                Each date is its own event, with its own {useSlots ? "slots" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
-                {hostCircle && !approverRole
-                  ? `${hostCircle.name} votes once, on the first date: approving it approves them all.`
-                  : "Members are told once, when it's created."}
-              </p>
-            )}
-          </div>
-        )) : series && (
-          <div>
-            <Label htmlFor="scope">Repeats</Label>
-            <p className="mb-2.5 font-serif text-base">{repeatSummary(series)}</p>
-            {seriesLive ? (
-              <>
-                <Select id="scope" value={scope} onChange={(e) => { setScope(e.target.value as SeriesScope); setDate(initialValues.date); }}>
-                  <option value="one">Save changes to this date only</option>
-                  <option value="upcoming">Save changes to this and later dates</option>
-                </Select>
+              {hostCircle && circle && (
                 <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
-                  {scope === "upcoming"
-                    ? `Changes apply to this date${laterDates.length > 1 ? `, the ${laterDates.length === 2 ? "one" : laterDates.length - 1} after it,` : ""} and every date still to come. The day itself can only be moved one date at a time.`
-                    : "Only this date changes; the others stay as they are."}
+                  {mode === "edit"
+                    ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
+                    : approverRole
+                    ? `As ${hostCircle.name}'s ${approverRole}, you approve it yourself, with no vote. It opens to ${audienceLabel(circle)} as soon as you create it.`
+                    : `This is a proposal. It needs ${hostThresholdPreview} approving votes from ${hostCircle.type === "neighborhood" ? "residents" : "members"} of ${hostCircle.name}, and yours counts as the first. Until then only they can see it; once approved it opens to ${audienceLabel(circle)}.`}
                 </p>
-              </>
-            ) : (
-              <p className="font-serif text-sm leading-[1.45] text-soft">
-                While it&apos;s waiting on its vote, changes apply to the whole series.
-              </p>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </Section>
+      </SectionGroup>
 
-        <div>
-          <Label htmlFor="location">Location</Label>
-          <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" />
+      {error && (
+        <div ref={errorRef} className={clsx("border-l-[3px] pl-3 font-sans text-xs font-semibold", accent.border, accent.text)}>
+          {error}
         </div>
-
-        {gov ? (
-          <div>
-            <Label>Agenda</Label>
-            <p className="mb-3 font-serif text-sm leading-[1.45] text-soft">
-              Mark each topic with what the circle will do with it: hear a report, explore it together, or decide it.
-            </p>
-            <AgendaEditor items={agenda} onChange={setAgenda} />
-          </div>
-        ) : (
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder="What's it about, what to bring, who it's for…" />
-          </div>
-        )}
-
-        {error && (
-          <div ref={errorRef} className={clsx("border-l-[3px] pl-3 font-sans text-xs font-semibold", accent.border, accent.text)}>
-            {error}
-          </div>
-        )}
-
-      </div>
-      </TabbedPanel>
+      )}
 
       {/* cancelling the event itself (not this form): on every screen size,
           since it isn't one of the form's own buttons */}
