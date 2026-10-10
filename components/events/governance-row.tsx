@@ -5,11 +5,11 @@ import { CancelledBadge } from "./cancelled-badge";
 import { EventRow } from "./event-row";
 import { ParticipationBadge } from "./participation-badge";
 import { Eyebrow } from "@/components/shared";
-import { isPastEvent, fmtTime } from "@/lib/format.util";
+import { hasEnded, fmtTime } from "@/lib/format.util";
 import { isApproved, isProposal, voteCount, voteThreshold } from "@/lib/governance.util";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending } from "@/lib/events.util";
-import { useCirclesById } from "@/lib/hooks";
+import { useClock, useCirclesById } from "@/lib/hooks";
 import { REPEAT_SHORT_LABEL } from "@/lib/recurrence.util";
 import type { Event } from "@/lib/types";
 
@@ -28,7 +28,7 @@ export function GovernanceRow({ e, onOpenEvent }: GovernanceRowProps) {
   const circle = byId[e.circleId];
   const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
   const approved = isApproved(e, byId);
-  const past = isPastEvent(e);
+  const past = hasEnded(e, useClock());
   // fed to both DateTile and EventRow's own accent; a cancelled one is grey, like one that's over
   const accentKey = e.cancelled ? "soft" : approved ? "leaf" : (past ? "soft" : "flame");
   const votes = voteCount(e);

@@ -5,8 +5,9 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow } from "@/components/shared";
 import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
-import { isPastEvent, parseDay } from "@/lib/format.util";
+import { hasEnded, parseDay } from "@/lib/format.util";
 import { isVoting } from "@/lib/governance.util";
+import { useClock } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
 interface EventFeedProps {
@@ -23,13 +24,14 @@ interface EventFeedProps {
    older events. Spacing above the list is the caller's job (e.g.
    home.page.jsx wraps this in an EyebrowGroup), not this component's. */
 export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No events yet." }: EventFeedProps) {
+  const now = useClock();
   const { upcoming, past } = useMemo(() => {
     const up: Event[] = [], pa: Event[] = [];
-    events.forEach((e) => (isPastEvent(e) ? pa : up).push(e));
+    events.forEach((e) => (hasEnded(e, now) ? pa : up).push(e));
     up.sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime()); // soonest first
     pa.sort((a, b) => parseDay(b.date).getTime() - parseDay(a.date).getTime()); // most recent first
     return { upcoming: up, past: pa };
-  }, [events]);
+  }, [events, now]);
 
   const [showPast, setShowPast] = useState(false);
   const ordered = showPast ? [...upcoming, ...past] : upcoming;

@@ -4,10 +4,10 @@ import { CancelledBadge } from "./cancelled-badge";
 import { EventRow } from "./event-row";
 import { ParticipationBadge } from "./participation-badge";
 import { Eyebrow } from "@/components/shared";
-import { isPastEvent, fmtTime } from "@/lib/format.util";
+import { hasEnded, fmtTime } from "@/lib/format.util";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending } from "@/lib/events.util";
-import { useCirclesById, useMemberById } from "@/lib/hooks";
+import { useClock, useCirclesById, useMemberById } from "@/lib/hooks";
 import { REPEAT_SHORT_LABEL } from "@/lib/recurrence.util";
 import type { Event } from "@/lib/types";
 
@@ -25,7 +25,7 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
   const { profile } = useAppState();
   const host = memberById(e.organizerId);
   const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
-  const past = isPastEvent(e);
+  const past = hasEnded(e, useClock());
   const attending = isAttending(e, profile.id);
 
   return (
