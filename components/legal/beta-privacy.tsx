@@ -37,7 +37,7 @@ export function BetaPrivacy() {
 
       <LegalHeading>Who else handles it</LegalHeading>
       <LegalParagraph>
-        Railway hosts Circles and its database, Resend delivers its emails, and Twilio delivers its texts. A member who hasn&apos;t uploaded a photo is shown with a placeholder image from pravatar.cc, which sees the viewer&apos;s IP address.
+        Railway hosts Circles and its database, Resend delivers its emails, and Telnyx delivers its texts. A member who hasn&apos;t uploaded a photo is shown with a placeholder image from pravatar.cc, which sees the viewer&apos;s IP address.
       </LegalParagraph>
 
       <LegalHeading>Your choices</LegalHeading>

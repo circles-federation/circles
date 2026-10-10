@@ -144,14 +144,22 @@ export async function stopTexting(memberId: number, { stopped }: { stopped: bool
     .where(eq(members.id, memberId));
 }
 
-/* A STOP or START texted to Circles (app/api/sms/inbound), by whoever has
-   that number, if anyone: STOP turns their texts off as above, START back
-   on, as the provider will now text them again. Returns whether a member
-   had the number. */
-export async function setTextingByNumber(phone: string, on: boolean): Promise<boolean> {
+/* What the provider's webhook (app/api/sms/inbound) says about a number,
+   applied to whoever has it, if anyone: they replied STOP (or a text was
+   refused for it), which turns their texts off as above; START turns them back
+   on, as the provider will text them again; or a text failed because the
+   number can't take them, which turns them off without a STOP to undo.
+   Returns whether a member had the number. */
+export async function setTextingByNumber(phone: string, change: "stopped" | "started" | "undeliverable"): Promise<boolean> {
   const rows = await db
     .update(members)
-    .set(on ? { notifySms: true, smsStoppedAt: null } : { notifySms: false, smsStoppedAt: sql`now()` })
+    .set(
+      change === "started"
+        ? { notifySms: true, smsStoppedAt: null }
+        : change === "stopped"
+          ? { notifySms: false, smsStoppedAt: sql`now()` }
+          : { notifySms: false }
+    )
     .where(eq(members.phone, phone))
     .returning({ id: members.id });
   return rows.length > 0;
