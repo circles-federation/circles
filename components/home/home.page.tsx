@@ -84,10 +84,10 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
             <Avatar member={profile} sizeClassName="size-24 min-[720px]:size-30" />
           </button>
           <div className="min-w-0">
-            <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">
-              {profile.name}
+            <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em] wrap-break-word">
+              <span className="block min-[720px]:inline">{profile.name}</span>
               {profile.lastName && (
-                <span title="Stored in the system, but not shown to other members" className="ml-[0.3em] cursor-help text-[#9a9a9a]">
+                <span title="Stored in the system, but not shown to other members" className="block cursor-help text-[#9a9a9a] min-[720px]:ml-[0.3em] min-[720px]:inline">
                   {profile.lastName}
                 </span>
               )}
