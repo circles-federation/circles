@@ -10,7 +10,7 @@ import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
 import { LanguagesEditor } from "./languages-editor";
 import { PhotoPicker } from "./photo-picker";
-import { BIRTH_DECADES, PRONOUNS_MAX, birthDecadeLabel } from "@/lib/members.util";
+import { BIRTH_DECADES, OCCUPATION_MAX, PRONOUNS_MAX, birthDecadeLabel } from "@/lib/members.util";
 import type { Profile } from "@/lib/types";
 
 interface EditMyselfPageProps {
@@ -31,6 +31,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
   const dirty =
     photo !== null ||
     draft.pronouns !== profile.pronouns ||
+    draft.role !== profile.role ||
     draft.bio !== profile.bio ||
     (draft.email || "") !== (profile.email || "") ||
     draft.emailPublic !== profile.emailPublic ||
@@ -82,6 +83,12 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
           <Label htmlFor="pronouns">Pronouns</Label>
           <Input id="pronouns" value={draft.pronouns} onChange={(e) => set({ pronouns: e.target.value })} maxLength={PRONOUNS_MAX} placeholder="e.g. she/her, he/him, they/them" />
           <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Optional. It shows beside your name on your profile.</p>
+        </Section>
+
+        <Section>
+          <Label htmlFor="occupation">Occupation</Label>
+          <Input id="occupation" value={draft.role} onChange={(e) => set({ role: e.target.value })} maxLength={OCCUPATION_MAX} placeholder="e.g. Teacher, Electrician, Student" />
+          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Optional. It shows under your name.</p>
         </Section>
 
         {/* bio */}
