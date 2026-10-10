@@ -8,7 +8,7 @@ import { toSquareJpeg } from "@/components/profile/photo-picker";
 import { confirmApplicationCode, resendApplicationCode, submitApplication } from "@/lib/apply";
 import { BetaPrivacy } from "@/components/legal/beta-privacy";
 import { BetaTerms } from "@/components/legal/beta-terms";
-import { APPLICATION_ADDRESS_MAX, APPLICATION_NAME_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationErrors, type ApplicationInput } from "@/lib/applications.util";
+import { APPLICATION_NAME_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationErrors, type ApplicationInput } from "@/lib/applications.util";
 
 type Step = "form" | "agree" | "confirm" | "done";
 
@@ -17,16 +17,15 @@ interface ApplyPageProps {
 }
 
 /* Applying to join — there's no sign-up: every application is read by a
-   system admin, who checks the photo is a real face and the address is in the
-   neighborhood. Four steps: the form; the beta terms and privacy notes, which
-   they agree to by sending it; the code emailed to them, which proves the
+   system admin, who checks the photo is a real face. Four steps: the form; the beta terms and privacy notes,
+   which they agree to by sending it; the code emailed to them, which proves the
    address is theirs and sends the application for review; and a "thanks,
    we'll email you". Outside the signed-in app, so it's laid out like the
    welcome page rather than under a top bar. */
 export function ApplyPage({ neighborhoods }: ApplyPageProps) {
   const { showToast } = useToast();
   const [step, setStep] = useState<Step>("form");
-  const [input, setInput] = useState<ApplicationInput>({ firstName: "", lastName: "", email: "", neighborhoodId: "", address: "" });
+  const [input, setInput] = useState<ApplicationInput>({ firstName: "", lastName: "", email: "", neighborhoodId: "" });
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [errors, setErrors] = useState<ApplicationErrors>({});
   const [applicationId, setApplicationId] = useState("");
@@ -142,12 +141,6 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
                 ))}
               </Select>
               <FieldError message={errors.neighborhoodId} />
-            </div>
-
-            <div>
-              <Label htmlFor="address">Home address</Label>
-              <Input id="address" value={input.address} onChange={(e) => set({ address: e.target.value })} maxLength={APPLICATION_ADDRESS_MAX} autoComplete="street-address" placeholder="Street and number" />
-              <FieldError message={errors.address} hint="Only the person reviewing your application sees this, to check it's in the neighborhood. It's deleted once your application is decided." />
             </div>
 
             <Button type="submit" className="w-full">

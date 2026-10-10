@@ -260,6 +260,13 @@
       "when": 1791380064168,
       "tag": "0036_circle_domain_aims",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791600674903,
+      "tag": "0037_drop_application_address",
+      "breakpoints": true
     }
   ]
 }

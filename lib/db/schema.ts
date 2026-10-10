@@ -395,11 +395,11 @@ export const circleInvitations = pgTable(
 /* An application to join: how someone who isn't a member yet asks to become
    one. It starts unconfirmed until the applicant enters the code emailed to
    them (so the address is really theirs), then waits for a system admin, who
-   checks the photo is a real face and the address is in the neighborhood.
+   checks the photo is a real face.
    Approving creates the member, their login and their neighborhood
-   membership; either decision emails the applicant. The address and photo
-   are only for that review: both are cleared once it's decided (an approved
-   photo moves to member_photos). */
+   membership; either decision emails the applicant. The photo is only
+   for that review: it's cleared once it's decided (an approved photo moves to
+   member_photos). */
 export const applicationStatus = pgEnum("application_status", ["unconfirmed", "pending", "approved", "declined"]);
 
 export const applications = pgTable(
@@ -410,7 +410,6 @@ export const applications = pgTable(
     lastName: text("last_name").notNull(),
     email: text("email").notNull(),
     neighborhoodId: text("neighborhood_id").notNull().references(() => circles.id),
-    address: text("address"),
     photo: bytea("photo"),
     photoType: text("photo_type"),
     status: applicationStatus("status").notNull().default("unconfirmed"),

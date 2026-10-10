@@ -45,7 +45,7 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
   if (wait) return { ok: false, error: wait };
   try {
     const { id, code } = await startApplication(
-      { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId"), address: field("address") },
+      { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId") },
       photo instanceof Blob ? photo : new Blob(),
       field("agreementVersion")
     );
