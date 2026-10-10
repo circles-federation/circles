@@ -4,7 +4,7 @@ import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, memberPhotos, members } from "./schema";
 import { validateLanguages } from "@/lib/languages.util";
-import { isBirthDecade } from "@/lib/members.util";
+import { PRONOUNS_MAX, isBirthDecade } from "@/lib/members.util";
 import type { Member, NotificationSettings, Profile } from "@/lib/types";
 
 export class MemberError extends UserFacingError {}
@@ -112,10 +112,11 @@ export async function updateMember(id: number, patch: ProfilePatch): Promise<Mem
     const problem = validateLanguages(languages);
     if (problem) throw new MemberError(problem);
   }
+  if (pronouns !== undefined && pronouns.trim().length > PRONOUNS_MAX) throw new MemberError(`Keep pronouns under ${PRONOUNS_MAX} characters.`);
   const birthDecade = patch.birthDecade;
   if (birthDecade !== undefined && birthDecade !== null && !isBirthDecade(birthDecade)) throw new MemberError("Pick one of the decades listed.");
   // only the two fields of each, whatever else a request carried
-  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, emailPublic, birthDecade, languages: languages?.map(({ code, level }) => ({ code, level })) };
+  const columnPatch = { name, lastName, pronouns: pronouns?.trim(), role, skills, interests, bio, emailPublic, birthDecade, languages: languages?.map(({ code, level }) => ({ code, level })) };
   if (Object.values(columnPatch).some((v) => v !== undefined)) {
     await db.update(members).set(columnPatch).where(eq(members.id, id));
   }
