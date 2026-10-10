@@ -68,7 +68,7 @@ export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPu
     .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush })
     .from(members)
     .where(eq(members.id, id));
-  return { emailPublic: row?.emailPublic ?? true, notifications: { email: row?.email ?? true, push: row?.push ?? true } };
+  return { emailPublic: row?.emailPublic ?? false, notifications: { email: row?.email ?? true, push: row?.push ?? true } };
 }
 
 // Settings → Notifications, always the member's own: the action supplies the

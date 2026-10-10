@@ -68,7 +68,7 @@ export const members = pgTable("members", {
   email: text("email").unique(),
   // whether other members may see the email (Edit myself's Visible/Hidden);
   // when they may not, it's left out of what's sent to them (getMembersForViewer)
-  emailPublic: boolean("email_public").notNull().default(true),
+  emailPublic: boolean("email_public").notNull().default(false),
   // whether they're told about the app's goings-on (events, announcements,
   // invitations, the daily digest) by email, and by push on the devices
   // they've turned it on for — Settings → Notifications. Sign-in codes are

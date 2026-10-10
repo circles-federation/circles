@@ -267,6 +267,13 @@
       "when": 1791600674903,
       "tag": "0037_drop_application_address",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791654468215,
+      "tag": "0038_member_email_private_default",
+      "breakpoints": true
     }
   ]
 }
