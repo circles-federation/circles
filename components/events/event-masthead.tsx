@@ -74,7 +74,8 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
             {repeats && ` · ${repeats}`}
           </Eyebrow>
         </div>
-        <span className="flex min-w-0 shrink-0 justify-end">{circle && <Chip title="Who can see this event">{circle.name}</Chip>}</span>
+        {/* capped, so a long circle name ends in "…" instead of squeezing the time */}
+        <span className="flex max-w-[45%] min-w-0 justify-end">{circle && <Chip title={`${circle.name}: who can see this event`}>{circle.name}</Chip>}</span>
       </div>
       <h1 className="row-start-2 mt-3 font-sans text-heading leading-[0.95] font-extrabold tracking-[-0.035em] min-[720px]:col-start-2 min-[720px]:text-title">
         {e.title}
