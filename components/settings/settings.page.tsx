@@ -4,10 +4,11 @@ import { useState } from "react";
 import { ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
 import { Button, ConfirmModal, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { usePushSubscription } from "@/lib/hooks";
-import type { NotificationSettings } from "@/lib/types";
+import type { AvailabilityWindow, NotificationSettings } from "@/lib/types";
 
 interface SettingsPageProps {
   notifications: NotificationSettings;
+  availability: AvailabilityWindow[] | null;
   onLogout: () => void;
 }
 
@@ -20,9 +21,16 @@ function notificationsSummary(email: boolean, push: boolean): string {
   return "Off";
 }
 
+// what Meeting availability is set to, under its row
+function availabilitySummary(windows: AvailabilityWindow[] | null): string {
+  if (windows === null) return "Not set";
+  if (windows.length === 0) return "No times";
+  return windows.length === 1 ? "1 window" : `${windows.length} windows`;
+}
+
 /* Settings, reached from Home's top bar: a menu like iOS's Settings, each row
    opening a page of its own, with logging out at the foot. */
-export function SettingsPage({ notifications, onLogout }: SettingsPageProps) {
+export function SettingsPage({ notifications, availability, onLogout }: SettingsPageProps) {
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const device = usePushSubscription();
   // left blank until this device's push has been read, rather than changing
@@ -37,6 +45,7 @@ export function SettingsPage({ notifications, onLogout }: SettingsPageProps) {
           <div className="flex flex-col gap-3">
             <MenuRow href="/profile/edit" label="Edit profile" detail="Your photo, bio, and more" />
             <MenuRow href="/settings/notifications" label="Notifications" detail={summary} />
+            <MenuRow href="/settings/availability" label="Meeting availability" detail={availabilitySummary(availability)} />
           </div>
         </Section>
 

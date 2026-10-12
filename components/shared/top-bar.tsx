@@ -118,7 +118,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     return members.find((m) => String(m.id) === id)?.name ?? "Profile";
   }
   if (section === "game") return "Name game";
-  if (section === "settings") return id === "notifications" ? "Notifications" : "Settings";
+  if (section === "settings") return id === "notifications" ? "Notifications" : id === "availability" ? "Meeting availability" : "Settings";
   if (section === "admin") return sub ? "Application" : "Applications";
   if (section === "invitations") return "Invitation";
   if (section === "proposals") return "Proposal";

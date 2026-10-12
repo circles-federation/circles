@@ -20,5 +20,5 @@ export default function Page() {
     router.push("/");
   }
 
-  return <SettingsPage notifications={profile.notifications} onLogout={handleLogout} />;
+  return <SettingsPage notifications={profile.notifications} availability={profile.availability} onLogout={handleLogout} />;
 }

@@ -14,7 +14,7 @@ import type { AvailabilityWindow } from "./types";
 
 export const AVAILABILITY_STEP = 15;
 export const MAX_AVAILABILITY_WINDOWS = 14;
-const DAY_END = 24 * 60;
+export const DAY_END = 24 * 60;
 
 export type AvailabilityStatus = "available" | "unavailable" | "unknown";
 
@@ -41,6 +41,20 @@ export function clockMinutes(clock: string): number {
   return h * 60 + m;
 }
 
+// 1110 → "18:30", for a time field; the end of the day, 1440, reads "00:00"
+// since a field has no 24:00
+export function minutesClock(minutes: number): string {
+  const m = minutes % DAY_END;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+// what a time field says, as minutes snapped to the quarter hour. A window's
+// end at "00:00" is the end of the day, not its start.
+export function fieldMinutes(value: string, isEnd: boolean): number {
+  const minutes = Math.round(clockMinutes(value) / AVAILABILITY_STEP) * AVAILABILITY_STEP;
+  return isEnd && minutes % DAY_END === 0 ? DAY_END : minutes % DAY_END;
+}
+
 // the first problem with a schedule, or null when it's fine. Overlapping
 // windows aren't a problem: normalizeAvailability merges them.
 export function validateAvailability(windows: AvailabilityWindow[]): string | null {
@@ -56,7 +70,7 @@ export function validateAvailability(windows: AvailabilityWindow[]): string | nu
 }
 
 // a day's windows as separate, sorted ranges, touching or overlapping ones joined
-function rangesOn(windows: AvailabilityWindow[], day: number): { start: number; end: number }[] {
+export function dayRanges(windows: AvailabilityWindow[], day: number): { start: number; end: number }[] {
   const sorted = windows.filter((w) => w.days.includes(day)).map((w) => ({ start: w.start, end: w.end })).sort((a, b) => a.start - b.start);
   const merged: { start: number; end: number }[] = [];
   for (const r of sorted) {
@@ -73,7 +87,7 @@ function rangesOn(windows: AvailabilityWindow[], day: number): { start: number; 
 export function normalizeAvailability(windows: AvailabilityWindow[]): AvailabilityWindow[] {
   const byRange = new Map<string, AvailabilityWindow>();
   for (let day = 0; day < 7; day++) {
-    for (const r of rangesOn(windows, day)) {
+    for (const r of dayRanges(windows, day)) {
       const key = `${r.start}-${r.end}`;
       const found = byRange.get(key);
       if (found) found.days.push(day);
@@ -87,9 +101,14 @@ export function sameAvailability(a: AvailabilityWindow[], b: AvailabilityWindow[
   return JSON.stringify(normalizeAvailability(a)) === JSON.stringify(normalizeAvailability(b));
 }
 
+// whether a window is exactly a preset's
+export function matchesPreset(w: AvailabilityWindow, preset: AvailabilityPreset): boolean {
+  return w.start === preset.window.start && w.end === preset.window.end && w.days.length === preset.window.days.length && preset.window.days.every((d) => w.days.includes(d));
+}
+
 // whether a preset's window is already in the schedule (so its chip shows as picked)
 export function hasPreset(windows: AvailabilityWindow[], preset: AvailabilityPreset): boolean {
-  return windows.some((w) => w.start === preset.window.start && w.end === preset.window.end && w.days.length === preset.window.days.length && preset.window.days.every((d) => w.days.includes(d)));
+  return windows.some((w) => matchesPreset(w, preset));
 }
 
 /* Whether someone with this schedule can attend something on `date` from
@@ -101,7 +120,7 @@ export function availabilityFor(windows: AvailabilityWindow[] | null, date: stri
   const from = clockMinutes(start);
   const to = clockMinutes(end);
   if (to <= from) return { status: "unavailable" };
-  const ranges = rangesOn(windows, parseDay(date).getDay());
+  const ranges = dayRanges(windows, parseDay(date).getDay());
   if (ranges.some((r) => r.start <= from && to <= r.end)) return { status: "available" };
   const partly = ranges.find((r) => r.start <= from && from < r.end);
   return partly ? { status: "unavailable", freeUntil: partly.end } : { status: "unavailable" };
