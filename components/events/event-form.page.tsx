@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, ClipboardDocumentListIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-editor";
 import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
@@ -523,6 +523,7 @@ export function EventFormPage(props: EventFormPageProps) {
           {gov ? (
             <MenuRow
               onClick={() => openView("agenda")}
+              icon={ClipboardDocumentListIcon}
               label="Agenda"
               detail={topics.length > 0 ? `${topics.length} ${topics.length === 1 ? "topic" : "topics"}: ${topics.map((a) => a.title.trim()).join(", ")}` : "Add what you'll cover"}
             />
@@ -534,8 +535,9 @@ export function EventFormPage(props: EventFormPageProps) {
               </div>
               <MenuRow
                 onClick={() => openView("slots")}
+                icon={HandRaisedIcon}
                 label="Roles"
-                detail={hasRoles ? `${roleNames.length} ${roleNames.length === 1 ? "role" : "roles"}: ${roleNames.join(", ")}` : "Everyone just RSVPs. Add roles to sign up for."}
+                detail={hasRoles ? `${roleNames.length} ${roleNames.length === 1 ? "role" : "roles"}: ${roleNames.join(", ")}` : "Add roles to sign up for."}
               />
             </>
           )}
