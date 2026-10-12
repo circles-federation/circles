@@ -32,7 +32,7 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   // attended by voting: a meeting, unless it was scheduled without a vote
   const votesToAttend = e.kind === "meeting" && !isScheduledMeeting(e);
   const past = isPastEvent(e);
-  const roleStatus = e.cancelled ? "Not running" : shiftAtRisk(e) ? "At risk" : shiftNeedsSlots(e) ? "Needs slots" : "Shift on";
+  const roleStatus = e.cancelled ? "Not running" : shiftAtRisk(e) ? "At risk" : shiftNeedsSlots(e) ? "Needs roles" : "Shift on";
   // a short slot is a heads-up, so yellow — as a highlight under ink, since
   // yellow text wouldn't read on white
   const roleStatusClass = e.cancelled ? "text-soft" : shiftAtRisk(e) || shiftNeedsSlots(e) ? "bg-warning px-1.5 py-0.5 text-ink" : "text-leaf";

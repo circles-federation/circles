@@ -592,7 +592,7 @@ export async function setRsvp(memberId: number, id: string, going: boolean): Pro
   // a meeting its circle's Leader, Secretary or Facilitator scheduled has no vote to attend by
   if (row.kind === "meeting" && row.approvedByRole === null) throw new EventError("Meetings are attended by voting.");
   const [slot] = await db.select({ id: roles.id }).from(roles).where(eq(roles.eventId, id)).limit(1);
-  if (slot) throw new EventError("This event uses signup slots — take a slot instead.");
+  if (slot) throw new EventError("This event uses signup roles — take a role instead.");
   if (going) await db.insert(eventRsvps).values({ eventId: id, memberId }).onConflictDoNothing();
   else await db.delete(eventRsvps).where(and(eq(eventRsvps.eventId, id), eq(eventRsvps.memberId, memberId)));
   return loadFull(id);
@@ -672,7 +672,7 @@ export async function toggleRoleSlot(memberId: number, id: string, key: string):
   await db.transaction(async (tx) => {
     const eventRoles = await tx.select().from(roles).where(eq(roles.eventId, id));
     const target = eventRoles.find((r) => r.key === key);
-    if (!target) throw new EventError("That slot doesn't exist.");
+    if (!target) throw new EventError("That role doesn't exist.");
     const held = await tx
       .select()
       .from(roleMembers)
@@ -683,7 +683,7 @@ export async function toggleRoleSlot(memberId: number, id: string, key: string):
     }
     if (target.max != null) {
       const filled = await tx.select().from(roleMembers).where(eq(roleMembers.roleId, target.id));
-      if (filled.length >= target.max) throw new EventError("That slot is full.");
+      if (filled.length >= target.max) throw new EventError("That role is full.");
     }
     if (held.length > 0) {
       await tx.delete(roleMembers).where(and(inArray(roleMembers.roleId, held.map((h) => h.roleId)), eq(roleMembers.memberId, memberId)));
