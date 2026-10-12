@@ -274,6 +274,13 @@
       "when": 1791654468215,
       "tag": "0038_member_email_private_default",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791807195436,
+      "tag": "0039_member_availability",
+      "breakpoints": true
     }
   ]
 }

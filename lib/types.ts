@@ -17,6 +17,14 @@ export interface MemberLanguage {
   level: LanguageLevel;
 }
 
+// when a member can do meetings: on these days (0 = Sunday), from `start` to
+// `end`, in minutes from midnight — see lib/availability.util.ts
+export interface AvailabilityWindow {
+  days: number[];
+  start: number;
+  end: number;
+}
+
 export interface Member {
   id: number;
   name: string;
@@ -50,7 +58,18 @@ export interface NotificationSettings {
   push: boolean;
 }
 
-export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings };
+// null until they've set when they can do meetings (Settings → Meeting
+// availability); their own, since others only learn whether they're free at
+// a given time, from the meeting form
+export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings; availability: AvailabilityWindow[] | null };
+
+// who in a circle can make a meeting's date and time, as the meeting form
+// shows it: `freeUntil` is minutes from midnight, for someone free as it begins
+export interface MeetingAvailability {
+  available: number[];
+  unavailable: { id: number; freeUntil?: number }[];
+  unknown: number[];
+}
 
 // a role a member can hold in a circle (Secretary, Leader, ...) — see
 // lib/circle-roles.util.ts. `builtin` roles exist on every circle that can have

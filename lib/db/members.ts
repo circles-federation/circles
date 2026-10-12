@@ -5,7 +5,8 @@ import { UserFacingError } from "./errors";
 import { circleMembers, memberPhotos, members } from "./schema";
 import { validateLanguages } from "@/lib/languages.util";
 import { OCCUPATION_MAX, PRONOUNS_MAX, isBirthDecade } from "@/lib/members.util";
-import type { Member, NotificationSettings, Profile } from "@/lib/types";
+import { normalizeAvailability, validateAvailability } from "@/lib/availability.util";
+import type { AvailabilityWindow, Member, NotificationSettings, Profile } from "@/lib/types";
 
 export class MemberError extends UserFacingError {}
 
@@ -62,13 +63,25 @@ export async function getMembersForViewer(viewerId: number): Promise<Member[]> {
 }
 
 // the settings only a member themself sees, for their own profile: whether
-// others may see their email, and how they're told about things
-export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications">> {
+// others may see their email, how they're told about things, and when they
+// can do meetings
+export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications" | "availability">> {
   const [row] = await db
-    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush })
+    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush, availability: members.availability })
     .from(members)
     .where(eq(members.id, id));
-  return { emailPublic: row?.emailPublic ?? false, notifications: { email: row?.email ?? true, push: row?.push ?? true } };
+  return { emailPublic: row?.emailPublic ?? false, notifications: { email: row?.email ?? true, push: row?.push ?? true }, availability: row?.availability ?? null };
+}
+
+// Settings → Meeting availability, always the member's own (the action
+// supplies the session's id). Saved in its one normal form, which is returned.
+export async function setAvailability(id: number, windows: AvailabilityWindow[]): Promise<AvailabilityWindow[]> {
+  if (!Array.isArray(windows)) throw new MemberError("That schedule wasn't recognized.");
+  const problem = validateAvailability(windows);
+  if (problem) throw new MemberError(problem);
+  const saved = normalizeAvailability(windows);
+  await db.update(members).set({ availability: saved }).where(eq(members.id, id));
+  return saved;
 }
 
 // Settings → Notifications, always the member's own: the action supplies the

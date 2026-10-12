@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import * as applications from "./applications";
+import * as availability from "./availability";
 import { getAppStateForMember, type AppStateData } from "./app-state";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
@@ -20,7 +21,7 @@ import { getCurrentUserId } from "@/lib/session";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, ConsentResponse, NotificationSettings, ProposalChanges } from "@/lib/types";
+import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
    connection — Drizzle's Postgres driver is Node-only. These thin wrappers
@@ -39,6 +40,16 @@ export async function updateMemberAction(patch: members.ProfilePatch) {
 // Settings → Notifications: always the session member's own
 export async function saveNotificationSettingsAction(settings: NotificationSettings) {
   return asMember((memberId) => members.setNotificationSettings(memberId, settings));
+}
+
+// Settings → Meeting availability: always the session member's own
+export async function saveAvailabilityAction(windows: AvailabilityWindow[]) {
+  return asMember((memberId) => members.setAvailability(memberId, windows));
+}
+
+// the meeting form: who in a circle can make this time (members of it only)
+export async function meetingAvailabilityAction(circleId: string, date: string, start: string, end: string) {
+  return asMember((memberId) => availability.getMeetingAvailability(memberId, circleId, date, start, end));
 }
 
 // like updateMemberAction, always the session member's own photo; the file

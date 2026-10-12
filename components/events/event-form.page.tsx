@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CheckIcon, ClipboardDocumentListIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-editor";
+import { MeetingAvailability } from "./meeting-availability";
 import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
@@ -492,6 +493,8 @@ export function EventFormPage(props: EventFormPageProps) {
               </div>
             </div>
           </div>
+
+          {gov && circleId && <MeetingAvailability circleId={circleId} date={date} start={start} end={end} needed={proposing ? meetingThresholdPreview : undefined} />}
 
           {mode === "create" ? (!gov && (
             <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
