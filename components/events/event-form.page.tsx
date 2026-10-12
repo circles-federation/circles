@@ -21,9 +21,14 @@ const DEFAULT_MEETING_TITLE = "Meeting";
 
 // full literal class strings per key — Tailwind's static scan can't see
 // through a template-interpolated class name like `border-t-${accent}`.
-const ACCENT: Record<"ink" | "flame", { bar: string; border: string; text: string }> = {
-  ink: { bar: "bg-ink", border: "border-ink", text: "text-ink" },
-  flame: { bar: "bg-flame", border: "border-flame", text: "text-flame" },
+const ACCENT: Record<"ink" | "flame", { border: string; ring: string; text: string }> = {
+  ink: { border: "border-ink", ring: "shadow-[inset_0_0_0_1px_var(--color-ink)]", text: "text-ink" },
+  flame: { border: "border-flame", ring: "shadow-[inset_0_0_0_1px_var(--color-flame)]", text: "text-flame" },
+};
+
+const KIND_HINT: Record<EventKindKey, string> = {
+  ordinary: "Something to attend",
+  meeting: "A circle decides together",
 };
 
 // what the route hands back once the server has answered, so a refusal shows inline
@@ -383,10 +388,12 @@ export function EventFormPage(props: EventFormPageProps) {
 
   return (
     <PageContainer size="compact">
-      {/* the kind can't change once an event exists, so only a new one asks */}
-      {mode === "create" && (
-        <div role="radiogroup" aria-label="What you're making" className="grid grid-cols-2 border border-ink">
-          {types.map(([key, label], i) => {
+      {/* a choice, not navigation: two options that each say what they are,
+          the chosen one outlined (orange once it's a proposal). The kind can't
+          change once an event exists, so only a new one asks. */}
+      {mode === "create" ? (
+        <div role="radiogroup" aria-label="What you're making" className="grid grid-cols-2 gap-3">
+          {types.map(([key, label]) => {
             const on = key === type;
             return (
               <button
@@ -396,18 +403,20 @@ export function EventFormPage(props: EventFormPageProps) {
                 aria-checked={on}
                 onClick={() => changeType(key)}
                 className={clsx(
-                  "cursor-pointer py-3 font-sans text-eyebrow font-bold tracking-wide uppercase",
-                  i > 0 && "border-l border-ink",
-                  on ? (EVENT_KINDS[key].governance ? "bg-flame text-paper" : "bg-ink text-paper") : "bg-paper text-soft",
+                  "relative cursor-pointer border bg-paper px-4 py-3.5 text-left",
+                  on ? clsx(accent.border, accent.ring) : "border-faint",
                 )}
               >
-                {label}
+                <span className={clsx("block font-sans text-base font-bold", on ? accent.text : "text-soft")}>{label}</span>
+                <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{KIND_HINT[key]}</span>
+                {on && <CheckIcon className={clsx("absolute top-3 right-3 size-4", accent.text)} strokeWidth={3} aria-hidden />}
               </button>
             );
           })}
         </div>
+      ) : (
+        proposing && <Eyebrow className="text-flame">Proposal</Eyebrow>
       )}
-      <div className={clsx("h-[3px]", accent.bar, mode === "create" && "mt-4")} />
 
       {gov && circle && approverRole && (
         <p className="mt-5 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-[#222]">
