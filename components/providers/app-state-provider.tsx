@@ -24,6 +24,7 @@ import {
   leaveCircleAction as dbLeaveCircle,
   deleteInvitationAction as dbDeleteInvitation,
   saveNotificationSettingsAction as dbSaveNotificationSettings,
+  saveAvailabilityAction as dbSaveAvailability,
   createCircleAction as dbCreateCircle,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
@@ -34,7 +35,7 @@ import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { isProposal, voteThreshold } from "@/lib/governance.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, CircleInvitation, CircleProposal, CircleResource, ConsentResponse, Event, Member, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
+import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, ConsentResponse, Event, Member, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -71,6 +72,7 @@ export interface AppStateValue {
   saveProfile(next: Profile): void;
   savePhoto(photo: Blob): Promise<MutationResult>;
   saveNotificationSettings(settings: NotificationSettings): Promise<MutationResult>;
+  saveAvailability(windows: AvailabilityWindow[]): Promise<MutationResult>;
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
   removeResource(id: string): Promise<MutationResult>;
@@ -584,6 +586,16 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  // await-then-update, like the notification settings: the server may refuse
+  // the schedule, and it hands back the normalized one to show
+  async function saveAvailability(windows: AvailabilityWindow[]): Promise<MutationResult> {
+    const result = await dbSaveAvailability(windows).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    const availability = result.value;
+    setProfile((p) => ({ ...p, availability }));
+    return { ok: true };
+  }
+
   async function addResource(circleId: string, input: ResourceInput): Promise<MutationResult> {
     const result = await dbCreateResource(circleId, input);
     if (!result.ok) return result;
@@ -684,6 +696,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         saveProfile: tracked(saveProfile),
         savePhoto: tracked(savePhoto),
         saveNotificationSettings: tracked(saveNotificationSettings),
+        saveAvailability: tracked(saveAvailability),
         addResource: tracked(addResource),
         updateResource: tracked(updateResource),
         removeResource: tracked(removeResource),
