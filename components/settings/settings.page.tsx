@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
+import { ArrowRightStartOnRectangleIcon, BellIcon, ClockIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { Button, ConfirmModal, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { usePushSubscription } from "@/lib/hooks";
 import type { AvailabilityWindow, NotificationSettings } from "@/lib/types";
@@ -43,9 +43,9 @@ export function SettingsPage({ notifications, availability, onLogout }: Settings
         {/* pt-0: the top bar's title (Settings) is the page's only heading */}
         <Section className="pt-0">
           <div className="flex flex-col gap-3">
-            <MenuRow href="/profile/edit" label="Edit profile" detail="Your photo, bio, and more" />
-            <MenuRow href="/settings/notifications" label="Notifications" detail={summary} />
-            <MenuRow href="/settings/availability" label="Meeting availability" detail={availabilitySummary(availability)} />
+            <MenuRow href="/profile/edit" icon={UserCircleIcon} label="Edit profile" detail="Your photo, bio, and more" />
+            <MenuRow href="/settings/notifications" icon={BellIcon} label="Notifications" detail={summary} />
+            <MenuRow href="/settings/availability" icon={ClockIcon} label="Meeting availability" detail={availabilitySummary(availability)} />
           </div>
         </Section>
 
