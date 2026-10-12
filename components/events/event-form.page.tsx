@@ -233,7 +233,7 @@ export function EventFormPage(props: EventFormPageProps) {
     }
   }
 
-  const hasSlots = slots.some((x) => x.label.trim());
+  const hasRoles = slots.some((x) => x.label.trim());
   function openView(next: "slots" | "agenda") {
     // a blank one to type into, if there's none yet
     if (next === "slots" && slots.length === 0) setSlots([{ ...BLANK_SLOT }]);
@@ -355,14 +355,14 @@ export function EventFormPage(props: EventFormPageProps) {
   ];
 
   const topics = agenda.filter((a) => a.title.trim());
-  const slotNames = slots.filter((x) => x.label.trim()).map((x) => x.label.trim());
+  const roleNames = slots.filter((x) => x.label.trim()).map((x) => x.label.trim());
 
   if (view === "slots") {
     return (
       <PageContainer size="compact">
-        <h2 className="font-sans text-xl font-extrabold tracking-[-0.02em]">Slots</h2>
+        <h2 className="font-sans text-xl font-extrabold tracking-[-0.02em]">Roles</h2>
         <p className="mt-2 mb-5 font-serif text-sm leading-normal text-soft">
-          Named roles people sign up for, like shift lead or greeter. Slots replace the normal RSVP. Leave none to keep it a simple RSVP.
+          People sign up for these, like shift lead or greeter. Roles replace the normal RSVP. Leave none to keep it a simple RSVP.
         </p>
         <SlotsEditor slots={slots} onChange={setSlots} />
       </PageContainer>
@@ -482,7 +482,7 @@ export function EventFormPage(props: EventFormPageProps) {
               )}
               {repeat && (
                 <p className="font-serif text-sm leading-[1.45] text-soft min-[720px]:col-span-3">
-                  Each date is its own event, with its own {hasSlots ? "slots" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
+                  Each date is its own event, with its own {hasRoles ? "roles" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
                   {hostCircle && !approverRole
                     ? `${hostCircle.name} votes once, on the first date: approving it approves them all.`
                     : "Members are told once, when it's created."}
@@ -534,8 +534,8 @@ export function EventFormPage(props: EventFormPageProps) {
               </div>
               <MenuRow
                 onClick={() => openView("slots")}
-                label="Slots"
-                detail={hasSlots ? `${slotNames.length} ${slotNames.length === 1 ? "slot" : "slots"}: ${slotNames.join(", ")}` : "Everyone just RSVPs. Add roles to sign up for."}
+                label="Roles"
+                detail={hasRoles ? `${roleNames.length} ${roleNames.length === 1 ? "role" : "roles"}: ${roleNames.join(", ")}` : "Everyone just RSVPs. Add roles to sign up for."}
               />
             </>
           )}

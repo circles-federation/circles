@@ -40,7 +40,7 @@ export function eventNotificationPush(n: EventPushData): PushMessage {
 
   if (n.notice === "cancelled") {
     const rest = n.cancelledAutomatically
-      ? `No one signed up as ${short.join(" or ") || "a required slot"} in time.`
+      ? `No one signed up as ${short.join(" or ") || "a required role"} in time.`
       : n.repeat && endedBefore(n.repeat, n.date)
         ? "This date and the ones after it won't go ahead."
         : `${n.organizerName} called it off.`;

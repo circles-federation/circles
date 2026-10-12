@@ -19,7 +19,7 @@ export function CancelledBanner({ event: e }: { event: Event }) {
         <div className="font-sans text-sm font-extrabold tracking-[0.02em]">This {noun} has been cancelled</div>
         <p className="mt-1.5 font-serif text-sm leading-relaxed text-paper">
           {e.cancelledAutomatically
-            ? `It was cancelled automatically, since no one signed up as ${unmetRoleLabels(e).join(" or ") || "a required slot"} in time.`
+            ? `It was cancelled automatically, since no one signed up as ${unmetRoleLabels(e).join(" or ") || "a required role"} in time.`
             : `${organizer ? `${organizer.name} cancelled it` : "It was cancelled"}, so it won\u2019t be going ahead.`}
         </p>
       </div>

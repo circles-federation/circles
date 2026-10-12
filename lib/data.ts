@@ -540,7 +540,7 @@ export const EVENTS: Event[] = [
     organizerId: 8,
     date: dayFromNow(4), start: "10:00", end: "14:00",
     location: "PVD Things, 12 Library Ct, Olneyville",
-    description: "Our regular Saturday lending hours. The shift runs only if a shift lead is signed up — leads open and close, handle membership, and hold the keys. Librarians help patrons find and check out things; the more the merrier. Grab a slot below.",
+    description: "Our regular Saturday lending hours. The shift runs only if a shift lead is signed up — leads open and close, handle membership, and hold the keys. Librarians help patrons find and check out things; the more the merrier. Grab a role below.",
     // role-based slots: a shift lead is required (min 1) or the shift can't run;
     // librarians are unlimited and optional (min 0).
     roles: [

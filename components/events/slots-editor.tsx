@@ -30,20 +30,20 @@ export function SlotsEditor({ slots, onChange }: { slots: SlotDraft[]; onChange:
               <Input
                 value={s.label}
                 onChange={(e) => set(i, { label: e.target.value })}
-                placeholder="Slot name (e.g. Shift lead)"
-                aria-label={`Slot ${i + 1} name`}
+                placeholder="Role name (e.g. Shift lead)"
+                aria-label={`Role ${i + 1} name`}
                 autoFocus={focusIndex === i}
               />
               <button
                 type="button"
                 onClick={() => onChange(slots.filter((_, j) => j !== i))}
-                aria-label={`Remove slot ${i + 1}`}
+                aria-label={`Remove role ${i + 1}`}
                 className="flex size-9 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-soft hover:text-ink"
               >
                 <XMarkIcon className="size-4.5" strokeWidth={2.5} />
               </button>
             </div>
-            <Input value={s.description} onChange={(e) => set(i, { description: e.target.value })} placeholder="Description (optional)" aria-label={`Slot ${i + 1} description`} />
+            <Input value={s.description} onChange={(e) => set(i, { description: e.target.value })} placeholder="Description (optional)" aria-label={`Role ${i + 1} description`} />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor={`slot-min-${i}`} className="mb-1">At least</Label>
@@ -67,7 +67,7 @@ export function SlotsEditor({ slots, onChange }: { slots: SlotDraft[]; onChange:
         className="mt-4"
       >
         <PlusIcon className="size-3.5" strokeWidth={2.5} />
-        Add slot
+        Add role
       </Button>
     </div>
   );

@@ -380,7 +380,7 @@ function cancelledEventEmail(n: EventNotificationData): Body {
   // a date of a repeating event is cancelled alone, or with every later date
   // (its series then ends before it)
   const note = n.cancelledAutomatically
-    ? `This ${noun} was cancelled automatically, since no one signed up as ${listOf(shortLabels(n)) || "a required slot"} by 15 minutes before the start.`
+    ? `This ${noun} was cancelled automatically, since no one signed up as ${listOf(shortLabels(n)) || "a required role"} by 15 minutes before the start.`
     : !n.repeat
     ? `${n.organizerName} cancelled this ${noun}, so it won't be going ahead.`
     : endedBefore(n.repeat, n.date)
@@ -477,7 +477,7 @@ function reminderEmail(n: EventNotificationData): Body {
     : `You're going to this ${noun}, ${at}.`;
   const open = n.openSlots ?? [];
   const openLines = open.map((s) => `${s.label}: ${s.filled} of ${s.min} needed`);
-  const openNote = "If a required slot is still empty 15 minutes before the start, the event is cancelled automatically.";
+  const openNote = "If a required role is still empty 15 minutes before the start, the event is cancelled automatically.";
   const Day = dayWord.charAt(0).toUpperCase() + dayWord.slice(1);
   const why = `You're getting this because you're going to it.`;
   const when = fmtEventWhen(n);
@@ -527,7 +527,7 @@ const shortLabels = (n: Pick<EventNotificationData, "openSlots">) => (n.openSlot
    someone who could cover it before it's cancelled automatically. The yellow
    of the app's at-risk banner: a heads-up, not a decision. */
 function shortSlotsEmail(n: EventNotificationData): Body {
-  const needs = listOf(shortLabels(n).map(withArticle)) || "someone in a required slot";
+  const needs = listOf(shortLabels(n).map(withArticle)) || "someone in a required role";
   const lines = (n.openSlots ?? []).map((s) => `${s.label}: ${s.filled} of ${s.min} needed`);
   const note = n.autoCancel
     ? `${n.title} starts at ${fmtTime(n.start)} and still needs ${needs}. If no one signs up by ${autoCancelClock(n.start)}, it's cancelled automatically and everyone going is told.`

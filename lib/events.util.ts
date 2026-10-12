@@ -153,17 +153,17 @@ export function validateEventDraft(d: EventDraft, { creating = false, now = new 
     if (d.repeat.until !== undefined && (!isDay(d.repeat.until) || d.repeat.until <= d.date)) return "The last date has to be after the first.";
   }
   const roles = d.roles ?? [];
-  if (roles.length > 0 && d.kind === "meeting") return "A meeting can't have signup slots.";
-  if (roles.length > MAX_ROLES) return `Keep it to ${MAX_ROLES} slots or fewer.`;
+  if (roles.length > 0 && d.kind === "meeting") return "A meeting can't have signup roles.";
+  if (roles.length > MAX_ROLES) return `Keep it to ${MAX_ROLES} roles or fewer.`;
   const keys = new Set<string>();
   for (const [i, r] of roles.entries()) {
     const label = r.label.trim();
-    if (!label) return "Give every slot a name, or remove it.";
-    if (label.length > ROLE_LABEL_MAX) return `"${label.slice(0, 20)}…": keep slot names under ${ROLE_LABEL_MAX} characters.`;
+    if (!label) return "Give every role a name, or remove it.";
+    if (label.length > ROLE_LABEL_MAX) return `"${label.slice(0, 20)}…": keep role names under ${ROLE_LABEL_MAX} characters.`;
     if (!Number.isInteger(r.min) || r.min < 0) return `"${label}": the minimum can't be negative.`;
     if (r.max != null && (!Number.isInteger(r.max) || r.max < Math.max(r.min, 1))) return `"${label}": max can't be less than the minimum.`;
     const key = roleKey(label, i);
-    if (keys.has(key)) return `Two slots are both named "${label}".`;
+    if (keys.has(key)) return `Two roles are both named "${label}".`;
     keys.add(key);
   }
   return null;

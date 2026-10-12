@@ -57,7 +57,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
         <button
           onClick={() => { if (!disabled) onToggleRoleSlot(e.id, role.key); }}
           disabled={disabled}
-          title={full ? "This slot is full" : undefined}
+          title={full ? "This role is full" : undefined}
           className={clsx(
             "whitespace-nowrap border px-4 py-2.75 font-sans text-xs font-bold uppercase tracking-[0.08em]",
             disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer border-ink", mine ? "bg-ink text-paper" : "bg-paper text-ink"),
@@ -99,7 +99,7 @@ export function RoleSlotsSection({ event: e, profile, onToggleRoleSlot, onOpenMe
 
   return (
     <section className="pt-8">
-      <EyebrowGroup label="Slots">
+      <EyebrowGroup label="Roles">
         <div className="flex flex-col gap-4.5">
           {e.roles.map((role) => (
             <RoleSlotCard
