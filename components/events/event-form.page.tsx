@@ -359,6 +359,18 @@ export function EventFormPage(props: EventFormPageProps) {
     ["meeting", "Meeting"],
   ];
 
+  const circleSelect = (
+    <Select id="circle" value={circleId} onChange={(e) => pickCircle(e.target.value)} disabled={mode === "edit"}>
+      {circleGroups.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.circles.map((c) => (
+            <option key={c.id} value={c.id}>{isRootCircle(c) ? `${c.name} (Everyone)` : c.name}</option>
+          ))}
+        </optgroup>
+      ))}
+    </Select>
+  );
+
   const topics = agenda.filter((a) => a.title.trim());
   const roleNames = slots.filter((x) => x.label.trim()).map((x) => x.label.trim());
 
@@ -418,15 +430,24 @@ export function EventFormPage(props: EventFormPageProps) {
         proposing && <Eyebrow className="text-flame">Proposal</Eyebrow>
       )}
 
-      {gov && circle && approverRole && (
-        <p className="mt-5 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-[#222]">
-          This is a governance meeting for <strong>{circle.name}</strong>. As its <strong>{approverRole}</strong>, you schedule it directly — it doesn&apos;t need a vote, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
-        </p>
-      )}
-      {gov && circle && !approverRole && (
-        <p className="mt-5 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
-          This is a governance meeting for <strong>{circle.name}</strong>. Once proposed it needs <strong>{meetingThresholdPreview} votes from {circle.type === "neighborhood" ? "residents" : "members"}</strong> to be approved. Your proposal counts as the first vote.
-        </p>
+      {/* a meeting is the circle's own, so which circle comes first, with what
+          that means for it right under the choice (an event's is further down) */}
+      {gov && (
+        <div className="mt-5">
+          <Label htmlFor="circle">Which circle is meeting?</Label>
+          {circleSelect}
+          {circle && approverRole && (
+            <p className="mt-3 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-[#222]">
+              As {circle.name}&apos;s <strong>{approverRole}</strong>, you schedule it directly — it doesn&apos;t need a vote, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
+            </p>
+          )}
+          {circle && !approverRole && (
+            <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
+              <strong>{meetingThresholdPreview} votes</strong> from {circle.type === "neighborhood" ? "residents" : "members"} of {circle.name} approve it. Your proposal counts as the first.
+            </p>
+          )}
+          {mode === "edit" && <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">The circle can&apos;t be changed once a meeting exists.</p>}
+        </div>
       )}
 
       <SectionGroup>
@@ -553,17 +574,10 @@ export function EventFormPage(props: EventFormPageProps) {
         </Section>
 
         <Section className="flex flex-col gap-5 py-6">
+          {!gov && (
           <div>
             <Label htmlFor="circle">Shown to</Label>
-            <Select id="circle" value={circleId} onChange={(e) => pickCircle(e.target.value)} disabled={mode === "edit"}>
-              {circleGroups.map((g) => (
-                <optgroup key={g.label} label={g.label}>
-                  {g.circles.map((c) => (
-                    <option key={c.id} value={c.id}>{isRootCircle(c) ? `${c.name} (Everyone)` : c.name}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </Select>
+            {circleSelect}
             {circle && (
               <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
                 {isRootCircle(circle)
@@ -573,6 +587,7 @@ export function EventFormPage(props: EventFormPageProps) {
               </p>
             )}
           </div>
+          )}
 
           {gov ? (
             <div>
