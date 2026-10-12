@@ -25,6 +25,7 @@ import type {
   EventChange,
   EventKindKey,
   MemberLanguage,
+  AvailabilityWindow,
   NotificationChannel,
   NotificationKind,
   ProposalChanges,
@@ -62,6 +63,9 @@ export const members = pgTable("members", {
   bio: text("bio").notNull(),
   // the languages they speak and how well, in their own order
   languages: jsonb("languages").$type<MemberLanguage[]>().notNull().default(sql`'[]'::jsonb`),
+  // when they can do meetings, as weekly windows; null until they've set it
+  // (Unknown on the meeting form), [] once they've said they never can
+  availability: jsonb("availability").$type<AvailabilityWindow[]>(),
   // the decade they were born in, as its first year (1990 for the '90s), if
   // they've chosen to say — never a birthdate
   birthDecade: integer("birth_decade"),

@@ -17,6 +17,14 @@ export interface MemberLanguage {
   level: LanguageLevel;
 }
 
+// when a member can do meetings: on these days (0 = Sunday), from `start` to
+// `end`, in minutes from midnight — see lib/availability.util.ts
+export interface AvailabilityWindow {
+  days: number[];
+  start: number;
+  end: number;
+}
+
 export interface Member {
   id: number;
   name: string;
