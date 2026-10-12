@@ -8,7 +8,7 @@ import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, Section, SectionGroup, Select, TextArea } from "@/components/shared";
-import { audienceLabel, circleCanHost, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
+import { audienceLabel, circleCanHost, circlesByKind, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
 import { attendeeIds, defaultEventTimes, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -175,7 +175,7 @@ export function EventFormPage(props: EventFormPageProps) {
     ? (byId[initialValues.circleId] ? [byId[initialValues.circleId]!] : [])
     : postable.filter((c) => !gov || canHoldMeeting(c));
   const circle = byId[circleId];
-  const circleOptions = circleChoices.map((c) => ({ id: c.id, label: isRootCircle(c) ? `${c.name} (Everyone)` : c.name }));
+  const circleGroups = circlesByKind(circleChoices);
   const meetingThresholdPreview = circle ? majority(circle.members.length) : 0;
   const hostThresholdPreview = hostCircle ? majority(hostCircle.members.length) : 0;
   // a circle can only host if it has members of its own — the city's roster is
@@ -185,10 +185,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const hostChoices = mode === "edit"
     ? (hostCircle ? [hostCircle] : [])
     : circlesForMember(profile.id, circles).filter((c) => !isRootCircle(c) && circleCanHost(c) && isWithinCircle(c.id, circleId, parentOf));
-  const hostOptions = [
-    { id: "", label: `${profile.name} (you)` },
-    ...hostChoices.map((c) => ({ id: c.id, label: c.name })),
-  ];
+  const hostGroups = circlesByKind(hostChoices);
 
   // true once something differs from where the form started — guards Back/
   // Cancel behind a confirmation. Switching the Event/Meeting tab alone
@@ -548,8 +545,12 @@ export function EventFormPage(props: EventFormPageProps) {
           <div>
             <Label htmlFor="circle">Shown to</Label>
             <Select id="circle" value={circleId} onChange={(e) => pickCircle(e.target.value)} disabled={mode === "edit"}>
-              {circleOptions.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
+              {circleGroups.map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.circles.map((c) => (
+                    <option key={c.id} value={c.id}>{isRootCircle(c) ? `${c.name} (Everyone)` : c.name}</option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
             {circle && (
@@ -574,8 +575,13 @@ export function EventFormPage(props: EventFormPageProps) {
             <div>
               <Label htmlFor="host">Hosted by</Label>
               <Select id="host" value={hostCircleId} onChange={(e) => setHostCircleId(e.target.value)} disabled={mode === "edit"}>
-                {hostOptions.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
+                <option value="">{profile.name} (you)</option>
+                {hostGroups.map((g) => (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.circles.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </Select>
               {hostCircle && circle && (

@@ -64,6 +64,21 @@ export function parentCircleOptions(circles: Circle[], except?: string): Circle[
     .concat(root && root.id !== except ? [root] : []);
 }
 
+/* Circles sorted under the headings the Circles browser uses — the city,
+   Neighborhoods, Circles, Groups, then Organizations (collectives,
+   cooperatives and the rest) — for a picker's optgroups. Keeps the order given
+   within each, and leaves out a heading with nothing under it. */
+export function circlesByKind(circles: Circle[]): { label: string; circles: Circle[] }[] {
+  const kinds: [string, (c: Circle) => boolean][] = [
+    ["Citywide", (c) => c.parentId === null],
+    ["Neighborhoods", (c) => c.parentId !== null && c.type === "neighborhood"],
+    ["Circles", (c) => c.parentId !== null && c.type === "circle"],
+    ["Groups", (c) => c.parentId !== null && c.type === "group"],
+    ["Organizations", (c) => c.parentId !== null && c.type !== "neighborhood" && c.type !== "circle" && c.type !== "group"],
+  ];
+  return kinds.map(([label, test]) => ({ label, circles: circles.filter(test) })).filter((g) => g.circles.length > 0);
+}
+
 export type NewCircleField = "type" | "name" | "tagline" | "parentId" | "domain" | "aims";
 
 /* What's wrong with a new circle, and which field it's about, or null: the
