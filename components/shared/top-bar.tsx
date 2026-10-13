@@ -8,9 +8,9 @@ import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
 import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { isCircleMember } from "@/lib/circles.util";
+import { indexCircles, isCircleMember } from "@/lib/circles.util";
 import { isPastEvent } from "@/lib/format.util";
-import { isEventOrganizer } from "@/lib/governance.util";
+import { awaitingConsent, canManageEvent } from "@/lib/governance.util";
 import { useHomeNeedsAttention } from "@/lib/hooks";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
 import { activeTab } from "@/lib/nav.util";
@@ -73,10 +73,11 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
   if (pathname === "/circles") return { href: "/circles/new", label: "Create circle", icon: PlusIcon };
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section === "events" && id && id !== "new" && !sub) {
-    // an event's own page, which only its organizer can edit, until it's
-    // cancelled or over
+    // an event's own page, which its organizer can edit (and for one a circle
+    // hosts, its members), until it's cancelled or over — or while a group is
+    // still deciding it, since what's proposed is what's consented to
     const event = events.find((e) => e.id === id);
-    if (event && isEventOrganizer(event, profile) && !event.cancelled && !isPastEvent(event)) {
+    if (event && canManageEvent(event, profile, indexCircles(circles)) && !event.cancelled && !isPastEvent(event) && !awaitingConsent(event)) {
       return { href: `/events/${id}/edit`, label: "Edit event", icon: PencilIcon };
     }
   }

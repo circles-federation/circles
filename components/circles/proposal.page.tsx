@@ -4,10 +4,10 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { CheckCircleIcon, CheckIcon, HandRaisedIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import type { MutationResult } from "@/components/providers/app-state-provider";
-import { Button, Chip, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, TextArea, useToast } from "@/components/shared";
+import { Button, Chip, ConfirmModal, Eyebrow, EyebrowGroup, PageContainer, Section, SectionGroup, TextArea, useToast } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
 import { useMemberById } from "@/lib/hooks";
-import { OBJECTION_REASON_MAX, RESPONSE_LABEL, proposalTitle, responseOf } from "@/lib/proposals.util";
+import { OBJECTION_REASON_MAX, RESPONSE_LABEL, isEventProposal, proposalTitle, responseOf } from "@/lib/proposals.util";
 import type { Circle, CircleProposal, ConsentResponse, Member } from "@/lib/types";
 
 interface ProposalPageProps {
@@ -17,6 +17,9 @@ interface ProposalPageProps {
   onOpenCircle: () => void;
   onOpenMember: (m: Member) => void;
   onRespond: (response: ConsentResponse, reason?: string) => Promise<MutationResult>;
+  // a group's event proposal: its event's page, and withdrawing it while it's open
+  onOpenEvent?: () => void;
+  onWithdraw?: () => Promise<MutationResult>;
 }
 
 // each answer's look: green, thumb up, likes it; yellow, a check, accepts it
@@ -33,7 +36,10 @@ const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon:
    asking why; and where every member stands, as a sociocratic round shows
    everyone's answer. Reached from its email or push, the circle's banner,
    and Home. */
-export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOpenMember, onRespond }: ProposalPageProps) {
+export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, onWithdraw }: ProposalPageProps) {
+  // it proposes holding an event, not changing the circle
+  const event = isEventProposal(p);
+  const [withdrawing, setWithdrawing] = useState(false);
   const memberById = useMemberById();
   const { showToast } = useToast();
   const proposer = memberById(p.proposerId);
@@ -78,11 +84,11 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
         </p>
       </div>
 
-      <Outcome proposal={p} objectorName={objector?.name} />
+      <Outcome proposal={p} objectorName={objector?.name} event={event} />
 
       <SectionGroup>
         <Section>
-          <EyebrowGroup label="What it changes">
+          <EyebrowGroup label={event ? "The event" : "What it changes"}>
             <div className="border-t border-ink">
               {p.lines.map((l) => (
                 <div key={l.label} className="border-b border-faint py-3 last:border-b-ink">
@@ -92,6 +98,11 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
                 </div>
               ))}
             </div>
+            {onOpenEvent && (
+              <button type="button" onClick={onOpenEvent} className="mt-3 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2">
+                See the event&rsquo;s page
+              </button>
+            )}
           </EyebrowGroup>
         </Section>
 
@@ -182,19 +193,46 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
             </div>
           </EyebrowGroup>
         </Section>
+        {onWithdraw && (
+          <Section>
+            <p className="mb-3 font-serif text-sm leading-snug text-soft">Withdrawing it means the event won&rsquo;t be held, and closes this proposal.</p>
+            <Button variant="danger" disabled={withdrawing} onClick={() => setWithdrawing(true)} className="w-full min-[480px]:w-auto">
+              Withdraw
+            </Button>
+          </Section>
+        )}
       </SectionGroup>
+
+      {withdrawing && onWithdraw && (
+        <ConfirmModal
+          title="Withdraw this proposal?"
+          message="The event won't be held, and the proposal closes. It can be proposed again."
+          confirmLabel="Withdraw"
+          cancelLabel="Keep it"
+          onCancel={() => setWithdrawing(false)}
+          onConfirm={async () => {
+            const result = await onWithdraw();
+            setWithdrawing(false);
+            if (!result.ok) setError(result.error);
+          }}
+        />
+      )}
     </PageContainer>
   );
 }
 
-// until when it's open and what happens then, or how it ended
-function Outcome({ proposal: p, objectorName }: { proposal: CircleProposal; objectorName?: string }) {
+// until when it's open and what happens then, or how it ended — for an event,
+// whether it's scheduled
+function Outcome({ proposal: p, objectorName, event }: { proposal: CircleProposal; objectorName?: string; event: boolean }) {
+  const made = event ? "scheduled" : "made";
   const [Icon, tone, heading, text] =
     p.status === "open"
-      ? [HandRaisedIcon, "border-l-ink", `Open until ${fmtDateTime(new Date(p.closesAt))}`, "If no one objects by then, it's made. It's made sooner if everyone consents."]
+      ? [HandRaisedIcon, "border-l-ink", `Open until ${fmtDateTime(new Date(p.closesAt))}`, `If no one objects by then, it's ${made}. It's ${made} sooner if everyone consents.`]
       : p.status === "passed"
-        ? [CheckCircleIcon, "border-l-leaf", "Passed", `No one objected, so the change was made${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
-        : [XCircleIcon, "border-l-danger", "Objected", `${objectorName ?? "A member"} objected, so it won't be made. It can be proposed again, changed to meet the objection.`];
+        ? [CheckCircleIcon, "border-l-leaf", "Passed", `No one objected, so ${event ? "the event was scheduled" : "the change was made"}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
+        : p.status === "withdrawn"
+          ? [XCircleIcon, "border-l-soft", "Withdrawn", "It was withdrawn before it was decided, so the event won't be held. It can be proposed again."]
+          : [XCircleIcon, "border-l-danger", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${event ? "held" : "made"}. It can be proposed again, changed to meet the objection.`];
   return (
     <div role="status" className={clsx("mt-6 flex items-start gap-3 border border-ink border-l-4 px-4.5 py-4", tone)}>
       <Icon className="mt-px size-5 shrink-0" strokeWidth={2} />

@@ -14,7 +14,9 @@ import { VoteBanner } from "./vote-banner";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { isAttending } from "@/lib/events.util";
 import { useEventEnded } from "@/lib/hooks";
-import { isMeeting, isVoting } from "@/lib/governance.util";
+import { awaitingConsent, isMeeting, isVoting } from "@/lib/governance.util";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { ProposalBanner } from "@/components/circles/proposal-banner";
 import type { Circle, Event, Member, Profile } from "@/lib/types";
 
 interface EventPageProps {
@@ -38,12 +40,17 @@ interface EventPageProps {
 export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState, toggleVote, onOpenMember, onOpenCircle, onToggleRoleSlot }: EventPageProps) {
   // no calendar copy of an event that's already over
   const ended = useEventEnded(e);
+  // a group's event its members are still deciding: its proposal, in place of a vote
+  const { proposals } = useAppState();
+  const proposal = awaitingConsent(e) ? proposals.find((p) => p.eventId === e.id && p.status === "open") : undefined;
 
   return (
     <PageContainer size="normal">
       <EventMasthead event={e} />
 
       <CancelledBanner event={e} />
+
+      {proposal && <ProposalBanner proposal={proposal} memberId={profile.id} className="mt-6" />}
 
       {isVoting(e) && (
         <VoteBanner event={e} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />

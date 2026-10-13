@@ -127,9 +127,18 @@ export function circleHasWiki(circle: Pick<Circle, "type">): boolean {
   return !isGroup(circle);
 }
 
-// whether a circle can host an event, or hold a meeting (its members voting)
-export function circleCanHost(circle: Pick<Circle, "type">): boolean {
+// a meeting is its circle's members voting, which a group doesn't do (any
+// circle but the city can host an event, a group included, by consent: see
+// lib/db/proposals.ts)
+export function circleCanHoldMeetings(circle: Pick<Circle, "type">): boolean {
   return !isGroup(circle);
+}
+
+/* Whether `host` may host an event shown to `circleId`: one shown to itself
+   or to a circle it's part of — except a group, which is private, so an
+   event it hosts is only ever shown to the group, or it would reveal it. */
+export function hostCanShowTo(host: Pick<Circle, "id" | "type">, circleId: string, parentOf: (id: string) => string | null | undefined): boolean {
+  return isGroup(host) ? circleId === host.id : isWithinCircle(host.id, circleId, parentOf);
 }
 
 export function indexCircles(circles: Circle[]): CirclesById {

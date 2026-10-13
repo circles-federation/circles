@@ -84,11 +84,13 @@ async function hasSubCircle(tx: Tx, circleId: string): Promise<boolean> {
    once-a-day digest instead (lib/notify.ts's deliverDigests). `immediate`
    overrides that, for news that shouldn't wait a day. A digest line is
    email only: its push is a nudge sent with the digest email itself. */
-async function queueFor(tx: Tx, eventId: string, kind: NotificationKind, circleId: string, exceptId: number, immediate = false): Promise<number> {
+// `exceptId` is whoever caused it, who already knows; null when no one did (a
+// consent proposal passing at its deadline)
+async function queueFor(tx: Tx, eventId: string, kind: NotificationKind, circleId: string, exceptId: number | null, immediate = false): Promise<number> {
   const [circle] = await tx.select({ parentId: circles.parentId }).from(circles).where(eq(circles.id, circleId));
   if (!circle) return 0;
   const digest = !immediate && (await hasSubCircle(tx, circleId));
-  const notMe = ne(members.id, exceptId);
+  const notMe = exceptId === null ? sql`true` : ne(members.id, exceptId);
   const recipients = await channelsFor(tx, circle.parentId === null ? notMe : and(inCircle(circleId), notMe), { push: !digest });
   if (recipients.length === 0) return 0;
   await tx.insert(eventNotifications).values(recipients.map((r) => ({ eventId, ...r, kind, digest }))).onConflictDoNothing();
@@ -130,7 +132,7 @@ export async function enqueueEventNotifications(tx: Tx, event: Event): Promise<n
    that reached a majority), who already knows. Anyone still waiting to be
    asked to vote on it — by email or in a digest — is dropped: it's decided.
    Runs in the approving transaction. */
-export async function enqueueProposalApprovalNotifications(tx: Tx, event: Pick<Event, "id" | "circleId" | "date">, actorId: number): Promise<number> {
+export async function enqueueProposalApprovalNotifications(tx: Tx, event: Pick<Event, "id" | "circleId" | "date">, actorId: number | null): Promise<number> {
   await tx
     .delete(eventNotifications)
     .where(and(eq(eventNotifications.eventId, event.id), eq(eventNotifications.kind, "proposed"), isNull(eventNotifications.sentAt)));

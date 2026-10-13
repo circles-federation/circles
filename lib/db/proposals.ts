@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, gte, inArray, lte, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { getCircleById, getCirclesForMember } from "./circles";
 import { writeCircleRoles } from "./circle-roles";
 import { UserFacingError } from "./errors";
+import { approveHostedEvent, discardEvent } from "./events";
 import { enqueueProposalNotifications } from "./notifications";
-import { circleMembers, circleProposals, circles, members, proposalResponses } from "./schema";
+import { circleMembers, circleProposals, circles, members, proposalResponses, roles as eventRoles } from "./schema";
 import { groupBy } from "./util";
 import {
   OBJECTION_REASON_MAX,
@@ -13,11 +14,12 @@ import {
   changedFields,
   describeChanges,
   everyoneConsented,
+  describeEventProposal,
   hasChanges,
   missingCircleBasics,
   validateChanges,
 } from "@/lib/proposals.util";
-import type { Circle, CircleProposal, ConsentResponse, ProposalChanges, ProposalResponse } from "@/lib/types";
+import type { Circle, CircleProposal, ConsentResponse, Event, ProposalChanges, ProposalResponse } from "@/lib/types";
 
 export class ProposalError extends UserFacingError {}
 
@@ -37,6 +39,7 @@ function toProposal(row: ProposalRow, responses: ProposalResponse[]): CircleProp
     id: row.id,
     circleId: row.circleId,
     proposerId: row.proposerId,
+    ...(row.eventId !== null ? { eventId: row.eventId } : {}),
     changes: row.changes,
     lines: row.lines,
     status: row.status,
@@ -104,12 +107,51 @@ async function applyProposal(tx: Tx, proposal: ProposalRow): Promise<void> {
 }
 
 // pass it: make its changes, close it, and tell the circle (but `actorId`, if
-// it was their answer that passed it)
+// it was their answer that passed it). An event proposal's change is the
+// event's approval, whose own email (with the event's details) is what tells
+// the group, rather than the proposal's "passed" notice.
 async function pass(tx: Tx, proposal: ProposalRow, actorId: number | null): Promise<void> {
-  await applyProposal(tx, proposal);
   await tx.update(circleProposals).set({ status: "passed", decidedAt: new Date() }).where(eq(circleProposals.id, proposal.id));
+  if (proposal.eventId !== null) {
+    await approveHostedEvent(tx, proposal.eventId, actorId);
+    return;
+  }
+  await applyProposal(tx, proposal);
   const tell = (await memberIdsOf(tx, proposal.circleId)).filter((m) => m !== actorId);
   await enqueueProposalNotifications(tx, proposal.id, "passed", tell);
+}
+
+/* Propose holding an event the circle hosts (a group's: createEvent in
+   lib/db/events.ts), in the transaction that creates it, which hasn't been
+   approved. Like any proposal its proposer consents by proposing, the rest of
+   the circle is asked, and a circle of one decides it at once. Any number can
+   be open at once, alongside a change to the circle. Returns its id. */
+export async function openEventProposal(tx: Tx, proposerId: number, event: Event): Promise<string> {
+  const circleId = event.hostCircleId;
+  if (!circleId) throw new ProposalError("Only an event a circle hosts is proposed to it.");
+  const slots = (await tx.select({ label: eventRoles.label }).from(eventRoles).where(eq(eventRoles.eventId, event.id))).map((r) => r.label);
+  const id = randomUUID();
+  const [row] = await tx
+    .insert(circleProposals)
+    .values({ id, circleId, proposerId, eventId: event.id, changes: {}, lines: describeEventProposal(event, slots), closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS) })
+    .returning();
+  await tx.insert(proposalResponses).values({ proposalId: id, memberId: proposerId, response: "like" });
+  const memberIds = await memberIdsOf(tx, circleId);
+  if (everyoneConsented({ responses: [{ memberId: proposerId, response: "like", respondedAt: "" }] }, memberIds)) await pass(tx, row!, proposerId);
+  else await enqueueProposalNotifications(tx, id, "opened", memberIds.filter((m) => m !== proposerId));
+  return id;
+}
+
+/* An event's open proposal is withdrawn: its event was cancelled before it was
+   decided (cancelEvent, which deletes it). Closed with no notices — whoever
+   withdrew it knows, and the rest see it on the proposal. */
+export async function withdrawEventProposal(tx: Tx, eventId: string): Promise<string | null> {
+  const [row] = await tx
+    .update(circleProposals)
+    .set({ status: "withdrawn", decidedAt: new Date() })
+    .where(and(eq(circleProposals.eventId, eventId), eq(circleProposals.status, "open")))
+    .returning({ id: circleProposals.id });
+  return row?.id ?? null;
 }
 
 async function memberNames(ids: number[]): Promise<Map<number, string>> {
@@ -137,7 +179,10 @@ export async function createProposal(memberId: number, circleId: string, draft: 
 
   const id = randomUUID();
   const passed = await db.transaction(async (tx) => {
-    const [open] = await tx.select({ id: circleProposals.id }).from(circleProposals).where(and(eq(circleProposals.circleId, circleId), eq(circleProposals.status, "open")));
+    const [open] = await tx
+      .select({ id: circleProposals.id })
+      .from(circleProposals)
+      .where(and(eq(circleProposals.circleId, circleId), eq(circleProposals.status, "open"), isNull(circleProposals.eventId)));
     if (open) throw new ProposalError(`${circle.name} already has a proposal open. Once it's decided, you can propose this.`);
     const [row] = await tx
       .insert(circleProposals)
@@ -189,6 +234,8 @@ export async function respondToProposal(
       });
     if (response === "object") {
       await tx.update(circleProposals).set({ status: "objected", decidedAt: new Date() }).where(eq(circleProposals.id, id));
+      // an event that won't be held: it was never scheduled, so it simply goes
+      if (row.eventId !== null) await discardEvent(tx, row.eventId);
       await enqueueProposalNotifications(tx, id, "objected", memberIds.filter((m) => m !== memberId));
       return false;
     }

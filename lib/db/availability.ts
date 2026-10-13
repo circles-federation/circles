@@ -3,7 +3,7 @@ import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circles, members } from "./schema";
 import { availabilityFor } from "@/lib/availability.util";
-import { circleCanHost } from "@/lib/circles.util";
+import { circleCanHoldMeetings } from "@/lib/circles.util";
 import { isClock, isDay } from "@/lib/events.util";
 import type { MeetingAvailability } from "@/lib/types";
 
@@ -25,7 +25,7 @@ export async function getMeetingAvailability(memberId: number, circleId: string,
     throw new AvailabilityError(circle && circle.type !== "group" ? `Only members of ${circle.name} can see who's available.` : "That circle doesn't exist.");
   }
   // the same circles a meeting can be held in (see createEvent)
-  if (circle.parentId === null || !circleCanHost(circle)) throw new AvailabilityError("That circle can't hold a meeting.");
+  if (circle.parentId === null || !circleCanHoldMeetings(circle)) throw new AvailabilityError("That circle can't hold a meeting.");
 
   const result: MeetingAvailability = { available: [], unavailable: [], unknown: [] };
   for (const m of roster) {

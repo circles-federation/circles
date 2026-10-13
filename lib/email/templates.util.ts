@@ -1,6 +1,6 @@
 import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtDateTime, fmtEventWhen, fmtNumericDate, fmtTime, parseDay, withArticle } from "@/lib/format.util";
-import { proposalTitle } from "@/lib/proposals.util";
+import { isEventProposal, proposalTitle } from "@/lib/proposals.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
@@ -584,6 +584,8 @@ const lineText = (l: ProposalLine) => (l.before && l.after ? `${l.label}: ${l.be
    it passed. Each lists what it changes, before and after. */
 export function proposalEmail(d: ProposalEmailData): Body {
   const title = proposalTitle(d);
+  // a group's event, proposed for its consent, rather than a change to the circle
+  const event = isEventProposal(d);
   const deadline = fmtDateTime(d.closesAt);
   const [subject, eyebrowText, accent, note, action] =
     d.notice === "opened"
@@ -591,7 +593,9 @@ export function proposalEmail(d: ProposalEmailData): Body {
           `Proposal for ${d.circleName}: ${title}`,
           `Proposal · ${d.circleName}`,
           INK,
-          `${d.proposerName} proposes a change to ${d.circleName}, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's made then.`,
+          event
+            ? `${d.proposerName} proposes that ${d.circleName} hold this event, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's scheduled then.`
+            : `${d.proposerName} proposes a change to ${d.circleName}, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's made then.`,
           "Respond",
         ]
       : d.notice === "objected"
@@ -599,7 +603,7 @@ export function proposalEmail(d: ProposalEmailData): Body {
             `Objection: ${title}`,
             `Objected · ${d.circleName}`,
             DANGER,
-            `${d.objectorName ?? "A member"} objected to ${d.proposerName}'s proposal, so it won't be made.${d.reason ? ` Their reason: “${d.reason}”.` : ""} It can be proposed again, changed to meet the objection.`,
+            `${d.objectorName ?? "A member"} objected to ${d.proposerName}'s proposal, so it won't be ${event ? "held" : "made"}.${d.reason ? ` Their reason: “${d.reason}”.` : ""} It can be proposed again, changed to meet the objection.`,
             "View proposal",
           ]
         : [`Passed: ${title}`, `Passed · ${d.circleName}`, LEAF, `No one objected to ${d.proposerName}'s proposal, so the change has been made to ${d.circleName}.`, "View proposal"];

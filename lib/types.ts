@@ -165,6 +165,10 @@ export interface Event {
   hostCircleId?: string;
   // a circle-hosted event still awaiting its host circle's approval
   proposed?: boolean;
+  // hosted by a group, so decided by its members' consent (a proposal: see
+  // lib/db/proposals.ts) rather than a majority vote; while it's undecided it's
+  // in no list, only its proposal and its own page
+  consent?: true;
   // the role (Leader, Secretary or Facilitator) its organizer held in the circle
   // that would have voted on it — a meeting's own, or the host circle — which
   // approved it without a vote. A meeting like that is attended by RSVP.
@@ -207,7 +211,8 @@ export type ResourceIcon = "folder" | "file" | "video" | "announcement";
 // green "like this", yellow "accept this" (both consent: they differ in
 // enthusiasm, not reservations), or red, an objection
 export type ConsentResponse = "like" | "accept" | "object";
-export type ProposalStatus = "open" | "passed" | "objected";
+// withdrawn: an event proposal whose event was cancelled before it was decided
+export type ProposalStatus = "open" | "passed" | "objected" | "withdrawn";
 
 // what a proposal would change, each only if it does: the circle's own fields,
 // and its roles as a whole (each role's name and holder, in order)
@@ -246,6 +251,9 @@ export interface CircleProposal {
   id: string;
   circleId: string;
   proposerId: number;
+  // set when it proposes holding an event the circle hosts, rather than
+  // changing the circle (null once that event is gone)
+  eventId?: string;
   changes: ProposalChanges;
   lines: ProposalLine[];
   status: ProposalStatus;

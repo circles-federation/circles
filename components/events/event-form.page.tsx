@@ -9,7 +9,7 @@ import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, Section, SectionGroup, Select, TextArea } from "@/components/shared";
-import { audienceLabel, circleCanHost, circlesByKind, circlesForAudience, circlesForMember, indexCircles, isCircleMember, isRootCircle, isWithinCircle } from "@/lib/circles.util";
+import { audienceLabel, circleCanHoldMeetings, circlesByKind, circlesForAudience, circlesForMember, indexCircles, isCircleMember, hostCanShowTo, isGroup, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
 import { attendeeIds, defaultEventTimes, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -87,7 +87,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const postable = circlesForAudience(profile.id, circles).sort((x, y) => rank(x) - rank(y));
   // only a circle they could pick as host themselves (see hostChoices below)
   const requestedHost = mode === "create" && props.initialHostCircleId ? byId[props.initialHostCircleId] : undefined;
-  const initialHost = requestedHost && !isRootCircle(requestedHost) && circleCanHost(requestedHost) && isCircleMember(requestedHost, profile.id) ? requestedHost : undefined;
+  const initialHost = requestedHost && !isRootCircle(requestedHost) && isCircleMember(requestedHost, profile.id) ? requestedHost : undefined;
   // only a circle they could pick themselves
   const requestedCircle = mode === "create" && props.initialCircleId ? postable.find((c) => c.id === props.initialCircleId) : undefined;
 
@@ -175,8 +175,8 @@ export function EventFormPage(props: EventFormPageProps) {
 
   // a meeting needs a roster to compute its majority, and the city's is
   // implicit — so meetings can't be held in it; nor in a group, which can't
-  // hold one (see circleCanHost)
-  const canHoldMeeting = (c: Circle) => !isRootCircle(c) && circleCanHost(c);
+  // hold one (see circleCanHoldMeetings)
+  const canHoldMeeting = (c: Circle) => !isRootCircle(c) && circleCanHoldMeetings(c);
   const circleChoices = mode === "edit"
     ? (byId[initialValues.circleId] ? [byId[initialValues.circleId]!] : [])
     : postable.filter((c) => !gov || canHoldMeeting(c));
@@ -190,7 +190,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const parentOf = (id: string) => byId[id]?.parentId;
   const hostChoices = mode === "edit"
     ? (hostCircle ? [hostCircle] : [])
-    : circlesForMember(profile.id, circles).filter((c) => !isRootCircle(c) && circleCanHost(c) && isWithinCircle(c.id, circleId, parentOf));
+    : circlesForMember(profile.id, circles).filter((c) => !isRootCircle(c) && hostCanShowTo(c, circleId, parentOf));
   const hostGroups = circlesByKind(hostChoices);
 
   // true once something differs from where the form started — guards Back/
@@ -216,7 +216,8 @@ export function EventFormPage(props: EventFormPageProps) {
   // it, so drop back to hosting it yourself
   function pickCircle(id: string) {
     setCircleId(id);
-    if (hostCircleId && !isWithinCircle(hostCircleId, id, parentOf)) setHostCircleId("");
+    const host = hostCircleId ? byId[hostCircleId] : undefined;
+    if (host && !hostCanShowTo(host, id, parentOf)) setHostCircleId("");
   }
 
   function changeType(next: EventKindKey) {
@@ -617,6 +618,8 @@ export function EventFormPage(props: EventFormPageProps) {
                 <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
                   {mode === "edit"
                     ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
+                    : isGroup(hostCircle)
+                    ? `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects. Until then it's in no list, and no one can RSVP. Any member can edit or cancel it once it's scheduled.`
                     : approverRole
                     ? `As ${hostCircle.name}'s ${approverRole}, you approve it yourself, with no vote. It opens to ${audienceLabel(circle)} as soon as you create it.`
                     : `This is a proposal. It needs ${hostThresholdPreview} approving votes from ${hostCircle.type === "neighborhood" ? "residents" : "members"} of ${hostCircle.name}, and yours counts as the first. Until then only they can see it; once approved it opens to ${audienceLabel(circle)}.`}

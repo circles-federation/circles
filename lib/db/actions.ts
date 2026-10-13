@@ -20,6 +20,7 @@ import { invitationPush } from "@/lib/push/messages.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
+import { isEventProposal } from "@/lib/proposals.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges } from "@/lib/types";
 
@@ -83,10 +84,21 @@ export async function createProposalAction(circleId: string, changes: ProposalCh
   return result;
 }
 
+// an answer to a group's event proposal may approve the event or discard it,
+// so it hands back the whole app state too, for both to show at once
 export async function respondToProposalAction(id: string, response: ConsentResponse, reason?: string) {
-  const result = await asMember((memberId) => proposals.respondToProposal(memberId, id, response, reason));
-  if (result.ok) after(() => deliverProposalNotifications());
+  const result = await asMember(async (memberId) => {
+    const answered = await proposals.respondToProposal(memberId, id, response, reason);
+    return isEventProposal(answered.proposal) ? { ...answered, state: await stateFor(memberId) } : answered;
+  });
+  if (result.ok) after(() => Promise.all([deliverProposalNotifications(), deliverEventNotifications()]));
   return result;
+}
+
+async function stateFor(memberId: number): Promise<AppStateData> {
+  const state = await getAppStateForMember(memberId);
+  if (!state) throw new UserFacingError("Sign in again to do that.");
+  return state;
 }
 
 export async function updateCircleAction(id: string, patch: Partial<Circle>) {
@@ -130,10 +142,15 @@ export async function deleteResourceAction(id: string) {
 }
 
 export async function createEventAction(draft: EventDraft) {
-  const result = await asMember((memberId) => events.createEvent(memberId, draft));
+  // a group's event is proposed to it, so the app state comes back too, with
+  // the proposal in it
+  const result = await asMember(async (memberId) => {
+    const created = await events.createEvent(memberId, draft);
+    return created.proposalId ? { ...created, state: await stateFor(memberId) } : created;
+  });
   // createEvent has already queued the emails (if this event earns any);
   // sending them after the response keeps the form from waiting on SMTP
-  if (result.ok) after(() => deliverEventNotifications());
+  if (result.ok) after(() => Promise.all([deliverEventNotifications(), deliverProposalNotifications()]));
   return result;
 }
 
@@ -149,7 +166,11 @@ export async function updateEventDetailsAction(id: string, details: EventDetails
 // cancelling may have queued emails to the people who were going, which go
 // out once the response is sent, as a new event's do
 export async function cancelEventAction(id: string, scope: SeriesScope = "one") {
-  const result = await asMember((memberId) => events.cancelEvent(memberId, id, scope));
+  // withdrawing a group's proposed event closes its proposal, so the app state comes back too
+  const result = await asMember(async (memberId) => {
+    const cancelled = await events.cancelEvent(memberId, id, scope);
+    return cancelled.withdrawnProposalId ? { ...cancelled, state: await stateFor(memberId) } : cancelled;
+  });
   if (result.ok && result.value.events.some((e) => e.cancelled)) after(() => deliverEventNotifications());
   return result;
 }

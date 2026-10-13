@@ -4,8 +4,9 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
+import { openEventProposal, withdrawEventProposal } from "./proposals";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, enqueueSlotWarnings, wallClock, withdrawEventNotifications, withdrawReminders, withdrawSlotWarnings } from "./notifications";
-import { circleCanHost, isWithinCircle } from "@/lib/circles.util";
+import { circleCanHoldMeetings, hostCanShowTo, isGroup } from "@/lib/circles.util";
 import { eventStartsAt, hasEnded, roleKey, startsWithinReminder, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
@@ -55,7 +56,7 @@ function toRepeat(s: SeriesRow): EventRepeat {
   return { seriesId: s.id, frequency: s.frequency, startsOn: s.startsOn, ...(s.until !== null ? { until: s.until } : {}) };
 }
 
-function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, eventRoles: Role[] | undefined, series: SeriesRow | undefined, agenda: AgendaItem[] | undefined): Event {
+function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, eventRoles: Role[] | undefined, series: SeriesRow | undefined, agenda: AgendaItem[] | undefined, consent = false): Event {
   return {
     id: row.id,
     title: row.title,
@@ -63,6 +64,7 @@ function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, ev
     circleId: row.circleId,
     ...(row.hostCircleId !== null ? { hostCircleId: row.hostCircleId } : {}),
     ...(row.hostCircleId !== null && row.approvedAt === null ? { proposed: true } : {}),
+    ...(consent ? { consent: true as const } : {}),
     ...(row.approvedByRole !== null ? { approvedByRole: row.approvedByRole } : {}),
     ...(row.cancelledAt !== null ? { cancelled: true } : {}),
     ...(row.cancelledAutomatically ? { cancelledAutomatically: true as const } : {}),
@@ -86,13 +88,18 @@ async function attachRelations(rows: EventRow[]): Promise<Event[]> {
   const ids = rows.map((r) => r.id);
   const seriesIds = [...new Set(rows.flatMap((r) => (r.seriesId !== null ? [r.seriesId] : [])))];
   const meetingIds = rows.filter((r) => r.kind === "meeting").map((r) => r.id);
-  const [rsvpRows, voteRows, roleRows, seriesRows, agendaRows] = await Promise.all([
+  const hostIds = [...new Set(rows.flatMap((r) => (r.hostCircleId !== null ? [r.hostCircleId] : [])))];
+  const [rsvpRows, voteRows, roleRows, seriesRows, agendaRows, groupHosts] = await Promise.all([
     db.select().from(eventRsvps).where(inArray(eventRsvps.eventId, ids)),
     db.select().from(eventVotes).where(inArray(eventVotes.eventId, ids)),
     db.select().from(roles).where(inArray(roles.eventId, ids)),
     seriesIds.length > 0 ? db.select().from(eventSeries).where(inArray(eventSeries.id, seriesIds)) : Promise.resolve([]),
     meetingIds.length > 0
       ? db.select().from(eventAgendaItems).where(inArray(eventAgendaItems.eventId, meetingIds)).orderBy(asc(eventAgendaItems.position))
+      : Promise.resolve([]),
+    // the host circles that are groups, whose events are decided by consent
+    hostIds.length > 0
+      ? db.select({ id: circles.id }).from(circles).where(and(inArray(circles.id, hostIds), eq(circles.type, "group")))
       : Promise.resolve([]),
   ]);
   const agendaByEvent = groupBy(agendaRows, (a) => a.eventId, (a): AgendaItem => ({
@@ -128,7 +135,8 @@ async function attachRelations(rows: EventRow[]): Promise<Event[]> {
       rolesByEvent.get(row.id),
       row.seriesId !== null ? seriesById.get(row.seriesId) : undefined,
       // every meeting has an agenda, even an empty one
-      row.kind === "meeting" ? agendaByEvent.get(row.id) || [] : undefined
+      row.kind === "meeting" ? agendaByEvent.get(row.id) || [] : undefined,
+      row.hostCircleId !== null && groupHosts.some((g) => g.id === row.hostCircleId)
     )
   );
 }
@@ -211,34 +219,57 @@ function assertNotCancelled(row: EventRow) {
   if (row.cancelledAt !== null) throw new EventError("This event has been cancelled.");
 }
 
+/* Who may edit or cancel an event: its organizer, and for one a circle hosts,
+   any member of that circle — the circle holds it, so the circle looks after
+   it. One a person hosts is theirs alone. */
+async function assertCanManage(row: EventRow, memberId: number, verb: "edit" | "cancel"): Promise<void> {
+  if (row.organizerId === memberId) return;
+  if (row.hostCircleId !== null) {
+    const [membership] = await db
+      .select({ id: circleMembers.memberId })
+      .from(circleMembers)
+      .where(and(eq(circleMembers.circleId, row.hostCircleId), eq(circleMembers.memberId, memberId)));
+    if (membership) return;
+  }
+  throw new EventError(row.hostCircleId !== null ? `Only members of the circle hosting this event can ${verb} it.` : `Only the person hosting this event can ${verb} it.`);
+}
+
+// a group's event its members haven't yet consented to (see lib/db/proposals.ts)
+async function awaitingConsent(row: EventRow): Promise<boolean> {
+  if (row.hostCircleId === null || row.approvedAt !== null) return false;
+  const [host] = await db.select({ type: circles.type }).from(circles).where(eq(circles.id, row.hostCircleId));
+  return host?.type === "group";
+}
+
 // what's over is a record: no more RSVPs, votes or signups, coming or going
 function assertNotOver(row: EventRow) {
   if (hasEnded(row)) throw new EventError("This event is over.");
 }
 
-async function assertCanPost(v: Viewer, circleId: string): Promise<{ isRoot: boolean; canHost: boolean }> {
+async function assertCanPost(v: Viewer, circleId: string): Promise<{ isRoot: boolean; canHoldMeetings: boolean }> {
   const [circle] = await db.select({ parentId: circles.parentId, type: circles.type }).from(circles).where(eq(circles.id, circleId));
   if (!circle) throw new EventError("That circle doesn't exist.");
   if (!v.audience.includes(circleId)) throw new EventError("You can only post to circles you belong to.");
-  return { isRoot: circle.parentId === null, canHost: circleCanHost(circle) };
+  return { isRoot: circle.parentId === null, canHoldMeetings: circleCanHoldMeetings(circle) };
 }
 
-// a circle can host only if it has members of its own to vote (not the city,
+// a circle can host only if it has members of its own to decide (not the city,
 // whose roster is implicit), the proposer is one of them, and it's the circle
-// the event is shown to or one inside it; returns how many members it has
-async function assertCanHost(v: Viewer, circleId: string, audienceCircleId: string): Promise<number> {
+// the event is shown to or one inside it — only ever itself, for a private
+// group (hostCanShowTo); returns how many members it has, and whether it's a
+// group, whose events are proposed for consent (see lib/db/proposals.ts)
+async function assertCanHost(v: Viewer, circleId: string, audienceCircleId: string): Promise<{ size: number; group: boolean }> {
   const rows = await db.select({ id: circles.id, parentId: circles.parentId, type: circles.type }).from(circles);
   const circle = rows.find((c) => c.id === circleId);
   if (!circle) throw new EventError("That circle doesn't exist.");
   if (circle.parentId === null) throw new EventError("The whole city can't host an event — pick one of your circles.");
-  if (!circleCanHost(circle)) throw new EventError("A group can't host an event — host it yourself, shown to the group.");
   if (!v.own.includes(circleId)) throw new EventError("You can only host on behalf of a circle you belong to.");
   const parents = new Map(rows.map((c) => [c.id, c.parentId]));
-  if (!isWithinCircle(circleId, audienceCircleId, (id) => parents.get(id))) {
-    throw new EventError("A circle can only host an event shown to itself or to a circle it's part of.");
+  if (!hostCanShowTo(circle, audienceCircleId, (id) => parents.get(id))) {
+    throw new EventError(isGroup(circle) ? "A group's events are shown only to the group." : "A circle can only host an event shown to itself or to a circle it's part of.");
   }
   const members = await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId));
-  return members.length;
+  return { size: members.length, group: isGroup(circle) };
 }
 
 function buildRoles(drafts: RoleDraft[], existing: Role[] = []): Role[] {
@@ -342,14 +373,17 @@ async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boole
    next few weeks (once it's live — a proposal's wait for its approval). Only
    the first date notifies anyone; the email says how it repeats. Returns
    every date created, soonest (the one asked for) first. */
-export async function createEvent(memberId: number, draft: EventDraft): Promise<Event[]> {
+export async function createEvent(memberId: number, draft: EventDraft): Promise<{ events: Event[]; proposalId?: string }> {
   const problem = validateEventDraft(draft, { creating: true });
   if (problem) throw new EventError(problem);
   const viewer = await viewerCircles(memberId);
-  const { isRoot, canHost } = await assertCanPost(viewer, draft.circleId);
-  const hostSize = draft.hostCircleId ? await assertCanHost(viewer, draft.hostCircleId, draft.circleId) : 0;
+  const { isRoot, canHoldMeetings } = await assertCanPost(viewer, draft.circleId);
+  const host = draft.hostCircleId ? await assertCanHost(viewer, draft.hostCircleId, draft.circleId) : null;
   if (draft.kind === "meeting" && isRoot) throw new EventError("A meeting needs a circle with its own members — pick a neighborhood or one of your circles.");
-  if (draft.kind === "meeting" && !canHost) throw new EventError("A group can't hold a meeting — post an ordinary event to it instead.");
+  if (draft.kind === "meeting" && !canHoldMeetings) throw new EventError("A group can't hold a meeting — post an ordinary event to it instead.");
+  // a group decides its events by consent, as a proposal to its members,
+  // rather than by majority vote (see lib/db/proposals.ts)
+  const consent = !!host?.group;
   // the Leader, Secretary or Facilitator of the circle that would vote on it —
   // a meeting's own circle, or the host circle — approves it by creating it:
   // a meeting is scheduled outright (and attended by RSVP), a circle-hosted
@@ -370,13 +404,18 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
     description: draft.kind === "meeting" ? "" : draft.description.trim(),
     roles: draft.roles ?? [],
   };
-  const proposed = !!draft.hostCircleId && !approvedByRole && majority(hostSize) > 1;
+  // a consent proposal always starts open, even in a group of one, which
+  // openEventProposal then passes at once
+  const proposed = !!host && !approvedByRole && (consent || majority(host.size) > 1);
   const first: Event = {
     ...newDate(template, draft.date, { opening: true, proposed }),
     ...(draft.kind === "meeting" ? { agenda: cleanAgenda(draft.agenda) } : {}),
+    // answered by consent, so no vote is cast
+    ...(consent ? { votes: [], consent: true } : {}),
   };
   const repeat = draft.repeat;
-  if (!repeat) return [await insertEvent(first, { notifyMembers: true })];
+  if (consent) return createConsentEvent(memberId, template, first, repeat);
+  if (!repeat) return { events: [await insertEvent(first, { notifyMembers: true })] };
   const seriesId = randomUUID();
   await db.transaction(async (tx) => {
     const [series] = await tx
@@ -395,7 +434,52 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
     await writeEvent(tx, { ...first, repeat: toRepeat(series) }, { notifyMembers: true });
     await extendSeries(tx, series);
   });
-  return loadSeries(seriesId);
+  return { events: await loadSeries(seriesId) };
+}
+
+/* A group-hosted event: saved unapproved, and proposed to the group for its
+   members' consent in the same transaction, so neither exists without the
+   other. The proposal's notices tell the group (not the event's own
+   "proposed" one); a series waits, like any circle-hosted one, for the
+   decision on its first date. */
+async function createConsentEvent(memberId: number, template: Template, first: Event, repeat: EventDraft["repeat"]): Promise<{ events: Event[]; proposalId: string }> {
+  const seriesId = repeat ? randomUUID() : null;
+  const proposalId = await db.transaction(async (tx) => {
+    let event = first;
+    if (repeat && seriesId) {
+      const [series] = await tx
+        .insert(eventSeries)
+        .values({ ...template, id: seriesId, frequency: repeat.frequency, startsOn: first.date, until: repeat.until ?? null, generatedThrough: first.date, approvedAt: null })
+        .returning();
+      if (!series) throw new EventError("Couldn't save that — try again.");
+      event = { ...first, repeat: toRepeat(series) };
+    }
+    await writeEvent(tx, event);
+    return openEventProposal(tx, memberId, event);
+  });
+  return { events: seriesId ? await loadSeries(seriesId) : [await loadFull(first.id)], proposalId };
+}
+
+/* A circle-hosted event's approval: it opens to its circle, the circle is
+   told (but `actorId`, whose action approved it), and for the first date of a
+   series the series is approved and its later dates added, already approved
+   and silent. Shared by the majority vote (setVote) and a passed consent
+   proposal (lib/db/proposals.ts); the caller holds the event's lock. */
+export async function approveHostedEvent(tx: Tx, id: string, actorId: number | null): Promise<void> {
+  const [row] = await tx.select().from(events).where(eq(events.id, id));
+  if (!row || row.approvedAt !== null || row.cancelledAt !== null) return;
+  await tx.update(events).set({ approvedAt: new Date() }).where(eq(events.id, id));
+  // approving is what makes it visible to its circle, so tell them — in this
+  // same transaction, so an approval can't happen without its emails
+  await enqueueProposalApprovalNotifications(tx, row, actorId);
+  if (row.seriesId !== null) {
+    const [series] = await tx
+      .update(eventSeries)
+      .set({ approvedAt: new Date() })
+      .where(and(eq(eventSeries.id, row.seriesId), isNull(eventSeries.approvedAt)))
+      .returning();
+    if (series) await extendSeries(tx, series);
+  }
 }
 
 // the built-in role a member holds in a circle, if any — the server's own read
@@ -502,7 +586,9 @@ async function loadSeries(seriesId: string): Promise<Event[]> {
 export async function updateEventDetails(memberId: number, id: string, details: EventDetails, scope: SeriesScope = "one"): Promise<Event[]> {
   const row = await loadVisible(memberId, id);
   assertNotCancelled(row);
-  if (row.organizerId !== memberId) throw new EventError("Only the person hosting this event can edit it.");
+  await assertCanManage(row, memberId, "edit");
+  // what's proposed is what's consented to, so it can't change while it's asked
+  if (await awaitingConsent(row)) throw new EventError("This event is waiting on its group's consent, so it can't be changed until that's decided. Cancel it and propose it again to change it.");
   // what happened is a record now, as it is for cancelling (see cancelEvent)
   if (isPastEvent(row)) throw new EventError("This event has already happened, so it can't be edited.");
   const kind = row.kind ?? "ordinary";
@@ -638,6 +724,7 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
   }
   const hostCircleId = row.hostCircleId;
   if (hostCircleId === null) throw new EventError("Only meetings and proposed events are voted on.");
+  if (await awaitingConsent(row)) throw new EventError("A group's events are decided by consent — answer its proposal instead.");
   await db.transaction(async (tx) => {
     // lock the event so two members' votes can't each miss the other's and
     // leave a majority unnoticed
@@ -650,22 +737,8 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
       tx.select().from(eventVotes).where(eq(eventVotes.eventId, id)),
       tx.select().from(circleMembers).where(eq(circleMembers.circleId, hostCircleId)),
     ]);
-    if (votes.length >= majority(members.length)) {
-      await tx.update(events).set({ approvedAt: new Date() }).where(eq(events.id, id));
-      // approving is what makes it visible to its circle, so tell them — in
-      // this same transaction, so an approval can't happen without its emails
-      await enqueueProposalApprovalNotifications(tx, locked, memberId);
-      // the first date of a series is the vote on the whole series: approving
-      // it adds the rest, approved and silent (this date's email covers them)
-      if (locked.seriesId !== null) {
-        const [series] = await tx
-          .update(eventSeries)
-          .set({ approvedAt: new Date() })
-          .where(and(eq(eventSeries.id, locked.seriesId), isNull(eventSeries.approvedAt)))
-          .returning();
-        if (series) await extendSeries(tx, series);
-      }
-    }
+    // the first date of a series is the vote on the whole series
+    if (votes.length >= majority(members.length)) await approveHostedEvent(tx, id, memberId);
   });
   return loadFull(id);
 }
@@ -717,11 +790,22 @@ export async function toggleRoleSlot(memberId: number, id: string, key: string):
    vote has only this date, so cancelling it always ends the series. Returns
    the ids deleted, and every remaining date of the series (or just this
    event) as it now stands. */
-export async function cancelEvent(memberId: number, id: string, scope: SeriesScope = "one"): Promise<{ deletedIds: string[]; events: Event[] }> {
+export async function cancelEvent(memberId: number, id: string, scope: SeriesScope = "one"): Promise<{ deletedIds: string[]; events: Event[]; withdrawnProposalId?: string }> {
   const row = await loadVisible(memberId, id);
-  if (row.organizerId !== memberId) throw new EventError("Only the person hosting this event can cancel it.");
+  await assertCanManage(row, memberId, "cancel");
   assertNotCancelled(row);
   if (isPastEvent(row)) throw new EventError("This event has already happened.");
+  // a group's event still waiting on its consent was never scheduled, so
+  // cancelling it withdraws the proposal and the event simply goes
+  if (await awaitingConsent(row)) {
+    const withdrawn = await db.transaction(async (tx) => {
+      await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
+      const proposalId = await withdrawEventProposal(tx, id);
+      await discardEvent(tx, id);
+      return proposalId;
+    });
+    return { deletedIds: [id], events: [], ...(withdrawn ? { withdrawnProposalId: withdrawn } : {}) };
+  }
   const seriesId = row.seriesId;
   const deletedIds = await db.transaction(async (tx) => {
     await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
@@ -770,20 +854,39 @@ async function goingTo(tx: Tx, id: string, organizerId: number): Promise<{ going
   return { going: [...new Set([...rsvpRows, ...slotRows].map((r) => r.memberId))].filter((m) => m !== organizerId), roleIds };
 }
 
+/* Delete an event outright, with everything hanging off it — and its series,
+   if it was the only date of a series still waiting on its decision (a
+   proposed one's first date is all there is until then). For one no one but its organizer was going to
+   (cancelOne), and for a group's proposed event that won't be held (an
+   objection, or a withdrawal: lib/db/proposals.ts). Its proposal is kept, its
+   event_id cleared by the foreign key. */
+export async function discardEvent(tx: Tx, id: string): Promise<void> {
+  const [row] = await tx.select({ seriesId: events.seriesId }).from(events).where(eq(events.id, id));
+  if (!row) return;
+  const roleIds = (await tx.select({ id: roles.id }).from(roles).where(eq(roles.eventId, id))).map((r) => r.id);
+  if (roleIds.length > 0) await tx.delete(roleMembers).where(inArray(roleMembers.roleId, roleIds));
+  await tx.delete(roles).where(eq(roles.eventId, id));
+  await tx.delete(eventVotes).where(eq(eventVotes.eventId, id));
+  await tx.delete(eventRsvps).where(eq(eventRsvps.eventId, id));
+  await tx.delete(eventNotifications).where(eq(eventNotifications.eventId, id));
+  await tx.delete(events).where(eq(events.id, id));
+  // only a series still waiting on its decision: a live one goes on adding
+  // dates even when the one date it has so far is cancelled
+  if (row.seriesId !== null) {
+    const [other] = await tx.select({ id: events.id }).from(events).where(eq(events.seriesId, row.seriesId)).limit(1);
+    if (!other) await tx.delete(eventSeries).where(and(eq(eventSeries.id, row.seriesId), isNull(eventSeries.approvedAt)));
+  }
+}
+
 /* cancelEvent's work on one event, whose row the caller has locked: deleted
    if no one but the organizer was going, otherwise marked cancelled — and
    either way anything unsent about it withdrawn. Returns who was going, for
    the caller to decide who's emailed. */
 async function cancelOne(tx: Tx, id: string, organizerId: number): Promise<{ deleted: boolean; going: number[] }> {
-  const { going, roleIds } = await goingTo(tx, id, organizerId);
+  const { going } = await goingTo(tx, id, organizerId);
   await withdrawEventNotifications(tx, id);
   if (going.length === 0) {
-    if (roleIds.length > 0) await tx.delete(roleMembers).where(inArray(roleMembers.roleId, roleIds));
-    await tx.delete(roles).where(eq(roles.eventId, id));
-    await tx.delete(eventVotes).where(eq(eventVotes.eventId, id));
-    await tx.delete(eventRsvps).where(eq(eventRsvps.eventId, id));
-    await tx.delete(eventNotifications).where(eq(eventNotifications.eventId, id));
-    await tx.delete(events).where(eq(events.id, id));
+    await discardEvent(tx, id);
     return { deleted: true, going };
   }
   await tx.update(events).set({ cancelledAt: new Date() }).where(eq(events.id, id));

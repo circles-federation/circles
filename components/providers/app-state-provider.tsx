@@ -58,7 +58,8 @@ export interface AppStateValue {
   profile: Profile;
   toggleRsvp(eventId: string): void;
   toggleRoleSlot(eventId: string, roleKey: string): void;
-  createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }>;
+  // proposalId: a group's event, proposed to it rather than created outright
+  createEvent(draft: EventDraft): Promise<{ ok: true; event: Event; proposalId?: string } | { ok: false; error: string }>;
   updateEventDetails(id: string, details: EventDetails, scope?: SeriesScope): Promise<MutationResult>;
   cancelEvent(id: string, scope?: SeriesScope): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }>;
   toggleVote(eventId: string): void;
@@ -331,13 +332,24 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // the server generates the id and decides the organizer (always the caller)
   // and who starts out attending/voting, so this waits for it and returns the
   // created event for the caller to navigate to
-  async function createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }> {
+  async function createEvent(draft: EventDraft): Promise<{ ok: true; event: Event; proposalId?: string } | { ok: false; error: string }> {
     const result = await dbCreateEvent(draft);
     if (!result.ok) return result;
     // the event, and for a repeating one its next few dates
-    const created = result.value;
+    const created = result.value.events;
     const ev = created[0];
     if (!ev) return { ok: false, error: "Something went wrong — try again." };
+    // a group's event is proposed to its members, not voted on; it's in no
+    // list until they consent, so the caller goes to its proposal
+    if ("state" in result.value && result.value.proposalId) {
+      adopt(result.value.state);
+      const group = circles.find((c) => c.id === ev.hostCircleId);
+      const scheduled = !ev.proposed;
+      showToast(scheduled
+        ? { tone: "success", title: "Event scheduled", message: `${ev.title} is on ${group?.name ?? "the group"}'s calendar.` }
+        : { tone: "success", title: "Event proposed", message: `It's scheduled once ${group?.name ?? "the group"}'s members consent, or in 3 days if no one objects.` });
+      return { ok: true, event: ev, proposalId: result.value.proposalId };
+    }
     setEvents((prev) => [...prev, ...created]);
     // the creator is attending; a proposer has cast the first vote
     setRsvpState((prev) => ({ ...prev, ...ownFlags(created, (e) => e.rsvps.includes(currentUserId)) }));
@@ -415,6 +427,12 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   async function cancelEvent(id: string, scope: SeriesScope = "one"): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }> {
     const result = await dbCancelEvent(id, scope).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
+    // a group's proposed event: withdrawn, with its proposal
+    if ("state" in result.value) {
+      adopt(result.value.state);
+      showToast({ tone: "success", title: "Proposal withdrawn", message: "The event won't be held, and its proposal is closed." });
+      return { ok: true, deleted: true };
+    }
     const { deletedIds, events: changed } = result.value;
     const gone = new Set(deletedIds);
     setEvents((prev) => mergeEvents(prev.filter((e) => !gone.has(e.id)), changed));
@@ -508,7 +526,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   async function respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult> {
     const result = await dbRespondToProposal(id, response, reason).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
-    takeProposal(result.value.proposal, result.value.circle);
+    // a group's event proposal may have approved or discarded its event: take it all
+    if ("state" in result.value) adopt(result.value.state);
+    else takeProposal(result.value.proposal, result.value.circle);
     return { ok: true };
   }
 

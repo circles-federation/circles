@@ -524,6 +524,10 @@ export const circleProposals = pgTable(
     id: text("id").primaryKey(),
     circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
     proposerId: integer("proposer_id").notNull().references(() => members.id),
+    // set for a proposal to hold an event the circle hosts (a group's: see
+    // lib/db/proposals.ts), rather than to change the circle. Kept when the
+    // event goes (an objection or a withdrawal deletes it), so the record stays.
+    eventId: text("event_id").references((): AnyPgColumn => events.id, { onDelete: "set null" }),
     // what it would change (ProposalChanges), and how that read when proposed
     changes: jsonb("changes").$type<ProposalChanges>().notNull(),
     lines: jsonb("lines").$type<ProposalLine[]>().notNull(),
@@ -534,7 +538,8 @@ export const circleProposals = pgTable(
   },
   (t) => [
     index("circle_proposals_circle_idx").on(t.circleId),
-    uniqueIndex("circle_proposals_one_open").on(t.circleId).where(sql`${t.status} = 'open'`),
+    // one open change to a circle at a time; any number of events can be open
+    uniqueIndex("circle_proposals_one_open").on(t.circleId).where(sql`${t.status} = 'open' and ${t.eventId} is null`),
     index("circle_proposals_open_idx").on(t.closesAt).where(sql`${t.status} = 'open'`),
   ]
 );

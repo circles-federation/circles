@@ -281,6 +281,13 @@
       "when": 1791807195436,
       "tag": "0039_member_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791901120972,
+      "tag": "0040_event_consent_proposals",
+      "breakpoints": true
     }
   ]
 }

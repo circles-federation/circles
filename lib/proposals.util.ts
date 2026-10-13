@@ -1,6 +1,8 @@
 import { BUILTIN_CIRCLE_ROLES, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
 import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, parentCircleOptions } from "./circles.util";
-import type { Circle, CircleProposal, CircleType, ConsentResponse, ProposalChanges, ProposalLine, ProposalResponse } from "./types";
+import { fmtEventWhen } from "./format.util";
+import { repeatSummary } from "./recurrence.util";
+import type { Circle, CircleProposal, CircleType, ConsentResponse, Event, ProposalChanges, ProposalLine, ProposalResponse } from "./types";
 
 /* Consent, as Sociocracy for All describes it: a decision is made unless
    someone has a reasoned objection to it. Some changes to a circle are its
@@ -150,9 +152,35 @@ export function describeChanges(circle: Circle, changes: ProposalChanges, circle
   return lines;
 }
 
-// a short name for what it proposes: "Rename to Ona Community Garden", or
-// "Change the name, type and roles"
-export function proposalTitle(p: Pick<CircleProposal, "changes">): string {
+/* A group's event, proposed to its members for consent rather than put to a
+   majority vote (lib/db/proposals.ts's openEventProposal): its proposal reads
+   as the event, with nothing before, since it's new. Worked out when it's
+   proposed, like a change's lines, and kept when the event goes, so an
+   objected or withdrawn one still says what it was. */
+// the first line, its title — also how an event proposal is told apart, since
+// no change to a circle has a line called that
+const EVENT_LINE = "Title";
+export function describeEventProposal(e: Pick<Event, "title" | "date" | "start" | "end" | "location" | "description" | "repeat">, slots: string[]): ProposalLine[] {
+  return [
+    { label: EVENT_LINE, before: "", after: e.title },
+    { label: "When", before: "", after: fmtEventWhen(e) },
+    ...(e.repeat ? [{ label: "Repeats", before: "", after: repeatSummary(e.repeat) }] : []),
+    { label: "Where", before: "", after: e.location },
+    ...(slots.length > 0 ? [{ label: "Roles", before: "", after: slots.join(", ") }] : []),
+    ...(e.description.trim() ? [{ label: "Details", before: "", after: e.description.trim() }] : []),
+  ];
+}
+
+// it proposes an event rather than a change to its circle — told by its lines,
+// since its event_id goes if the event does
+export function isEventProposal(p: Pick<CircleProposal, "changes" | "lines">): boolean {
+  return !hasChanges(p.changes) && p.lines[0]?.label === EVENT_LINE;
+}
+
+// a short name for what it proposes: "Rename to Ona Community Garden",
+// "Change the name, type and roles", or "Schedule Saturday coffee"
+export function proposalTitle(p: Pick<CircleProposal, "changes" | "lines">): string {
+  if (isEventProposal(p)) return `Schedule ${p.lines[0]!.after}`;
   const c = p.changes;
   const parts = [c.name !== undefined && "name", c.tagline !== undefined && "tagline", c.type !== undefined && "type", c.parentId !== undefined && "parent circle", c.domain !== undefined && "domain", c.aims !== undefined && "aims", c.roles !== undefined && "roles"].filter(
     (x): x is string => !!x

@@ -6,7 +6,7 @@ import { Button, Eyebrow } from "@/components/shared";
 import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
 import { hasEnded, parseDay } from "@/lib/format.util";
-import { isVoting } from "@/lib/governance.util";
+import { isVoting, awaitingConsent } from "@/lib/governance.util";
 import { useClock } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
@@ -27,7 +27,9 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
   const now = useClock();
   const { upcoming, past } = useMemo(() => {
     const up: Event[] = [], pa: Event[] = [];
-    events.forEach((e) => (hasEnded(e, now) ? pa : up).push(e));
+    // a group's event isn't listed until its members have consented to it:
+    // until then it's only its proposal (see awaitingConsent)
+    events.filter((e) => !awaitingConsent(e)).forEach((e) => (hasEnded(e, now) ? pa : up).push(e));
     up.sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime()); // soonest first
     pa.sort((a, b) => parseDay(b.date).getTime() - parseDay(a.date).getTime()); // most recent first
     return { upcoming: up, past: pa };

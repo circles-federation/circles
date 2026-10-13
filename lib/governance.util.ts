@@ -53,8 +53,14 @@ export function isProposal(e: Event): boolean {
 // banner and the governance-style row. An approved circle-hosted event is
 // settled and reads as an ordinary one again.
 export function isVoting(e: Event): boolean {
-  // a cancelled one is waiting on nothing
-  return !e.cancelled && ((isMeeting(e) && !isScheduledMeeting(e)) || isProposal(e));
+  // a cancelled one is waiting on nothing, and a group's is answered by
+  // consent, not a vote (see awaitingConsent)
+  return !e.cancelled && ((isMeeting(e) && !isScheduledMeeting(e)) || (isProposal(e) && !e.consent));
+}
+// a group's event still waiting on its members' consent: it's in no list, and
+// its page points to its proposal (lib/db/proposals.ts)
+export function awaitingConsent(e: Event): boolean {
+  return !!e.consent && !!e.proposed && !e.cancelled;
 }
 // whether the event has been through (or is in) a vote at all — for filters
 export function isGoverned(e: Event): boolean {
@@ -89,6 +95,13 @@ export function isApproved(e: Event, byId: CirclesById): boolean {
 // the person who created it (for a circle-hosted event, who proposed it).
 export function isEventOrganizer(e: Event, member: Member | null | undefined): boolean {
   return !!member && e.organizerId === member.id;
+}
+// whether a member may edit or cancel it: its organizer, and for one a circle
+// hosts, any of that circle's members — lib/db/events.ts's assertCanManage
+export function canManageEvent(e: Event, member: Member | null | undefined, byId: CirclesById): boolean {
+  if (!member) return false;
+  if (e.organizerId === member.id) return true;
+  return !!e.hostCircleId && !!byId[e.hostCircleId]?.members.includes(member.id);
 }
 // what kind of thing this is, for an eyebrow or badge
 export function eventTypeLabel(e: Event): string {
