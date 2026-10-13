@@ -93,7 +93,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
               {p.lines.map((l) => (
                 <div key={l.label} className="border-b border-faint py-3 last:border-b-ink">
                   <Eyebrow className="text-soft">{l.label}</Eyebrow>
-                  {l.after && <div className="mt-1 font-serif text-lg leading-snug">{l.after}</div>}
+                  {l.after && <div className="mt-1 font-serif text-lg leading-snug whitespace-pre-line">{l.after}</div>}
                   {l.before && <div className="mt-0.5 font-serif text-base leading-snug text-soft line-through">{l.before}</div>}
                 </div>
               ))}

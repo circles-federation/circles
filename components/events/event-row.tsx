@@ -34,7 +34,7 @@ const ROW_ACCENT: Record<RowAccent, string> = {
   leaf: "border-l-leaf",
 };
 
-/* Shared shell for one event-list row (see OrdinaryRow, GovernanceRow): a
+/* Shared shell for one event-list row (see OrdinaryRow): a
    DateTile, an eyebrow/tag row, a title, a meta line, and a right-aligned
    status block, wrapped in a bordered row that opens the event on click.
    Each caller supplies its own tag/status content and title/meta text —

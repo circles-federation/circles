@@ -288,6 +288,13 @@
       "when": 1791901120972,
       "tag": "0040_event_consent_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791905151490,
+      "tag": "0041_meetings_by_consent",
+      "breakpoints": true
     }
   ]
 }

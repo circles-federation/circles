@@ -278,7 +278,9 @@ export const events = pgTable(
     index("events_date_idx").on(t.date),
     // an event with no host circle is hosted by its organizer and is live
     // from the start; only a circle-hosted one can be awaiting approval
-    check("events_live_or_proposed", sql`${t.hostCircleId} is not null or ${t.approvedAt} is not null`),
+    // only a meeting or a circle-hosted event waits on its circle's consent;
+    // one a person hosts is live from the start
+    check("events_live_or_proposed", sql`${t.hostCircleId} is not null or ${t.kind} = 'meeting' or ${t.approvedAt} is not null`),
   ]
 );
 

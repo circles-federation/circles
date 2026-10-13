@@ -142,16 +142,6 @@ export async function enqueueProposalApprovalNotifications(tx: Tx, event: Pick<E
   return queueFor(tx, event.id, "approved", event.circleId, actorId, true);
 }
 
-/* A meeting just reached its vote threshold: tell its circle it's approved.
-   Called only by the vote that tips it over, and `actorId` (that voter)
-   already knows. A meeting's approval is recomputed from its live votes
-   rather than latched, so if votes are withdrawn and it's approved again the
-   same member isn't told twice (one row per member and kind). */
-export async function enqueueMeetingApprovalNotifications(tx: Tx, meeting: Pick<Event, "id" | "circleId" | "date">, actorId: number): Promise<number> {
-  if (isPastEvent(meeting)) return 0;
-  return queueFor(tx, meeting.id, "approved", meeting.circleId, actorId);
-}
-
 /* An event's organizer cancelled it: anything not yet sent about it (its
    "new" email, a digest line, an approval) is moot, so it's dropped. Runs in
    the cancelling transaction; sent rows are kept as the record they are. */
@@ -224,16 +214,13 @@ export async function enqueueReminders(now: Date = new Date()): Promise<number> 
   const due = await db
     .select({
       id: events.id,
-      kind: events.kind,
-      approvedByRole: events.approvedByRole,
-      votes: sql<number>`(select count(*)::int from event_votes where event_id = ${events.id})`,
-      circleSize: sql<number>`(select count(*)::int from circle_members where circle_id = ${events.circleId})`,
     })
     .from(events)
     .where(
       and(
         isNull(events.remindedAt),
         isNull(events.cancelledAt),
+        // a meeting or circle-hosted event its circle hasn't consented to yet isn't reminded
         isNotNull(events.approvedAt),
         // the dates it can fall on, so the date index narrows this to a day
         // or two before the start time (which no index covers) is compared
@@ -243,9 +230,8 @@ export async function enqueueReminders(now: Date = new Date()): Promise<number> 
         sql`${startsAt} <= ${wallClock(later)}::timestamp`
       )
     );
-  const ready = due.filter((e) => e.kind !== "meeting" || e.approvedByRole !== null || e.votes >= majority(e.circleSize));
   let queued = 0;
-  for (const { id } of ready) {
+  for (const { id } of due) {
     queued += await db.transaction(async (tx) => {
       const [row] = await tx.select({ remindedAt: events.remindedAt }).from(events).where(eq(events.id, id)).for("update", { skipLocked: true });
       if (!row || row.remindedAt !== null) return 0;

@@ -4,7 +4,7 @@ import { VideoCameraIcon } from "@heroicons/react/24/outline";
 import { ButtonLink, Chip, Eyebrow } from "@/components/shared";
 import { meetingLink } from "@/lib/events.util";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
-import { isApproved, isVoting } from "@/lib/governance.util";
+import { awaitingConsent } from "@/lib/governance.util";
 import { endedBefore, repeatSummary } from "@/lib/recurrence.util";
 import { useCirclesById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
@@ -19,18 +19,15 @@ interface EventMastheadProps {
 export function EventMasthead({ event: e }: EventMastheadProps) {
   const byId = useCirclesById();
   const circle = byId[e.circleId];
-  // a meeting, or a circle-hosted event still awaiting its vote — an approved
-  // one is settled and reads like any other event
-  const gov = isVoting(e);
-  const approved = isApproved(e, byId);
-  const govAccent = approved ? "leaf" : "flame";
+  // a meeting or circle-hosted event still awaiting its circle's consent — a
+  // decided one is settled and reads like any other event
+  const gov = awaitingConsent(e);
+  const govAccent = "flame";
   const past = isPastEvent(e);
-  const topBorderClass = gov
-    ? (past && !approved ? "border-t-soft" : (approved ? "border-t-leaf" : "border-t-flame"))
-    : (past ? "border-t-soft" : "border-t-ink");
+  const topBorderClass = past ? "border-t-soft" : gov ? "border-t-flame" : "border-t-ink";
 
   const link = meetingLink(e.location);
-  const govLabel = gov && <span className={approved ? "text-leaf" : "text-flame"}>{approved ? "Approved" : "Proposed"}</span>;
+  const govLabel = gov && <span className="text-flame">Proposed</span>;
   const time = `${fmtTime(e.start)}–${fmtTime(e.end)}`;
   // how it repeats, unless its series ended before this date (it was
   // cancelled along with the rest)

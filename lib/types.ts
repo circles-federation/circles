@@ -163,12 +163,9 @@ export interface Event {
   kind?: EventKindKey;
   circleId: string;
   hostCircleId?: string;
-  // a circle-hosted event still awaiting its host circle's approval
+  // a meeting or circle-hosted event still awaiting its circle's consent (see
+  // lib/db/proposals.ts): in no list, only its proposal and its own page
   proposed?: boolean;
-  // hosted by a group, so decided by its members' consent (a proposal: see
-  // lib/db/proposals.ts) rather than a majority vote; while it's undecided it's
-  // in no list, only its proposal and its own page
-  consent?: true;
   // the role (Leader, Secretary or Facilitator) its organizer held in the circle
   // that would have voted on it — a meeting's own, or the host circle — which
   // approved it without a vote. A meeting like that is attended by RSVP.

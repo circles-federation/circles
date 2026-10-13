@@ -3,10 +3,9 @@
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow } from "@/components/shared";
-import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
 import { hasEnded, parseDay } from "@/lib/format.util";
-import { isVoting, awaitingConsent } from "@/lib/governance.util";
+import { awaitingConsent } from "@/lib/governance.util";
 import { useClock } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
@@ -27,8 +26,8 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
   const now = useClock();
   const { upcoming, past } = useMemo(() => {
     const up: Event[] = [], pa: Event[] = [];
-    // a group's event isn't listed until its members have consented to it:
-    // until then it's only its proposal (see awaitingConsent)
+    // a meeting or circle-hosted event isn't listed until its circle has
+    // consented to it: until then it's only its proposal (see awaitingConsent)
     events.filter((e) => !awaitingConsent(e)).forEach((e) => (hasEnded(e, now) ? pa : up).push(e));
     up.sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime()); // soonest first
     pa.sort((a, b) => parseDay(b.date).getTime() - parseDay(a.date).getTime()); // most recent first
@@ -74,9 +73,7 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
                 <span className="h-px flex-1 bg-faint" />
               </div>
             )}
-            {isVoting(e)
-              ? <GovernanceRow e={e} onOpenEvent={onOpenEvent} />
-              : <OrdinaryRow e={e} onOpenEvent={onOpenEvent} />}
+            <OrdinaryRow e={e} onOpenEvent={onOpenEvent} />
           </Fragment>
         ))}
       </div>

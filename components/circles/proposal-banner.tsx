@@ -18,7 +18,7 @@ interface ProposalBannerProps {
    when, whether it's waiting on the viewer's answer, and what it proposes in
    a few words (a circle can have several open: a change, and events) — the
    detail is on the proposal's own page. Orange, the app's color for something waiting on its
-   members' decision (as a vote to approve is). Opens the proposal. On its
+   members' decision. Opens the proposal. On its
    circle's page, and on Home for each one waiting on you. */
 export function ProposalBanner({ proposal: p, memberId, circleName, className }: ProposalBannerProps) {
   const waiting = awaitingResponse(p, memberId);

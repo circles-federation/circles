@@ -1,5 +1,6 @@
 import { BUILTIN_CIRCLE_ROLES, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
 import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, parentCircleOptions } from "./circles.util";
+import { AGENDA_CATEGORY } from "./agenda.util";
 import { fmtEventWhen } from "./format.util";
 import { repeatSummary } from "./recurrence.util";
 import type { Circle, CircleProposal, CircleType, ConsentResponse, Event, ProposalChanges, ProposalLine, ProposalResponse } from "./types";
@@ -160,13 +161,17 @@ export function describeChanges(circle: Circle, changes: ProposalChanges, circle
 // the first line, its title — also how an event proposal is told apart, since
 // no change to a circle has a line called that
 const EVENT_LINE = "Title";
-export function describeEventProposal(e: Pick<Event, "title" | "date" | "start" | "end" | "location" | "description" | "repeat">, slots: string[]): ProposalLine[] {
+export function describeEventProposal(e: Pick<Event, "title" | "kind" | "date" | "start" | "end" | "location" | "description" | "repeat" | "agenda">, slots: string[]): ProposalLine[] {
+  // a meeting has its agenda where an event has its details
+  const agenda = (e.agenda ?? []).map((a, i) => `${i + 1}. ${AGENDA_CATEGORY[a.category].label}: ${a.title}`).join("\n");
   return [
     { label: EVENT_LINE, before: "", after: e.title },
+    ...(e.kind === "meeting" ? [{ label: "Kind", before: "", after: "Meeting" }] : []),
     { label: "When", before: "", after: fmtEventWhen(e) },
     ...(e.repeat ? [{ label: "Repeats", before: "", after: repeatSummary(e.repeat) }] : []),
     { label: "Where", before: "", after: e.location },
     ...(slots.length > 0 ? [{ label: "Roles", before: "", after: slots.join(", ") }] : []),
+    ...(agenda ? [{ label: "Agenda", before: "", after: agenda }] : []),
     ...(e.description.trim() ? [{ label: "Details", before: "", after: e.description.trim() }] : []),
   ];
 }

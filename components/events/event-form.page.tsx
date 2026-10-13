@@ -13,7 +13,7 @@ import { audienceLabel, circleCanHoldMeetings, circlesByKind, circlesForAudience
 import { approvingRole } from "@/lib/circle-roles.util";
 import { attendeeIds, defaultEventTimes, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
-import { EVENT_KINDS, isProposal, majority } from "@/lib/governance.util";
+import { EVENT_KINDS, isProposal } from "@/lib/governance.util";
 import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, localDay, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
 import type { Circle, Event, EventKindKey, Profile, RepeatFrequency } from "@/lib/types";
 
@@ -73,7 +73,7 @@ type EventFormPageProps = CreateEventFormPageProps | EditEventFormPageProps;
    modes. The circle is likewise locked once an event exists — moving it would
    silently change who can see it, and likewise the host. "Hosted by" is either
    the person filling this in or one of their circles: a circle-hosted event is
-   a proposal its members vote on before it goes live, so the form flips to the
+   a proposal its members consent to before it goes live, so the form flips to the
    orange "propose" treatment the meeting tab already has. */
 export function EventFormPage(props: EventFormPageProps) {
   const { profile, circles, onCancel, mode } = props;
@@ -149,12 +149,13 @@ export function EventFormPage(props: EventFormPageProps) {
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   // which dates cancelling applies to, while its confirmation is open
+  const [confirmingProposal, setConfirmingProposal] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState<SeriesScope | null>(null);
   // "" doesn't repeat; the last date is optional. Chosen only when creating.
   const [repeat, setRepeat] = useState<RepeatFrequency | "">("");
   const [until, setUntil] = useState("");
   // editing a date of a live series: that date alone, or every date from it on.
-  // A circle-hosted series still up for its vote has just its first date, so
+  // A circle-hosted series still waiting on its consent has just its first date, so
   // there's nothing to choose — an edit to it is to the series.
   const series = event?.repeat;
   const seriesLive = !!event && !!series && !isProposal(event);
@@ -164,16 +165,16 @@ export function EventFormPage(props: EventFormPageProps) {
   const gov = meta.governance;
   // a circle can host an ordinary event (a meeting is always proposed by the person)
   const hostCircle = !gov ? byId[hostCircleId] : undefined;
-  // the Leader, Secretary or Facilitator of the circle that would vote — a
-  // meeting's own, or the host circle — approves it without a vote (the server
-  // decides for real; an edit keeps what it decided then)
-  const votingCircle = gov ? byId[circleId] : hostCircle;
-  const approverRole = event ? (event.approvedByRole ?? null) : votingCircle ? approvingRole(votingCircle, profile.id) : null;
-  const proposing = !approverRole && (gov || !!hostCircle);
+  // anyone holding a role in a meeting's circle schedules it directly (the
+  // server decides for real; an edit keeps what it decided then); every other
+  // meeting, and every event a circle hosts, is proposed to it for consent
+  const meetingCircle = gov ? byId[circleId] : undefined;
+  const approverRole = event ? (event.approvedByRole ?? null) : meetingCircle ? approvingRole(meetingCircle, profile.id) : null;
+  const proposing = (gov && !approverRole) || !!hostCircle;
   const accentKey = proposing ? "flame" : "ink";
   const accent = ACCENT[accentKey];
 
-  // a meeting needs a roster to compute its majority, and the city's is
+  // a meeting needs a roster of members to consent, and the city's is
   // implicit — so meetings can't be held in it; nor in a group, which can't
   // hold one (see circleCanHoldMeetings)
   const canHoldMeeting = (c: Circle) => !isRootCircle(c) && circleCanHoldMeetings(c);
@@ -182,8 +183,6 @@ export function EventFormPage(props: EventFormPageProps) {
     : postable.filter((c) => !gov || canHoldMeeting(c));
   const circle = byId[circleId];
   const circleGroups = circlesByKind(circleChoices);
-  const meetingThresholdPreview = circle ? majority(circle.members.length) : 0;
-  const hostThresholdPreview = hostCircle ? majority(hostCircle.members.length) : 0;
   // a circle can only host if it has members of its own — the city's roster is
   // implicit, so it isn't offered — and only an event shown to itself or to a
   // circle it's part of, so the options follow the Circle chosen above
@@ -336,12 +335,16 @@ export function EventFormPage(props: EventFormPageProps) {
   const cancelLabel = (s: SeriesScope) =>
     s === "upcoming" ? "Cancel this and later dates" : `${othersGoing > 0 ? "Cancel" : "Delete"} ${seriesLive ? "this date" : noun}`;
 
-  const submitLabel = mode === "edit" ? "Save changes" : (gov ? (approverRole ? "Schedule meeting" : "Propose meeting") : hostCircle && !approverRole ? "Propose event" : "Create event");
+  const submitLabel = mode === "edit" ? "Save changes" : (gov ? (approverRole ? "Schedule meeting" : "Propose meeting") : hostCircle ? "Propose event" : "Create event");
   useTopBarAction(
     view !== "form"
       ? { label: "Done", icon: CheckIcon, onAction: closeView, variant: "primary" }
-      : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" }
+      : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: proposing && mode === "create" ? () => setConfirmingProposal(true) : submit, disabled: !canSubmit, variant: "primary" }
   );
+  // proposing sends it to the deciding circle's members at once, so it's
+  // asked first, saying who'll be asked and how it's decided
+  const decidingCircle = hostCircle ?? meetingCircle;
+  const deciders = decidingCircle?.members.filter((m) => m !== profile.id).length ?? 0;
 
   // The error sits at the foot of the form, and on mobile the submit that
   // caused it is the top bar's check, so it's brought into view — on every
@@ -440,12 +443,12 @@ export function EventFormPage(props: EventFormPageProps) {
           {circleSelect}
           {circle && approverRole && (
             <p className="mt-3 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-[#222]">
-              As {circle.name}&apos;s <strong>{approverRole}</strong>, you schedule it directly — it doesn&apos;t need a vote, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
+              As {circle.name}&apos;s <strong>{approverRole}</strong>, you schedule it directly, without asking for consent, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
             </p>
           )}
           {circle && !approverRole && (
             <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
-              <strong>{meetingThresholdPreview} votes</strong> from {circle.type === "neighborhood" ? "residents" : "members"} of {circle.name} approve it. Your proposal counts as the first.
+              This is a proposal to {circle.name}. It&apos;s scheduled once its {circle.type === "neighborhood" ? "residents" : "members"} consent, or after 3 days if no one objects. Until then it&apos;s in no list, and no one can RSVP.
             </p>
           )}
           {mode === "edit" && <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">The circle can&apos;t be changed once a meeting exists.</p>}
@@ -495,7 +498,7 @@ export function EventFormPage(props: EventFormPageProps) {
             </div>
           </div>
 
-          {gov && circleId && <MeetingAvailability circleId={circleId} date={date} start={start} end={end} needed={proposing ? meetingThresholdPreview : undefined} />}
+          {gov && circleId && <MeetingAvailability circleId={circleId} date={date} start={start} end={end} />}
 
           {mode === "create" ? (!gov && (
             <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
@@ -517,8 +520,8 @@ export function EventFormPage(props: EventFormPageProps) {
               {repeat && (
                 <p className="font-serif text-sm leading-[1.45] text-soft min-[720px]:col-span-3">
                   Each date is its own event, with its own {hasRoles ? "roles" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
-                  {hostCircle && !approverRole
-                    ? `${hostCircle.name} votes once, on the first date: approving it approves them all.`
+                  {hostCircle
+                    ? `${hostCircle.name} decides once, on the first date: consenting to it schedules them all.`
                     : "Members are told once, when it's created."}
                 </p>
               )}
@@ -541,7 +544,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 </>
               ) : (
                 <p className="font-serif text-sm leading-[1.45] text-soft">
-                  While it&apos;s waiting on its vote, changes apply to the whole series.
+                  While it&apos;s waiting on its circle&apos;s consent, changes apply to the whole series.
                 </p>
               )}
             </div>
@@ -618,11 +621,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
                   {mode === "edit"
                     ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
-                    : isGroup(hostCircle)
-                    ? `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects. Until then it's in no list, and no one can RSVP. Any member can edit or cancel it once it's scheduled.`
-                    : approverRole
-                    ? `As ${hostCircle.name}'s ${approverRole}, you approve it yourself, with no vote. It opens to ${audienceLabel(circle)} as soon as you create it.`
-                    : `This is a proposal. It needs ${hostThresholdPreview} approving votes from ${hostCircle.type === "neighborhood" ? "residents" : "members"} of ${hostCircle.name}, and yours counts as the first. Until then only they can see it; once approved it opens to ${audienceLabel(circle)}.`}
+                    : `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects; until then only they can see it, and no one can RSVP. Once it's scheduled it opens to ${isGroup(hostCircle) ? "the group" : audienceLabel(circle)}, and any member of ${hostCircle.name} can edit or cancel it.`}
                 </p>
               )}
             </div>
@@ -675,6 +674,22 @@ export function EventFormPage(props: EventFormPageProps) {
           cancelLabel="Keep it"
           onConfirm={() => cancelTheEvent(confirmingCancel)}
           onCancel={() => setConfirmingCancel(null)}
+        />
+      )}
+
+      {confirmingProposal && decidingCircle && (
+        <ConfirmModal
+          title={`Propose this ${noun}?`}
+          message={deciders === 0
+            ? `You're ${decidingCircle.name}'s only member, so it'll be scheduled straight away.`
+            : hostCircle
+              ? `It's hosted by ${decidingCircle.name}, so it needs the consent of its members.`
+              : `It's ${decidingCircle.name}'s meeting, so it needs the consent of its members.`}
+          confirmLabel={`Propose ${noun}`}
+          cancelLabel="Not yet"
+          tone="flame"
+          onConfirm={() => { setConfirmingProposal(false); void submit(); }}
+          onCancel={() => setConfirmingProposal(false)}
         />
       )}
 

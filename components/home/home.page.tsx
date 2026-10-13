@@ -38,6 +38,9 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   const { pendingApplications, invitations, proposals } = useAppState();
   // proposals in my circles still waiting on my answer, soonest to close first
   const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
+  // the ones I proposed, still open: nothing for me to answer, but the way back
+  // to one wherever its circle is (an undecided meeting is in no list)
+  const mineOpen = proposals.filter((p) => p.status === "open" && p.proposerId === profile.id).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
   const memberById = useMemberById();
   // invitations to join a circle, sent to me
   const myInvitations = invitations.filter((i) => i.memberId === profile.id);
@@ -142,6 +145,19 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
                   since these can come from any of them */}
               <div className="flex flex-col gap-3">
                 {awaitingMe.map((p) => (
+                  <ProposalBanner key={p.id} proposal={p} memberId={profile.id} circleName={byId[p.circleId]?.name} />
+                ))}
+              </div>
+            </EyebrowGroup>
+          </Section>
+        )}
+
+        {mineOpen.length > 0 && (
+          <Section>
+            {/* no attention dot: these wait on others, not on me */}
+            <EyebrowGroup label="Your proposals">
+              <div className="flex flex-col gap-3">
+                {mineOpen.map((p) => (
                   <ProposalBanner key={p.id} proposal={p} memberId={profile.id} circleName={byId[p.circleId]?.name} />
                 ))}
               </div>

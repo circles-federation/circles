@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { getCircleById, getCirclesForMember } from "./circles";
 import { writeCircleRoles } from "./circle-roles";
 import { UserFacingError } from "./errors";
-import { approveHostedEvent, discardEvent } from "./events";
+import { approveHostedEvent, discardEvent, getEvent } from "./events";
 import { enqueueProposalNotifications } from "./notifications";
-import { circleMembers, circleProposals, circles, members, proposalResponses, roles as eventRoles } from "./schema";
+import { circleMembers, circleProposals, circles, eventVotes, events, members, proposalResponses, roles as eventRoles } from "./schema";
 import { groupBy } from "./util";
 import {
   OBJECTION_REASON_MAX,
@@ -19,6 +19,8 @@ import {
   missingCircleBasics,
   validateChanges,
 } from "@/lib/proposals.util";
+import { majority } from "@/lib/governance.util";
+import { localDay } from "@/lib/recurrence.util";
 import type { Circle, CircleProposal, ConsentResponse, Event, ProposalChanges, ProposalResponse } from "@/lib/types";
 
 export class ProposalError extends UserFacingError {}
@@ -121,25 +123,75 @@ async function pass(tx: Tx, proposal: ProposalRow, actorId: number | null): Prom
   await enqueueProposalNotifications(tx, proposal.id, "passed", tell);
 }
 
-/* Propose holding an event the circle hosts (a group's: createEvent in
+/* Propose holding a meeting, or an event the circle hosts (createEvent in
    lib/db/events.ts), in the transaction that creates it, which hasn't been
    approved. Like any proposal its proposer consents by proposing, the rest of
    the circle is asked, and a circle of one decides it at once. Any number can
    be open at once, alongside a change to the circle. Returns its id. */
-export async function openEventProposal(tx: Tx, proposerId: number, event: Event): Promise<string> {
-  const circleId = event.hostCircleId;
-  if (!circleId) throw new ProposalError("Only an event a circle hosts is proposed to it.");
+export async function openEventProposal(tx: Tx, proposerId: number, event: Event, alsoConsented: number[] = []): Promise<string> {
+  // the circle that decides it: its host, or a meeting's own circle
+  const circleId = event.hostCircleId ?? (event.kind === "meeting" ? event.circleId : null);
+  if (!circleId) throw new ProposalError("Only a meeting, or an event a circle hosts, is proposed to it.");
   const slots = (await tx.select({ label: eventRoles.label }).from(eventRoles).where(eq(eventRoles.eventId, event.id))).map((r) => r.label);
   const id = randomUUID();
   const [row] = await tx
     .insert(circleProposals)
     .values({ id, circleId, proposerId, eventId: event.id, changes: {}, lines: describeEventProposal(event, slots), closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS) })
     .returning();
-  await tx.insert(proposalResponses).values({ proposalId: id, memberId: proposerId, response: "like" });
   const memberIds = await memberIdsOf(tx, circleId);
-  if (everyoneConsented({ responses: [{ memberId: proposerId, response: "like", respondedAt: "" }] }, memberIds)) await pass(tx, row!, proposerId);
-  else await enqueueProposalNotifications(tx, id, "opened", memberIds.filter((m) => m !== proposerId));
+  // the proposer, and anyone else who has already said yes (an old vote, when
+  // an undecided one moved to consent: scripts/convert-to-consent.ts) — still
+  // a member, so still theirs to answer
+  const consented = [...new Set([proposerId, ...alsoConsented])].filter((m) => m === proposerId || memberIds.includes(m));
+  await tx.insert(proposalResponses).values(consented.map((memberId) => ({ proposalId: id, memberId, response: "like" as const })));
+  const responses = consented.map((memberId) => ({ memberId, response: "like" as const, respondedAt: "" }));
+  if (everyoneConsented({ responses }, memberIds)) await pass(tx, row!, proposerId);
+  else await enqueueProposalNotifications(tx, id, "opened", memberIds.filter((m) => !consented.includes(m)));
   return id;
+}
+
+/* Move every upcoming meeting and circle-hosted event that's still waiting
+   on a majority vote to consent: each becomes an open consent proposal by its
+   organizer, the votes already cast counted as consents, so it's scheduled at
+   once if they're everyone, and otherwise asks only those who haven't said
+   yes. A meeting that already had its majority stays scheduled. Past ones are
+   left as they were; one that already has a proposal is skipped, so this can
+   be run again safely. Returns how many it converted, and how many of those
+   were scheduled at once. Run once, by scripts/convert-to-consent.ts. */
+export async function convertMajorityToConsent(): Promise<{ converted: number; scheduled: number }> {
+  const today = localDay(new Date());
+  const rows = await db
+    .select({ id: events.id, kind: events.kind, circleId: events.circleId, hostCircleId: events.hostCircleId, approvedAt: events.approvedAt, approvedByRole: events.approvedByRole, organizerId: events.organizerId })
+    .from(events)
+    .where(and(isNull(events.cancelledAt), gte(events.date, today), or(and(isNull(events.approvedAt), sql`${events.hostCircleId} is not null`), eq(events.kind, "meeting"))));
+  let converted = 0, scheduled = 0;
+  for (const r of rows) {
+    const did = await db.transaction(async (tx) => {
+      await tx.select({ id: events.id }).from(events).where(eq(events.id, r.id)).for("update");
+      const [existing] = await tx.select({ id: circleProposals.id }).from(circleProposals).where(eq(circleProposals.eventId, r.id)).limit(1);
+      if (existing) return null;
+      const deciding = r.hostCircleId ?? r.circleId;
+      const [memberIds, voters] = await Promise.all([
+        memberIdsOf(tx, deciding),
+        tx.select({ memberId: eventVotes.memberId }).from(eventVotes).where(eq(eventVotes.eventId, r.id)).then((vs) => vs.map((v) => v.memberId)),
+      ]);
+      if (r.kind === "meeting") {
+        // a role-holder's meeting needed no vote, and one with its majority was held
+        if (r.approvedByRole !== null || voters.filter((v) => memberIds.includes(v)).length >= majority(memberIds.length)) return null;
+        await tx.update(events).set({ approvedAt: null }).where(eq(events.id, r.id));
+      }
+      const event = await getEvent(r.id, tx);
+      if (!event) return null;
+      const proposalId = await openEventProposal(tx, r.organizerId, event, voters);
+      const [after] = await tx.select({ approvedAt: events.approvedAt }).from(events).where(eq(events.id, r.id));
+      return { proposalId, scheduled: !!after?.approvedAt };
+    });
+    if (did) {
+      converted++;
+      if (did.scheduled) scheduled++;
+    }
+  }
+  return { converted, scheduled };
 }
 
 /* An event's open proposal is withdrawn: its event was cancelled before it was

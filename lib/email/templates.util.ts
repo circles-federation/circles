@@ -164,13 +164,13 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
       : "";
   const note = meetingNote ||
     (approvedMeeting
-      ? `${n.circleName} has the ${n.votesNeeded} vote${n.votesNeeded === 1 ? "" : "s"} this meeting needed, so it's approved.`
+      ? `${n.circleName}'s members consented to this meeting, so it's scheduled. RSVP if you're coming.`
       : proposal
     ? `${n.organizerName} proposed this for ${n.circleName}. It needs ${n.votesNeeded} approving vote${n.votesNeeded === 1 ? "" : "s"} from ${because} members before it opens up to ${n.circleName}.`
     : approvedEvent && n.approvedByRole
       ? `${n.organizerName}, ${n.hostCircleName ?? "the circle"}'s ${n.approvedByRole}, approved this event, so it's now open to everyone in ${n.circleName}.`
     : approvedEvent
-      ? `${n.hostCircleName ?? "A circle"} approved this event, so it's now open to everyone in ${n.circleName}.`
+      ? `${n.hostCircleName ?? "A circle"}'s members consented to this event, so it's now open to everyone in ${n.circleName}.`
       : "");
   const subject = proposal
     ? `New proposal in ${because}: ${n.title}`
@@ -610,7 +610,7 @@ export function proposalEmail(d: ProposalEmailData): Body {
   const why = `You're getting this because you're a member of ${d.circleName}.`;
   const line = (l: ProposalLine) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(esc(l.label))}` +
-    (l.after ? `<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(l.after)}</div>` : "") +
+    (l.after ? `<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(l.after).replace(/\n/g, "<br>")}</div>` : "") +
     (l.before ? `<div style="margin-top:2px;font-family:${SERIF};font-size:15px;line-height:1.4;color:${SOFT};text-decoration:line-through">${esc(l.before)}</div>` : "") +
     `</td></tr>`;
   return {

@@ -13,6 +13,7 @@
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "db:seed:beta": "tsx --env-file=.env.local scripts/seed-beta.ts",
     "admin": "tsx --env-file=.env.local scripts/set-admin.ts",
+    "convert-to-consent": "tsx --env-file=.env.local scripts/convert-to-consent.ts",
     "icons": "tsx scripts/generate-icons.tsx"
   },
   "dependencies": {

@@ -5,6 +5,8 @@ import { FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/com
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
 import { ParentCircle } from "./parent-circle";
+import { ProposalBanner } from "./proposal-banner";
+import { useAppState } from "@/components/providers/app-state-provider";
 import { circleChildren, circleDescendantIds, indexCircles, isGroup } from "@/lib/circles.util";
 import type { Circle, Member, Profile } from "@/lib/types";
 
@@ -43,6 +45,9 @@ interface NeighborhoodPageProps {
    unlike CirclesRootPage, where cards span multiple neighborhoods and the
    chip is what tells them apart. */
 export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenMember, initialTypeFilter }: NeighborhoodPageProps) {
+  // only a circle's members are ever sent its proposals
+  const { proposals } = useAppState();
+  const openProposals = proposals.filter((p) => p.circleId === circle.id && p.status === "open");
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<EntityType[]>(() => (initialTypeFilter || []).filter(isEntityType));
   const circlesById = useMemo(() => indexCircles(circles), [circles]);
@@ -107,6 +112,13 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
       <div className="mt-7 flex flex-col gap-7">
         {/* not something search or the Type filter can match, so it steps
             aside while either is narrowing the view */}
+        {/* its open proposals (a meeting it's deciding, say), for its members:
+            like the Part of card, not something search or the filter matches */}
+        {!searching && typeFilter.length === 0 && openProposals.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {openProposals.map((p) => <ProposalBanner key={p.id} proposal={p} memberId={profile.id} />)}
+          </div>
+        )}
         {!searching && typeFilter.length === 0 && <ParentCircle circle={circle} onOpenCircle={onOpenCircle} />}
         {anySections ? (
           <>

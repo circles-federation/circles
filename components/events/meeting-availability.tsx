@@ -15,8 +15,6 @@ interface MeetingAvailabilityProps {
   date: string;
   start: string;
   end: string;
-  // how many must consent for it to be approved, while it needs a vote
-  needed?: number;
 }
 
 // set apart from the fields around it, since it's an answer, not a field
@@ -30,7 +28,7 @@ type Answer = { key: string; result: Availability } | { key: string; error: stri
    Unknown for someone who hasn't set it. The server answers for that one time
    only (meetingAvailabilityAction), so no one's schedule reaches this form.
    Names aren't links: leaving the form would discard what's been typed. */
-export function MeetingAvailability({ circleId, date, start, end, needed }: MeetingAvailabilityProps) {
+export function MeetingAvailability({ circleId, date, start, end }: MeetingAvailabilityProps) {
   const { profile, members } = useAppState();
   const [answer, setAnswer] = useState<Answer | null>(null);
 
@@ -70,18 +68,17 @@ export function MeetingAvailability({ circleId, date, start, end, needed }: Meet
       <Eyebrow className="text-soft">Who can make it</Eyebrow>
       {answer === null && <p className="mt-2.5 font-serif text-sm text-soft">Checking…</p>}
       {answer && "error" in answer && <p className="mt-2.5 font-serif text-sm text-soft">{answer.error}</p>}
-      {answer && "result" in answer && <Result result={answer.result} needed={needed} dimmed={!settled} people={people} />}
+      {answer && "result" in answer && <Result result={answer.result} dimmed={!settled} people={people} />}
     </div>
   );
 }
 
-function Result({ result, needed, dimmed, people }: { result: Availability; needed?: number; dimmed: boolean; people: (ids: number[]) => { member: Member; label: string }[] }) {
+function Result({ result, dimmed, people }: { result: Availability; dimmed: boolean; people: (ids: number[]) => { member: Member; label: string }[] }) {
   const total = result.available.length + result.unavailable.length + result.unknown.length;
   return (
     <div className={clsx("mt-2.5 transition-opacity", dimmed && "opacity-50")} aria-live="polite">
       <p className="font-sans text-base font-bold">
         {result.available.length} of {total} available
-        {needed !== undefined && <span className="font-serif text-sm font-normal text-soft"> · {needed} needed to approve</span>}
       </p>
       <div className="mt-3.5 flex flex-col gap-3.5">
         <Group title="Available" rule="border-leaf" entries={people(result.available)} />

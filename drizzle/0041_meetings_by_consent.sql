@@ -1,0 +1,2 @@
+ALTER TABLE "events" DROP CONSTRAINT "events_live_or_proposed";--> statement-breakpoint
+ALTER TABLE "events" ADD CONSTRAINT "events_live_or_proposed" CHECK ("events"."host_circle_id" is not null or "events"."kind" = 'meeting' or "events"."approved_at" is not null);
