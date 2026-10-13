@@ -2,8 +2,7 @@ import clsx from "clsx";
 import { VoteButton } from "./vote-button";
 import { audienceLabel } from "@/lib/circles.util";
 import { eventTypeLabel, isApproved, isProposal, votingCircleName, votingMemberNoun, voteCount, voteThreshold } from "@/lib/governance.util";
-import { isPastEvent } from "@/lib/format.util";
-import { useCirclesById } from "@/lib/hooks";
+import { useCirclesById, useEventEnded } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
 interface VoteBannerProps {
@@ -23,7 +22,8 @@ export function VoteBanner({ event: e, voted, onToggleVote }: VoteBannerProps) {
   const votes = voteCount(e);
   const threshold = voteThreshold(e, byId);
   const approved = isApproved(e, byId);
-  const past = isPastEvent(e);
+  // over once it's ended, not just from the next day: nothing more to do on it
+  const past = useEventEnded(e);
 
   return (
     <div className="flex flex-wrap items-center gap-4 border-b border-faint py-4">

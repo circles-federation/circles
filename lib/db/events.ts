@@ -6,7 +6,7 @@ import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotificatio
 import { groupBy } from "./util";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueMeetingApprovalNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, enqueueSlotWarnings, wallClock, withdrawEventNotifications, withdrawReminders, withdrawSlotWarnings } from "./notifications";
 import { circleCanHost, isWithinCircle } from "@/lib/circles.util";
-import { eventStartsAt, roleKey, startsWithinReminder, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
+import { eventStartsAt, hasEnded, roleKey, startsWithinReminder, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import { REPEAT_HORIZON_DAYS, addDays, datesBetween, localDay } from "@/lib/recurrence.util";
@@ -209,6 +209,11 @@ function assertLive(row: EventRow) {
 // a cancelled event is closed to everything: RSVPs, votes, signups and edits
 function assertNotCancelled(row: EventRow) {
   if (row.cancelledAt !== null) throw new EventError("This event has been cancelled.");
+}
+
+// what's over is a record: no more RSVPs, votes or signups, coming or going
+function assertNotOver(row: EventRow) {
+  if (hasEnded(row)) throw new EventError("This event is over.");
 }
 
 async function assertCanPost(v: Viewer, circleId: string): Promise<{ isRoot: boolean; canHost: boolean }> {
@@ -588,6 +593,7 @@ export async function updateEventDetails(memberId: number, id: string, details: 
 export async function setRsvp(memberId: number, id: string, going: boolean): Promise<Event> {
   const row = await loadVisible(memberId, id);
   assertNotCancelled(row);
+  assertNotOver(row);
   assertLive(row);
   // a meeting its circle's Leader, Secretary or Facilitator scheduled has no vote to attend by
   if (row.kind === "meeting" && row.approvedByRole === null) throw new EventError("Meetings are attended by voting.");
@@ -605,6 +611,7 @@ export async function setRsvp(memberId: number, id: string, going: boolean): Pro
 export async function setVote(memberId: number, id: string, voting: boolean): Promise<Event> {
   const row = await loadVisible(memberId, id);
   assertNotCancelled(row);
+  assertNotOver(row);
   if (row.kind === "meeting") {
     if (row.approvedByRole !== null) throw new EventError(`This meeting was scheduled by its circle's ${row.approvedByRole}, so there's no vote — RSVP instead.`);
     await db.transaction(async (tx) => {
@@ -668,6 +675,7 @@ export async function setVote(memberId: number, id: string, voting: boolean): Pr
 export async function toggleRoleSlot(memberId: number, id: string, key: string): Promise<Event> {
   const row = await loadVisible(memberId, id);
   assertNotCancelled(row);
+  assertNotOver(row);
   assertLive(row);
   await db.transaction(async (tx) => {
     const eventRoles = await tx.select().from(roles).where(eq(roles.eventId, id));

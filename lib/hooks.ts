@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { indexCircles, type CirclesById } from "./circles.util";
+import { hasEnded } from "./events.util";
+import { isPastEvent } from "./format.util";
 import { awaitingResponse } from "./proposals.util";
 import { currentSubscription, pushPermission, pushSupported, subscribeThisDevice, unsubscribeThisDevice } from "./push-client";
 import type { Circle, CircleInvitation, CircleResource, Event, Member } from "./types";
@@ -157,4 +159,13 @@ function subscribeClock(onChange: () => void) {
 }
 export function useClock(): number | null {
   return useSyncExternalStore(subscribeClock, clockNow, () => null);
+}
+
+/* Whether an event is over, for turning off what can no longer be done on
+   its page (RSVP, vote, take a slot): from its end time, re-checked as the
+   clock ticks, rather than only from the next day as isPastEvent is. On the
+   server, and while hydrating, only the day counts, so the markup matches. */
+export function useEventEnded(e: Pick<Event, "date" | "start" | "end">): boolean {
+  const now = useClock();
+  return isPastEvent(e) || (now !== null && hasEnded(e, new Date(now)));
 }

@@ -1,8 +1,7 @@
 import { RsvpButton } from "./rsvp-button";
 import { Avatar, Eyebrow } from "@/components/shared";
-import { isPastEvent } from "@/lib/format.util";
 import { isProposal, isScheduledMeeting, isVoting } from "@/lib/governance.util";
-import { useCirclesById, useMemberById } from "@/lib/hooks";
+import { useCirclesById, useMemberById, useEventEnded } from "@/lib/hooks";
 import { hasRoles, roleShort, shiftAtRisk, shiftNeedsSlots } from "@/lib/roles.util";
 import type { Circle, Event, Member } from "@/lib/types";
 
@@ -31,7 +30,8 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   const proposal = isProposal(e);
   // attended by voting: a meeting, unless it was scheduled without a vote
   const votesToAttend = e.kind === "meeting" && !isScheduledMeeting(e);
-  const past = isPastEvent(e);
+  // over once it's ended, not just from the next day: nothing more to do on it
+  const past = useEventEnded(e);
   const roleStatus = e.cancelled ? "Not running" : shiftAtRisk(e) ? "At risk" : shiftNeedsSlots(e) ? "Needs roles" : "Shift on";
   // a short slot is a heads-up, so yellow — as a highlight under ink, since
   // yellow text wouldn't read on white

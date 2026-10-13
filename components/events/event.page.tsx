@@ -13,7 +13,7 @@ import { ShiftStatusBanner } from "./shift-status-banner";
 import { VoteBanner } from "./vote-banner";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { isAttending } from "@/lib/events.util";
-import { isPastEvent } from "@/lib/format.util";
+import { useEventEnded } from "@/lib/hooks";
 import { isMeeting, isVoting } from "@/lib/governance.util";
 import type { Circle, Event, Member, Profile } from "@/lib/types";
 
@@ -36,6 +36,8 @@ interface EventPageProps {
    This shell only owns cross-cutting app state (rsvp/vote toggles) and the
    top-level "which panel applies to this event kind" decisions. */
 export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState, toggleVote, onOpenMember, onOpenCircle, onToggleRoleSlot }: EventPageProps) {
+  // no calendar copy of an event that's already over
+  const ended = useEventEnded(e);
 
   return (
     <PageContainer size="normal">
@@ -61,7 +63,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
       {/* once you're going, a copy for your own calendar: the phone offers to
           add the file (app/api/events/[id]/calendar). A link styled as a
           secondary Button, since it opens a file rather than running code */}
-      {!e.cancelled && !isPastEvent(e) && isAttending(e, profile.id) && (
+      {!e.cancelled && !ended && isAttending(e, profile.id) && (
         <div className="border-b border-faint py-4">
           <a
             href={`/api/events/${e.id}/calendar`}

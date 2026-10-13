@@ -56,6 +56,21 @@ export function eventStartsAt(e: Pick<Event, "date" | "start">): Date {
   return new Date(y, m - 1, d, hh, mm);
 }
 
+// when it ends: its end time on its date, or the next day's for one that runs
+// past midnight (an end at or before its start)
+export function eventEndsAt(e: Pick<Event, "date" | "start" | "end">): Date {
+  const [y, m, d] = e.date.split("-").map(Number) as [number, number, number];
+  const [hh, mm] = e.end.split(":").map(Number) as [number, number];
+  const end = new Date(y, m - 1, d, hh, mm);
+  if (end <= eventStartsAt(e)) end.setDate(end.getDate() + 1);
+  return end;
+}
+
+// over: nothing can be RSVP'd to, voted on or signed up for once it's ended
+export function hasEnded(e: Pick<Event, "date" | "start" | "end">, now: Date = new Date()): boolean {
+  return now >= eventEndsAt(e);
+}
+
 // whether it starts after `now` but within REMINDER_HOURS of it
 export function startsWithinReminder(e: Pick<Event, "date" | "start">, now: Date = new Date()): boolean {
   const ms = eventStartsAt(e).getTime() - now.getTime();
