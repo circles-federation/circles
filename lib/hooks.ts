@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { indexCircles, type CirclesById } from "./circles.util";
@@ -168,4 +168,32 @@ export function useClock(): number | null {
 export function useEventEnded(e: Pick<Event, "date" | "start" | "end">): boolean {
   const now = useClock();
   return isPastEvent(e) || (now !== null && hasEnded(e, new Date(now)));
+}
+
+// set once the app has hydrated: before then, what the server rendered has to
+// be matched, so saved history state isn't read
+let hydrated = false;
+
+/* useState whose value is also kept on the current browser history entry, so
+   Back (or Forward) to the page brings it back as it was left, and the page
+   is as long as it was, so its scroll position can be put back too, while
+   opening the page afresh starts from `initial`. Next keeps its own keys when
+   the entry's state is replaced. A reload starts from `initial`. */
+export function useHistoryState<T>(key: string, initial: T): [T, (value: T) => void] {
+  const [value, setValue] = useState<T>(() => {
+    if (!hydrated || typeof window === "undefined") return initial;
+    const saved = (window.history.state as Record<string, unknown> | null)?.[key];
+    return saved === undefined ? initial : (saved as T);
+  });
+  useEffect(() => {
+    hydrated = true;
+  }, []);
+  const set = useCallback(
+    (next: T) => {
+      setValue(next);
+      window.history.replaceState({ ...(window.history.state as object | null), [key]: next }, "");
+    },
+    [key]
+  );
+  return [value, set];
 }
