@@ -6,6 +6,7 @@
 
 export const PUSH_PROMPT_KEY = "circles.pushPromptAnswered";
 export const profilePromptKey = (memberId: number) => `circles.profilePromptAnswered.${memberId}`;
+export const availabilityPromptKey = (memberId: number) => `circles.availabilityPromptAnswered.${memberId}`;
 
 export function promptAnswered(key: string): boolean {
   try {
