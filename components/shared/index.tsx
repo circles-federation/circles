@@ -21,6 +21,7 @@ export { Input } from "./input";
 export { Label } from "./label";
 export { LinkRow } from "./link-row";
 export { MenuRow } from "./menu-row";
+export { InstallStepsModal } from "./install-steps-modal";
 export { Modal } from "./modal";
 export { OfflineBanner } from "./offline-banner";
 export { PageContainer } from "./page-container";

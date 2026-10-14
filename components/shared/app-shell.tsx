@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefO
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { activeTab } from "@/lib/nav.util";
+// imported for its effect too: it catches the browser's install offer early
+import "@/lib/install";
 import { registerServiceWorker } from "@/lib/push-client";
 import { isInstalledApp } from "@/lib/viewport";
 import { useCurrentFloatingAction } from "@/components/providers/floating-action-provider";

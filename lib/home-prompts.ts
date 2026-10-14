@@ -5,6 +5,7 @@
    asking once more. */
 
 export const PUSH_PROMPT_KEY = "circles.pushPromptAnswered";
+export const INSTALL_PROMPT_KEY = "circles.installPromptAnswered";
 export const profilePromptKey = (memberId: number) => `circles.profilePromptAnswered.${memberId}`;
 export const availabilityPromptKey = (memberId: number) => `circles.availabilityPromptAnswered.${memberId}`;
 

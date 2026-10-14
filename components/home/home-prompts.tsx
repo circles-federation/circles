@@ -6,6 +6,7 @@ import { ClockIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { Button } from "@/components/shared";
 import { PromptDeck, type Prompt } from "./prompt-deck";
+import { useInstallPrompt } from "./install-app-prompt";
 import { pushPrompt, usePushPrompt } from "./push-prompt";
 import { circleCanHoldMeetings, circlesForMember, isRootCircle } from "@/lib/circles.util";
 import { availabilityPromptKey, markPromptAnswered, profilePromptKey, promptAnswered } from "@/lib/home-prompts";
@@ -28,7 +29,8 @@ function useNotNow(key: string): [boolean, () => void] {
 }
 
 /* Home's one-time prompts, in the order they're dealt (see PromptDeck):
-   turning on push first (it's about this device, and can only be asked in
+   installing the app always on top, wherever it's not installed and the
+   browser can (the rest work better installed), then turning on push (it's about this device, and can only be asked in
    answer to a tap), then filling in a profile that's still as applying left
    it, then saying when you can do meetings. Each leaves the deck once it's
    answered or no longer applies; the profile and availability prompts' main
@@ -38,12 +40,14 @@ function useNotNow(key: string): [boolean, () => void] {
 export function HomePrompts() {
   const { profile, circles } = useAppState();
   const router = useRouter();
+  const install = useInstallPrompt();
   const push = usePushPrompt();
   const [profileDismissed, dismissProfile] = useNotNow(profilePromptKey(profile.id));
   const [availabilityDismissed, dismissAvailability] = useNotNow(availabilityPromptKey(profile.id));
 
   if (push.wanted === null) return null;
   const prompts: Prompt[] = [];
+  if (install.prompt) prompts.push(install.prompt);
   if (push.wanted) prompts.push(pushPrompt(push));
 
   if (!profileDismissed && isProfileBlank(profile)) {
@@ -79,5 +83,10 @@ export function HomePrompts() {
     });
   }
 
-  return <PromptDeck prompts={prompts} />;
+  return (
+    <>
+      <PromptDeck prompts={prompts} />
+      {install.steps}
+    </>
+  );
 }
