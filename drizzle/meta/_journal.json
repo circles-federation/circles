@@ -264,15 +264,43 @@
     {
       "idx": 37,
       "version": "7",
-      "when": 1791417350037,
-      "tag": "0037_phone_numbers",
+      "when": 1791600674903,
+      "tag": "0037_drop_application_address",
       "breakpoints": true
     },
     {
       "idx": 38,
       "version": "7",
-      "when": 1791465466108,
-      "tag": "0038_sms_stopped",
+      "when": 1791654468215,
+      "tag": "0038_member_email_private_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791807195436,
+      "tag": "0039_member_availability",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791901120972,
+      "tag": "0040_event_consent_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791905151490,
+      "tag": "0041_meetings_by_consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791945746447,
+      "tag": "0042_phone_numbers",
       "breakpoints": true
     }
   ]

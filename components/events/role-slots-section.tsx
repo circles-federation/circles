@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import { Avatar, Eyebrow, EyebrowGroup } from "@/components/shared";
-import { isPastEvent } from "@/lib/format.util";
-import { useMemberById } from "@/lib/hooks";
+import { useMemberById, useEventEnded } from "@/lib/hooks";
 import { roleFull, roleUnmet } from "@/lib/roles.util";
 import type { Event, Member, Profile, Role } from "@/lib/types";
 
@@ -18,7 +17,8 @@ interface RoleSlotCardProps {
    RoleSlotsSection — not used anywhere else. */
 function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember }: RoleSlotCardProps) {
   const memberById = useMemberById();
-  const past = isPastEvent(e);
+  // over once it's ended, not just from the next day: nothing more to do on it
+  const past = useEventEnded(e);
   const filled = role.members.map(memberById).filter((m): m is Member => Boolean(m));
   const mine = role.members.includes(profile.id);
   const unmet = roleUnmet(role);
@@ -57,7 +57,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
         <button
           onClick={() => { if (!disabled) onToggleRoleSlot(e.id, role.key); }}
           disabled={disabled}
-          title={full ? "This slot is full" : undefined}
+          title={full ? "This role is full" : undefined}
           className={clsx(
             "whitespace-nowrap border px-4 py-2.75 font-sans text-xs font-bold uppercase tracking-[0.08em]",
             disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer border-ink", mine ? "bg-ink text-paper" : "bg-paper text-ink"),
@@ -99,7 +99,7 @@ export function RoleSlotsSection({ event: e, profile, onToggleRoleSlot, onOpenMe
 
   return (
     <section className="pt-8">
-      <EyebrowGroup label="Slots">
+      <EyebrowGroup label="Roles">
         <div className="flex flex-col gap-4.5">
           {e.roles.map((role) => (
             <RoleSlotCard

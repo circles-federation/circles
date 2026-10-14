@@ -10,11 +10,12 @@ import { HostRsvpRow } from "./host-rsvp-row";
 
 import { RoleSlotsSection } from "./role-slots-section";
 import { ShiftStatusBanner } from "./shift-status-banner";
-import { VoteBanner } from "./vote-banner";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { isAttending } from "@/lib/events.util";
-import { isPastEvent } from "@/lib/format.util";
-import { isMeeting, isVoting } from "@/lib/governance.util";
+import { useEventEnded } from "@/lib/hooks";
+import { awaitingConsent, isMeeting } from "@/lib/governance.util";
+import { useAppState } from "@/components/providers/app-state-provider";
+import { ProposalBanner } from "@/components/circles/proposal-banner";
 import type { Circle, Event, Member, Profile } from "@/lib/types";
 
 interface EventPageProps {
@@ -22,8 +23,6 @@ interface EventPageProps {
   profile: Profile;
   rsvpState: Record<string, boolean>;
   toggleRsvp: (eventId: string) => void;
-  voteState: Record<string, boolean>;
-  toggleVote: (eventId: string) => void;
   onOpenMember: (m: Member) => void;
   onOpenCircle: (c: Circle) => void;
   onToggleRoleSlot: (eventId: string, roleKey: string) => void;
@@ -33,9 +32,14 @@ interface EventPageProps {
    is self-sufficient given the event and the viewer's profile (they derive
    their own eligibility/visibility rules from lib/governance.util and
    lib/roles.util rather than taking a dozen precomputed booleans as props).
-   This shell only owns cross-cutting app state (rsvp/vote toggles) and the
+   This shell only owns cross-cutting app state (RSVP toggles) and the
    top-level "which panel applies to this event kind" decisions. */
-export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState, toggleVote, onOpenMember, onOpenCircle, onToggleRoleSlot }: EventPageProps) {
+export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMember, onOpenCircle, onToggleRoleSlot }: EventPageProps) {
+  // no calendar copy of an event that's already over
+  const ended = useEventEnded(e);
+  // a meeting or circle-hosted event its circle is still deciding: its proposal
+  const { proposals } = useAppState();
+  const proposal = awaitingConsent(e) ? proposals.find((p) => p.eventId === e.id && p.status === "open") : undefined;
 
   return (
     <PageContainer size="normal">
@@ -43,9 +47,8 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
 
       <CancelledBanner event={e} />
 
-      {isVoting(e) && (
-        <VoteBanner event={e} voted={voteState[e.id]} onToggleVote={() => toggleVote(e.id)} />
-      )}
+      {proposal && <ProposalBanner proposal={proposal} memberId={profile.id} className="mt-6" />}
+
 
       {!e.cancelled && <ShiftStatusBanner event={e} />}
 
@@ -61,7 +64,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, voteState,
       {/* once you're going, a copy for your own calendar: the phone offers to
           add the file (app/api/events/[id]/calendar). A link styled as a
           secondary Button, since it opens a file rather than running code */}
-      {!e.cancelled && !isPastEvent(e) && isAttending(e, profile.id) && (
+      {!e.cancelled && !ended && isAttending(e, profile.id) && (
         <div className="border-b border-faint py-4">
           <a
             href={`/api/events/${e.id}/calendar`}

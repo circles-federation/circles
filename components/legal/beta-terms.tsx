@@ -14,7 +14,7 @@ export function BetaTerms() {
       <LegalHeading>It&apos;s a beta</LegalHeading>
       <LegalList>
         <li>Things will break, and Circles may sometimes be unavailable.</li>
-        <li>Features will be added, changed and removed, sometimes without notice. For example, majority voting will likely be replaced by consent.</li>
+        <li>Features will be added, changed and removed, sometimes without notice. For example, how circles make decisions together may change.</li>
         <li>Data may be lost or reset, so don&apos;t keep the only copy of anything important in Circles.</li>
         <li>Circles is provided as it is, with no guarantees.</li>
       </LegalList>

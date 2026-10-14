@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightStartOnRectangleIcon, BellIcon, DevicePhoneMobileIcon, UserCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowRightStartOnRectangleIcon, BellIcon, ClockIcon, DevicePhoneMobileIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { Button, ConfirmModal, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { usePushSubscription } from "@/lib/hooks";
 import { formatPhone } from "@/lib/phone.util";
-import type { NotificationSettings } from "@/lib/types";
+import type { AvailabilityWindow, NotificationSettings } from "@/lib/types";
 
 interface SettingsPageProps {
   notifications: NotificationSettings;
+  availability: AvailabilityWindow[] | null;
   phone?: string;
   smsStopped?: boolean;
   onLogout: () => void;
@@ -23,9 +24,16 @@ function notificationsSummary(email: boolean, sms: boolean, push: boolean): stri
   return said.charAt(0).toUpperCase() + said.slice(1);
 }
 
+// what Meeting availability is set to, under its row
+function availabilitySummary(windows: AvailabilityWindow[] | null): string {
+  if (windows === null) return "Not set";
+  if (windows.length === 0) return "No times";
+  return windows.length === 1 ? "1 window" : `${windows.length} windows`;
+}
+
 /* Settings, reached from Home's top bar: a menu like iOS's Settings, each row
    opening a page of its own, with logging out at the foot. */
-export function SettingsPage({ notifications, phone, smsStopped, onLogout }: SettingsPageProps) {
+export function SettingsPage({ notifications, availability, phone, smsStopped, onLogout }: SettingsPageProps) {
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const device = usePushSubscription();
   // left blank until this device's push has been read, rather than changing
@@ -40,6 +48,7 @@ export function SettingsPage({ notifications, phone, smsStopped, onLogout }: Set
           <div className="flex flex-col gap-3">
             <MenuRow href="/profile/edit" icon={UserCircleIcon} label="Edit profile" detail="Your photo, bio, and more" />
             <MenuRow href="/settings/notifications" icon={BellIcon} label="Notifications" detail={summary} />
+            <MenuRow href="/settings/availability" icon={ClockIcon} label="Meeting availability" detail={availabilitySummary(availability)} />
             <MenuRow href="/settings/phone" icon={DevicePhoneMobileIcon} label="Phone number" detail={phone ? formatPhone(phone) : "Add one to get texts"} />
           </div>
         </Section>

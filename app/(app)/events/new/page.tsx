@@ -27,7 +27,10 @@ function NewEventRoute() {
       // result goes back to the form so a server refusal shows inline.
       onCreate={async (draft: EventDraft) => {
         const result = await createEvent(draft);
-        if (result.ok) router.replace(`/events/${result.event.id}`);
+        // a group's event is proposed to it, and in no list until it's
+        // consented to, so its proposal is where to go (unless a group of one
+        // has already scheduled it)
+        if (result.ok) router.replace(result.proposalId && result.event.proposed ? `/proposals/${result.proposalId}` : `/events/${result.event.id}`);
         return result;
       }}
       onCancel={() => router.push("/events")}

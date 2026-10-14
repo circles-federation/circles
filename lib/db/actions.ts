@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import * as applications from "./applications";
+import * as availability from "./availability";
 import { getAppStateForMember, type AppStateData } from "./app-state";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
@@ -22,8 +23,9 @@ import { invitationPush } from "@/lib/push/messages.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
+import { isEventProposal } from "@/lib/proposals.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, ConsentResponse, NotificationSettings, ProposalChanges } from "@/lib/types";
+import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
    connection — Drizzle's Postgres driver is Node-only. These thin wrappers
@@ -42,6 +44,16 @@ export async function updateMemberAction(patch: members.ProfilePatch) {
 // Settings → Notifications: always the session member's own
 export async function saveNotificationSettingsAction(settings: NotificationSettings) {
   return asMember((memberId) => members.setNotificationSettings(memberId, settings));
+}
+
+// Settings → Meeting availability: always the session member's own
+export async function saveAvailabilityAction(windows: AvailabilityWindow[]) {
+  return asMember((memberId) => members.setAvailability(memberId, windows));
+}
+
+// the meeting form: who in a circle can make this time (members of it only)
+export async function meetingAvailabilityAction(circleId: string, date: string, start: string, end: string) {
+  return asMember((memberId) => availability.getMeetingAvailability(memberId, circleId, date, start, end));
 }
 
 // like updateMemberAction, always the session member's own photo; the file
@@ -75,10 +87,21 @@ export async function createProposalAction(circleId: string, changes: ProposalCh
   return result;
 }
 
+// an answer to a group's event proposal may approve the event or discard it,
+// so it hands back the whole app state too, for both to show at once
 export async function respondToProposalAction(id: string, response: ConsentResponse, reason?: string) {
-  const result = await asMember((memberId) => proposals.respondToProposal(memberId, id, response, reason));
-  if (result.ok) after(() => deliverProposalNotifications());
+  const result = await asMember(async (memberId) => {
+    const answered = await proposals.respondToProposal(memberId, id, response, reason);
+    return isEventProposal(answered.proposal) ? { ...answered, state: await stateFor(memberId) } : answered;
+  });
+  if (result.ok) after(() => Promise.all([deliverProposalNotifications(), deliverEventNotifications()]));
   return result;
+}
+
+async function stateFor(memberId: number): Promise<AppStateData> {
+  const state = await getAppStateForMember(memberId);
+  if (!state) throw new UserFacingError("Sign in again to do that.");
+  return state;
 }
 
 export async function updateCircleAction(id: string, patch: Partial<Circle>) {
@@ -122,10 +145,15 @@ export async function deleteResourceAction(id: string) {
 }
 
 export async function createEventAction(draft: EventDraft) {
-  const result = await asMember((memberId) => events.createEvent(memberId, draft));
+  // a group's event is proposed to it, so the app state comes back too, with
+  // the proposal in it
+  const result = await asMember(async (memberId) => {
+    const created = await events.createEvent(memberId, draft);
+    return created.proposalId ? { ...created, state: await stateFor(memberId) } : created;
+  });
   // createEvent has already queued the emails (if this event earns any);
   // sending them after the response keeps the form from waiting on SMTP
-  if (result.ok) after(() => deliverEventNotifications());
+  if (result.ok) after(() => Promise.all([deliverEventNotifications(), deliverProposalNotifications()]));
   return result;
 }
 
@@ -141,7 +169,11 @@ export async function updateEventDetailsAction(id: string, details: EventDetails
 // cancelling may have queued emails to the people who were going, which go
 // out once the response is sent, as a new event's do
 export async function cancelEventAction(id: string, scope: SeriesScope = "one") {
-  const result = await asMember((memberId) => events.cancelEvent(memberId, id, scope));
+  // withdrawing a group's proposed event closes its proposal, so the app state comes back too
+  const result = await asMember(async (memberId) => {
+    const cancelled = await events.cancelEvent(memberId, id, scope);
+    return cancelled.withdrawnProposalId ? { ...cancelled, state: await stateFor(memberId) } : cancelled;
+  });
   if (result.ok && result.value.events.some((e) => e.cancelled)) after(() => deliverEventNotifications());
   return result;
 }
@@ -150,16 +182,6 @@ export async function setRsvpAction(id: string, going: boolean) {
   return asMember((memberId) => events.setRsvp(memberId, id, going));
 }
 
-export async function setVoteAction(id: string, voting: boolean) {
-  const result = await asMember((memberId) => events.setVote(memberId, id, voting));
-  // this vote may have queued emails: it approved a circle-hosted event (which
-  // is no longer a proposal — further votes are refused), or it may have
-  // approved a meeting
-  if (result.ok && (result.value.kind === "meeting" || (result.value.hostCircleId && !result.value.proposed))) {
-    after(() => deliverEventNotifications());
-  }
-  return result;
-}
 
 export async function toggleRoleSlotAction(id: string, roleKey: string) {
   return asMember((memberId) => events.toggleRoleSlot(memberId, id, roleKey));

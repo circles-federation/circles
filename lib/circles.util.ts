@@ -64,6 +64,21 @@ export function parentCircleOptions(circles: Circle[], except?: string): Circle[
     .concat(root && root.id !== except ? [root] : []);
 }
 
+/* Circles sorted under the headings the Circles browser uses — the city,
+   Neighborhoods, Circles, Groups, then Organizations (collectives,
+   cooperatives and the rest) — for a picker's optgroups. Keeps the order given
+   within each, and leaves out a heading with nothing under it. */
+export function circlesByKind(circles: Circle[]): { label: string; circles: Circle[] }[] {
+  const kinds: [string, (c: Circle) => boolean][] = [
+    ["Citywide", (c) => c.parentId === null],
+    ["Neighborhoods", (c) => c.parentId !== null && c.type === "neighborhood"],
+    ["Circles", (c) => c.parentId !== null && c.type === "circle"],
+    ["Groups", (c) => c.parentId !== null && c.type === "group"],
+    ["Organizations", (c) => c.parentId !== null && c.type !== "neighborhood" && c.type !== "circle" && c.type !== "group"],
+  ];
+  return kinds.map(([label, test]) => ({ label, circles: circles.filter(test) })).filter((g) => g.circles.length > 0);
+}
+
 export type NewCircleField = "type" | "name" | "tagline" | "parentId" | "domain" | "aims";
 
 /* What's wrong with a new circle, and which field it's about, or null: the
@@ -112,9 +127,18 @@ export function circleHasWiki(circle: Pick<Circle, "type">): boolean {
   return !isGroup(circle);
 }
 
-// whether a circle can host an event, or hold a meeting (its members voting)
-export function circleCanHost(circle: Pick<Circle, "type">): boolean {
+// a meeting is its circle's members voting, which a group doesn't do (any
+// circle but the city can host an event, a group included, by consent: see
+// lib/db/proposals.ts)
+export function circleCanHoldMeetings(circle: Pick<Circle, "type">): boolean {
   return !isGroup(circle);
+}
+
+/* Whether `host` may host an event shown to `circleId`: one shown to itself
+   or to a circle it's part of — except a group, which is private, so an
+   event it hosts is only ever shown to the group, or it would reveal it. */
+export function hostCanShowTo(host: Pick<Circle, "id" | "type">, circleId: string, parentOf: (id: string) => string | null | undefined): boolean {
+  return isGroup(host) ? circleId === host.id : isWithinCircle(host.id, circleId, parentOf);
 }
 
 export function indexCircles(circles: Circle[]): CirclesById {

@@ -1,12 +1,12 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow } from "@/components/shared";
-import { GovernanceRow } from "./governance-row";
 import { OrdinaryRow } from "./ordinary-row";
-import { isPastEvent, parseDay } from "@/lib/format.util";
-import { isVoting } from "@/lib/governance.util";
+import { hasEnded, parseDay } from "@/lib/format.util";
+import { awaitingConsent } from "@/lib/governance.util";
+import { useClock, useHistoryState } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
 interface EventFeedProps {
@@ -23,18 +23,23 @@ interface EventFeedProps {
    older events. Spacing above the list is the caller's job (e.g.
    home.page.jsx wraps this in an EyebrowGroup), not this component's. */
 export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No events yet." }: EventFeedProps) {
+  const now = useClock();
   const { upcoming, past } = useMemo(() => {
     const up: Event[] = [], pa: Event[] = [];
-    events.forEach((e) => (isPastEvent(e) ? pa : up).push(e));
+    // a meeting or circle-hosted event isn't listed until its circle has
+    // consented to it: until then it's only its proposal (see awaitingConsent)
+    events.filter((e) => !awaitingConsent(e)).forEach((e) => (hasEnded(e, now) ? pa : up).push(e));
     up.sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime()); // soonest first
     pa.sort((a, b) => parseDay(b.date).getTime() - parseDay(a.date).getTime()); // most recent first
     return { upcoming: up, past: pa };
-  }, [events]);
+  }, [events, now]);
 
-  const [showPast, setShowPast] = useState(false);
+  // kept on the history entry, so coming Back from an event finds the past
+  // events still open and as many loaded, at the place it was left
+  const [{ showPast, shownCount }, setFeed] = useHistoryState("eventFeed", { showPast: false, shownCount: pageSize });
+  const setShowPast = (on: boolean) => setFeed({ showPast: on, shownCount });
   const ordered = showPast ? [...upcoming, ...past] : upcoming;
 
-  const [shownCount, setShownCount] = useState(pageSize);
   const visible = ordered.slice(0, shownCount);
   const remaining = ordered.length - visible.length;
   // the "now" seam sits between the last upcoming and first past event — show it
@@ -70,14 +75,12 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
                 <span className="h-px flex-1 bg-faint" />
               </div>
             )}
-            {isVoting(e)
-              ? <GovernanceRow e={e} onOpenEvent={onOpenEvent} />
-              : <OrdinaryRow e={e} onOpenEvent={onOpenEvent} />}
+            <OrdinaryRow e={e} onOpenEvent={onOpenEvent} />
           </Fragment>
         ))}
       </div>
       {remaining > 0 && (
-        <Button variant="secondary" onClick={() => setShownCount((n) => n + pageSize)} className="mt-4 w-full">
+        <Button variant="secondary" onClick={() => setFeed({ showPast, shownCount: shownCount + pageSize })} className="mt-4 w-full">
           Load older events
           <span className="inline-flex items-center gap-1 text-soft">
             {remaining} more

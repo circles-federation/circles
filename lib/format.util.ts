@@ -19,6 +19,19 @@ export function isPastEvent(e: Pick<Event, "date">): boolean {
   today.setHours(0, 0, 0, 0);
   return d < today;
 }
+// whether an event has finished by `now` (ms): its end time, not just its
+// day, so one that ended this morning is over by the afternoon. With no clock
+// yet (the server, hydrating) it falls back to the day, which both sides agree on.
+export function hasEnded(e: Pick<Event, "date" | "start" | "end">, now: number | null): boolean {
+  if (now === null || !e.date || !e.end) return isPastEvent(e);
+  const day = parseDay(e.date);
+  if (isNaN(day.getTime())) return false;
+  const [eh, em] = e.end.split(":").map(Number) as [number, number];
+  const [sh, sm] = e.start.split(":").map(Number) as [number, number];
+  // an end before the start runs past midnight
+  const overnight = eh * 60 + em < sh * 60 + sm;
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate() + (overnight ? 1 : 0), eh, em).getTime() <= now;
+}
 // t is always a well-formed "HH:MM" time string (this app's own internal
 // format), so the split always yields both parts.
 export function fmtTime(t: string): string {

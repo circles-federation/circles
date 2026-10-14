@@ -1,1 +1,0 @@
-ALTER TABLE "members" ADD COLUMN "sms_stopped_at" timestamp with time zone;

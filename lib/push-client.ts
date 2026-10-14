@@ -1,11 +1,17 @@
 import { deletePushSubscriptionAction, savePushSubscriptionAction } from "@/lib/db/actions";
 import type { PushSubscriptionKeys } from "@/lib/push";
+import { markPromptAnswered, promptAnswered, PUSH_PROMPT_KEY } from "@/lib/home-prompts";
 
 /* The browser's side of push notifications (the server's is lib/push/ and
    lib/notify.ts): registering public/sw.js, and turning push on or off for
    this device. Browser-only, so call it from effects and taps. */
 
 export const SERVICE_WORKER_URL = "/sw.js";
+
+// Home asks once per device whether to turn push on (PushPrompt): answered
+// either way there, or by turning it on or off in Settings, it isn't asked again
+export const pushPromptAnswered = () => promptAnswered(PUSH_PROMPT_KEY);
+export const markPushPromptAnswered = () => markPromptAnswered(PUSH_PROMPT_KEY);
 
 export function pushSupported(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;

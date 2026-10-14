@@ -34,7 +34,8 @@ export default function Page() {
     <ManageCirclePage
       circle={circle}
       circles={circles}
-      openProposal={proposals.find((p) => p.circleId === circle.id && p.status === "open")}
+      // only a change to the circle locks its fields; its events' proposals don't
+      openProposal={proposals.find((p) => p.circleId === circle.id && p.status === "open" && !p.eventId)}
       onSave={(patch) => saveCircle(circle.id, patch)}
       onPropose={async (changes) => {
         const result = await proposeCircleChanges(circle.id, changes);

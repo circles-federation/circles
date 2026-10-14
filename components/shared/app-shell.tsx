@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefO
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { activeTab } from "@/lib/nav.util";
+// imported for its effect too: it catches the browser's install offer early
+import "@/lib/install";
 import { registerServiceWorker } from "@/lib/push-client";
 import { isInstalledApp } from "@/lib/viewport";
 import { useCurrentFloatingAction } from "@/components/providers/floating-action-provider";
@@ -64,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             : fab.shown
               ? "max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.5rem)]"
               : "max-[719px]:pb-[env(safe-area-inset-bottom)]",
-          "standalone:flex-1 standalone:overflow-y-auto standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
+          "standalone:flex-1 standalone:overflow-y-auto standalone:overflow-x-hidden standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
         )}
       >
         {children}

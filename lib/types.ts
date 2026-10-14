@@ -17,6 +17,14 @@ export interface MemberLanguage {
   level: LanguageLevel;
 }
 
+// when a member can do meetings: on these days (0 = Sunday), from `start` to
+// `end`, in minutes from midnight — see lib/availability.util.ts
+export interface AvailabilityWindow {
+  days: number[];
+  start: number;
+  end: number;
+}
+
 export interface Member {
   id: number;
   name: string;
@@ -52,9 +60,26 @@ export interface NotificationSettings {
   sms: boolean;
 }
 
-// `phone` is their confirmed mobile number (E.164), which only they are sent;
-// `smsStopped` that they've replied STOP to a text, which only START undoes
-export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings; phone?: string; smsStopped?: true };
+// null until they've set when they can do meetings (Settings → Meeting
+// availability); their own, since others only learn whether they're free at
+// a given time, from the meeting form. `phone` is their confirmed mobile
+// number (E.164), which only they are sent; `smsStopped` that they've replied
+// STOP to a text, which only START undoes
+export type Profile = Member & {
+  emailPublic: boolean;
+  notifications: NotificationSettings;
+  availability: AvailabilityWindow[] | null;
+  phone?: string;
+  smsStopped?: true;
+};
+
+// who in a circle can make a meeting's date and time, as the meeting form
+// shows it: `freeUntil` is minutes from midnight, for someone free as it begins
+export interface MeetingAvailability {
+  available: number[];
+  unavailable: { id: number; freeUntil?: number }[];
+  unknown: number[];
+}
 
 // a role a member can hold in a circle (Secretary, Leader, ...) — see
 // lib/circle-roles.util.ts. `builtin` roles exist on every circle that can have
@@ -148,7 +173,8 @@ export interface Event {
   kind?: EventKindKey;
   circleId: string;
   hostCircleId?: string;
-  // a circle-hosted event still awaiting its host circle's approval
+  // a meeting or circle-hosted event still awaiting its circle's consent (see
+  // lib/db/proposals.ts): in no list, only its proposal and its own page
   proposed?: boolean;
   // the role (Leader, Secretary or Facilitator) its organizer held in the circle
   // that would have voted on it — a meeting's own, or the host circle — which
@@ -192,7 +218,8 @@ export type ResourceIcon = "folder" | "file" | "video" | "announcement";
 // green "like this", yellow "accept this" (both consent: they differ in
 // enthusiasm, not reservations), or red, an objection
 export type ConsentResponse = "like" | "accept" | "object";
-export type ProposalStatus = "open" | "passed" | "objected";
+// withdrawn: an event proposal whose event was cancelled before it was decided
+export type ProposalStatus = "open" | "passed" | "objected" | "withdrawn";
 
 // what a proposal would change, each only if it does: the circle's own fields,
 // and its roles as a whole (each role's name and holder, in order)
@@ -231,6 +258,9 @@ export interface CircleProposal {
   id: string;
   circleId: string;
   proposerId: number;
+  // set when it proposes holding an event the circle hosts, rather than
+  // changing the circle (null once that event is gone)
+  eventId?: string;
   changes: ProposalChanges;
   lines: ProposalLine[];
   status: ProposalStatus;

@@ -3,22 +3,20 @@ import type { Circle, Event, EventKindKey, EventKindMeta, Member } from "./types
 
 /* Governance rules as pure functions over an event and the circle lookup
    (`byId`, from AppState's live circles — never a static seed array). Two
-   things put an event to a vote, and in both a circle's own members are the
-   voters (lib/db/events.ts enforces who can see and vote on the server):
+   things are decided by a circle's members, by consent (lib/db/proposals.ts),
+   and lib/db/events.ts enforces who can see and do what on the server:
 
-   - a meeting, held by one circle for its own members, is approved by a
-     majority of that circle's members — attending and voting are one act;
-   - a circle-hosted event starts as a proposal: only the host circle's
-     members can see it, and it goes live for the circle it's shown to once a
-     majority of the host circle approves it. Approval is latched by the
-     server (`proposed` flips to false and stays), unlike a meeting's quorum,
-     which is recomputed from the live votes. */
+   - a meeting, held by one circle for its own members — unless someone
+     holding a role in the circle schedules it, which needs no consent;
+   - an event a circle hosts, which goes live for the circle it's shown to
+     once the host circle consents.
 
-/* event kinds. ordinary events are scheduled instantly by their organizer
-   (unless a circle hosts them — see above); a meeting is *proposed* for a
-   circle and needs a quorum of that circle's members to be approved — see
-   voteThreshold() below. For the prototype, proposing adds it to the list
-   right away. Any circle can hold one. */
+   Until it's decided one is `proposed`: in no list, only its proposal and its
+   own page. Once it is, it's attended by RSVP like any event. */
+
+/* event kinds. An ordinary event a person hosts is scheduled as soon as it's
+   made; a meeting is held by a circle and is decided as above. Any circle but
+   the city and a group can hold one. */
 export const EVENT_KINDS: Record<EventKindKey, EventKindMeta> = {
   ordinary: { governance: false, label: "Event" },
   meeting:  { governance: true,  label: "Meeting" },
@@ -27,17 +25,13 @@ export const EVENT_KINDS: Record<EventKindKey, EventKindMeta> = {
 export function kindOf(e: Event): EventKindMeta {
   return EVENT_KINDS[e.kind || "ordinary"] || EVENT_KINDS.ordinary;
 }
-export function voteCount(e: Event): number {
-  return (e.votes || []).length;
-}
 // narrows an Event to its meeting-specific fields where governance logic
 // reads several of them together and would benefit from real narrowing
 // instead of optional-chaining/guards at each field.
-export function isMeeting(e: Event): e is Event & { kind: "meeting"; votes: number[] } {
+export function isMeeting(e: Event): e is Event & { kind: "meeting" } {
   return e.kind === "meeting";
 }
-// a meeting its circle's Leader, Secretary or Facilitator scheduled: approved
-// from the start, with no vote, and attended by RSVP like an ordinary event
+// a meeting one of its circle's role-holders scheduled, with no consent needed
 export function isScheduledMeeting(e: Event): boolean {
   return isMeeting(e) && !!e.approvedByRole;
 }
@@ -45,63 +39,39 @@ export function isScheduledMeeting(e: Event): boolean {
 export function isCircleHosted(e: Event): e is Event & { hostCircleId: string } {
   return !!e.hostCircleId;
 }
-// still awaiting its host circle's approval
+// a meeting or circle-hosted event its circle hasn't decided yet
 export function isProposal(e: Event): boolean {
-  return !!e.hostCircleId && !!e.proposed;
+  return !!e.proposed;
 }
-// whether a vote is what this event is waiting on right now — drives the vote
-// banner and the governance-style row. An approved circle-hosted event is
-// settled and reads as an ordinary one again.
-export function isVoting(e: Event): boolean {
-  // a cancelled one is waiting on nothing
-  return !e.cancelled && ((isMeeting(e) && !isScheduledMeeting(e)) || isProposal(e));
+// still waiting on its circle's consent: it's in no list, and its page points
+// to its proposal (lib/db/proposals.ts)
+export function awaitingConsent(e: Event): boolean {
+  return !!e.proposed && !e.cancelled;
 }
-// whether the event has been through (or is in) a vote at all — for filters
+// whether its circle decides it at all: a meeting, or an event a circle hosts
 export function isGoverned(e: Event): boolean {
   return isMeeting(e) || isCircleHosted(e);
 }
+// a decided meeting or circle-hosted event; a plain event has nothing to decide
+export function isApproved(e: Event): boolean {
+  return isGoverned(e) && !e.proposed;
+}
+// a simple majority of a circle's members — what an old meeting needed, which
+// the move to consent counted existing votes against (scripts/convert-to-consent.ts)
 export function majority(memberCount: number): number {
   return Math.floor(memberCount / 2) + 1;
-}
-// the circle whose members vote on this event: a meeting's own circle, or a
-// circle-hosted event's host circle
-function votingCircle(e: Event, byId: CirclesById): Circle | undefined {
-  return byId[isMeeting(e) ? e.circleId : (e.hostCircleId ?? e.circleId)];
-}
-// a vote passes at a simple majority of the voting circle's own membership —
-// shared with lib/db/events.ts, which decides approval on the server.
-// The exact percentage is still TBD ("we should use a fixed percentage of the
-// total membership" — placeholder for now, applied uniformly to any circle);
-// isolated here so it's a one-line change once that's decided.
-export function voteThreshold(e: Event, byId: CirclesById): number {
-  const circle = votingCircle(e, byId);
-  if (!circle) return Infinity;
-  return majority(circle.members.length);
-}
-// a meeting is approved when its votes meet the threshold (or it was scheduled
-// without a vote); a circle-hosted
-// event once it has been approved; a plain event has nothing to approve.
-export function isApproved(e: Event, byId: CirclesById): boolean {
-  if (isMeeting(e)) return isScheduledMeeting(e) || voteCount(e) >= voteThreshold(e, byId);
-  return isCircleHosted(e) && !e.proposed;
 }
 // whether a given member is the organizer of this event, and so may edit it —
 // the person who created it (for a circle-hosted event, who proposed it).
 export function isEventOrganizer(e: Event, member: Member | null | undefined): boolean {
   return !!member && e.organizerId === member.id;
 }
-// what kind of thing this is, for an eyebrow or badge
-export function eventTypeLabel(e: Event): string {
-  if (isProposal(e)) return "Proposal";
-  return kindOf(e).label;
-}
-// the name of whoever's vote this is — "The 903", "Finance Council" — pairs
-// with votingMemberNoun below to read as e.g. "residents of The 903".
-export function votingCircleName(e: Event, byId: CirclesById): string {
-  return votingCircle(e, byId)?.name ?? "";
-}
-// "residents" reads naturally for a neighborhood, whose membership literally
-// is residency; every other circle just has "members" in the usual sense.
-export function votingMemberNoun(e: Event, byId: CirclesById): string {
-  return votingCircle(e, byId)?.type === "neighborhood" ? "residents" : "members";
+// whether a member may edit or cancel it: its organizer, and for one a circle
+// holds (it hosts it, or it's the circle's meeting), any of that circle's
+// members — lib/db/events.ts's assertCanManage
+export function canManageEvent(e: Event, member: Member | null | undefined, byId: CirclesById): boolean {
+  if (!member) return false;
+  if (e.organizerId === member.id) return true;
+  const circleId = e.hostCircleId ?? (isMeeting(e) ? e.circleId : undefined);
+  return !!circleId && !!byId[circleId]?.members.includes(member.id);
 }

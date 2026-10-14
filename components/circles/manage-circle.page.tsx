@@ -519,7 +519,7 @@ export function ManageCirclePage({ circle: o, circles, openProposal, onSave, onP
             <Section id="field-roles">
               <Label>Roles</Label>
               <p className="mb-3 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-                Optional. A Secretary, Leader or Facilitator can approve meetings and events without a vote.
+                Optional. Anyone holding a role can schedule the circle&apos;s meetings without asking for its consent.
               </p>
               <div className="border border-ink">
                 <div className="hidden border-b border-ink px-3.5 py-2 min-[720px]:grid min-[720px]:grid-cols-2 min-[720px]:gap-3.5">

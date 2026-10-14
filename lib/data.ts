@@ -1,4 +1,4 @@
-import type { Circle, CircleResource, Event, Member } from "./types";
+import type { AvailabilityWindow, Circle, CircleResource, Event, Member } from "./types";
 
 /* ---------- roster across the Providence federation (home node: The 903) ---------- */
 export const MEMBERS: Member[] = [
@@ -42,6 +42,18 @@ export const MEMBERS: Member[] = [
    residents (each member's `homeCircleId` names the neighborhood they live
    in, and the neighborhood circle lists them back). `offers`/`facts` as before. */
 const residents = (circleId: string): number[] => MEMBERS.filter((m) => m.homeCircleId === circleId).map((m) => m.id);
+
+/* When some demo members can do meetings, by member id (see
+   lib/availability.util.ts: minutes from midnight, days 0 = Sunday). The rest
+   haven't set it, which the meeting form shows as Unknown. */
+const WEEKDAYS = [1, 2, 3, 4, 5];
+export const AVAILABILITY: Record<number, AvailabilityWindow[]> = {
+  1: [{ days: WEEKDAYS, start: 18 * 60, end: 21 * 60 }],
+  2: [{ days: WEEKDAYS, start: 18 * 60, end: 21 * 60 }, { days: [0, 6], start: 13 * 60, end: 17 * 60 }],
+  3: [{ days: WEEKDAYS, start: 12 * 60, end: 13 * 60 }, { days: [1, 2, 3, 4], start: 18 * 60, end: 22 * 60 }],
+  4: [{ days: [0, 6], start: 9 * 60, end: 12 * 60 }],
+  5: [{ days: [1, 2, 3, 4], start: 19 * 60, end: 21 * 60 }],
+};
 
 export const CIRCLES: Circle[] = [
   {
@@ -540,7 +552,7 @@ export const EVENTS: Event[] = [
     organizerId: 8,
     date: dayFromNow(4), start: "10:00", end: "14:00",
     location: "PVD Things, 12 Library Ct, Olneyville",
-    description: "Our regular Saturday lending hours. The shift runs only if a shift lead is signed up — leads open and close, handle membership, and hold the keys. Librarians help patrons find and check out things; the more the merrier. Grab a slot below.",
+    description: "Our regular Saturday lending hours. The shift runs only if a shift lead is signed up — leads open and close, handle membership, and hold the keys. Librarians help patrons find and check out things; the more the merrier. Grab a role below.",
     // role-based slots: a shift lead is required (min 1) or the shift can't run;
     // librarians are unlimited and optional (min 0).
     roles: [

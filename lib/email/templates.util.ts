@@ -1,6 +1,6 @@
 import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtDateTime, fmtEventWhen, fmtNumericDate, fmtTime, parseDay, withArticle } from "@/lib/format.util";
-import { proposalTitle } from "@/lib/proposals.util";
+import { isEventProposal, proposalTitle } from "@/lib/proposals.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
@@ -164,13 +164,13 @@ export function eventNotificationEmail(n: EventNotificationData): Body {
       : "";
   const note = meetingNote ||
     (approvedMeeting
-      ? `${n.circleName} has the ${n.votesNeeded} vote${n.votesNeeded === 1 ? "" : "s"} this meeting needed, so it's approved.`
+      ? `${n.circleName}'s members consented to this meeting, so it's scheduled. RSVP if you're coming.`
       : proposal
     ? `${n.organizerName} proposed this for ${n.circleName}. It needs ${n.votesNeeded} approving vote${n.votesNeeded === 1 ? "" : "s"} from ${because} members before it opens up to ${n.circleName}.`
     : approvedEvent && n.approvedByRole
       ? `${n.organizerName}, ${n.hostCircleName ?? "the circle"}'s ${n.approvedByRole}, approved this event, so it's now open to everyone in ${n.circleName}.`
     : approvedEvent
-      ? `${n.hostCircleName ?? "A circle"} approved this event, so it's now open to everyone in ${n.circleName}.`
+      ? `${n.hostCircleName ?? "A circle"}'s members consented to this event, so it's now open to everyone in ${n.circleName}.`
       : "");
   const subject = proposal
     ? `New proposal in ${because}: ${n.title}`
@@ -380,7 +380,7 @@ function cancelledEventEmail(n: EventNotificationData): Body {
   // a date of a repeating event is cancelled alone, or with every later date
   // (its series then ends before it)
   const note = n.cancelledAutomatically
-    ? `This ${noun} was cancelled automatically, since no one signed up as ${listOf(shortLabels(n)) || "a required slot"} by 15 minutes before the start.`
+    ? `This ${noun} was cancelled automatically, since no one signed up as ${listOf(shortLabels(n)) || "a required role"} by 15 minutes before the start.`
     : !n.repeat
     ? `${n.organizerName} cancelled this ${noun}, so it won't be going ahead.`
     : endedBefore(n.repeat, n.date)
@@ -477,7 +477,7 @@ function reminderEmail(n: EventNotificationData): Body {
     : `You're going to this ${noun}, ${at}.`;
   const open = n.openSlots ?? [];
   const openLines = open.map((s) => `${s.label}: ${s.filled} of ${s.min} needed`);
-  const openNote = "If a required slot is still empty 15 minutes before the start, the event is cancelled automatically.";
+  const openNote = "If a required role is still empty 15 minutes before the start, the event is cancelled automatically.";
   const Day = dayWord.charAt(0).toUpperCase() + dayWord.slice(1);
   const why = `You're getting this because you're going to it.`;
   const when = fmtEventWhen(n);
@@ -527,7 +527,7 @@ const shortLabels = (n: Pick<EventNotificationData, "openSlots">) => (n.openSlot
    someone who could cover it before it's cancelled automatically. The yellow
    of the app's at-risk banner: a heads-up, not a decision. */
 function shortSlotsEmail(n: EventNotificationData): Body {
-  const needs = listOf(shortLabels(n).map(withArticle)) || "someone in a required slot";
+  const needs = listOf(shortLabels(n).map(withArticle)) || "someone in a required role";
   const lines = (n.openSlots ?? []).map((s) => `${s.label}: ${s.filled} of ${s.min} needed`);
   const note = n.autoCancel
     ? `${n.title} starts at ${fmtTime(n.start)} and still needs ${needs}. If no one signs up by ${autoCancelClock(n.start)}, it's cancelled automatically and everyone going is told.`
@@ -584,6 +584,8 @@ const lineText = (l: ProposalLine) => (l.before && l.after ? `${l.label}: ${l.be
    it passed. Each lists what it changes, before and after. */
 export function proposalEmail(d: ProposalEmailData): Body {
   const title = proposalTitle(d);
+  // a group's event, proposed for its consent, rather than a change to the circle
+  const event = isEventProposal(d);
   const deadline = fmtDateTime(d.closesAt);
   const [subject, eyebrowText, accent, note, action] =
     d.notice === "opened"
@@ -591,7 +593,9 @@ export function proposalEmail(d: ProposalEmailData): Body {
           `Proposal for ${d.circleName}: ${title}`,
           `Proposal · ${d.circleName}`,
           INK,
-          `${d.proposerName} proposes a change to ${d.circleName}, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's made then.`,
+          event
+            ? `${d.proposerName} proposes that ${d.circleName} hold this event, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's scheduled then.`
+            : `${d.proposerName} proposes a change to ${d.circleName}, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's made then.`,
           "Respond",
         ]
       : d.notice === "objected"
@@ -599,14 +603,14 @@ export function proposalEmail(d: ProposalEmailData): Body {
             `Objection: ${title}`,
             `Objected · ${d.circleName}`,
             DANGER,
-            `${d.objectorName ?? "A member"} objected to ${d.proposerName}'s proposal, so it won't be made.${d.reason ? ` Their reason: “${d.reason}”.` : ""} It can be proposed again, changed to meet the objection.`,
+            `${d.objectorName ?? "A member"} objected to ${d.proposerName}'s proposal, so it won't be ${event ? "held" : "made"}.${d.reason ? ` Their reason: “${d.reason}”.` : ""} It can be proposed again, changed to meet the objection.`,
             "View proposal",
           ]
         : [`Passed: ${title}`, `Passed · ${d.circleName}`, LEAF, `No one objected to ${d.proposerName}'s proposal, so the change has been made to ${d.circleName}.`, "View proposal"];
   const why = `You're getting this because you're a member of ${d.circleName}.`;
   const line = (l: ProposalLine) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(esc(l.label))}` +
-    (l.after ? `<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(l.after)}</div>` : "") +
+    (l.after ? `<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(l.after).replace(/\n/g, "<br>")}</div>` : "") +
     (l.before ? `<div style="margin-top:2px;font-family:${SERIF};font-size:15px;line-height:1.4;color:${SOFT};text-decoration:line-through">${esc(l.before)}</div>` : "") +
     `</td></tr>`;
   return {

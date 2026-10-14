@@ -9,7 +9,7 @@ import { useAppNav } from "@/lib/hooks";
 function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const {
-    events, rsvpState, toggleRsvp, voteState, toggleVote,
+    events, rsvpState, toggleRsvp,
     toggleRoleSlot, profile,
   } = useAppState();
   const nav = useAppNav();
@@ -23,8 +23,6 @@ function EventDetail() {
       profile={profile}
       rsvpState={rsvpState}
       toggleRsvp={toggleRsvp}
-      voteState={voteState}
-      toggleVote={toggleVote}
       onOpenMember={nav.openMember}
       onOpenCircle={(c) => nav.openCircle(c)}
       onToggleRoleSlot={toggleRoleSlot}

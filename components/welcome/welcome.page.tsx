@@ -94,7 +94,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
             Circles
           </h1>
           <p className="mt-3.5 mb-7 font-serif text-lg leading-normal text-[#222]">
-            A federation of neighborhoods and other organizations. Sign in with your email to connect with your community.
+            Sign in with your email to connect with your community.
           </p>
         </div>
 

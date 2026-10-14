@@ -10,7 +10,6 @@ import {
   deleteResourceAction as dbDeleteResource,
   loadAppStateAction as dbLoadAppState,
   setRsvpAction as dbSetRsvp,
-  setVoteAction as dbSetVote,
   toggleRoleSlotAction as dbToggleRoleSlot,
   createProposalAction as dbCreateProposal,
   respondToProposalAction as dbRespondToProposal,
@@ -27,6 +26,7 @@ import {
   requestPhoneCodeAction as dbRequestPhoneCode,
   confirmPhoneCodeAction as dbConfirmPhoneCode,
   removePhoneAction as dbRemovePhone,
+  saveAvailabilityAction as dbSaveAvailability,
   createCircleAction as dbCreateCircle,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
@@ -34,10 +34,9 @@ import { audienceLabel, indexCircles } from "@/lib/circles.util";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
-import { isProposal, voteThreshold } from "@/lib/governance.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { Circle, CircleInvitation, CircleProposal, CircleResource, ConsentResponse, Event, Member, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
+import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, ConsentResponse, Event, Member, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -56,14 +55,13 @@ export interface AppStateValue {
   // applications waiting for review: a number for a system admin, else null
   pendingApplications: number | null;
   rsvpState: Record<string, boolean>;
-  voteState: Record<string, boolean>;
   profile: Profile;
   toggleRsvp(eventId: string): void;
   toggleRoleSlot(eventId: string, roleKey: string): void;
-  createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }>;
+  // proposalId: a group's event, proposed to it rather than created outright
+  createEvent(draft: EventDraft): Promise<{ ok: true; event: Event; proposalId?: string } | { ok: false; error: string }>;
   updateEventDetails(id: string, details: EventDetails, scope?: SeriesScope): Promise<MutationResult>;
   cancelEvent(id: string, scope?: SeriesScope): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }>;
-  toggleVote(eventId: string): void;
   // resolves to the new circle, for the caller to go to
   createCircle(input: NewCircleInput): Promise<{ ok: true; circle: Circle } | { ok: false; error: string }>;
   saveCircle(id: string, patch: Partial<Circle>): void;
@@ -80,6 +78,7 @@ export interface AppStateValue {
   requestPhoneCode(phone: string): Promise<{ ok: true; phone: string; code?: string } | { ok: false; error: string }>;
   confirmPhone(code: string): Promise<MutationResult>;
   removePhone(): Promise<MutationResult>;
+  saveAvailability(windows: AvailabilityWindow[]): Promise<MutationResult>;
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
   removeResource(id: string): Promise<MutationResult>;
@@ -95,7 +94,7 @@ export interface AppStateValue {
 }
 
 /* Holds the app's runtime state — events, circles, members, the current
-   user's RSVPs/votes/profile — plus the mutations on it. This is the single
+   user's RSVPs and profile — plus the mutations on it. This is the single
    source of truth every route reads from instead of a fetch. Mounted once in
    the (app) layout, seeded from data the DAL (lib/db/) fetched server-side —
    see that layout for the fetch.
@@ -105,7 +104,7 @@ export interface AppStateValue {
    the calling route's job (it has the router; this provider shouldn't).
    Each mutator also calls the matching lib/db/ write (through
    lib/db/actions.ts's Server Actions), fire-and-forget — no rollback yet,
-   only a console.error on a rejected write. The event RSVP/vote/slot
+   only a console.error on a rejected write. The event RSVP/slot
    toggles are optimistic too, but the server can refuse them (an event's
    circle decides who may act on it), so they adopt the server's version of
    the event on success and roll the change back with an error toast on
@@ -132,7 +131,7 @@ function mergeEvents(prev: Event[], changed: Event[]): Event[] {
   return [...prev.map((e) => byId.get(e.id) ?? e), ...changed.filter((e) => !prev.some((p) => p.id === e.id))];
 }
 
-// { [eventId]: true } for the events the current user has RSVPed to, voted on, ...
+// { [eventId]: true } for the events the current user has RSVPed to, ...
 function ownFlags(events: Event[], has: (e: Event) => boolean): Record<string, boolean> {
   return Object.fromEntries(events.filter(has).map((e) => [e.id, true]));
 }
@@ -171,8 +170,6 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   const [proposals, setProposals] = useState<CircleProposal[]>(initialProposals);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
   const [rsvpState, setRsvpState] = useState<Record<string, boolean>>(() => ownFlags(initialEvents, (e) => e.rsvps.includes(currentUserId)));
-  // voteState: { [eventId]: true } — the current user's votes on meetings
-  const [voteState, setVoteState] = useState<Record<string, boolean>>(() => ownFlags(initialEvents, (e) => !!e.votes?.includes(currentUserId)));
   // the current user's own editable profile (seeded from their member record)
   const [profile, setProfile] = useState<Profile>(() => ({
     ...initialProfile,
@@ -216,7 +213,6 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setProposals(fresh.proposals);
     setPendingApplications(fresh.pendingApplications);
     setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
-    setVoteState(ownFlags(fresh.events, (e) => !!e.votes?.includes(currentUserId)));
     setProfile(fresh.profile);
   }
 
@@ -336,51 +332,37 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   }
 
   // the server generates the id and decides the organizer (always the caller)
-  // and who starts out attending/voting, so this waits for it and returns the
+  // and who starts out attending, so this waits for it and returns the
   // created event for the caller to navigate to
-  async function createEvent(draft: EventDraft): Promise<{ ok: true; event: Event } | { ok: false; error: string }> {
+  async function createEvent(draft: EventDraft): Promise<{ ok: true; event: Event; proposalId?: string } | { ok: false; error: string }> {
     const result = await dbCreateEvent(draft);
     if (!result.ok) return result;
     // the event, and for a repeating one its next few dates
-    const created = result.value;
+    const created = result.value.events;
     const ev = created[0];
     if (!ev) return { ok: false, error: "Something went wrong — try again." };
+    // a meeting or circle-hosted event is proposed to its circle; it's in no
+    // list until its members consent, so the caller goes to its proposal
+    if ("state" in result.value && result.value.proposalId) {
+      adopt(result.value.state);
+      const decider = circles.find((c) => c.id === (ev.hostCircleId ?? ev.circleId));
+      const noun = ev.kind === "meeting" ? "Meeting" : "Event";
+      showToast(!ev.proposed
+        ? { tone: "success", title: `${noun} scheduled`, message: `${ev.title} is on ${decider?.name ?? "the circle"}'s calendar.` }
+        : { tone: "success", title: `${noun} proposed`, message: `It's scheduled once ${decider?.name ?? "the circle"}'s members consent, or in 3 days if no one objects.` });
+      return { ok: true, event: ev, proposalId: result.value.proposalId };
+    }
     setEvents((prev) => [...prev, ...created]);
-    // the creator is attending; a proposer has cast the first vote
+    // the creator is attending
     setRsvpState((prev) => ({ ...prev, ...ownFlags(created, (e) => e.rsvps.includes(currentUserId)) }));
-    setVoteState((prev) => ({ ...prev, ...ownFlags(created, (e) => !!e.votes?.includes(currentUserId)) }));
     const repeats = ev.repeat ? ` It repeats ${repeatSummary(ev.repeat).replace(/^./, (c) => c.toLowerCase())}.` : "";
     const circle = circles.find((c) => c.id === ev.circleId);
     const hostCircle = ev.hostCircleId ? circles.find((c) => c.id === ev.hostCircleId) : undefined;
-    if (isProposal(ev)) {
-      // only the host circle can see it until it's approved
-      const noun = hostCircle?.type === "neighborhood" ? "residents" : "members";
-      showToast({
-        tone: "success",
-        title: "Event proposed",
-        message: `Only ${noun} of ${hostCircle?.name ?? "the circle"} can see it for now. Once a majority approves it, it opens to ${circle ? audienceLabel(circle) : "its circle"}${ev.repeat ? ", every date of it" : ""}.`,
-      });
-    } else if (ev.approvedByRole && hostCircle) {
-      showToast({
-        tone: "success",
-        title: "Event approved",
-        message: `As ${hostCircle.name}'s ${ev.approvedByRole}, you've approved it without a vote. It's open to ${circle ? audienceLabel(circle) : "its circle"} now, and they're being told.${repeats}`,
-      });
-    } else if (ev.approvedByRole) {
+    if (ev.approvedByRole) {
       showToast({
         tone: "success",
         title: "Meeting scheduled",
-        message: `As ${circle?.name ?? "the circle"}'s ${ev.approvedByRole}, you've put it on the calendar without a vote. Its ${circle?.type === "neighborhood" ? "residents" : "members"} will be notified and can RSVP.`,
-      });
-    } else if (ev.kind === "meeting") {
-      // "residents" reads naturally for a neighborhood; any other circle just
-      // has "members" — see lib/governance.util.ts's votingMemberNoun for the same
-      // distinction.
-      const noun = circle?.type === "neighborhood" ? "residents" : "members";
-      showToast({
-        tone: "success",
-        title: "Meeting proposed",
-        message: `Your meeting has been proposed. All ${circle ? `${noun} of ${circle.name}` : "members"} will be notified and can vote to approve it.`,
+        message: `As ${circle?.name ?? "the circle"}'s ${ev.approvedByRole}, you've put it on the calendar without asking for consent. Its ${circle?.type === "neighborhood" ? "residents" : "members"} will be notified and can RSVP.`,
       });
     } else {
       // the circle is the audience: only its members (everyone, for the city)
@@ -398,7 +380,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
 
   // save edits to an event's own details (title/date/location/slots/etc.) from
   // the edit-event form — organizer only, enforced by the server; the circle,
-  // kind, rsvps and votes aren't editable here (toggleRsvp/toggleVote own those)
+  // kind and rsvps aren't editable here (toggleRsvp owns those)
   // `scope` is for a date of a repeating event: that one, or every date from it on
   async function updateEventDetails(id: string, details: EventDetails, scope: SeriesScope = "one"): Promise<MutationResult> {
     const result = await dbUpdateEventDetails(id, details, scope);
@@ -422,12 +404,17 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   async function cancelEvent(id: string, scope: SeriesScope = "one"): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }> {
     const result = await dbCancelEvent(id, scope).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
+    // a group's proposed event: withdrawn, with its proposal
+    if ("state" in result.value) {
+      adopt(result.value.state);
+      showToast({ tone: "success", title: "Proposal withdrawn", message: "The event won't be held, and its proposal is closed." });
+      return { ok: true, deleted: true };
+    }
     const { deletedIds, events: changed } = result.value;
     const gone = new Set(deletedIds);
     setEvents((prev) => mergeEvents(prev.filter((e) => !gone.has(e.id)), changed));
     const drop = (prev: Record<string, boolean>) => Object.fromEntries(Object.entries(prev).filter(([key]) => !gone.has(key)));
     setRsvpState(drop);
-    setVoteState(drop);
     const deleted = gone.has(id);
     const emailed = changed.some((e) => e.cancelled && !events.find((p) => p.id === e.id)?.cancelled);
     if (scope === "upcoming") {
@@ -442,59 +429,6 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
       showToast({ tone: "success", title: "Event cancelled", message: "Everyone who was going is being emailed." });
     }
     return { ok: true, deleted };
-  }
-
-  // voting on a meeting and RSVPing to it are the same act — meetings are
-  // approved by member participation, so there's no "voted but not coming"
-  // state. Kept as one function (not a separate toggleRsvp call alongside this
-  // one) so both arrays update atomically. A vote on a circle-hosted proposal
-  // is an approval only (attending opens once it's live), and the vote that
-  // reaches a majority flips it live — the server decides that for real; this
-  // just mirrors the same rule so the UI doesn't wait on it.
-  function toggleVote(eventId: string) {
-    const event = events.find((e) => e.id === eventId);
-    if (!event) return;
-    const hosted = !!event.hostCircleId;
-    if (hosted && !isProposal(event)) return; // already approved — nothing left to vote on
-    if (event.approvedByRole) return; // approved without a vote — nothing to vote on
-    const wasVoted = !!voteState[eventId];
-    const wasGoing = !!rsvpState[eventId];
-    const has = (event.votes || []).includes(currentUserId);
-    const willVote = !has;
-    const votes = has ? (event.votes || []).filter((id) => id !== currentUserId) : [...(event.votes || []), currentUserId];
-    // a meeting's vote is also your RSVP; a proposal's isn't
-    const hasRsvp = event.rsvps.includes(currentUserId);
-    const rsvps = hosted ? event.rsvps : willVote ? (hasRsvp ? event.rsvps : [...event.rsvps, currentUserId]) : event.rsvps.filter((id) => id !== currentUserId);
-    const approvedNow = hosted && willVote && votes.length >= voteThreshold(event, indexCircles(circles));
-
-    setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, votes, rsvps, ...(approvedNow ? { proposed: false } : {}) } : ev)));
-    setVoteState((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
-    if (!hosted) {
-      setRsvpState((prev) => {
-        const next = { ...prev, [eventId]: willVote };
-        if (!willVote) delete next[eventId];
-        return next;
-      });
-    }
-    void syncEvent(eventId, () => dbSetVote(eventId, willVote), () => {
-      setEvents((prev) => prev.map((e) => (e.id === eventId ? event : e)));
-      setVoteState((prev) => ({ ...prev, [eventId]: wasVoted }));
-      if (!hosted) {
-        setRsvpState((prev) => {
-          const next = { ...prev, [eventId]: wasGoing };
-          if (!wasGoing) delete next[eventId];
-          return next;
-        });
-      }
-    });
-    if (approvedNow) {
-      const audience = circles.find((c) => c.id === event.circleId);
-      showToast({
-        tone: "success",
-        title: "Event approved",
-        message: `${event.title} is now open to ${audience ? audienceLabel(audience) : "its circle"}.`,
-      });
-    }
   }
 
   // a proposal's latest, and the circle as it now is if it just passed
@@ -515,7 +449,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   async function respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult> {
     const result = await dbRespondToProposal(id, response, reason).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
-    takeProposal(result.value.proposal, result.value.circle);
+    // a group's event proposal may have approved or discarded its event: take it all
+    if ("state" in result.value) adopt(result.value.state);
+    else takeProposal(result.value.proposal, result.value.circle);
     return { ok: true };
   }
 
@@ -614,6 +550,16 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  // await-then-update, like the notification settings: the server may refuse
+  // the schedule, and it hands back the normalized one to show
+  async function saveAvailability(windows: AvailabilityWindow[]): Promise<MutationResult> {
+    const result = await dbSaveAvailability(windows).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    const availability = result.value;
+    setProfile((p) => ({ ...p, availability }));
+    return { ok: true };
+  }
+
   async function addResource(circleId: string, input: ResourceInput): Promise<MutationResult> {
     const result = await dbCreateResource(circleId, input);
     if (!result.ok) return result;
@@ -695,7 +641,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events, circles, members, resources, invitations, proposals, pendingApplications, rsvpState, voteState, profile,
+        events, circles, members, resources, invitations, proposals, pendingApplications, rsvpState, profile,
         inviteToCircle: tracked(inviteToCircle),
         acceptInvitation: tracked(acceptInvitation),
         leaveCircle: tracked(leaveCircle),
@@ -706,7 +652,6 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         createEvent: tracked(createEvent),
         updateEventDetails: tracked(updateEventDetails),
         cancelEvent: tracked(cancelEvent),
-        toggleVote: tracked(toggleVote),
         createCircle: tracked(createCircle),
         saveCircle: tracked(saveCircle),
         proposeCircleChanges: tracked(proposeCircleChanges),
@@ -717,6 +662,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         requestPhoneCode: tracked(requestPhoneCode),
         confirmPhone: tracked(confirmPhone),
         removePhone: tracked(removePhone),
+        saveAvailability: tracked(saveAvailability),
         addResource: tracked(addResource),
         updateResource: tracked(updateResource),
         removeResource: tracked(removeResource),

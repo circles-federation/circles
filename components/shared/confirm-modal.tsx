@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import clsx from "clsx";
 import { Modal } from "./modal";
 import { useActAfterPress } from "./press-feedback";
 
@@ -11,13 +12,16 @@ interface ConfirmModalProps {
   cancelLabel: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
+  // danger for something lost (discarding, cancelling); flame for sending
+  // something to a circle's members to decide
+  tone?: "danger" | "flame";
 }
 
 /* Generic "are you sure" dialog — currently only used to guard discarding
    unsaved changes, but kept content-agnostic (title/message/labels as
    props) rather than named after that one use, since any future form with
    a dirty check will want the same confirmation. */
-export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, onCancel }: ConfirmModalProps) {
+export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, onCancel, tone = "danger" }: ConfirmModalProps) {
   const { pressed, act } = useActAfterPress<"cancel" | "confirm">();
   return (
     <Modal onClose={onCancel} className="max-w-105" centered>
@@ -36,7 +40,10 @@ export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConf
         <button
           onClick={() => act("confirm", onConfirm)}
           data-pressed={pressed("confirm")}
-          className="danger-press flex-1 cursor-pointer bg-paper py-3.5 font-sans text-xs font-bold uppercase tracking-wide text-danger"
+          className={clsx(
+            "flex-1 cursor-pointer bg-paper py-3.5 font-sans text-xs font-bold uppercase tracking-wide",
+            tone === "flame" ? "flame-press text-flame" : "danger-press text-danger"
+          )}
         >
           {confirmLabel}
         </button>

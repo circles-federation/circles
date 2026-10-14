@@ -6,8 +6,10 @@ import { AlertModal, AttentionDot, Avatar, Chip, LinkRow, Eyebrow, EyebrowGroup,
 import { CircleCard } from "@/components/circles/circle-card";
 import { ProposalBanner } from "@/components/circles/proposal-banner";
 import { EventFeed } from "@/components/events/event-feed";
+import { HomePrompts } from "./home-prompts";
 import { StartingSoon } from "./starting-soon";
 import { StatCard } from "./stat-card";
+import { isAttending } from "@/lib/events.util";
 import { fmtNumericDate, isPastEvent, parseDay } from "@/lib/format.util";
 import { awaitingResponse } from "@/lib/proposals.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
@@ -37,6 +39,9 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   const { pendingApplications, invitations, proposals } = useAppState();
   // proposals in my circles still waiting on my answer, soonest to close first
   const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
+  // the ones I proposed, still open: nothing for me to answer, but the way back
+  // to one wherever its circle is (an undecided meeting is in no list)
+  const mineOpen = proposals.filter((p) => p.status === "open" && p.proposerId === profile.id).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
   const memberById = useMemberById();
   // invitations to join a circle, sent to me
   const myInvitations = invitations.filter((i) => i.memberId === profile.id);
@@ -71,8 +76,8 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   const myCircles = circlesForMember(profile.id, circles);
 
   // the user's events — created or RSVP'd, upcoming first then past
-  // the user's events — created or RSVP'd; EventFeed orders and paginates them
-  const myEvents = events.filter((e) => (e.rsvps || []).includes(profile.id) || rsvpState[e.id] || e.organizerId === profile.id);
+  // the user's events — created, RSVP'd or slotted; EventFeed orders and paginates them
+  const myEvents = events.filter((e) => isAttending(e, profile.id) || rsvpState[e.id] || e.organizerId === profile.id);
 
   return (
     <PageContainer size="wide">
@@ -84,10 +89,10 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
             <Avatar member={profile} sizeClassName="size-24 min-[720px]:size-30" />
           </button>
           <div className="min-w-0">
-            <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">
-              {profile.name}
+            <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em] wrap-break-word">
+              <span className="block min-[720px]:inline">{profile.name}</span>
               {profile.lastName && (
-                <span title="Stored in the system, but not shown to other members" className="ml-[0.3em] cursor-help text-[#9a9a9a]">
+                <span title="Stored in the system, but not shown to other members" className="block cursor-help text-[#9a9a9a] min-[720px]:ml-[0.3em] min-[720px]:inline">
                   {profile.lastName}
                 </span>
               )}
@@ -101,6 +106,8 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
 
       <SectionGroup>
         <StartingSoon events={events} memberId={profile.id} rsvpState={rsvpState} />
+
+        <HomePrompts />
 
         {/* a system admin's way into the applications waiting for them */}
         {pendingApplications !== null && (
@@ -141,6 +148,19 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
                   since these can come from any of them */}
               <div className="flex flex-col gap-3">
                 {awaitingMe.map((p) => (
+                  <ProposalBanner key={p.id} proposal={p} memberId={profile.id} circleName={byId[p.circleId]?.name} />
+                ))}
+              </div>
+            </EyebrowGroup>
+          </Section>
+        )}
+
+        {mineOpen.length > 0 && (
+          <Section>
+            {/* no attention dot: these wait on others, not on me */}
+            <EyebrowGroup label="Your proposals">
+              <div className="flex flex-col gap-3">
+                {mineOpen.map((p) => (
                   <ProposalBanner key={p.id} proposal={p} memberId={profile.id} circleName={byId[p.circleId]?.name} />
                 ))}
               </div>

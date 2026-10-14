@@ -6,8 +6,9 @@ import { UserFacingError } from "./errors";
 import { circleMembers, memberPhotos, members, phoneVerifications } from "./schema";
 import { validateLanguages } from "@/lib/languages.util";
 import { PHONE_INVALID, SMS_CONSENT_NOTICE, SMS_STOPPED, normalizePhone } from "@/lib/phone.util";
-import { isBirthDecade } from "@/lib/members.util";
-import type { Member, NotificationSettings, Profile } from "@/lib/types";
+import { OCCUPATION_MAX, PRONOUNS_MAX, isBirthDecade } from "@/lib/members.util";
+import { normalizeAvailability, validateAvailability } from "@/lib/availability.util";
+import type { AvailabilityWindow, Member, NotificationSettings, Profile } from "@/lib/types";
 
 export class MemberError extends UserFacingError {}
 
@@ -64,18 +65,39 @@ export async function getMembersForViewer(viewerId: number): Promise<Member[]> {
 }
 
 // the settings only a member themself sees, for their own profile: whether
-// others may see their email, and how they're told about things
-export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications" | "phone" | "smsStopped">> {
+// others may see their email, how they're told about things, and when they
+// can do meetings
+export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications" | "availability" | "phone" | "smsStopped">> {
   const [row] = await db
-    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush, sms: members.notifySms, phone: members.phone, smsStoppedAt: members.smsStoppedAt })
+    .select({
+      emailPublic: members.emailPublic,
+      email: members.notifyEmail,
+      push: members.notifyPush,
+      sms: members.notifySms,
+      availability: members.availability,
+      phone: members.phone,
+      smsStoppedAt: members.smsStoppedAt,
+    })
     .from(members)
     .where(eq(members.id, id));
   return {
-    emailPublic: row?.emailPublic ?? true,
+    emailPublic: row?.emailPublic ?? false,
     notifications: { email: row?.email ?? true, push: row?.push ?? true, sms: row?.sms ?? true },
+    availability: row?.availability ?? null,
     ...(row?.phone ? { phone: row.phone } : {}),
     ...(row?.phone && row.smsStoppedAt ? { smsStopped: true as const } : {}),
   };
+}
+
+// Settings → Meeting availability, always the member's own (the action
+// supplies the session's id). Saved in its one normal form, which is returned.
+export async function setAvailability(id: number, windows: AvailabilityWindow[]): Promise<AvailabilityWindow[]> {
+  if (!Array.isArray(windows)) throw new MemberError("That schedule wasn't recognized.");
+  const problem = validateAvailability(windows);
+  if (problem) throw new MemberError(problem);
+  const saved = normalizeAvailability(windows);
+  await db.update(members).set({ availability: saved }).where(eq(members.id, id));
+  return saved;
 }
 
 /* A member's own mobile number (Settings → Phone number), always their own:
@@ -211,10 +233,12 @@ export async function updateMember(id: number, patch: ProfilePatch): Promise<Mem
     const problem = validateLanguages(languages);
     if (problem) throw new MemberError(problem);
   }
+  if (pronouns !== undefined && pronouns.trim().length > PRONOUNS_MAX) throw new MemberError(`Keep pronouns under ${PRONOUNS_MAX} characters.`);
+  if (role !== undefined && role.trim().length > OCCUPATION_MAX) throw new MemberError(`Keep occupation under ${OCCUPATION_MAX} characters.`);
   const birthDecade = patch.birthDecade;
   if (birthDecade !== undefined && birthDecade !== null && !isBirthDecade(birthDecade)) throw new MemberError("Pick one of the decades listed.");
   // only the two fields of each, whatever else a request carried
-  const columnPatch = { name, lastName, pronouns, role, skills, interests, bio, emailPublic, birthDecade, languages: languages?.map(({ code, level }) => ({ code, level })) };
+  const columnPatch = { name, lastName, pronouns: pronouns?.trim(), role: role?.trim(), skills, interests, bio, emailPublic, birthDecade, languages: languages?.map(({ code, level }) => ({ code, level })) };
   if (Object.values(columnPatch).some((v) => v !== undefined)) {
     await db.update(members).set(columnPatch).where(eq(members.id, id));
   }

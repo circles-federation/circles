@@ -1,8 +1,8 @@
 import type { PushMessage } from "./index";
 import { eventChanges, type EventNotificationData } from "@/lib/email/templates.util";
 import { fmtDateTime, fmtEventWhen, fmtTime, withArticle } from "@/lib/format.util";
-import { proposalTitle } from "@/lib/proposals.util";
-import type { ProposalChanges, ProposalNoticeKind } from "@/lib/types";
+import { isEventProposal, proposalTitle } from "@/lib/proposals.util";
+import type { ProposalChanges, ProposalLine, ProposalNoticeKind } from "@/lib/types";
 import { endedBefore, relativeDayWord } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
 
@@ -40,7 +40,7 @@ export function eventNotificationPush(n: EventPushData): PushMessage {
 
   if (n.notice === "cancelled") {
     const rest = n.cancelledAutomatically
-      ? `No one signed up as ${short.join(" or ") || "a required slot"} in time.`
+      ? `No one signed up as ${short.join(" or ") || "a required role"} in time.`
       : n.repeat && endedBefore(n.repeat, n.date)
         ? "This date and the ones after it won't go ahead."
         : `${n.organizerName} called it off.`;
@@ -107,16 +107,18 @@ export function proposalPush(d: {
   notice: ProposalNoticeKind;
   circleName: string;
   changes: ProposalChanges;
+  lines: ProposalLine[];
   closesAt: Date;
   proposerName: string;
   objectorName?: string;
   reason?: string;
 }): PushMessage {
   const title = proposalTitle(d);
+  const event = isEventProposal(d);
   const url = `/proposals/${d.proposalId}`;
   const tag = `proposal-${d.proposalId}`;
   if (d.notice === "opened") return message(`Proposal: ${title}`, `${d.circleName} · from ${d.proposerName}. Respond by ${fmtDateTime(d.closesAt)}.`, url, tag);
-  if (d.notice === "objected") return message(`Objected: ${title}`, `${d.objectorName ?? "A member"}: ${d.reason ?? "objected"}`, url, tag);
+  if (d.notice === "objected") return message(`Objected: ${title}`, `${d.objectorName ?? "A member"}${event ? ", so it won't be held" : ""}: ${d.reason ?? "objected"}`, url, tag);
   return message(`Passed: ${title}`, `No one objected, so ${d.circleName} has made the change.`, url, tag);
 }
 

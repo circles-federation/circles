@@ -5,7 +5,7 @@ import { notFound, useParams, useSearchParams } from "next/navigation";
 import { CirclePage } from "@/components/circles/circle.page";
 import { NeighborhoodPage } from "@/components/circles/neighborhood.page";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { circleCanHost, isCircleMember } from "@/lib/circles.util";
+import { isCircleMember } from "@/lib/circles.util";
 import { useAppNav, useMemberById, useMembers } from "@/lib/hooks";
 
 // every circle lives at this one flat route, however deep it sits in the
@@ -49,8 +49,8 @@ function CircleRoute() {
       onOpenMember={nav.openMember}
       onOpenCircle={(c) => nav.openCircle(c)}
       onOpenEvent={(e) => nav.openEvent(e)}
-      // a circle that can host starts the form hosted by it; a group, shown to it
-      onNewEvent={() => (circleCanHost(circle) ? nav.newEvent(circle) : nav.newEventIn(circle))}
+      // the form starts hosted by the circle (for a group, a proposal to it)
+      onNewEvent={() => nav.newEvent(circle)}
       onAddResourcePage={() => nav.addResource(circle)}
       onEditResourcePage={(r) => nav.editResource(r)}
       onInvitePage={() => nav.inviteTo(circle)}

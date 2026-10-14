@@ -83,12 +83,12 @@ export function validateCircleRoles(drafts: CircleRoleDraft[], memberIds: number
   return null;
 }
 
-// the built-in role (Secretary, Leader or Facilitator) a member holds in a
-// circle, if any — holding one lets them approve on the circle's behalf without
-// a vote: schedule its meetings, and open the events it hosts (see createEvent
-// in lib/db/events.ts). The first, if they hold several.
+// a role a member holds in a circle (built-in or the circle's own), if any —
+// holding one lets them schedule the circle's meetings without asking for its
+// consent (see createEvent in lib/db/events.ts). The first in the circle's
+// order, if they hold several.
 export function approvingRole(circle: Pick<Circle, "roles">, memberId: number): string | null {
-  return (circle.roles ?? []).find((r) => r.builtin && r.memberId === memberId)?.label ?? null;
+  return (circle.roles ?? []).find((r) => r.memberId === memberId)?.label ?? null;
 }
 
 // the names of the roles a member holds in a circle, in the order the circle

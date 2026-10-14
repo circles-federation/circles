@@ -13,7 +13,7 @@ const STARTING_LEVEL = 3;
    under it, a level chosen by tapping its bar, and a remove button; then a
    list of the rest to add from, by English name. */
 export function LanguagesEditor({ value, onChange }: { value: MemberLanguage[]; onChange: (next: MemberLanguage[]) => void }) {
-  const remaining = LANGUAGE_CODES.filter((code) => !value.some((l) => l.code === code)).sort((a, b) => languageName(a).localeCompare(languageName(b)));
+  const remaining = LANGUAGE_CODES.filter((code) => !value.some((l) => l.code === code)).sort((a, b) => languageName(a).localeCompare(languageName(b), "en"));
 
   return (
     <div>

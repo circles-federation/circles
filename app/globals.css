@@ -60,6 +60,26 @@
      sharp. `backwards`, not `both`: the blur only applies while it runs —
      a filter left on the container would make it the frame a modal inside it
      positions itself against, instead of the screen. */
+  /* Home's prompt deck (PromptDeck): an answered card is pulled off the top,
+     opaque, so it uncovers the next rather than showing through onto it,
+     and the next is dealt up into its place from the stack below */
+  --animate-deal-out: deal-out 0.3s ease-in forwards;
+  @keyframes deal-out {
+    80% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-110%) rotate(-4deg);
+    }
+  }
+  --animate-deal-in: deal-in 0.26s ease-out backwards;
+  @keyframes deal-in {
+    from {
+      transform: translateY(10px) scale(0.97);
+    }
+  }
+
   --animate-blur-in: blur-in 0.25s ease-out backwards;
   @keyframes blur-in {
     from {

@@ -10,6 +10,7 @@ import { Button, ConfirmModal, EyebrowGroup, PageContainer, Section, SectionGrou
 import { sendTestPushAction } from "@/lib/db/actions";
 import { usePushSubscription } from "@/lib/hooks";
 import { SMS_STOPPED, formatPhone } from "@/lib/phone.util";
+import { markPushPromptAnswered } from "@/lib/push-client";
 import type { NotificationSettings } from "@/lib/types";
 import { isIPhoneBrowserTab } from "@/lib/viewport";
 
@@ -66,6 +67,8 @@ export function NotificationSettingsPage({ settings, hasEmail, phone, smsStopped
     // this device first, while still inside the tap on Save: a browser only
     // asks for permission to push in answer to one
     if (deviceChanged) {
+      // decided here, so Home's prompt has nothing left to ask
+      markPushPromptAnswered();
       try {
         if (deviceWanted) {
           if (!(await device.subscribe())) {

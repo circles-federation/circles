@@ -1,6 +1,6 @@
 {
-  "id": "04ffbc3c-7d9c-41a3-b0b1-e9875fef6548",
-  "prevId": "a0958f86-5d9e-4b66-baa0-d28bcc8b6de4",
+  "id": "2e3fe7f6-436c-40ce-b27e-ec675c6ea277",
+  "prevId": "49ea604b-aeaf-43cd-8819-da936ff0a894",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -277,12 +277,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "photo": {
           "name": "photo",
           "type": "bytea",
@@ -321,37 +315,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone_code_hash": {
-          "name": "phone_code_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone_confirm_attempts": {
-          "name": "phone_confirm_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "sms_consent": {
-          "name": "sms_consent",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sms_consent_at": {
-          "name": "sms_consent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -2083,7 +2046,7 @@
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": true
+          "default": false
         },
         "notify_email": {
           "name": "notify_email",
@@ -2098,43 +2061,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone_verified_at": {
-          "name": "phone_verified_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sms_consent": {
-          "name": "sms_consent",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sms_consent_at": {
-          "name": "sms_consent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "notify_sms": {
-          "name": "notify_sms",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "sms_stopped_at": {
-          "name": "sms_stopped_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "is_admin": {
           "name": "is_admin",
@@ -2154,86 +2080,8 @@
           "columns": [
             "email"
           ]
-        },
-        "members_phone_unique": {
-          "name": "members_phone_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "phone"
-          ]
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.phone_verifications": {
-      "name": "phone_verifications",
-      "schema": "",
-      "columns": {
-        "member_id": {
-          "name": "member_id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "code_hash": {
-          "name": "code_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "sms_consent": {
-          "name": "sms_consent",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "phone_verifications_member_id_members_id_fk": {
-          "name": "phone_verifications_member_id_members_id_fk",
-          "tableFrom": "phone_verifications",
-          "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

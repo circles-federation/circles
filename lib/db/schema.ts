@@ -25,6 +25,7 @@ import type {
   EventChange,
   EventKindKey,
   MemberLanguage,
+  AvailabilityWindow,
   NotificationChannel,
   NotificationKind,
   ProposalChanges,
@@ -62,13 +63,16 @@ export const members = pgTable("members", {
   bio: text("bio").notNull(),
   // the languages they speak and how well, in their own order
   languages: jsonb("languages").$type<MemberLanguage[]>().notNull().default(sql`'[]'::jsonb`),
+  // when they can do meetings, as weekly windows; null until they've set it
+  // (Unknown on the meeting form), [] once they've said they never can
+  availability: jsonb("availability").$type<AvailabilityWindow[]>(),
   // the decade they were born in, as its first year (1990 for the '90s), if
   // they've chosen to say — never a birthdate
   birthDecade: integer("birth_decade"),
   email: text("email").unique(),
   // whether other members may see the email (Edit myself's Visible/Hidden);
   // when they may not, it's left out of what's sent to them (getMembersForViewer)
-  emailPublic: boolean("email_public").notNull().default(true),
+  emailPublic: boolean("email_public").notNull().default(false),
   // whether they're told about the app's goings-on (events, announcements,
   // invitations, the daily digest) by email, and by push on the devices
   // they've turned it on for — Settings → Notifications. Sign-in codes are
@@ -288,7 +292,9 @@ export const events = pgTable(
     index("events_date_idx").on(t.date),
     // an event with no host circle is hosted by its organizer and is live
     // from the start; only a circle-hosted one can be awaiting approval
-    check("events_live_or_proposed", sql`${t.hostCircleId} is not null or ${t.approvedAt} is not null`),
+    // only a meeting or a circle-hosted event waits on its circle's consent;
+    // one a person hosts is live from the start
+    check("events_live_or_proposed", sql`${t.hostCircleId} is not null or ${t.kind} = 'meeting' or ${t.approvedAt} is not null`),
   ]
 );
 
@@ -409,11 +415,11 @@ export const circleInvitations = pgTable(
 /* An application to join: how someone who isn't a member yet asks to become
    one. It starts unconfirmed until the applicant enters the code emailed to
    them (so the address is really theirs), then waits for a system admin, who
-   checks the photo is a real face and the address is in the neighborhood.
+   checks the photo is a real face.
    Approving creates the member, their login and their neighborhood
-   membership; either decision emails the applicant. The address and photo
-   are only for that review: both are cleared once it's decided (an approved
-   photo moves to member_photos). */
+   membership; either decision emails the applicant. The photo is only
+   for that review: it's cleared once it's decided (an approved photo moves to
+   member_photos). */
 export const applicationStatus = pgEnum("application_status", ["unconfirmed", "pending", "approved", "declined"]);
 
 export const applications = pgTable(
@@ -424,7 +430,6 @@ export const applications = pgTable(
     lastName: text("last_name").notNull(),
     email: text("email").notNull(),
     neighborhoodId: text("neighborhood_id").notNull().references(() => circles.id),
-    address: text("address"),
     photo: bytea("photo"),
     photoType: text("photo_type"),
     status: applicationStatus("status").notNull().default("unconfirmed"),
@@ -558,6 +563,10 @@ export const circleProposals = pgTable(
     id: text("id").primaryKey(),
     circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
     proposerId: integer("proposer_id").notNull().references(() => members.id),
+    // set for a proposal to hold an event the circle hosts (a group's: see
+    // lib/db/proposals.ts), rather than to change the circle. Kept when the
+    // event goes (an objection or a withdrawal deletes it), so the record stays.
+    eventId: text("event_id").references((): AnyPgColumn => events.id, { onDelete: "set null" }),
     // what it would change (ProposalChanges), and how that read when proposed
     changes: jsonb("changes").$type<ProposalChanges>().notNull(),
     lines: jsonb("lines").$type<ProposalLine[]>().notNull(),
@@ -568,7 +577,8 @@ export const circleProposals = pgTable(
   },
   (t) => [
     index("circle_proposals_circle_idx").on(t.circleId),
-    uniqueIndex("circle_proposals_one_open").on(t.circleId).where(sql`${t.status} = 'open'`),
+    // one open change to a circle at a time; any number of events can be open
+    uniqueIndex("circle_proposals_one_open").on(t.circleId).where(sql`${t.status} = 'open' and ${t.eventId} is null`),
     index("circle_proposals_open_idx").on(t.closesAt).where(sql`${t.status} = 'open'`),
   ]
 );

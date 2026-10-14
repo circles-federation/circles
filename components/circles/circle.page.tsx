@@ -45,7 +45,8 @@ interface CirclePageProps {
 
 export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, onInvitePage, onOpenInvitation, initialTab, onTabChange }: CirclePageProps) {
   const { profile, circles, invitations, proposals } = useAppState();
-  const openProposal = proposals.find((p) => p.circleId === c.id && p.status === "open");
+  // its open proposals: a change to the circle, and any events it's deciding
+  const openProposals = proposals.filter((p) => p.circleId === c.id && p.status === "open");
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
@@ -128,7 +129,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         </div>
       </div>
 
-      {openProposal && <ProposalBanner proposal={openProposal} memberId={profile.id} className="mt-6" />}
+      {openProposals.map((p) => <ProposalBanner key={p.id} proposal={p} memberId={profile.id} className="mt-6" />)}
 
       <SimpleTabs
         className="mt-6"

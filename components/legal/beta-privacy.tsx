@@ -14,9 +14,10 @@ export function BetaPrivacy() {
 
       <LegalHeading>What Circles keeps</LegalHeading>
       <LegalList>
-        <li>What you apply with: your name, email, neighborhood, home address and photo, and your mobile number if you give one.</li>
+        <li>What you apply with: your name, email, neighborhood and photo, and your mobile number if you give one.</li>
         <li>What you add to your profile, all of it optional: pronouns, occupation, skills, interests and bio.</li>
-        <li>What you do in Circles: the circles you belong to, events, RSVPs, votes, bulletin posts and invitations.</li>
+        <li>When you can do meetings, if you choose to say (in Settings).</li>
+        <li>What you do in Circles: the circles you belong to, events, RSVPs, your answers to proposals, bulletin posts and invitations.</li>
         <li>Your sign-ins, including your IP address and browser type, to keep your account secure.</li>
       </LegalList>
 
@@ -25,8 +26,9 @@ export function BetaPrivacy() {
         <li>Nothing is public on the web. Only signed-in members can see anything.</li>
         <li>Every member can see your name, profile, email address (unless you hide it from your profile, when no one else is sent it), neighborhood, the circles you belong to and roles you hold. A private group, and who&apos;s in it, is seen only by its members.</li>
         <li>Your photo is seen by members who share a circle with you, including your neighborhood.</li>
-        <li>Events, bulletin posts, and who&apos;s going to or voted for something are seen by the members of the circle they belong to. Votes aren&apos;t secret.</li>
-        <li>Your home address is seen only by the person reviewing your application, and deleted once it&apos;s decided.</li>
+        <li>When you can do meetings isn&apos;t shown to anyone as a schedule. When a member of one of your circles plans a meeting, they see whether you can make the time they pick, and until when you&apos;re free if you&apos;re free as it begins.</li>
+        <li>Events, bulletin posts, and who&apos;s going to something are seen by the members of the circle they belong to. Answers to a proposal aren&apos;t secret: every member of its circle sees who answered what, and why anyone objected.</li>
+        <li>Your application photo is seen only by the person reviewing it, and is no longer kept with the application once it&apos;s decided.</li>
         <li>Your mobile number is seen by no one else. It&apos;s used only to text you notifications, along with a record of when you agreed to them. Reply STOP to any text, or remove your number in Settings, to stop them.</li>
       </LegalList>
 
