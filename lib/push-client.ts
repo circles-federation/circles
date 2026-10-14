@@ -7,6 +7,26 @@ import type { PushSubscriptionKeys } from "@/lib/push";
 
 export const SERVICE_WORKER_URL = "/sw.js";
 
+// Home asks once per device whether to turn push on (PushPrompt): answered
+// either way there, or by turning it on or off in Settings, it isn't asked
+// again. Kept in this browser's storage, since push is per device too; storage
+// can be unavailable or cleared, which at worst means asking once more.
+const PUSH_PROMPT_KEY = "circles.pushPromptAnswered";
+export function pushPromptAnswered(): boolean {
+  try {
+    return localStorage.getItem(PUSH_PROMPT_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+export function markPushPromptAnswered(): void {
+  try {
+    localStorage.setItem(PUSH_PROMPT_KEY, new Date().toISOString());
+  } catch {
+    // nowhere to remember it: it may be asked once more
+  }
+}
+
 export function pushSupported(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }

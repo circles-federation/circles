@@ -8,6 +8,7 @@ import type { MutationResult } from "@/components/providers/app-state-provider";
 import { Button, ConfirmModal, EyebrowGroup, PageContainer, Section, SectionGroup, Switch, useToast } from "@/components/shared";
 import { sendTestPushAction } from "@/lib/db/actions";
 import { usePushSubscription } from "@/lib/hooks";
+import { markPushPromptAnswered } from "@/lib/push-client";
 import type { NotificationSettings } from "@/lib/types";
 import { isIPhoneBrowserTab } from "@/lib/viewport";
 
@@ -53,6 +54,8 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
     // this device first, while still inside the tap on Save: a browser only
     // asks for permission to push in answer to one
     if (deviceChanged) {
+      // decided here, so Home's prompt has nothing left to ask
+      markPushPromptAnswered();
       try {
         if (deviceWanted) {
           if (!(await device.subscribe())) {

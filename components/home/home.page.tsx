@@ -6,6 +6,7 @@ import { AlertModal, AttentionDot, Avatar, Chip, LinkRow, Eyebrow, EyebrowGroup,
 import { CircleCard } from "@/components/circles/circle-card";
 import { ProposalBanner } from "@/components/circles/proposal-banner";
 import { EventFeed } from "@/components/events/event-feed";
+import { PushPrompt } from "./push-prompt";
 import { StartingSoon } from "./starting-soon";
 import { StatCard } from "./stat-card";
 import { isAttending } from "@/lib/events.util";
@@ -105,6 +106,8 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
 
       <SectionGroup>
         <StartingSoon events={events} memberId={profile.id} rsvpState={rsvpState} />
+
+        <PushPrompt />
 
         {/* a system admin's way into the applications waiting for them */}
         {pendingApplications !== null && (
