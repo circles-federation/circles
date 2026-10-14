@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             : fab.shown
               ? "max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.5rem)]"
               : "max-[719px]:pb-[env(safe-area-inset-bottom)]",
-          "standalone:flex-1 standalone:overflow-y-auto standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
+          "standalone:flex-1 standalone:overflow-y-auto standalone:overflow-x-hidden standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
         )}
       >
         {children}

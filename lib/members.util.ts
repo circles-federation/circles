@@ -22,3 +22,9 @@ export function isBirthDecade(value: unknown): value is number {
 export function birthDecadeLabel(decade: number): string {
   return decade >= 2000 ? `${decade}s` : `'${String(decade).slice(2)}s`;
 }
+
+// nothing filled in beyond what applying gave them (name, photo,
+// neighborhood): what Home's profile prompt waits on
+export function isProfileBlank(m: Member): boolean {
+  return !m.pronouns.trim() && !m.role.trim() && !m.bio.trim() && m.skills.length === 0 && m.interests.length === 0 && !m.languages?.length && m.birthDecade === undefined;
+}

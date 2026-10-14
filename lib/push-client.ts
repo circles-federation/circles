@@ -1,5 +1,6 @@
 import { deletePushSubscriptionAction, savePushSubscriptionAction } from "@/lib/db/actions";
 import type { PushSubscriptionKeys } from "@/lib/push";
+import { markPromptAnswered, promptAnswered, PUSH_PROMPT_KEY } from "@/lib/home-prompts";
 
 /* The browser's side of push notifications (the server's is lib/push/ and
    lib/notify.ts): registering public/sw.js, and turning push on or off for
@@ -8,24 +9,9 @@ import type { PushSubscriptionKeys } from "@/lib/push";
 export const SERVICE_WORKER_URL = "/sw.js";
 
 // Home asks once per device whether to turn push on (PushPrompt): answered
-// either way there, or by turning it on or off in Settings, it isn't asked
-// again. Kept in this browser's storage, since push is per device too; storage
-// can be unavailable or cleared, which at worst means asking once more.
-const PUSH_PROMPT_KEY = "circles.pushPromptAnswered";
-export function pushPromptAnswered(): boolean {
-  try {
-    return localStorage.getItem(PUSH_PROMPT_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-export function markPushPromptAnswered(): void {
-  try {
-    localStorage.setItem(PUSH_PROMPT_KEY, new Date().toISOString());
-  } catch {
-    // nowhere to remember it: it may be asked once more
-  }
-}
+// either way there, or by turning it on or off in Settings, it isn't asked again
+export const pushPromptAnswered = () => promptAnswered(PUSH_PROMPT_KEY);
+export const markPushPromptAnswered = () => markPromptAnswered(PUSH_PROMPT_KEY);
 
 export function pushSupported(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
