@@ -80,6 +80,10 @@ function parentRoute(pathname: string): string {
   return parent;
 }
 
+// how long a Back that should have gone somewhere is given before it's taken
+// to have gone nowhere; a traversal's popstate comes well within it
+const BACK_FALLBACK_MS = 400;
+
 /* Back, like a native app's: to the previous page when there is one in the
    app, and otherwise up to the page's parent, so it never leaves the app for
    whatever site linked here (or a blank tab, after a reload). TopBar's Back
@@ -90,7 +94,23 @@ export function useGoBack(): () => void {
   const pathname = usePathname();
   const navigationsRef = useContext(NavigationsContext);
   return () => {
-    if (navigationsRef && navigationsRef.current > 0) router.back();
-    else router.push(parentRoute(pathname));
+    const parent = parentRoute(pathname);
+    if (!navigationsRef || navigationsRef.current === 0) return router.push(parent);
+    /* The count can say there's a page to go back to when the history has
+       none: a page opened from a push notification, say, which the service
+       worker may hand to a window it opened or one iOS restored. Then back()
+       does nothing at all, so if no history traversal follows, it goes up to
+       the parent instead. (Going back to another document unloads this one,
+       timer and all.) */
+    let moved = false;
+    const onPopState = () => {
+      moved = true;
+    };
+    window.addEventListener("popstate", onPopState, { once: true });
+    router.back();
+    setTimeout(() => {
+      window.removeEventListener("popstate", onPopState);
+      if (!moved) router.push(parent);
+    }, BACK_FALLBACK_MS);
   };
 }
