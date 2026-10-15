@@ -340,9 +340,12 @@ export function EventFormPage(props: EventFormPageProps) {
   // proposed, not saved: the orange Propose button with the proposals' hand,
   // as on Manage circle's Details and Roles (an undecided one can't be edited)
   const proposingNew = proposing && mode === "create";
+  // the agenda's Done waits until every topic in it has one: a new, blank one
+  // is filled in or removed first (Back still leaves; the form then says what's missing)
+  const agendaComplete = agenda.every((a) => a.title.trim());
   useTopBarAction(
     view !== "form"
-      ? { label: "Done", icon: CheckIcon, onAction: closeView, variant: "primary" }
+      ? { label: "Done", icon: CheckIcon, onAction: closeView, disabled: view === "agenda" && !agendaComplete, variant: "primary" }
       : proposingNew
         ? { label: busy ? "Saving" : submitLabel, icon: HandRaisedIcon, onAction: () => setConfirmingProposal(true), disabled: !canSubmit, variant: "propose" }
         : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" }
