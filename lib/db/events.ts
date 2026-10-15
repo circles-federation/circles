@@ -508,7 +508,9 @@ type Template = Pick<SeriesRow, "title" | "kind" | "circleId" | "hostCircleId" |
 
 /* A date's starting state. The organizer attends their own event — except a
    slotted one, where people sign up for slots instead, and a circle-hosted
-   one, which opens for RSVPs only once approved — and a meeting opens with
+   one, whose proposer is marked going by proposing it, along with everyone
+   who consents (rsvpConsenters in lib/db/proposals.ts), so a series' later
+   dates start with no one — and a meeting opens with
    their vote, as does a proposal (`opening`: the date the host circle votes
    on; a series' later dates are approved already). */
 function newDate(t: Template, date: string, { opening, proposed }: { opening: boolean; proposed: boolean }): Event {

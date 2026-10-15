@@ -14,7 +14,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const memberId = await getCurrentUserId();
   if (!memberId) return new Response(null, { status: 401 });
   const event = await getVisibleEvent(memberId, (await params).id);
-  if (!event || event.cancelled) return new Response(null, { status: 404 });
+  // nor one its circle is still deciding, which may never be held
+  if (!event || event.cancelled || event.proposed) return new Response(null, { status: 404 });
   const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
   return new Response(eventCalendarFile(event, { tz: COMMUNITY_TZ, url: `${base}/events/${event.id}` }), {
     headers: {

@@ -6,7 +6,7 @@ import { writeCircleRoles } from "./circle-roles";
 import { UserFacingError } from "./errors";
 import { approveHostedEvent, discardEvent, getEvent } from "./events";
 import { enqueueProposalNotifications } from "./notifications";
-import { circleMembers, circleProposals, circles, eventVotes, events, members, proposalResponses, roles as eventRoles } from "./schema";
+import { circleMembers, circleProposals, circles, eventRsvps, eventVotes, events, members, proposalResponses, roles as eventRoles } from "./schema";
 import { groupBy } from "./util";
 import {
   OBJECTION_REASON_MAX,
@@ -123,6 +123,19 @@ async function pass(tx: Tx, proposal: ProposalRow, actorId: number | null): Prom
   await enqueueProposalNotifications(tx, proposal.id, "passed", tell);
 }
 
+/* Consenting to a meeting or a circle-hosted event is also saying you'll be
+   there: each consent is an RSVP too, the proposer's included, so whoever's
+   going is known by the time it's scheduled. Silence counts as consent but
+   not as an RSVP, so a member who never answers isn't marked going. Not for
+   an event with signup roles, where people take a role instead (setRsvp
+   refuses an RSVP there too). */
+async function rsvpConsenters(tx: Tx, eventId: string, memberIds: number[]): Promise<void> {
+  if (memberIds.length === 0) return;
+  const [slot] = await tx.select({ id: eventRoles.id }).from(eventRoles).where(eq(eventRoles.eventId, eventId)).limit(1);
+  if (slot) return;
+  await tx.insert(eventRsvps).values(memberIds.map((memberId) => ({ eventId, memberId }))).onConflictDoNothing();
+}
+
 /* Propose holding a meeting, or an event the circle hosts (createEvent in
    lib/db/events.ts), in the transaction that creates it, which hasn't been
    approved. Like any proposal its proposer consents by proposing, the rest of
@@ -144,6 +157,7 @@ export async function openEventProposal(tx: Tx, proposerId: number, event: Event
   // a member, so still theirs to answer
   const consented = [...new Set([proposerId, ...alsoConsented])].filter((m) => m === proposerId || memberIds.includes(m));
   await tx.insert(proposalResponses).values(consented.map((memberId) => ({ proposalId: id, memberId, response: "like" as const })));
+  await rsvpConsenters(tx, event.id, consented);
   const responses = consented.map((memberId) => ({ memberId, response: "like" as const, respondedAt: "" }));
   if (everyoneConsented({ responses }, memberIds)) await pass(tx, row!, proposerId);
   else await enqueueProposalNotifications(tx, id, "opened", memberIds.filter((m) => !consented.includes(m)));
@@ -291,6 +305,7 @@ export async function respondToProposal(
       await enqueueProposalNotifications(tx, id, "objected", memberIds.filter((m) => m !== memberId));
       return false;
     }
+    if (row.eventId !== null) await rsvpConsenters(tx, row.eventId, [memberId]);
     const [full] = await withResponses([row], tx);
     if (full && everyoneConsented(full, memberIds)) {
       await pass(tx, row, memberId);

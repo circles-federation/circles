@@ -19,6 +19,8 @@ interface ProposalPageProps {
   onRespond: (response: ConsentResponse, reason?: string) => Promise<MutationResult>;
   // a group's event proposal: its event's page, and withdrawing it while it's open
   onOpenEvent?: () => void;
+  // an event proposal where consenting is also an RSVP (one without signup roles)
+  consentIsRsvp?: boolean;
   onWithdraw?: () => Promise<MutationResult>;
 }
 
@@ -36,7 +38,7 @@ const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon:
    asking why; and where every member stands, as a sociocratic round shows
    everyone's answer. Reached from its email or push, the circle's banner,
    and Home. */
-export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, onWithdraw }: ProposalPageProps) {
+export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw }: ProposalPageProps) {
   // it proposes holding an event, not changing the circle
   const event = isEventProposal(p);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -110,10 +112,11 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
           <Section>
             <EyebrowGroup label="Your answer">
               {!canAnswer ? (
-                <p className="font-serif text-base text-soft">You proposed this, so you&rsquo;ve consented.</p>
+                <p className="font-serif text-base text-soft">You proposed this, so you&rsquo;ve consented{consentIsRsvp && <>, and you&rsquo;re down as going</>}.</p>
               ) : (
                 <>
                   {mine && <p className="mb-3 font-serif text-base">You answered: <strong className="font-sans">{RESPONSE_LABEL[mine.response]}</strong>. You can change it until it closes.</p>}
+                  {consentIsRsvp && <p className="mb-3 font-serif text-sm leading-snug text-soft">Liking or accepting it also marks you as going.</p>}
                   <div className="grid grid-cols-1 gap-2.5 min-[720px]:grid-cols-3">
                     {(["like", "accept", "object"] as const).map((r) => {
                       const Icon = ANSWER_STYLE[r].icon;

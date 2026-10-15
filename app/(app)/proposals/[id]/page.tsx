@@ -27,6 +27,7 @@ export default function Page() {
       onOpenMember={(m) => nav.openMember(m)}
       onRespond={(response, reason) => respondToProposal(proposal.id, response, reason)}
       {...(event ? { onOpenEvent: () => nav.openEvent(event) } : {})}
+      consentIsRsvp={!!event && !event.roles?.length}
       {...(event && proposal.status === "open"
         ? { onWithdraw: async () => { const r = await cancelEvent(event.id); return r.ok ? { ok: true as const } : r; } }
         : {})}
