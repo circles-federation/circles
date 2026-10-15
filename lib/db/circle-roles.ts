@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import type { Tx } from "./client";
 import { circleRoles } from "./schema";
 import { assembleCircleRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import type { CircleRole } from "@/lib/types";
+import type { CircleRole, CircleType } from "@/lib/types";
 
 /* Replace a circle's roles — the one write path for them, called only when a
    proposal to change them passes (lib/db/proposals.ts): who holds a role is
@@ -16,8 +16,8 @@ import type { CircleRole } from "@/lib/types";
    empty; they can't be removed or renamed), everything else is the circle's
    own, and a holder who's no longer a member of the circle is left out.
    Returns the roles as saved. */
-export async function writeCircleRoles(tx: Tx, circleId: string, drafts: CircleRoleDraft[], memberIds: number[]): Promise<CircleRole[]> {
-  const final = assembleCircleRoles(drafts, memberIds);
+export async function writeCircleRoles(tx: Tx, circleId: string, drafts: CircleRoleDraft[], memberIds: number[], type: CircleType): Promise<CircleRole[]> {
+  const final = assembleCircleRoles(drafts, memberIds, type);
   await tx.delete(circleRoles).where(eq(circleRoles.circleId, circleId));
   await tx.insert(circleRoles).values(final.map((r, position) => ({ id: randomUUID(), circleId, label: r.label, builtin: r.builtin, memberId: r.memberId, position })));
   return final;

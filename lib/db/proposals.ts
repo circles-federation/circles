@@ -106,7 +106,8 @@ async function applyProposal(tx: Tx, proposal: ProposalRow): Promise<void> {
       .set({ ...valid, lastEditedBy: proposal.proposerId, lastEditedAt: new Date() })
       .where(eq(circles.id, circle.id));
   }
-  if (roles !== undefined) await writeCircleRoles(tx, circle.id, roles, await memberIdsOf(tx, circle.id));
+  // by the type it has now, should this same proposal have changed it
+  if (roles !== undefined) await writeCircleRoles(tx, circle.id, roles, await memberIdsOf(tx, circle.id), valid.type ?? circle.type);
 }
 
 // pass it: make its changes, close it, and tell the circle (but `actorId`, if

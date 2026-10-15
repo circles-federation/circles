@@ -1,4 +1,4 @@
-import { BUILTIN_CIRCLE_ROLES, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
+import { isBuiltinRole, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
 import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, parentCircleOptions } from "./circles.util";
 import { AGENDA_CATEGORY } from "./agenda.util";
 import { fmtEventWhen } from "./format.util";
@@ -34,7 +34,6 @@ const aimsOf = (c: Pick<Circle, "aims">) => c.aims ?? [];
 const sameAims = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);
 
 type Roles = NonNullable<ProposalChanges["roles"]>;
-const isBuiltinRole = (label: string) => BUILTIN_CIRCLE_ROLES.some((b) => b.toLowerCase() === label.toLowerCase());
 const rolesOf = (c: Pick<Circle, "roles">): Roles => (c.roles ?? []).map((r) => ({ label: r.label, memberId: r.memberId }));
 const sameRoles = (a: Roles, b: Roles) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -94,7 +93,7 @@ export function checkChanges(circle: Circle, changes: ProposalChanges, circles: 
   }
   if (changes.roles !== undefined) {
     if (!circleHasRoles(circle)) return problem("roles", "This circle doesn't have roles.");
-    const message = validateCircleRoles(changes.roles, circle.members);
+    const message = validateCircleRoles(changes.roles, circle.members, changes.type ?? circle.type);
     if (message) return problem("roles", message);
   }
   return null;
@@ -146,7 +145,7 @@ export function describeChanges(circle: Circle, changes: ProposalChanges, circle
     }
     // a built-in role left out is only left empty, never removed
     for (const b of before) {
-      if (isBuiltinRole(b.label) || changes.roles.some((r) => r.label.toLowerCase() === b.label.toLowerCase())) continue;
+      if (isBuiltinRole(b.label, circle.type) || changes.roles.some((r) => r.label.toLowerCase() === b.label.toLowerCase())) continue;
       lines.push({ label: `Removed role: ${b.label}`, before: holder(b.memberId), after: "" });
     }
   }

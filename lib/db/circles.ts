@@ -24,7 +24,7 @@ function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDra
     ...(row.domain ? { domain: row.domain } : {}),
     aims: row.aims,
     members: memberIds,
-    ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds) } : {}),
+    ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds, row.type) } : {}),
     lastEditedBy: row.lastEditedBy ?? undefined,
     lastEditedAt: row.lastEditedAt ? row.lastEditedAt.toISOString() : undefined,
     facts: row.facts,
