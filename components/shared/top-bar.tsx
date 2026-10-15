@@ -103,7 +103,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
   if (section === "circles") {
     if (!id) return "Circles";
     if (id === "new") return "New circle";
-    if (sub === "manage") return "Manage circle";
+    if (sub === "manage") return item === "details" ? "Details" : item === "roles" ? "Roles" : item === "wiki" ? "Wiki" : "Manage circle";
     if (sub === "bulletin") return resourceFormTitle(resources.find((r) => r.id === item)?.icon);
     if (sub === "invite") return "Invite";
     return circles.find((c) => c.id === id)?.name ?? "Circles";
