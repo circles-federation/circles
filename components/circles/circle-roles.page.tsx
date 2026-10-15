@@ -2,13 +2,12 @@
 
 import { useRef, useState } from "react";
 import clsx from "clsx";
-import Link from "next/link";
 import { HandRaisedIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Button, ConfirmModal, DISABLED_FIELD, Eyebrow, PageContainer, Select } from "@/components/shared";
 import { CIRCLE_ROLE_LABEL_MAX, builtinRoleDescription, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { changedFields, checkChanges, checkCircleBasics, hasChanges } from "@/lib/proposals.util";
+import { changedFields, checkChanges, hasChanges } from "@/lib/proposals.util";
 import { useMemberById } from "@/lib/hooks";
 import type { Circle, CircleProposal, Member, ProposalChanges } from "@/lib/types";
 import { ConsentNotice, useConsentError } from "./consent-form";
@@ -49,10 +48,7 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
 
   const proposed = changedFields(o, { roles: rolePairs });
   const dirty = hasChanges(proposed);
-  // a Circle without its domain and aims must add them with its next
-  // proposal, whatever it's for — and they're on Details, not here
-  const missingBasics = checkCircleBasics(o, {}) !== null;
-  const locked = !!openProposal || missingBasics;
+  const locked = !!openProposal;
 
   function updateRole(key: string, patch: Partial<RoleRow>) {
     clearError("roles");
@@ -87,14 +83,6 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
   return (
     <PageContainer size="normal">
       <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
-      {missingBasics && !openProposal && (
-        <p className="mb-5.5 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
-          {o.name} needs a domain and at least one aim before anything else can be proposed.{" "}
-          <Link href={`/circles/${o.id}/manage/details`} className="font-sans font-bold text-ink underline underline-offset-2">
-            Add them in Details
-          </Link>
-        </p>
-      )}
 
       <p className="mb-3 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
         Optional. Anyone holding a role can schedule the circle&apos;s meetings without asking for its consent.

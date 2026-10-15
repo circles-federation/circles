@@ -105,12 +105,15 @@ export function validateChanges(circle: Circle, changes: ProposalChanges, circle
 
 /* What a Circle (type "circle") still lacks once a proposal's made, or null:
    sociocracy defines one by its domain and at least one aim, so a proposal
-   can't leave a Circle without them — including the first proposal for one
-   that has neither yet, for anything. Checked when it's proposed (the form,
-   and createProposal), not again when it passes, so a rename agreed to before
-   doesn't fail on it. */
+   about what defines it — its type, domain or aims — can't leave it without
+   them. Any other proposal (its roles, its name) goes ahead regardless, so a
+   Circle that hasn't defined itself yet isn't stopped from deciding anything
+   else; Manage circle's Details asks for them all the same (it passes this
+   the whole form). Checked when it's proposed (the form, and createProposal),
+   not again when it passes, so a change agreed to before doesn't fail on it. */
 export function checkCircleBasics(circle: Circle, changes: ProposalChanges): ChangeProblem | null {
   if ((changes.type ?? circle.type) !== "circle") return null;
+  if (changes.type === undefined && changes.domain === undefined && changes.aims === undefined) return null;
   if (!(changes.domain ?? circle.domain ?? "").trim()) return { field: "domain", message: "Give the circle a domain: the area it decides in." };
   if ((changes.aims ?? aimsOf(circle)).length === 0) return { field: "aims", message: "Give the circle at least one aim." };
   return null;

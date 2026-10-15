@@ -66,7 +66,9 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
     if (saving) return;
     setConsentError(null);
     // instant feedback only — the server checks again, and is the real check
-    const problem = checkChanges(o, proposed, circles) ?? checkCircleBasics(o, proposed);
+    // a Circle's domain and aims as the form has them, changed or not: a
+    // Circle that hasn't defined itself yet is asked to here, whatever's proposed
+    const problem = checkChanges(o, proposed, circles) ?? (isCircleType ? checkCircleBasics(o, { ...proposed, domain, aims: aims.map((a) => a.trim()).filter(Boolean) }) : null);
     if (problem) return setConsentError(problem);
     setSaving(true);
     const result = await onPropose(proposed);
