@@ -24,6 +24,9 @@ function detailsSummary(c: Circle): string {
   return c.type === "circle" ? `${parts.join(", ")}, domain and aims` : list;
 }
 
+// under Details and Roles while a change to the circle is open for consent
+const LOCKED = "Locked while a proposal is open";
+
 // how many of its roles are held, under its row
 function rolesSummary(c: Circle): string {
   const roles = c.roles ?? [];
@@ -65,8 +68,8 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
           {/* holding Details and Roles until it's decided */}
           {openProposal && <ProposalBanner proposal={openProposal} memberId={memberId} className="mb-5" />}
           <div className="flex flex-col gap-3">
-            <MenuRow href={`${base}/details`} icon={IdentificationIcon} label="Details" detail={detailsSummary(o)} />
-            {showRoles && <MenuRow href={`${base}/roles`} icon={UserGroupIcon} label="Roles" detail={rolesSummary(o)} />}
+            <MenuRow href={`${base}/details`} icon={IdentificationIcon} label="Details" detail={openProposal ? LOCKED : detailsSummary(o)} />
+            {showRoles && <MenuRow href={`${base}/roles`} icon={UserGroupIcon} label="Roles" detail={openProposal ? LOCKED : rolesSummary(o)} />}
             {showWiki && <MenuRow href={`${base}/wiki`} icon={BookOpenIcon} label="Wiki" detail="Quick facts, about, offers and needs, visiting and joining" />}
           </div>
           <p className="mt-4 max-w-[42em] font-serif text-sm leading-relaxed text-soft">

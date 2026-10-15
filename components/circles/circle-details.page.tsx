@@ -79,7 +79,7 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
 
   return (
     <PageContainer size="normal">
-      <ConsentNotice openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
+      <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
       <div className="flex flex-col gap-5.5">
         {o.parentId !== null && (
           <div id="field-parentId">

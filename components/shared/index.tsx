@@ -17,7 +17,7 @@ export { FloatingActionButton } from "./floating-action-button";
 export { FolderGrid } from "./folder-grid";
 export { GhostIconButton } from "./ghost-icon-button";
 export { ForwardLink } from "./forward-link";
-export { Input } from "./input";
+export { DISABLED_FIELD, Input } from "./input";
 export { Label } from "./label";
 export { LinkRow } from "./link-row";
 export { MenuRow } from "./menu-row";

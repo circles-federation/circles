@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import clsx from "clsx";
 import Link from "next/link";
 import { HandRaisedIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { Button, ConfirmModal, Eyebrow, PageContainer, Select } from "@/components/shared";
+import { Button, ConfirmModal, DISABLED_FIELD, Eyebrow, PageContainer, Select } from "@/components/shared";
 import { CIRCLE_ROLE_LABEL_MAX, builtinRoleDescription, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { changedFields, checkChanges, checkCircleBasics, hasChanges } from "@/lib/proposals.util";
 import { useMemberById } from "@/lib/hooks";
@@ -85,7 +86,7 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
 
   return (
     <PageContainer size="normal">
-      <ConsentNotice openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
+      <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
       {missingBasics && !openProposal && (
         <p className="mb-5.5 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
           {o.name} needs a domain and at least one aim before anything else can be proposed.{" "}
@@ -122,16 +123,17 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
                     maxLength={CIRCLE_ROLE_LABEL_MAX}
                     placeholder="Role name"
                     aria-label="Role name"
-                    className="min-w-0 flex-1 border border-faint bg-paper px-2.5 py-2 font-sans text-sm font-bold outline-none focus:border-ink touch:text-base"
+                    className={clsx("min-w-0 flex-1 border border-faint bg-paper px-2.5 py-2 font-sans text-sm font-bold outline-none focus:border-ink touch:text-base", DISABLED_FIELD)}
                   />
+                  {!locked && (
                   <button
                     onClick={() => removeRole(r.key)}
-                    disabled={locked}
                     aria-label={`Remove ${r.label || "role"}`}
                     className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-soft hover:text-ink"
                   >
                     <XMarkIcon className="size-3.5" strokeWidth={2.5} />
                   </button>
+                  )}
                 </div>
               )}
               <Select
@@ -149,10 +151,12 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
             </div>
           ))}
         </div>
-        <Button variant="secondary" size="compact" onClick={addRole} disabled={locked} className="mt-3">
-          <PlusIcon className="size-3.5" strokeWidth={2.5} />
-          Add role
-        </Button>
+        {!locked && (
+          <Button variant="secondary" size="compact" onClick={addRole} className="mt-3">
+            <PlusIcon className="size-3.5" strokeWidth={2.5} />
+            Add role
+          </Button>
+        )}
         {fieldError("roles")}
       </div>
 

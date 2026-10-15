@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import type { ConsentField } from "@/lib/proposals.util";
 import clsx from "clsx";
-import type { CircleProposal } from "@/lib/types";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
+import type { Circle, CircleProposal } from "@/lib/types";
 import { ProposalBanner } from "./proposal-banner";
 
 const TOP_ID = "consent-form-top";
@@ -27,20 +28,27 @@ export function useConsentError() {
 }
 
 /* The top of a page whose changes need the circle's consent (Details,
-   Roles): the proposal already open, which holds them until it's decided,
-   and an error from the server. That saving proposes is said by the top
-   bar's orange Propose button, not here. */
-export function ConsentNotice({ openProposal, memberId, error }: { openProposal?: CircleProposal; memberId: number; error?: string | null }) {
+   Roles): while a change to the circle is open for consent, that it's
+   locked and why — a circle decides one change at a time — with the open
+   proposal, the way to it; and an error from the server. That saving
+   proposes is said by the top bar's orange Propose button, not here. */
+export function ConsentNotice({ circle, openProposal, memberId, error }: { circle: Circle; openProposal?: CircleProposal; memberId: number; error?: string | null }) {
   // an empty anchor still, so a server error has somewhere to scroll to
   if (!openProposal && !error) return <div id={TOP_ID} />;
   return (
-    <div id={TOP_ID} className="mb-5.5">
-      {openProposal ? (
-        <>
-          <ProposalBanner proposal={openProposal} memberId={memberId} />
-          <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">These can be changed again once it&rsquo;s decided.</p>
-        </>
-      ) : null}
+    <div id={TOP_ID} className="mb-6">
+      {openProposal && (
+        <div className="bg-wash p-4">
+          <div className="flex items-center gap-2 font-sans text-base font-extrabold">
+            <LockClosedIcon className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+            Locked while a proposal is open
+          </div>
+          <p className="mt-1.5 max-w-[42em] font-serif text-sm leading-normal text-soft">
+            {circle.name} decides one change at a time, so nothing here can be proposed until this one is decided.
+          </p>
+          <ProposalBanner proposal={openProposal} memberId={memberId} className="mt-3.5 bg-paper" />
+        </div>
+      )}
       {error && <p className={clsx("font-sans text-sm font-bold text-danger", openProposal && "mt-3")}>{error}</p>}
     </div>
   );

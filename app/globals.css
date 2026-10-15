@@ -12,6 +12,7 @@
   --color-paper: #ffffff;
   --color-soft: #6b6b6b;
   --color-faint: #e4e4e4;
+  --color-wash: #f4f4f4; /* a light grey ground: a field that can't be changed, a box set apart from the page */
   --color-flame: #e1530b; /* accent for governance events still being proposed */
   --color-leaf: #2e7d32; /* accent for confirmed governance events */
   --color-teal: #0f7d77; /* the home neighborhood's chip color */

@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Button, Label, TextArea } from "@/components/shared";
+import clsx from "clsx";
+import { Button, DISABLED_FIELD, Label, TextArea } from "@/components/shared";
 import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, MAX_CIRCLE_AIMS } from "@/lib/circles.util";
 
 interface CircleBasicsFieldsProps {
@@ -44,7 +45,7 @@ export function CircleBasicsFields({ domain, onDomainChange, aims, onAimsChange,
         <p className="mb-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">What this circle is there to achieve. At least one.</p>
         <div className="flex flex-col gap-2.5">
           {aims.map((a, i) => (
-            <div key={i} className="flex items-stretch border border-ink">
+            <div key={i} className={clsx("flex items-stretch border", disabled ? "border-faint bg-wash" : "border-ink")}>
               <input
                 value={a}
                 onChange={(e) => onAimsChange(aims.map((x, j) => (j === i ? e.target.value : x)))}
@@ -52,9 +53,9 @@ export function CircleBasicsFields({ domain, onDomainChange, aims, onAimsChange,
                 maxLength={CIRCLE_AIM_MAX}
                 placeholder={i === 0 ? "e.g. Keep the block's money transparent" : "Another aim"}
                 aria-label={`Aim ${i + 1}`}
-                className="min-w-0 flex-1 border-0 px-3 py-2.75 font-serif text-base outline-none"
+                className={clsx("min-w-0 flex-1 border-0 px-3 py-2.75 font-serif text-base outline-none", DISABLED_FIELD, "disabled:bg-transparent")}
               />
-              {aims.length > 1 && (
+              {aims.length > 1 && !disabled && (
                 <button
                   onClick={() => onAimsChange(aims.filter((_, j) => j !== i))}
                   disabled={disabled}
@@ -66,7 +67,7 @@ export function CircleBasicsFields({ domain, onDomainChange, aims, onAimsChange,
               )}
             </div>
           ))}
-          {aims.length < MAX_CIRCLE_AIMS && (
+          {aims.length < MAX_CIRCLE_AIMS && !disabled && (
             <Button variant="secondary" size="compact" onClick={() => onAimsChange([...aims, ""])} disabled={disabled} className="self-start">
               <PlusIcon className="size-3.5" strokeWidth={2.5} />
               Add aim
