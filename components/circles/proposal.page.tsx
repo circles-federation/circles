@@ -42,6 +42,9 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
   // it proposes holding an event, not changing the circle
   const event = isEventProposal(p);
   const [withdrawing, setWithdrawing] = useState(false);
+  // shown under the Withdraw button, which the proposer (who has no answer
+  // section) is the most likely to use
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const memberById = useMemberById();
   const { showToast } = useToast();
   const proposer = memberById(p.proposerId);
@@ -202,6 +205,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
             <Button variant="danger" disabled={withdrawing} onClick={() => setWithdrawing(true)} className="w-full min-[480px]:w-auto">
               Withdraw
             </Button>
+            {withdrawError && <p className="mt-3 font-sans text-sm font-bold text-danger">{withdrawError}</p>}
           </Section>
         )}
       </SectionGroup>
@@ -214,9 +218,10 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
           cancelLabel="Keep it"
           onCancel={() => setWithdrawing(false)}
           onConfirm={async () => {
+            setWithdrawError(null);
             const result = await onWithdraw();
             setWithdrawing(false);
-            if (!result.ok) setError(result.error);
+            if (!result.ok) setWithdrawError(result.error);
           }}
         />
       )}

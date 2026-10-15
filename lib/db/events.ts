@@ -747,9 +747,9 @@ export async function cancelEvent(memberId: number, id: string, scope: SeriesSco
   const row = await loadVisible(memberId, id);
   await assertCanManage(row, memberId, "cancel");
   assertNotCancelled(row);
-  if (isPastEvent(row)) throw new EventError("This event has already happened.");
-  // a group's event still waiting on its consent was never scheduled, so
-  // cancelling it withdraws the proposal and the event simply goes
+  // an event still waiting on its circle's consent was never scheduled, so
+  // cancelling it withdraws the proposal and the event simply goes — even
+  // once its date has passed, since there's nothing that happened to keep
   if (await awaitingConsent(row)) {
     const withdrawn = await db.transaction(async (tx) => {
       await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
@@ -759,6 +759,7 @@ export async function cancelEvent(memberId: number, id: string, scope: SeriesSco
     });
     return { deletedIds: [id], events: [], ...(withdrawn ? { withdrawnProposalId: withdrawn } : {}) };
   }
+  if (isPastEvent(row)) throw new EventError("This event has already happened.");
   const seriesId = row.seriesId;
   const deletedIds = await db.transaction(async (tx) => {
     await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
