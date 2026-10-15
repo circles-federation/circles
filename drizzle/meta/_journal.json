@@ -295,6 +295,13 @@
       "when": 1791905151490,
       "tag": "0041_meetings_by_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792030176429,
+      "tag": "0042_event_proposals_lapse",
+      "breakpoints": true
     }
   ]
 }

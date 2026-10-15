@@ -537,6 +537,9 @@ export const circleProposals = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    // a withdrawn event proposal that wasn't withdrawn by anyone: its event's
+    // start came before the circle had decided (withdrawLapsedEventProposals)
+    lapsed: boolean("lapsed").notNull().default(false),
   },
   (t) => [
     index("circle_proposals_circle_idx").on(t.circleId),

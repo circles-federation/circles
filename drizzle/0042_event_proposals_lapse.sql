@@ -1,0 +1,1 @@
+ALTER TABLE "circle_proposals" ADD COLUMN "lapsed" boolean DEFAULT false NOT NULL;

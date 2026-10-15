@@ -15,7 +15,7 @@ import {
   markNotificationSent,
 } from "@/lib/db/notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
-import { closeDueProposals } from "@/lib/db/proposals";
+import { closeDueProposals, withdrawLapsedEventProposals } from "@/lib/db/proposals";
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
@@ -241,6 +241,8 @@ export async function deliverProposalNotifications(): Promise<void> {
 
 async function closeThenDeliverProposals(): Promise<void> {
   try {
+    // first, so an event that's begun undecided isn't then scheduled
+    await withdrawLapsedEventProposals();
     await closeDueProposals();
   } catch (err) {
     console.error("Closing due proposals failed:", err);
