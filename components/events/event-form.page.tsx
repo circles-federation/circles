@@ -336,10 +336,16 @@ export function EventFormPage(props: EventFormPageProps) {
     s === "upcoming" ? "Cancel this and later dates" : `${othersGoing > 0 ? "Cancel" : "Delete"} ${seriesLive ? "this date" : noun}`;
 
   const submitLabel = mode === "edit" ? "Save changes" : (gov ? (approverRole ? "Schedule meeting" : "Propose meeting") : hostCircle ? "Propose event" : "Create event");
+  // a new meeting or circle-hosted event that needs its circle's consent is
+  // proposed, not saved: the orange Propose button with the proposals' hand,
+  // as on Manage circle's Details and Roles (an undecided one can't be edited)
+  const proposingNew = proposing && mode === "create";
   useTopBarAction(
     view !== "form"
       ? { label: "Done", icon: CheckIcon, onAction: closeView, variant: "primary" }
-      : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: proposing && mode === "create" ? () => setConfirmingProposal(true) : submit, disabled: !canSubmit, variant: "primary" }
+      : proposingNew
+        ? { label: busy ? "Saving" : submitLabel, icon: HandRaisedIcon, onAction: () => setConfirmingProposal(true), disabled: !canSubmit, variant: "propose" }
+        : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" }
   );
   // proposing sends it to the deciding circle's members at once, so it's
   // asked first, saying who'll be asked and how it's decided
