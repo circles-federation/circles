@@ -148,6 +148,10 @@ export function EventFormPage(props: EventFormPageProps) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  // the roles and agenda as they were when their view opened: Done keeps
+  // what's changed since, Back puts these back (asking first if anything has)
+  const [viewStart, setViewStart] = useState<{ slots: SlotDraft[]; agenda: AgendaDraft[] } | null>(null);
+  const [confirmingViewDiscard, setConfirmingViewDiscard] = useState(false);
   // which dates cancelling applies to, while its confirmation is open
   const [confirmingProposal, setConfirmingProposal] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState<SeriesScope | null>(null);
@@ -241,6 +245,7 @@ export function EventFormPage(props: EventFormPageProps) {
 
   const hasRoles = slots.some((x) => x.label.trim());
   function openView(next: "slots" | "agenda") {
+    setViewStart({ slots, agenda });
     // a blank one to type into, if there's none yet
     if (next === "slots" && slots.length === 0) setSlots([{ ...BLANK_SLOT }]);
     setView(next);
@@ -249,11 +254,29 @@ export function EventFormPage(props: EventFormPageProps) {
     // slots nobody named are just dropped
     if (view === "slots") setSlots(slots.filter((x) => x.label.trim()));
     setView("form");
+    setViewStart(null);
   }
+  function discardView() {
+    if (viewStart) {
+      setSlots(viewStart.slots);
+      setAgenda(viewStart.agenda);
+    }
+    setConfirmingViewDiscard(false);
+    setView("form");
+    setViewStart(null);
+  }
+  // changed since the view opened (a blank slot it added to type into doesn't count)
+  const named = (xs: SlotDraft[]) => xs.filter((x) => x.label.trim());
+  const viewDirty =
+    !!viewStart &&
+    (view === "agenda"
+      ? JSON.stringify(agenda) !== JSON.stringify(viewStart.agenda)
+      : view === "slots" && JSON.stringify(named(slots)) !== JSON.stringify(named(viewStart.slots)));
 
   // leaving is the top bar's Back, which asks before discarding changes; from
-  // a view within the form it goes back to the form instead
-  useBackHandler(view !== "form" ? closeView : dirty ? () => setConfirmingDiscard(true) : null);
+  // a view within the form it goes back to the form without that view's
+  // changes (Done is what keeps them), asking first if there are any
+  useBackHandler(view !== "form" ? (viewDirty ? () => setConfirmingViewDiscard(true) : discardView) : dirty ? () => setConfirmingDiscard(true) : null);
 
   // the event as it would be submitted, and the first thing wrong with it if
   // anything is — worked out on every render, so the submit buttons stay
@@ -388,6 +411,18 @@ export function EventFormPage(props: EventFormPageProps) {
   const topics = agenda.filter((a) => a.title.trim());
   const roleNames = slots.filter((x) => x.label.trim()).map((x) => x.label.trim());
 
+  // Back from a view with changes in it: Done keeps them, this drops them
+  const viewDiscardModal = confirmingViewDiscard && (
+    <ConfirmModal
+      title="Discard changes?"
+      message={`Your changes to the ${view === "agenda" ? "agenda" : "roles"} won't be kept. Tap Done to keep them.`}
+      confirmLabel="Discard"
+      cancelLabel="Cancel"
+      onConfirm={discardView}
+      onCancel={() => setConfirmingViewDiscard(false)}
+    />
+  );
+
   if (view === "slots") {
     return (
       <PageContainer size="compact">
@@ -396,6 +431,7 @@ export function EventFormPage(props: EventFormPageProps) {
           People sign up for these, like shift lead or greeter. Roles replace the normal RSVP. Leave none to keep it a simple RSVP.
         </p>
         <SlotsEditor slots={slots} onChange={setSlots} />
+        {viewDiscardModal}
       </PageContainer>
     );
   }
@@ -408,6 +444,7 @@ export function EventFormPage(props: EventFormPageProps) {
           Mark each topic with what the circle will do with it: hear a report, explore it together, or decide it.
         </p>
         <AgendaEditor items={agenda} onChange={setAgenda} />
+        {viewDiscardModal}
       </PageContainer>
     );
   }
