@@ -448,7 +448,7 @@ export function EventFormPage(props: EventFormPageProps) {
           )}
           {circle && !approverRole && (
             <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
-              This is a proposal to {circle.name}. It&apos;s scheduled once its {circle.type === "neighborhood" ? "residents" : "members"} consent, or after 3 days if no one objects. Until then it&apos;s in no list, and no one can RSVP.
+              This is a proposal to {circle.name}. It&apos;s scheduled once its {circle.type === "neighborhood" ? "residents" : "members"} consent, or after 3 days if no one objects. Until then it&apos;s in no list. You and everyone who consents are marked as going.
             </p>
           )}
           {mode === "edit" && <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">The circle can&apos;t be changed once a meeting exists.</p>}
@@ -621,7 +621,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
                   {mode === "edit"
                     ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
-                    : `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects; until then only they can see it, and no one can RSVP. Once it's scheduled it opens to ${isGroup(hostCircle) ? "the group" : audienceLabel(circle)}, and any member of ${hostCircle.name} can edit or cancel it.`}
+                    : `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects; until then only they can see it, ${hasRoles ? "and its roles can be taken once it's scheduled" : "and you and everyone who consents are marked as going"}. Once it's scheduled it opens to ${isGroup(hostCircle) ? "the group" : audienceLabel(circle)}, and any member of ${hostCircle.name} can edit or cancel it.`}
                 </p>
               )}
             </div>

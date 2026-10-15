@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { notFound, useParams, useRouter } from "next/navigation";
+import { useGoBack } from "@/components/providers/back-handler-provider";
+import { useToast } from "@/components/shared/toast";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { indexCircles, type CirclesById } from "./circles.util";
 import { hasEnded } from "./events.util";
 import { isPastEvent } from "./format.util";
 import { awaitingResponse } from "./proposals.util";
 import { currentSubscription, pushPermission, pushSupported, subscribeThisDevice, unsubscribeThisDevice } from "./push-client";
-import type { Circle, CircleInvitation, CircleResource, Event, Member } from "./types";
+import type { Circle, CircleInvitation, CircleProposal, CircleResource, Event, Member, ProposalChanges } from "./types";
 
 /* The seam components reach live data through — a hook here rather than
    importing lib/data.ts's seed constants or threading props, so where the
@@ -196,4 +198,45 @@ export function useHistoryState<T>(key: string, initial: T): [T, (value: T) => v
     [key]
   );
   return [value, set];
+}
+
+/* For the Manage circle pages (app/(app)/circles/[id]/manage/): the circle in
+   the URL, which only its members can manage (the server enforces this too —
+   see updateCircle in lib/db/circles.ts), so to anyone else, or for a circle
+   that doesn't exist, the page 404s; and the change to it that's open for
+   consent, if one is, which holds its Details and Roles until it's decided
+   (its events' proposals don't). `allowGone` skips the 404 for a page that's
+   about to leave anyway (the member is leaving the circle). */
+export function useManagedCircle({ allowGone = false } = {}): { circle: Circle; openProposal?: CircleProposal } | null {
+  const { id } = useParams<{ id: string }>();
+  const { circles, proposals, profile } = useAppState();
+  const circle = circles.find((c) => c.id === id);
+  if (!circle || !circle.members.includes(profile.id)) {
+    if (allowGone) return null;
+    notFound();
+  }
+  const openProposal = proposals.find((p) => p.circleId === circle.id && p.status === "open" && !p.eventId);
+  return { circle, ...(openProposal ? { openProposal } : {}) };
+}
+
+/* Proposing changes to a circle from a Manage circle page: a circle of one
+   decides it at once, so it's back to the menu; otherwise on to the
+   proposal's page, where the proposer can watch the answers come in. */
+export function useProposeCircleChanges(circle: Circle) {
+  const { proposeCircleChanges } = useAppState();
+  const { showToast } = useToast();
+  const router = useRouter();
+  const goBack = useGoBack();
+  return async (changes: ProposalChanges): Promise<{ ok: true } | { ok: false; error: string }> => {
+    const result = await proposeCircleChanges(circle.id, changes);
+    if (!result.ok) return result;
+    if (result.passed) {
+      showToast({ tone: "success", title: "Changes saved", message: "You're its only member, so they were made at once." });
+      goBack();
+    } else {
+      showToast({ tone: "success", title: "Proposal sent", message: `${circle.name}'s members have been asked to consent.` });
+      router.replace(`/proposals/${result.proposal.id}`);
+    }
+    return { ok: true };
+  };
 }

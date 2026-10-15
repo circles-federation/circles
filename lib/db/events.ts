@@ -508,7 +508,9 @@ type Template = Pick<SeriesRow, "title" | "kind" | "circleId" | "hostCircleId" |
 
 /* A date's starting state. The organizer attends their own event — except a
    slotted one, where people sign up for slots instead, and a circle-hosted
-   one, which opens for RSVPs only once approved — and a meeting opens with
+   one, whose proposer is marked going by proposing it, along with everyone
+   who consents (rsvpConsenters in lib/db/proposals.ts), so a series' later
+   dates start with no one — and a meeting opens with
    their vote, as does a proposal (`opening`: the date the host circle votes
    on; a series' later dates are approved already). */
 function newDate(t: Template, date: string, { opening, proposed }: { opening: boolean; proposed: boolean }): Event {
@@ -745,9 +747,9 @@ export async function cancelEvent(memberId: number, id: string, scope: SeriesSco
   const row = await loadVisible(memberId, id);
   await assertCanManage(row, memberId, "cancel");
   assertNotCancelled(row);
-  if (isPastEvent(row)) throw new EventError("This event has already happened.");
-  // a group's event still waiting on its consent was never scheduled, so
-  // cancelling it withdraws the proposal and the event simply goes
+  // an event still waiting on its circle's consent was never scheduled, so
+  // cancelling it withdraws the proposal and the event simply goes — even
+  // once its date has passed, since there's nothing that happened to keep
   if (await awaitingConsent(row)) {
     const withdrawn = await db.transaction(async (tx) => {
       await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");
@@ -757,6 +759,7 @@ export async function cancelEvent(memberId: number, id: string, scope: SeriesSco
     });
     return { deletedIds: [id], events: [], ...(withdrawn ? { withdrawnProposalId: withdrawn } : {}) };
   }
+  if (isPastEvent(row)) throw new EventError("This event has already happened.");
   const seriesId = row.seriesId;
   const deletedIds = await db.transaction(async (tx) => {
     await tx.select({ id: events.id }).from(events).where(eq(events.id, id)).for("update");

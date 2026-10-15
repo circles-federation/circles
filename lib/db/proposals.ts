@@ -5,8 +5,8 @@ import { getCircleById, getCirclesForMember } from "./circles";
 import { writeCircleRoles } from "./circle-roles";
 import { UserFacingError } from "./errors";
 import { approveHostedEvent, discardEvent, getEvent } from "./events";
-import { enqueueProposalNotifications } from "./notifications";
-import { circleMembers, circleProposals, circles, eventVotes, events, members, proposalResponses, roles as eventRoles } from "./schema";
+import { enqueueProposalNotifications, wallClock } from "./notifications";
+import { circleMembers, circleProposals, circles, eventRsvps, eventVotes, events, members, proposalResponses, roles as eventRoles } from "./schema";
 import { groupBy } from "./util";
 import {
   OBJECTION_REASON_MAX,
@@ -48,6 +48,7 @@ function toProposal(row: ProposalRow, responses: ProposalResponse[]): CircleProp
     createdAt: row.createdAt.toISOString(),
     closesAt: row.closesAt.toISOString(),
     ...(row.decidedAt ? { decidedAt: row.decidedAt.toISOString() } : {}),
+    ...(row.lapsed ? { lapsed: true } : {}),
     responses,
   };
 }
@@ -113,6 +114,11 @@ async function applyProposal(tx: Tx, proposal: ProposalRow): Promise<void> {
 // event's approval, whose own email (with the event's details) is what tells
 // the group, rather than the proposal's "passed" notice.
 async function pass(tx: Tx, proposal: ProposalRow, actorId: number | null): Promise<void> {
+  // an event that's begun can't usefully be scheduled now: it lapses instead
+  if (proposal.eventId !== null && (await eventHasBegun(tx, proposal.eventId))) {
+    await lapse(tx, proposal);
+    return;
+  }
   await tx.update(circleProposals).set({ status: "passed", decidedAt: new Date() }).where(eq(circleProposals.id, proposal.id));
   if (proposal.eventId !== null) {
     await approveHostedEvent(tx, proposal.eventId, actorId);
@@ -121,6 +127,62 @@ async function pass(tx: Tx, proposal: ProposalRow, actorId: number | null): Prom
   await applyProposal(tx, proposal);
   const tell = (await memberIdsOf(tx, proposal.circleId)).filter((m) => m !== actorId);
   await enqueueProposalNotifications(tx, proposal.id, "passed", tell);
+}
+
+// whether an event's start (its community wall-clock date and time) has come
+async function eventHasBegun(tx: Tx, eventId: string, now: Date = new Date()): Promise<boolean> {
+  const [row] = await tx
+    .select({ begun: sql<boolean>`(${events.date} + ${events.start}) <= ${wallClock(now)}::timestamp` })
+    .from(events)
+    .where(eq(events.id, eventId));
+  return !!row?.begun;
+}
+
+/* Withdraw an event proposal whose event began before its circle decided
+   it, as its proposer could have: closed as withdrawn (marked as lapsed, so
+   its page can say why) and the never-scheduled event discarded. No one is
+   told: its page says what happened, and the time has passed anyway. The
+   caller holds the proposal's lock. */
+async function lapse(tx: Tx, proposal: ProposalRow): Promise<void> {
+  await tx.update(circleProposals).set({ status: "withdrawn", lapsed: true, decidedAt: new Date() }).where(eq(circleProposals.id, proposal.id));
+  if (proposal.eventId !== null) await discardEvent(tx, proposal.eventId);
+}
+
+/* The open event proposals whose event has begun undecided: each lapses
+   (lapse, above). Run by the notification poller, before due proposals are
+   passed, so one can't be scheduled after its time; pass() checks again for
+   an answer that would pass it in between. Bounded by the events' date
+   (indexed) before their start time is compared. Returns the ids withdrawn. */
+export async function withdrawLapsedEventProposals(now: Date = new Date()): Promise<string[]> {
+  const due = await db
+    .select({ id: circleProposals.id })
+    .from(circleProposals)
+    .innerJoin(events, eq(events.id, circleProposals.eventId))
+    .where(and(eq(circleProposals.status, "open"), lte(events.date, localDay(now)), sql`(${events.date} + ${events.start}) <= ${wallClock(now)}::timestamp`));
+  const withdrawn: string[] = [];
+  for (const { id } of due) {
+    const did = await db.transaction(async (tx) => {
+      const [row] = await tx.select().from(circleProposals).where(eq(circleProposals.id, id)).for("update", { skipLocked: true });
+      if (!row || row.status !== "open" || row.eventId === null) return false;
+      await lapse(tx, row);
+      return true;
+    });
+    if (did) withdrawn.push(id);
+  }
+  return withdrawn;
+}
+
+/* Consenting to a meeting or a circle-hosted event is also saying you'll be
+   there: each consent is an RSVP too, the proposer's included, so whoever's
+   going is known by the time it's scheduled. Silence counts as consent but
+   not as an RSVP, so a member who never answers isn't marked going. Not for
+   an event with signup roles, where people take a role instead (setRsvp
+   refuses an RSVP there too). */
+async function rsvpConsenters(tx: Tx, eventId: string, memberIds: number[]): Promise<void> {
+  if (memberIds.length === 0) return;
+  const [slot] = await tx.select({ id: eventRoles.id }).from(eventRoles).where(eq(eventRoles.eventId, eventId)).limit(1);
+  if (slot) return;
+  await tx.insert(eventRsvps).values(memberIds.map((memberId) => ({ eventId, memberId }))).onConflictDoNothing();
 }
 
 /* Propose holding a meeting, or an event the circle hosts (createEvent in
@@ -144,6 +206,7 @@ export async function openEventProposal(tx: Tx, proposerId: number, event: Event
   // a member, so still theirs to answer
   const consented = [...new Set([proposerId, ...alsoConsented])].filter((m) => m === proposerId || memberIds.includes(m));
   await tx.insert(proposalResponses).values(consented.map((memberId) => ({ proposalId: id, memberId, response: "like" as const })));
+  await rsvpConsenters(tx, event.id, consented);
   const responses = consented.map((memberId) => ({ memberId, response: "like" as const, respondedAt: "" }));
   if (everyoneConsented({ responses }, memberIds)) await pass(tx, row!, proposerId);
   else await enqueueProposalNotifications(tx, id, "opened", memberIds.filter((m) => !consented.includes(m)));
@@ -291,6 +354,7 @@ export async function respondToProposal(
       await enqueueProposalNotifications(tx, id, "objected", memberIds.filter((m) => m !== memberId));
       return false;
     }
+    if (row.eventId !== null) await rsvpConsenters(tx, row.eventId, [memberId]);
     const [full] = await withResponses([row], tx);
     if (full && everyoneConsented(full, memberIds)) {
       await pass(tx, row, memberId);

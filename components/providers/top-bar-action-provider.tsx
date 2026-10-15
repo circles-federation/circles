@@ -9,8 +9,10 @@ export interface TopBarAction {
   disabled?: boolean;
   // "primary" makes it a primary icon button: the icon in a filled blue
   // circle (a faint outline while disabled), for the action the page is
-  // there to do (Save). The default is a plain icon.
-  variant?: "plain" | "primary";
+  // there to do (Save). "propose" is the same in orange, for a Save that
+  // proposes the change for its circle's consent rather than making it
+  // (Manage circle's Details and Roles). The default is a plain icon.
+  variant?: "plain" | "primary" | "propose";
 }
 
 type Shown = Omit<TopBarAction, "onAction">;

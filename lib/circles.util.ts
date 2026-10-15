@@ -122,6 +122,20 @@ export function isGroup(circle: Pick<Circle, "type">): boolean {
   return circle.type === "group";
 }
 
+// what to call a circle in a form's placeholder: its type, or "organization"
+// for Other
+export function circleTypeNoun(type: CircleType): string {
+  return type === "other" ? "organization" : CIRCLE_TYPE_LABEL[type].toLowerCase();
+}
+
+// the domain ending its website and email placeholders suggest: .coop for a
+// co-op, .org for a collective or circle, .com for anything else
+export function circleDomainEnding(type: CircleType): string {
+  if (type === "cooperative") return "coop";
+  if (type === "collective" || type === "circle") return "org";
+  return "com";
+}
+
 // the wiki (About, offers and needs, visiting and joining) and quick facts
 export function circleHasWiki(circle: Pick<Circle, "type">): boolean {
   return !isGroup(circle);

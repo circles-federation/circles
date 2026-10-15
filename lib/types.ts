@@ -268,6 +268,8 @@ export interface CircleProposal {
   // when it passes, if no one has objected by then
   closesAt: string;
   decidedAt?: string;
+  // withdrawn because its event began before it was decided, not by anyone
+  lapsed?: boolean;
   responses: ProposalResponse[];
 }
 

@@ -37,6 +37,8 @@ const ICON_BUTTON_SLOT = "group -mr-0.5 flex size-11 shrink-0 items-center justi
 // shrinks it a touch, and darkens the blue (ink has no darker to go).
 const ICON_BUTTON_FILL = {
   primary: "bg-action text-paper group-active:brightness-90",
+  // a Save that proposes, for its circle's consent: the governance orange
+  propose: "bg-flame text-paper group-active:brightness-90",
   secondary: "bg-ink text-paper",
 };
 
@@ -103,7 +105,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
   if (section === "circles") {
     if (!id) return "Circles";
     if (id === "new") return "New circle";
-    if (sub === "manage") return "Manage circle";
+    if (sub === "manage") return item === "details" ? "Details" : item === "roles" ? "Roles" : item === "wiki" ? "Wiki" : "Manage circle";
     if (sub === "bulletin") return resourceFormTitle(resources.find((r) => r.id === item)?.icon);
     if (sub === "invite") return "Invite";
     return circles.find((c) => c.id === id)?.name ?? "Circles";
@@ -189,7 +191,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
 
         {/* a page's own action (see useTopBarAction) takes the slot over a
             link-style one */}
-        {pageOwn?.variant === "primary" ? (
+        {pageOwn?.variant === "primary" || pageOwn?.variant === "propose" ? (
           <button
             type="button"
             onClick={runPageOwn}
@@ -197,7 +199,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
             aria-label={pageOwn.label}
             className={clsx(ICON_BUTTON_SLOT, "cursor-pointer border-0 bg-transparent p-0 disabled:cursor-default")}
           >
-            <IconButtonCircle icon={pageOwn.icon} variant="primary" />
+            <IconButtonCircle icon={pageOwn.icon} variant={pageOwn.variant} />
           </button>
         ) : pageOwn ? (
           <button

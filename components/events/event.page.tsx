@@ -63,8 +63,10 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
 
       {/* once you're going, a copy for your own calendar: the phone offers to
           add the file (app/api/events/[id]/calendar). A link styled as a
-          secondary Button, since it opens a file rather than running code */}
-      {!e.cancelled && !ended && isAttending(e, profile.id) && (
+          secondary Button, since it opens a file rather than running code. Not
+          while its circle is still deciding it: consenting marks you going,
+          but it may never be held */}
+      {!e.cancelled && !ended && !awaitingConsent(e) && isAttending(e, profile.id) && (
         <div className="border-b border-faint py-4">
           <a
             href={`/api/events/${e.id}/calendar`}

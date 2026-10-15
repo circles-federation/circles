@@ -19,6 +19,8 @@ interface ProposalPageProps {
   onRespond: (response: ConsentResponse, reason?: string) => Promise<MutationResult>;
   // a group's event proposal: its event's page, and withdrawing it while it's open
   onOpenEvent?: () => void;
+  // an event proposal where consenting is also an RSVP (one without signup roles)
+  consentIsRsvp?: boolean;
   onWithdraw?: () => Promise<MutationResult>;
 }
 
@@ -36,10 +38,13 @@ const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon:
    asking why; and where every member stands, as a sociocratic round shows
    everyone's answer. Reached from its email or push, the circle's banner,
    and Home. */
-export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, onWithdraw }: ProposalPageProps) {
+export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw }: ProposalPageProps) {
   // it proposes holding an event, not changing the circle
   const event = isEventProposal(p);
   const [withdrawing, setWithdrawing] = useState(false);
+  // shown under the Withdraw button, which the proposer (who has no answer
+  // section) is the most likely to use
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const memberById = useMemberById();
   const { showToast } = useToast();
   const proposer = memberById(p.proposerId);
@@ -110,10 +115,11 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
           <Section>
             <EyebrowGroup label="Your answer">
               {!canAnswer ? (
-                <p className="font-serif text-base text-soft">You proposed this, so you&rsquo;ve consented.</p>
+                <p className="font-serif text-base text-soft">You proposed this, so you&rsquo;ve consented{consentIsRsvp && <>, and you&rsquo;re down as going</>}.</p>
               ) : (
                 <>
                   {mine && <p className="mb-3 font-serif text-base">You answered: <strong className="font-sans">{RESPONSE_LABEL[mine.response]}</strong>. You can change it until it closes.</p>}
+                  {consentIsRsvp && <p className="mb-3 font-serif text-sm leading-snug text-soft">Liking or accepting it also marks you as going.</p>}
                   <div className="grid grid-cols-1 gap-2.5 min-[720px]:grid-cols-3">
                     {(["like", "accept", "object"] as const).map((r) => {
                       const Icon = ANSWER_STYLE[r].icon;
@@ -199,6 +205,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
             <Button variant="danger" disabled={withdrawing} onClick={() => setWithdrawing(true)} className="w-full min-[480px]:w-auto">
               Withdraw
             </Button>
+            {withdrawError && <p className="mt-3 font-sans text-sm font-bold text-danger">{withdrawError}</p>}
           </Section>
         )}
       </SectionGroup>
@@ -211,9 +218,10 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
           cancelLabel="Keep it"
           onCancel={() => setWithdrawing(false)}
           onConfirm={async () => {
+            setWithdrawError(null);
             const result = await onWithdraw();
             setWithdrawing(false);
-            if (!result.ok) setError(result.error);
+            if (!result.ok) setWithdrawError(result.error);
           }}
         />
       )}
@@ -231,7 +239,9 @@ function Outcome({ proposal: p, objectorName, event }: { proposal: CircleProposa
       : p.status === "passed"
         ? [CheckCircleIcon, "border-l-leaf", "Passed", `No one objected, so ${event ? "the event was scheduled" : "the change was made"}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
         : p.status === "withdrawn"
-          ? [XCircleIcon, "border-l-soft", "Withdrawn", "It was withdrawn before it was decided, so the event won't be held. It can be proposed again."]
+          ? p.lapsed
+            ? [XCircleIcon, "border-l-soft", "Withdrawn automatically", "Its start time came before the circle had decided, so it was withdrawn and the event won't be held. It can be proposed again for another time."]
+            : [XCircleIcon, "border-l-soft", "Withdrawn", "It was withdrawn before it was decided, so the event won't be held. It can be proposed again."]
           : [XCircleIcon, "border-l-danger", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${event ? "held" : "made"}. It can be proposed again, changed to meet the objection.`];
   return (
     <div role="status" className={clsx("mt-6 flex items-start gap-3 border border-ink border-l-4 px-4.5 py-4", tone)}>
