@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon } from "@heroicons/react/24/outline";
+import { HandRaisedIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { ConfirmModal, Input, Label, PageContainer, Select } from "@/components/shared";
@@ -75,11 +75,11 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
   }
 
   useBackHandler(dirty && !saving ? () => setConfirmingDiscard(true) : null);
-  useTopBarAction({ label: saving ? "Saving" : "Propose changes", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving || locked, variant: "primary" });
+  useTopBarAction({ label: saving ? "Saving" : "Propose changes", icon: HandRaisedIcon, onAction: handleSave, disabled: !dirty || saving || locked, variant: "propose" });
 
   return (
     <PageContainer size="normal">
-      <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
+      <ConsentNotice openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
       <div className="flex flex-col gap-5.5">
         {o.parentId !== null && (
           <div id="field-parentId">

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { HandRaisedIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Button, ConfirmModal, Eyebrow, PageContainer, Select } from "@/components/shared";
@@ -81,11 +81,11 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
   }
 
   useBackHandler(dirty && !saving ? () => setConfirmingDiscard(true) : null);
-  useTopBarAction({ label: saving ? "Saving" : "Propose changes", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving || locked, variant: "primary" });
+  useTopBarAction({ label: saving ? "Saving" : "Propose changes", icon: HandRaisedIcon, onAction: handleSave, disabled: !dirty || saving || locked, variant: "propose" });
 
   return (
     <PageContainer size="normal">
-      <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
+      <ConsentNotice openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
       {missingBasics && !openProposal && (
         <p className="mb-5.5 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
           {o.name} needs a domain and at least one aim before anything else can be proposed.{" "}
