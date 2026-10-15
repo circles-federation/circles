@@ -80,8 +80,10 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
         {/* leaving: one-way, so at the foot, apart from the rest, and asked about first */}
         <Section>
           <Button variant="danger" onClick={() => setConfirmingLeave(true)} disabled={leaving} className="w-full">
-            <ArrowRightStartOnRectangleIcon className="size-3.5" strokeWidth={2.5} />
-            Leave {o.name}
+            <ArrowRightStartOnRectangleIcon className="size-3.5 shrink-0" strokeWidth={2.5} />
+            {/* a long name wraps rather than running off the button (Button
+                doesn't wrap its label), breaking anywhere if it has to */}
+            <span className="min-w-0 whitespace-normal text-center [overflow-wrap:anywhere]">Leave {o.name}</span>
           </Button>
           {leaveError && <p className="mt-3 font-sans text-sm font-bold text-danger">{leaveError}</p>}
         </Section>
