@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
-import { GlobeAltIcon, MapIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { EnvelopeIcon, GlobeAltIcon, MapIcon, PhoneIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
@@ -10,7 +10,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useFloatingAction } from "@/components/providers/floating-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { CIRCLE_TYPE_LABEL, circleChildren, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleChildren, circleContact, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, Event, Member } from "@/lib/types";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
@@ -76,6 +76,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
     { key: "events", label: "Events" },
   ];
   const websiteUrl = c.website ? circleWebsiteUrl(c.website) : null;
+  const contact = c.contact ? circleContact(c.contact) : null;
   // the bulletin's + lives in the tab row, so opening its add dialog is kept here
   const [adding, setAdding] = useState(false);
   const startAdding = () => (isPhoneWidth() ? onAddResourcePage() : setAdding(true));
@@ -196,9 +197,10 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               </Section>
             )}
 
-            {/* where to find it online and in person: a square each, opening
-                its website or its address in the visitor's maps app */}
-            {(c.website || c.address) && (
+            {/* where to find it online, in person and to get in touch: a
+                square each, opening its website, its address in the visitor's
+                maps app, or an email or a call to it */}
+            {(c.website || c.address || c.contact) && (
               <Section>
                 <div className="flex flex-wrap gap-3 min-[720px]:gap-x-10 min-[720px]:gap-y-4">
                   {websiteUrl ? (
@@ -219,6 +221,22 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                     </div>
                   ) : null}
                   {c.address && <MapsLink address={c.address} />}
+                  {contact ? (
+                    <VisitLink
+                      href={contact.href}
+                      newTab={false}
+                      icon={contact.kind === "email" ? EnvelopeIcon : PhoneIcon}
+                      tone={contact.kind}
+                      label={contact.kind === "email" ? "Email" : "Phone"}
+                      value={contact.display}
+                    />
+                  ) : c.contact ? (
+                    // not an email or a number, so shown as typed
+                    <div className="min-w-0">
+                      <Eyebrow className="text-soft">Get in touch</Eyebrow>
+                      <div className="mt-1 font-serif text-base leading-[1.35] break-words text-[#222]">{c.contact}</div>
+                    </div>
+                  ) : null}
                 </div>
               </Section>
             )}
@@ -239,31 +257,11 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
             )}
           </SectionGroup>
 
-          {(c.join || c.contact) && (
+          {c.join && (
             <section className="pt-8">
-              <div
-                className={clsx(
-                  "grid grid-cols-1 border border-ink",
-                  c.join && c.contact && "min-[720px]:grid-cols-2",
-                )}
-              >
-                {c.join && (
-                  <div
-                    className={clsx(
-                      "p-6",
-                      c.contact && "border-b border-ink min-[720px]:border-r min-[720px]:border-b-0",
-                    )}
-                  >
-                    <Eyebrow className="text-soft">How to join</Eyebrow>
-                    <p className="mt-3 font-serif text-base leading-normal">{c.join}</p>
-                  </div>
-                )}
-                {c.contact && (
-                  <div className="bg-ink p-6 text-paper">
-                    <Eyebrow className="text-[#bdbdbd]">Get in touch</Eyebrow>
-                    <p className="mt-3 font-sans text-lg font-bold wrap-break-word">{c.contact}</p>
-                  </div>
-                )}
+              <div className="border border-ink p-6">
+                <Eyebrow className="text-soft">How to join</Eyebrow>
+                <p className="mt-3 font-serif text-base leading-normal">{c.join}</p>
               </div>
             </section>
           )}
@@ -397,6 +395,8 @@ function MapsLink({ address }: { address: string }) {
 const VISIT_TONE = {
   action: "border-action bg-action [--press-color:var(--color-action)]",
   leaf: "border-leaf bg-leaf [--press-color:var(--color-leaf)]",
+  phone: "border-phone bg-phone [--press-color:var(--color-phone)]",
+  email: "border-email bg-email [--press-color:var(--color-email)]",
 };
 
 /* A filled square with an icon, for one way to reach a circle (its website,

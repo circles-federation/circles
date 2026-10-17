@@ -22,6 +22,8 @@
   --color-video: #6d3fb5; /* circle resources: the video icon (a recording) */
   --color-announcement: #c0392b; /* circle resources: the announcement icon (the same red as danger, for a different job) */
   --color-agenda: #008480; /* a meeting's agenda cards: a turquoise teal, as bright as it goes and still reads as text on white (4.5:1) */
+  --color-phone: #c0392b; /* a circle's phone number: its red square (the same red as danger, for a different job) */
+  --color-email: #3b8fd9; /* a circle's email address: its square, a sky blue lighter than the website's (action) beside it, still 3.4:1 against its white icon */
   --color-action: #1f5fbf; /* a primary icon button, like the top bar's Save (the same blue as file, for a different job) */
   --color-accept: #f0b400; /* a proposal's yellow answer, "Accept this": between leaf ("Like this") and danger ("Object"), with ink text on it */
   --color-warning: #f0b400; /* a heads-up that something may not go ahead (a slot still short): yellow, kept apart from flame, which means a decision is waiting. Too light for text on white, so it fills, rules and tints, with ink on it */

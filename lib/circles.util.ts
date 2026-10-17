@@ -264,3 +264,20 @@ export function circleWebsiteUrl(website: string): URL | null {
     return null;
   }
 }
+
+/* A circle's "Get in touch", as something it can link to: an email address
+   (mailto:) or a phone number (tel:, with only its digits and a leading +),
+   or null for anything else ("Ask at the front desk"), which is shown as
+   typed. A number needs at least 7 digits and nothing but the usual phone
+   punctuation, so a street address or a date isn't taken for one. */
+export type CircleContact = { kind: "email" | "phone"; href: string; display: string };
+export function circleContact(contact: string): CircleContact | null {
+  const raw = contact.trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return { kind: "email", href: `mailto:${raw}`, display: raw };
+  const digits = raw.replace(/\D/g, "");
+  const looksLikeDate = /^\d{4}[-.]\d{1,2}[-.]\d{1,2}$/.test(raw);
+  if (/^\+?[\d\s().\-]+$/.test(raw) && !looksLikeDate && digits.length >= 7 && digits.length <= 15) {
+    return { kind: "phone", href: `tel:${raw.startsWith("+") ? "+" : ""}${digits}`, display: raw };
+  }
+  return null;
+}

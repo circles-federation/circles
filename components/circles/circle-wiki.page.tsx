@@ -7,7 +7,7 @@ import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Button, ConfirmModal, Input, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
-import { circleDomainEnding, circleTypeNoun, circleWebsiteUrl } from "@/lib/circles.util";
+import { circleContact, circleDomainEnding, circleTypeNoun, circleWebsiteUrl } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
 
 // matches circle.page.tsx's read-only facts grid (label above a bold value,
@@ -211,7 +211,10 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
 
             <div>
               <Label htmlFor="wiki-contact">Get in touch</Label>
-              <Input id="wiki-contact" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={`hello@yourorg.${circleDomainEnding(o.type)}`} />
+              <Input id="wiki-contact" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={`hello@yourorg.${circleDomainEnding(o.type)} or (401) 555-0100`} />
+              {contact.trim() && !circleContact(contact) && (
+                <p className="mt-2 font-serif text-sm leading-normal text-soft">That isn&rsquo;t an email address or a phone number, so it&rsquo;ll show as text rather than a link.</p>
+              )}
             </div>
           </div>
         </Section>
