@@ -403,7 +403,7 @@ function VisitLink({ href, newTab, icon: Icon, tone, label, value, name }: { hre
       {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       aria-label={name ?? `${label}: ${plain}`}
       title={plain ?? name}
-      className="fill-press flex items-center gap-4 text-ink no-underline"
+      className="fill-press flex items-start gap-4 text-ink no-underline"
     >
       <span className={clsx("fill-press-square flex size-16 shrink-0 items-center justify-center border-2 text-paper", VISIT_TONE[tone])}>
         <Icon className="size-8" strokeWidth={1.75} aria-hidden />
