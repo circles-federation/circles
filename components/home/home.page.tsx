@@ -8,9 +8,8 @@ import { ProposalBanner } from "@/components/circles/proposal-banner";
 import { EventFeed } from "@/components/events/event-feed";
 import { HomePrompts } from "./home-prompts";
 import { StartingSoon } from "./starting-soon";
-import { StatCard } from "./stat-card";
 import { isAttending } from "@/lib/events.util";
-import { fmtNumericDate, isPastEvent, parseDay } from "@/lib/format.util";
+import { fmtNumericDate } from "@/lib/format.util";
 import { awaitingResponse } from "@/lib/proposals.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
 import { useMemberById, useMembers } from "@/lib/hooks";
@@ -23,7 +22,6 @@ interface HomeProps {
   circles: Circle[];
   rsvpState: Record<string, boolean>;
   onOpenEvent: (e: Event) => void;
-  setView: (key: string) => void;
   onOpenNeighbors: () => void;
   onOpenLocalCircles: () => void;
   onPlayGame: () => void;
@@ -34,7 +32,7 @@ interface HomeProps {
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their circles (speed
    dial), and their events. Profile editing lives on a separate page. */
-export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onOpenProfile }: HomeProps) {
+export function Home({ profile, events, circles, rsvpState, onOpenEvent, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onOpenProfile }: HomeProps) {
   const members = useMembers();
   const { pendingApplications, invitations, proposals } = useAppState();
   // proposals in my circles still waiting on my answer, soonest to close first
@@ -62,15 +60,6 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   // count would otherwise be one higher than what's actually there to click
   // through to.
   const localCircles = circles.filter((c) => c.type !== "neighborhood" && !!homeCircle && circleNeighborhood(c, byId)?.id === homeCircle.id);
-  const upcoming = [...events].filter((e) => !isPastEvent(e)).sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
-  // circleNeighborhood (not a direct check on the event's circle) so a
-  // meeting held by a sub-circle (e.g. Finance Council) still counts as "in
-  // my neighborhood", not just one held by the neighborhood itself
-  const meetings = upcoming.filter((e) => {
-    if (e.kind !== "meeting" || e.cancelled) return false;
-    const circle = byId[e.circleId];
-    return !!circle && !!homeCircle && circleNeighborhood(circle, byId)?.id === homeCircle.id;
-  });
 
   // the user's own circles (speed dial)
   const myCircles = circlesForMember(profile.id, circles);
@@ -168,26 +157,41 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
           </Section>
         )}
 
-        {/* my neighborhood — one compact panel of stats */}
-        <Section>
-          <EyebrowGroup label="My neighborhood">
-            {/* a row of three short stat cards, and the game as a bar under
-                them on a phone (beside them wider) */}
-            <div className="grid grid-cols-3 gap-3 min-[720px]:grid-cols-4">
-              <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
-              <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalCircles} />
-              <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
+        {/* my neighborhood, in one short row, so what people come back for
+            (their circles and events) stays near the top: its size as two
+            links into it, and the name game */}
+        {homeCircle && (
+          <Section className="py-5">
+            {/* the heading over the whole row, not beside the button, so
+                its wide-set caps don't wrap on a small phone */}
+            <Eyebrow className="text-soft">My neighborhood</Eyebrow>
+            <div className="mt-1 flex items-center gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="font-serif text-base text-soft">
+                  <button onClick={onOpenNeighbors} className="hit cursor-pointer border-none bg-transparent p-0 font-serif text-base whitespace-nowrap text-soft underline underline-offset-3">
+                    {neighbors.length === 1 ? "1 neighbor" : `${neighbors.length} neighbors`}
+                  </button>
+                  {" · "}
+                  <button onClick={onOpenLocalCircles} className="hit cursor-pointer border-none bg-transparent p-0 font-serif text-base whitespace-nowrap text-soft underline underline-offset-3">
+                    {localCircles.length === 1 ? "1 circle" : `${localCircles.length} circles`}
+                  </button>
+                </div>
+              </div>
+              {/* the round button inverts while pressed, its label staying put */}
               <button
                 onClick={playGame}
-                title="Play the neighbor name game"
-                className="btn-invert btn-teal col-span-3 flex w-full cursor-pointer items-center justify-between gap-3 border border-teal bg-teal px-4 py-4 text-paper min-[720px]:col-span-1 min-[720px]:flex-col min-[720px]:items-start"
+                title="Learn your neighbors' names"
+                className="fill-press flex shrink-0 cursor-pointer items-center gap-3 border-none bg-transparent p-0 font-sans text-xs font-bold tracking-caps text-teal uppercase"
               >
-                <Eyebrow className="text-left text-paper">Meet My Neighbors</Eyebrow>
-                <PlayIcon className="size-8 min-[720px]:self-end" />
+                {/* on the narrowest phones just the button, so the counts keep a line */}
+                <span className="max-[379px]:sr-only">Learn names</span>
+                <span className="fill-press-square flex size-11 items-center justify-center rounded-full border-2 border-teal bg-teal text-paper [--press-color:var(--color-teal)]">
+                  <PlayIcon className="ml-0.5 size-5" />
+                </span>
               </button>
             </div>
-          </EyebrowGroup>
-        </Section>
+          </Section>
+        )}
 
         {/* my circles — speed dial using the same cards as the Circles page */}
         <Section>

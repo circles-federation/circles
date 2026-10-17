@@ -19,7 +19,6 @@ export default function Page() {
       circles={circles}
       rsvpState={rsvpState}
       onOpenEvent={(e) => nav.openEvent(e)}
-      setView={nav.setView}
       onOpenNeighbors={() => myNeighborhood && nav.openCircle(myNeighborhood, ["People"])}
       onOpenLocalCircles={() => myNeighborhood && nav.openCircle(myNeighborhood, ["Circles", "Organizations"])}
       onPlayGame={() => nav.setView("game")}
