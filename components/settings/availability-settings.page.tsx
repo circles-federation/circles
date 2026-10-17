@@ -172,7 +172,7 @@ function ToggleChip({ pressed, onClick, className, children, ...rest }: { presse
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={clsx("cursor-pointer border border-ink font-sans font-bold", togglePress(pressed), pressed ? "bg-ink text-paper" : "bg-paper text-ink", className)}
+      className={clsx("hit cursor-pointer border border-ink font-sans font-bold", togglePress(pressed), pressed ? "bg-ink text-paper" : "bg-paper text-ink", className)}
       {...rest}
     >
       {children}
@@ -222,7 +222,7 @@ function WeekPreview({ windows }: { windows: AvailabilityWindow[] }) {
   const joined = normalizeAvailability(windows);
   return (
     <div className="flex flex-col gap-1.5" role="img" aria-label={previewDescription(joined)}>
-      <div className="relative ml-6 h-3 font-sans text-[10px] font-bold uppercase text-soft" aria-hidden>
+      <div className="relative ml-6 h-3 font-sans text-label font-bold uppercase text-soft" aria-hidden>
         {HOUR_MARKS.map((mark) => (
           <span key={mark.hour} className="absolute -translate-x-1/2" style={{ left: `${(mark.hour / 24) * 100}%` }}>
             {mark.label}

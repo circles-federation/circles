@@ -37,7 +37,9 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
             key={t.key}
             onClick={() => onChange(t.key)}
             className={clsx(
-              "-mb-px cursor-pointer border-0 border-b-2 bg-transparent pb-3 font-sans text-base outline-none",
+              // z-10: over the tab's content, which would otherwise cover the
+              // bottom of its tap area (hit)
+              "hit z-10 -mb-px cursor-pointer border-0 border-b-2 bg-transparent pb-3 font-sans text-base",
               on ? "border-b-ink font-bold text-ink" : "border-b-transparent font-normal text-soft hover:text-ink",
             )}
           >

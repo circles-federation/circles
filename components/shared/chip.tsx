@@ -44,7 +44,7 @@ export function Chip({ children, title, onClick }: ChipProps) {
     // the hollow one keeps its white fill when its card is pressed (see .ink-press-badge)
     local ? "border-teal bg-teal text-paper" : federation ? "border-ink bg-ink text-paper" : "ink-press-badge border-ink bg-paper text-ink",
     // pressed, a filled chip turns paper and a hollow one ink, as buttons do
-    onClick && ["cursor-pointer", local ? "btn-invert btn-teal" : federation ? "btn-invert btn-ink" : "ink-press"],
+    onClick && ["hit cursor-pointer", local ? "btn-invert btn-teal" : federation ? "btn-invert btn-ink" : "ink-press"],
   );
   // a truncated name can still be read in full on hover
   const label = title ?? (place || undefined);

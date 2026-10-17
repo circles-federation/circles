@@ -44,7 +44,6 @@
   --text-xs: 13px;
   --text-eyebrow: 12px;
   --text-label: 11px;
-  --text-micro: 9px;
 
   /* display headings share tight negative tracking; eyebrows share wide tracking */
   --tracking-tight: -0.03em;
@@ -182,6 +181,24 @@ body {
     text-decoration: none;
   }
 
+  /* Where keyboard focus is, in the house style: a square ink outline set
+     off the element, only for the keyboard (a tap or a click shows none).
+     Fields show theirs with their own ink bottom rule (FIELD) instead, and
+     on the ink bottom nav (.on-ink) it's paper. In the base layer, so an
+     element can still set its own outline. */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+  }
+  .on-ink :focus-visible {
+    outline-color: var(--color-paper);
+  }
+
   /* iOS draws date and time fields as native controls with a minimum width
      of their own, which ignores width: 100% — on a narrow phone they spill
      past their container's padding (the event form's Date, Start and End).
@@ -249,6 +266,16 @@ body {
    same colour as its fill, so the inverted square keeps its shape. */
 .fill-press .fill-press-square { transition: background 0.08s, color 0.08s; }
 .fill-press[data-pressed] .fill-press-square { background: var(--color-paper) !important; color: var(--press-color) !important; }
+/* A tap area of at least 44×44px (Apple's and Google's minimum) for a control
+   drawn smaller than that (a tag's ×, a name, a chip, a switch), without
+   changing how it looks: an invisible layer centred on it. Only where nothing
+   else tappable sits within it, or taps would land on the wrong one. */
+@layer components {
+  /* in a layer, so a positioning class on the same element (absolute,
+     fixed) still wins over its relative */
+  .hit { position: relative; }
+  .hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+}
 @keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 /* A pressable image (Home's own photo, which opens your profile): the
    background ink-press turns to ink would be hidden behind the photo, so the

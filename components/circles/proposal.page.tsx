@@ -79,7 +79,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
         <p className="mt-3 font-serif text-sm text-soft">
           Proposed by{" "}
           {proposer ? (
-            <button type="button" onClick={() => onOpenMember(proposer)} className="cursor-pointer border-0 bg-transparent p-0 font-serif text-sm text-soft underline underline-offset-2">
+            <button type="button" onClick={() => onOpenMember(proposer)} className="hit cursor-pointer border-0 bg-transparent p-0 font-serif text-sm text-soft underline underline-offset-2">
               {proposer.name}
             </button>
           ) : (
@@ -184,7 +184,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
                   return (
                     <div key={m.id} className="border-b border-faint py-3 last:border-b-ink">
                       <div className="flex items-center justify-between gap-3">
-                        <button type="button" onClick={() => onOpenMember(m)} className="cursor-pointer border-0 bg-transparent p-0 text-left font-sans text-base font-bold text-ink">
+                        <button type="button" onClick={() => onOpenMember(m)} className="hit cursor-pointer border-0 bg-transparent p-0 text-left font-sans text-base font-bold text-ink">
                           {m.name}
                         </button>
                         <span className="flex shrink-0 items-center gap-2 font-sans text-sm text-soft">

@@ -24,7 +24,9 @@ export function DateTile({ iso, large, accent = "ink" }: DateTileProps) {
   const valid = iso && !isNaN(d.getTime());
   const { border, bg } = ACCENT[accent];
   const tileClass = clsx("shrink-0 border bg-paper text-center", large ? "w-21" : "w-14.5", border);
-  const badgeClass = clsx("font-sans font-bold text-paper uppercase tracking-[0.18em]", bg, large ? "py-1.25 text-label" : "py-1 text-micro");
+  // the small tile's month and weekday are the one place under the 11px
+  // minimum: any larger and the tile grows too tall for a list on a phone
+  const badgeClass = clsx("font-sans font-bold text-paper uppercase tracking-[0.18em]", bg, large ? "py-1.25 text-label" : "py-1 text-[9px]");
 
   if (!valid) {
     return (

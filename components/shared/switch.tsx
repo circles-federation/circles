@@ -22,7 +22,7 @@ export function Switch({ checked, onChange, label, labelledBy, disabled }: Switc
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={clsx(
-        "relative inline-flex h-7 w-12 shrink-0 cursor-pointer border p-0 transition-colors disabled:cursor-default",
+        "hit relative inline-flex h-7 w-12 shrink-0 cursor-pointer border p-0 transition-colors disabled:cursor-default",
         disabled ? "border-faint bg-paper" : checked ? "border-ink bg-ink" : "border-ink bg-paper"
       )}
     >

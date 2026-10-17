@@ -119,7 +119,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               Last edited by{" "}
               <button
                 onClick={() => onOpenMember(lastEditor)}
-                className="cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-[0.02em] text-ink underline underline-offset-2"
+                className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-[0.02em] text-ink underline underline-offset-2"
               >
                 {lastEditor.name}
               </button>

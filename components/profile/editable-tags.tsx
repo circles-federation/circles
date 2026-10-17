@@ -84,7 +84,7 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
             <button
               onClick={() => onChange(values.filter((x) => x !== v))}
               aria-label={`Remove ${v}`}
-              className="inline-flex cursor-pointer border-none bg-transparent p-0 text-soft"
+              className="hit inline-flex cursor-pointer border-none bg-transparent p-0 text-soft"
             >
               <XMarkIcon className="size-3" strokeWidth={3} />
             </button>

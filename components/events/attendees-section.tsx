@@ -36,8 +36,6 @@ export function AttendeesSection({ event: e, profile, onOpenMember }: AttendeesS
             <Avatar member={m} size={44} />
             <div>
               <div className="font-sans text-sm font-bold">{m.name}{m.id === profile.id ? " (you)" : ""}</div>
-              {/* text-micro omitted: Eyebrow's inline-style guard already dropped this
-                  sub-11px override in the original code — see event-masthead.jsx. */}
               <Eyebrow className="text-soft">{m.role}</Eyebrow>
             </div>
           </button>

@@ -22,8 +22,9 @@ const NON_PRIMARY_VARIANTS: Record<Exclude<ButtonVariant, "primary">, string> = 
 
 const SIZES: Record<ButtonSize, string> = {
   default: "py-3.25 px-6",
-  compact: "py-2.5 px-3.75",
-  inline: "py-1.5 px-3",
+  // drawn under 44px tall, so their tap areas are made up to it (hit)
+  compact: "hit py-2.5 px-3.75",
+  inline: "hit py-1.5 px-3",
 };
 
 interface ButtonStyle {

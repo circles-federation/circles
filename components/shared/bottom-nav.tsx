@@ -54,7 +54,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
     <nav
       inert={away}
       className={clsx(
-        "app-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-[0_6px_20px_rgba(10,10,10,0.28)]",
+        "app-chrome on-ink flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-[0_6px_20px_rgba(10,10,10,0.28)]",
         "transition-[translate,opacity] duration-300 ease-out motion-reduce:transition-none",
         away && "pointer-events-none translate-y-[calc(100%+var(--bottom-nav-gap))] opacity-0"
       )}
@@ -79,7 +79,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
               <Icon className={clsx("size-6", color)} />
               {href === "/home" && needsAttention && <AttentionDot className="-top-0.5 -right-1.5" />}
             </span>
-            <span className={clsx("font-sans text-micro tracking-wide uppercase font-bold", color)}>{label}</span>
+            <span className={clsx("font-sans text-label tracking-wide uppercase font-bold", color)}>{label}</span>
           </Link>
         );
       })}

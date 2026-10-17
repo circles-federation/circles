@@ -94,7 +94,7 @@ const TYPE_RULE = { folder: "border-t-folder", file: "border-t-file", video: "bo
 function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdit: () => void }) {
   const Icon = RESOURCE_ICONS[r.icon];
   const announcement = isAnnouncement(r.icon);
-  const control = "relative z-10 -my-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink";
+  const control = "hit relative z-10 -my-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink";
   return (
     <div
       className={clsx(

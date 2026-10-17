@@ -110,7 +110,7 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
                 onChange={(e) => updateFact(i, "label", e.target.value)}
                 placeholder="Label"
                 aria-label={`Fact ${i + 1} label`}
-                className={clsx("w-full px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft touch:text-base touch:tracking-[0.06em]", FIELD)}
+                className={clsx("w-full px-2 py-1.5 font-sans text-label font-bold uppercase tracking-[0.15em] text-soft touch:text-base touch:tracking-[0.06em]", FIELD)}
               />
               <input
                 value={f.value}

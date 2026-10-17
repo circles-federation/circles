@@ -37,30 +37,27 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-faint py-4.5">
       <div className="flex items-center gap-3">
         {host && (
-          <button onClick={() => onOpenMember(host)} aria-label={host.name} className="cursor-pointer border-none bg-transparent p-0">
+          <button onClick={() => onOpenMember(host)} aria-label={host.name} className="hit cursor-pointer border-none bg-transparent p-0">
             <Avatar member={host} size={40} />
           </button>
         )}
         <div className="text-left">
-          {/* text-micro omitted: Eyebrow's inline-style guard already dropped this
-              sub-11px override in the original code, and a className override
-              wouldn't be silenced the same way — see event-masthead.jsx. */}
           <Eyebrow className="text-soft">
             {isScheduledMeeting(e) ? `Scheduled by the ${e.approvedByRole}` : hostCircle ? "Hosted by" : proposal ? "Proposed by" : "Hosted by"}
           </Eyebrow>
           {hostCircle ? (
-            <button onClick={() => onOpenCircle(hostCircle)} className="block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
+            <button onClick={() => onOpenCircle(hostCircle)} className="hit block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
               {hostCircle.name} →
             </button>
           ) : host && (
-            <button onClick={() => onOpenMember(host)} className="block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
+            <button onClick={() => onOpenMember(host)} className="hit block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
               {host.name} →
             </button>
           )}
           {hostCircle && host && (
             <button
               onClick={() => onOpenMember(host)}
-              className="mt-0.5 block cursor-pointer border-none bg-transparent p-0 text-left font-serif text-sm text-soft underline underline-offset-2"
+              className="hit mt-0.5 block cursor-pointer border-none bg-transparent p-0 text-left font-serif text-sm text-soft underline underline-offset-2"
             >
               {e.approvedByRole ? `approved by the ${e.approvedByRole}, ${host.name}` : `${proposal ? "proposed" : "organized"} by ${host.name}`}
             </button>

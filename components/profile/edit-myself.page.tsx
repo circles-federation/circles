@@ -101,7 +101,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
                   role="radio"
                   aria-checked={chosen}
                   onClick={() => set({ pronouns: chosen ? "" : option })}
-                  className={clsx("cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", togglePress(chosen), chosen ? "bg-ink text-paper" : "bg-paper text-ink")}
+                  className={clsx("hit cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", togglePress(chosen), chosen ? "bg-ink text-paper" : "bg-paper text-ink")}
                 >
                   {option}
                 </button>
@@ -145,7 +145,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
                   aria-checked={chosen}
                   onClick={() => set({ birthDecade: decade })}
                   className={clsx(
-                    "cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", togglePress(chosen),
+                    "hit cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", togglePress(chosen),
                     chosen ? "bg-ink text-paper" : "bg-paper text-ink",
                     decade === undefined && "font-bold text-soft",
                     decade === undefined && chosen && "text-paper",
@@ -183,7 +183,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
               <button
                 onClick={() => set({ emailPublic: true })}
                 className={clsx(
-                  "inline-flex cursor-pointer items-center gap-1.5 border-r border-ink px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                  "inline-flex min-w-11 cursor-pointer items-center justify-center gap-1.5 border-r border-ink px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
                   togglePress(draft.emailPublic),
                   draft.emailPublic ? "bg-ink text-paper" : "bg-paper text-ink",
                 )}
@@ -195,7 +195,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
               <button
                 onClick={() => set({ emailPublic: false })}
                 className={clsx(
-                  "inline-flex cursor-pointer items-center gap-1.5 px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                  "inline-flex min-w-11 cursor-pointer items-center justify-center gap-1.5 px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
                   togglePress(!draft.emailPublic),
                   !draft.emailPublic ? "bg-ink text-paper" : "bg-paper text-ink",
                 )}
