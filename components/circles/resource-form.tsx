@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import clsx from "clsx";
-import { Button, ConfirmModal, Input, Label, Modal, TextArea } from "@/components/shared";
+import { Button, ConfirmModal, Input, Label, Modal, TextArea, togglePress } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { RESOURCE_MESSAGE_MAX, RESOURCE_TITLE_MAX, isAnnouncement, validateResourceInput, type ResourceErrors } from "@/lib/resources.util";
 import type { CircleResource, ResourceIcon } from "@/lib/types";
@@ -70,6 +70,7 @@ export function ResourceFields({ form }: { form: ResourceFormState }) {
                 onClick={() => setIcon(o.key)}
                 className={clsx(
                   "flex cursor-pointer flex-col items-start gap-1.5 border border-ink p-3 text-left",
+                  togglePress(selected),
                   selected ? "bg-ink text-paper" : "bg-paper text-ink",
                 )}
               >

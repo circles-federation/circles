@@ -60,7 +60,7 @@ export function GameRoundPage({ round, idx, roundsLength, score, picked, answere
               disabled={answered}
               className={clsx(
                 "relative px-4 py-5.5 text-left font-sans text-lg font-bold tracking-[0.01em] transition-colors",
-                answered ? "cursor-default" : "cursor-pointer",
+                answered ? "cursor-default" : "ink-press cursor-pointer",
                 i % 2 === 0 && "border-r border-ink",
                 i >= 2 && "border-t border-ink",
                 answered && isCorrect ? "bg-ink text-paper" : answered && isPicked ? "bg-paper text-soft" : "bg-paper text-ink",

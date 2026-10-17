@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Avatar, Eyebrow, EyebrowGroup } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, togglePress } from "@/components/shared";
 import { useMemberById, useEventEnded } from "@/lib/hooks";
 import { roleFull, roleUnmet } from "@/lib/roles.util";
 import type { Event, Member, Profile, Role } from "@/lib/types";
@@ -60,7 +60,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
           title={full ? "This role is full" : undefined}
           className={clsx(
             "whitespace-nowrap border px-4 py-2.75 font-sans text-xs font-bold uppercase tracking-[0.08em]",
-            disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer border-ink", mine ? "bg-ink text-paper" : "bg-paper text-ink"),
+            disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer border-ink", togglePress(mine), mine ? "bg-ink text-paper" : "bg-paper text-ink"),
           )}
         >
           {e.cancelled ? (mine ? "✓ You were in" : "Closed") : past ? (mine ? "✓ You were in" : "Filled") : (mine ? "✓ You're in — leave" : (full ? "Full" : `Take ${role.label.toLowerCase()}`))}
@@ -72,7 +72,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
             <button
               key={m.id}
               onClick={() => onOpenMember(m)}
-              className={clsx("flex cursor-pointer items-center gap-2 border border-ink py-1.5 pr-2.5 pl-1.5", m.id === profile.id ? "bg-[#f4f4f4]" : "bg-paper")}
+              className={clsx("ink-press flex cursor-pointer items-center gap-2 border border-ink py-1.5 pr-2.5 pl-1.5", m.id === profile.id ? "bg-wash" : "bg-paper")}
             >
               <Avatar member={m} size={28} />
               <span className="font-sans text-xs font-bold">{m.name}{m.id === profile.id ? " (you)" : ""}</span>

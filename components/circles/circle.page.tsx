@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowTopRightOnSquareIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
+import { GlobeAltIcon, MapIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
@@ -13,6 +13,7 @@ import { rolesHeldBy } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL, circleChildren, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, Event, Member } from "@/lib/types";
+import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
 import { isPhoneWidth } from "@/lib/viewport";
 import { ProposalBanner } from "./proposal-banner";
 
@@ -195,63 +196,38 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               </Section>
             )}
 
-            {(c.website || c.address || (c.hours && c.hours.length > 0)) && (
+            {/* where to find it online and in person: a square each, opening
+                its website or its address in the visitor's maps app */}
+            {(websiteUrl || c.address) && (
               <Section>
-                <Eyebrow className="text-soft">Visit</Eyebrow>
-                {/* the box's own border is the header rule here, fainter than the
-                    ink one above since it's framing a box rather than a card grid.
-                    Every cell rules its right and bottom, and the grid runs 1px
-                    past the box, clipped, so however the cells wrap the ones on
-                    its edge don't double the box's own border */}
-                <div className="mt-4 overflow-hidden border border-faint">
-                  <div className="-mr-px -mb-px grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))]">
-                    <div className="border-r border-b border-faint px-4.5 py-4">
-                      <Eyebrow className="text-soft">Website</Eyebrow>
-                      <div className="mt-2">
-                        {websiteUrl
-                          ? (
-                            // just the domain, as a bulletin card shows a link
-                            <a
-                              href={websiteUrl.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 font-sans text-sm font-bold text-ink underline underline-offset-2 break-all"
-                            >
-                              {websiteUrl.hostname.replace(/^www\./, "")}
-                              <ArrowTopRightOnSquareIcon className="size-3.5" strokeWidth={2.5} />
-                            </a>
-                          )
-                          // not an address it can link to, so shown as typed
-                          : c.website
-                            ? <span className="font-sans text-sm font-bold break-all text-ink">{c.website}</span>
-                            : <span className="font-serif text-sm text-soft">—</span>}
-                      </div>
-                    </div>
-                    <div className="border-r border-b border-faint px-4.5 py-4">
-                      <Eyebrow className="text-soft">Address</Eyebrow>
-                      <div className="mt-2">
-                        {c.address
-                          ? c.address.split(",").map((line, i) => (
-                              <div key={i} className="font-serif text-sm leading-[1.4] text-[#222]">{line.trim()}</div>
-                            ))
-                          : <span className="font-serif text-sm text-soft">—</span>}
-                      </div>
-                    </div>
-                    <div className="border-r border-b border-faint px-4.5 py-4">
-                      <Eyebrow className="text-soft">Open hours</Eyebrow>
-                      <div className="mt-2">
-                        {c.hours && c.hours.length > 0
-                          ? c.hours.map(([d, t]) => (
-                              <div key={d} className="flex justify-between gap-3 py-px font-serif text-sm text-[#222]">
-                                <span className="text-soft">{d}</span>
-                                <span>{t}</span>
-                              </div>
-                            ))
-                          : <span className="font-serif text-sm text-soft">—</span>}
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex flex-wrap gap-3 min-[720px]:gap-x-10 min-[720px]:gap-y-4">
+                  {websiteUrl && (
+                    <VisitLink
+                      href={websiteUrl.href}
+                      newTab
+                      icon={GlobeAltIcon}
+                      tone="action"
+                      label="Website"
+                      value={websiteUrl.hostname.replace(/^www\./, "")}
+                    />
+                  )}
+                  {c.address && <MapsLink address={c.address} />}
                 </div>
+              </Section>
+            )}
+
+            {c.hours && c.hours.length > 0 && (
+              <Section>
+                <EyebrowGroup label="Open hours">
+                  <div className="max-w-90">
+                    {c.hours.map(([d, t]) => (
+                      <div key={d} className="flex justify-between gap-3 border-b border-faint py-2 font-serif text-base text-[#222] last:border-b-0">
+                        <span className="text-soft">{d}</span>
+                        <span>{t}</span>
+                      </div>
+                    ))}
+                  </div>
+                </EyebrowGroup>
               </Section>
             )}
           </SectionGroup>
@@ -375,5 +351,67 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
       )}
       {inviting && <InviteModal circle={c} onClose={() => setInviting(false)} />}
     </PageContainer>
+  );
+}
+
+const noSubscribe = () => () => {};
+const currentMapsPlatform = (): MapsPlatform => mapsPlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
+
+// a circle's address, opening it in the visitor's maps app (see
+// lib/maps.util.ts); Google Maps on the web until the browser says which
+// device it is
+function MapsLink({ address }: { address: string }) {
+  const platform = useSyncExternalStore(noSubscribe, currentMapsPlatform, () => "web" as const);
+  const href = mapsUrl(address, platform);
+  return (
+    <VisitLink
+      href={href}
+      // a geo: link opens an app on the phone itself, not a new tab
+      newTab={!href.startsWith("geo:")}
+      icon={MapIcon}
+      tone="leaf"
+      label="Address"
+      // the street, then the rest ("Providence, RI") on a line of its own
+      value={(() => {
+        const [street, ...rest] = address.split(",").map((part) => part.trim());
+        return (
+          <>
+            <span className="block">{street}</span>
+            {rest.length > 0 && <span className="block">{rest.join(", ")}</span>}
+          </>
+        );
+      })()}
+      name={`Directions to ${address}`}
+    />
+  );
+}
+
+const VISIT_TONE = {
+  action: "border-action bg-action [--press-color:var(--color-action)]",
+  leaf: "border-leaf bg-leaf [--press-color:var(--color-leaf)]",
+};
+
+/* A filled square with an icon, for one way to reach a circle (its website,
+   its address), opening it. On a phone just the square; from the desktop
+   breakpoint, what it opens beside it, all one link. Pressed, the square
+   inverts (fill-press). */
+function VisitLink({ href, newTab, icon: Icon, tone, label, value, name }: { href: string; newTab: boolean; icon: ComponentType<SVGProps<SVGSVGElement>>; tone: keyof typeof VISIT_TONE; label: string; value: ReactNode; name?: string }) {
+  const plain = typeof value === "string" ? value : undefined;
+  return (
+    <a
+      href={href}
+      {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      aria-label={name ?? `${label}: ${plain}`}
+      title={plain ?? name}
+      className="fill-press flex items-center gap-4 text-ink no-underline"
+    >
+      <span className={clsx("fill-press-square flex size-16 shrink-0 items-center justify-center border-2 text-paper", VISIT_TONE[tone])}>
+        <Icon className="size-8" strokeWidth={1.75} aria-hidden />
+      </span>
+      <div className="hidden min-w-0 min-[720px]:block" aria-hidden>
+        <Eyebrow className="text-soft">{label}</Eyebrow>
+        <div className="mt-1 font-serif text-base leading-[1.35] text-[#222]">{value}</div>
+      </div>
+    </a>
   );
 }

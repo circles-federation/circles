@@ -5,7 +5,7 @@ import { CheckIcon, EyeIcon, LockClosedIcon } from "@heroicons/react/24/outline"
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { ConfirmModal, Input, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
+import { ConfirmModal, Input, Label, PageContainer, Section, SectionGroup, TextArea, togglePress } from "@/components/shared";
 import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
 import { LanguagesEditor } from "./languages-editor";
@@ -94,7 +94,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
                   role="radio"
                   aria-checked={chosen}
                   onClick={() => set({ pronouns: chosen ? "" : option })}
-                  className={clsx("ink-press cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", chosen ? "bg-ink text-paper" : "bg-paper text-ink")}
+                  className={clsx("cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", togglePress(chosen), chosen ? "bg-ink text-paper" : "bg-paper text-ink")}
                 >
                   {option}
                 </button>
@@ -138,7 +138,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
                   aria-checked={chosen}
                   onClick={() => set({ birthDecade: decade })}
                   className={clsx(
-                    "ink-press cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold",
+                    "cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", togglePress(chosen),
                     chosen ? "bg-ink text-paper" : "bg-paper text-ink",
                     decade === undefined && "font-bold text-soft",
                     decade === undefined && chosen && "text-paper",

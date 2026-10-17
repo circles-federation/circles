@@ -466,7 +466,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 aria-checked={on}
                 onClick={() => changeType(key)}
                 className={clsx(
-                  "relative flex cursor-pointer flex-col items-stretch justify-start border bg-paper px-4 py-3.5 text-left",
+                  "ink-press relative flex cursor-pointer flex-col items-stretch justify-start border bg-paper px-4 py-3.5 text-left",
                   on ? clsx(accent.border, accent.ring) : "border-faint",
                 )}
               >

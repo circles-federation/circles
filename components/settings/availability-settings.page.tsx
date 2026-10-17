@@ -6,7 +6,7 @@ import { CheckIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import type { MutationResult } from "@/components/providers/app-state-provider";
-import { Button, ConfirmModal, EyebrowGroup, Input, Label, PageContainer, Section, SectionGroup, useToast } from "@/components/shared";
+import { Button, ConfirmModal, EyebrowGroup, Input, Label, PageContainer, Section, SectionGroup, togglePress, useToast } from "@/components/shared";
 import {
   AVAILABILITY_PRESETS,
   AVAILABILITY_STEP,
@@ -172,7 +172,7 @@ function ToggleChip({ pressed, onClick, className, children, ...rest }: { presse
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={clsx("cursor-pointer border border-ink font-sans font-bold", pressed ? "bg-ink text-paper" : "bg-paper text-ink", className)}
+      className={clsx("cursor-pointer border border-ink font-sans font-bold", togglePress(pressed), pressed ? "bg-ink text-paper" : "bg-paper text-ink", className)}
       {...rest}
     >
       {children}

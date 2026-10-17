@@ -103,7 +103,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
             <EyebrowGroup label="Get in touch">
               <a
                 href={`mailto:${m.email}`}
-                className="inline-flex items-center gap-2 border border-ink px-3.25 py-2.25 font-sans text-sm font-bold break-all text-ink"
+                className="ink-press inline-flex items-center gap-2 border border-ink px-3.25 py-2.25 font-sans text-sm font-bold break-all text-ink"
               >
                 <EnvelopeIcon className="size-4 shrink-0" strokeWidth={2} />
                 {m.email}

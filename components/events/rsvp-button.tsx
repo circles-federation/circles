@@ -1,5 +1,6 @@
 import { CheckIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { togglePress } from "@/components/shared";
 
 interface RsvpButtonProps {
   going?: boolean;
@@ -36,6 +37,7 @@ export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProp
       className={clsx(
         "inline-flex cursor-pointer items-center gap-2.5 border border-ink font-sans text-xs font-bold tracking-wide whitespace-nowrap uppercase",
         sizeClasses,
+        togglePress(!!going),
         going ? "bg-ink text-paper" : "bg-paper text-ink",
       )}
     >

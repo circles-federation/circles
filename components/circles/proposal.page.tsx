@@ -27,9 +27,9 @@ interface ProposalPageProps {
 // each answer's look: green, thumb up, likes it; yellow, a check, accepts it
 // (both consent); red, thumb down, objects
 const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon: ComponentType<SVGProps<SVGSVGElement>> }> = {
-  like: { button: "border-leaf bg-leaf text-paper", dot: "bg-leaf", icon: HandThumbUpIcon },
-  accept: { button: "border-accept bg-accept text-ink", dot: "bg-accept", icon: CheckIcon },
-  object: { button: "border-danger bg-danger text-paper", dot: "bg-danger", icon: HandThumbDownIcon },
+  like: { button: "btn-invert btn-leaf border-leaf bg-leaf text-paper", dot: "bg-leaf", icon: HandThumbUpIcon },
+  accept: { button: "btn-invert btn-accept border-accept bg-accept text-ink", dot: "bg-accept", icon: CheckIcon },
+  object: { button: "btn-invert btn-danger border-danger bg-danger text-paper", dot: "bg-danger", icon: HandThumbDownIcon },
 };
 
 /* A proposed change to a circle, for its members to answer by consent (see
@@ -136,8 +136,8 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
                         aria-pressed={r === "object" ? undefined : chosen}
                         aria-expanded={r === "object" ? objecting : undefined}
                         className={clsx(
-                          "inline-flex cursor-pointer items-center justify-center gap-2 border-2 px-4 py-3.5 font-sans text-sm font-extrabold tracking-[0.02em] active:brightness-90 disabled:cursor-default disabled:opacity-60",
-                          drafting ? "border-danger bg-paper text-danger" : ANSWER_STYLE[r].button,
+                          "inline-flex cursor-pointer items-center justify-center gap-2 border-2 px-4 py-3.5 font-sans text-sm font-extrabold tracking-[0.02em] disabled:cursor-default disabled:opacity-60",
+                          drafting ? "danger-press border-danger bg-paper text-danger" : ANSWER_STYLE[r].button,
                           chosen && "outline-3 outline-offset-2 outline-ink"
                         )}
                       >

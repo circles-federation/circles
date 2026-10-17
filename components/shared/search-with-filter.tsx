@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { togglePress } from "./press-feedback";
 import { Eyebrow } from "./eyebrow";
 
 // a group is single-select by default (an "All" option plus one active value,
@@ -70,6 +71,7 @@ function FilterTrigger({ activeCount, onClick }: { activeCount: number; onClick:
       title="Filter"
       className={clsx(
         "relative flex cursor-pointer items-center justify-center border-0 border-l border-ink px-3.5 text-base",
+        togglePress(activeCount > 0),
         activeCount > 0 ? "bg-ink text-paper" : "bg-paper text-ink",
       )}
     >

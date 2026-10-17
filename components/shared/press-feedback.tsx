@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 
 // what gets a pressed look: tiles, cards and outlined buttons (ink-press),
 // destructive ones (danger-press), ones awaiting a decision (flame-press),
-// filled buttons (btn-invert), and images (press-invert) — see the press
-// styles in app/globals.css
-const PRESSABLE = ".ink-press, .danger-press, .flame-press, .btn-invert, .press-invert";
+// filled buttons (btn-invert), a link's filled square (fill-press), and images
+// (press-invert) — see the press styles in app/globals.css
+const PRESSABLE = ".ink-press, .danger-press, .flame-press, .btn-invert, .fill-press, .press-invert";
 // a touch has to be held this long, without moving, before it looks pressed,
 // so the start of a scroll never flashes a tile
 const TOUCH_DELAY_MS = 80;
@@ -17,6 +17,15 @@ const MOVE_SLOP_PX = 8;
 // useActAfterPress), since a click that removes its own button would
 // otherwise take it away before the look is ever drawn
 export const PRESS_FLASH_MS = 100;
+
+/* The press style for something that's either on (filled ink) or off (paper):
+   a chip, a toggle, a choice. Every clickable, bounded element without a
+   shadow inverts when pressed, so an ink one turns paper (btn-ink) and a
+   paper one ink (ink-press); ink-press alone would leave an ink one as it
+   was. */
+export function togglePress(on: boolean): string {
+  return on ? "btn-invert btn-ink" : "ink-press";
+}
 
 /* The pressed look (a tile inverting to ink, a button to paper) used to be
    :active, which iOS applies the moment a finger lands — including the first

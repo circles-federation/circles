@@ -63,7 +63,7 @@ export function AgendaEditor({ items, onChange }: { items: AgendaDraft[]; onChan
                   onClick={() => set(i, { category: c })}
                   title={AGENDA_CATEGORY[c].label}
                   className={clsx(
-                    "flex cursor-pointer items-center justify-center gap-2 border bg-paper px-2 py-1.5 font-sans text-sm font-bold min-[480px]:justify-start",
+                    "ink-press flex cursor-pointer items-center justify-center gap-2 border bg-paper px-2 py-1.5 font-sans text-sm font-bold min-[480px]:justify-start",
                     chosen ? "border-agenda text-agenda" : "border-faint text-soft",
                   )}
                 >
