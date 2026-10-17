@@ -27,7 +27,7 @@ Mutators on `AppStateProvider` are pure state + toast now — they never navigat
 
 **A hidden email really is hidden.** Edit myself's Visible/Hidden choice is `members.email_public` (`Profile.emailPublic`, saved by `updateMember` like the rest of the profile). `getMembersForViewer` in `lib/db/members.ts`, which AppState is seeded and refreshed with, leaves the email off everyone who's hidden theirs except the viewer themself, so it never reaches anyone else's browser; the profile page's "Get in touch" then simply has nothing to show.
 
-**Pronouns.** Free text on Edit myself (`members.pronouns`, up to `PRONOUNS_MAX` in `lib/members.util.ts`, which `updateMember` checks too), optional, shown beside the name on the profile. A new member starts with it blank.
+**Pronouns.** On Edit myself, one of the common three with a tap (`PRONOUN_OPTIONS` in `lib/members.util.ts`: he/him, she/her, they/them; tapping the chosen one again clears it), which fills the field under them, or anything typed into that field; an option is selected only while the field holds exactly it. Either way it's the one free-text field (`members.pronouns`, up to `PRONOUNS_MAX`, which `updateMember` checks too), saved as written, optional, shown beside the name on the profile.
 
 **Occupation.** Free text on Edit myself (`members.role`, `Member.role`, up to `OCCUPATION_MAX`, checked by `updateMember` too), optional, shown under their name on cards and as a tag on the profile. Not to be confused with a circle role.
 

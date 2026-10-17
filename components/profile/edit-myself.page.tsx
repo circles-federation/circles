@@ -10,7 +10,7 @@ import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
 import { LanguagesEditor } from "./languages-editor";
 import { PhotoPicker } from "./photo-picker";
-import { BIRTH_DECADES, OCCUPATION_MAX, PRONOUNS_MAX, birthDecadeLabel } from "@/lib/members.util";
+import { BIRTH_DECADES, OCCUPATION_MAX, PRONOUN_OPTIONS, PRONOUNS_MAX, birthDecadeLabel } from "@/lib/members.util";
 import type { Profile } from "@/lib/types";
 
 interface EditMyselfPageProps {
@@ -79,10 +79,37 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
           {photoError && <p className="mt-2.5 font-sans text-xs font-bold text-danger">{photoError}</p>}
         </Section>
 
+        {/* one of the common three with a tap (tapped again, none), which
+            fills the field below, or typed into it: an option is lit only
+            while the field holds exactly it, and it's saved as written */}
         <Section>
           <Label htmlFor="pronouns">Pronouns</Label>
-          <Input id="pronouns" value={draft.pronouns} onChange={(e) => set({ pronouns: e.target.value })} maxLength={PRONOUNS_MAX} placeholder="e.g. she/her, he/him, they/them" />
-          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Optional. It shows beside your name on your profile.</p>
+          <div role="radiogroup" aria-label="Pronouns" className="flex flex-wrap gap-2">
+            {PRONOUN_OPTIONS.map((option) => {
+              const chosen = draft.pronouns.trim().toLowerCase() === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={chosen}
+                  onClick={() => set({ pronouns: chosen ? "" : option })}
+                  className={clsx("ink-press cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", chosen ? "bg-ink text-paper" : "bg-paper text-ink")}
+                >
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+          <Input
+            id="pronouns"
+            value={draft.pronouns}
+            onChange={(e) => set({ pronouns: e.target.value })}
+            maxLength={PRONOUNS_MAX}
+            placeholder="e.g. she/her, he/him, they/them"
+            className="mt-3"
+          />
+          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Optional. They show beside your name on your profile.</p>
         </Section>
 
         <Section>

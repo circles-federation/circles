@@ -9,6 +9,8 @@ export function avatarFor(m: Member): string {
 
 // the decades someone can say they were born in, oldest first
 export const PRONOUNS_MAX = 30;
+// the pronouns Edit myself offers with a tap; anything else is typed below them
+export const PRONOUN_OPTIONS = ["he/him", "she/her", "they/them"] as const;
 export const OCCUPATION_MAX = 60;
 
 export const BIRTH_DECADES = [1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010] as const;
