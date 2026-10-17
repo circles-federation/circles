@@ -3,7 +3,7 @@
 import { CancelledBadge } from "./cancelled-badge";
 import { EventRow } from "./event-row";
 import { ParticipationBadge } from "./participation-badge";
-import { Eyebrow } from "@/components/shared";
+
 import { hasEnded, fmtTime } from "@/lib/format.util";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending } from "@/lib/events.util";
@@ -41,9 +41,9 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
       metaMuted={past || !!e.cancelled}
       tags={
         <>
-          <Eyebrow className="text-soft">
+          <span className="font-sans text-sm font-semibold text-soft">
             {fmtTime(e.start)}–{fmtTime(e.end)}{e.repeat && ` · ${REPEAT_SHORT_LABEL[e.repeat.frequency]}`}
-          </Eyebrow>
+          </span>
         </>
       }
       right={

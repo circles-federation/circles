@@ -140,7 +140,7 @@ export function ResourceFormModal({ circleId, resource, onClose, onRemove }: Res
   const form = useResourceForm(circleId, resource, onClose);
   return (
     <Modal onClose={onClose} className="max-w-110" title={resourceFormTitle(resource?.icon)}>
-      <form onSubmit={form.submit} noValidate className="flex flex-col gap-5 px-4.5 py-5">
+      <form onSubmit={form.submit} noValidate className="flex flex-col gap-5 px-5 py-5">
         <ResourceFields form={form} />
         <div className="flex gap-3">
           <Button type="submit" disabled={form.busy}>{form.busy ? "Saving…" : "Save"}</Button>

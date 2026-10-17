@@ -107,7 +107,7 @@ export function AvailabilitySettingsPage({ windows, onSave, onBack }: Availabili
           <EyebrowGroup label="Quick picks">
             <div className="flex flex-wrap gap-2">
               {AVAILABILITY_PRESETS.map((preset) => (
-                <ToggleChip key={preset.key} pressed={hasPreset(draft, preset)} onClick={() => togglePreset(preset)} className="px-3 py-2.5 text-xs uppercase tracking-[0.04em]">
+                <ToggleChip key={preset.key} pressed={hasPreset(draft, preset)} onClick={() => togglePreset(preset)} className="px-3 py-3 text-xs uppercase tracking-caps">
                   {preset.label}
                 </ToggleChip>
               ))}
@@ -123,7 +123,7 @@ export function AvailabilitySettingsPage({ windows, onSave, onBack }: Availabili
 
         <Section>
           <EyebrowGroup label="Windows">
-            <div className="flex flex-col gap-3.5">
+            <div className="flex flex-col gap-4">
               {draft.map((w, index) => (
                 <WindowEditor
                   key={index}
@@ -190,7 +190,7 @@ function WindowEditor({ index, window: w, onChange, onRemove }: { index: number;
   }
 
   return (
-    <div className="border border-ink p-3.5">
+    <div className="border border-ink p-4">
       <div role="group" aria-label={`Days for window ${index + 1}`} className="grid grid-cols-7 gap-1.5">
         {DAY_INITIALS.map((initial, day) => (
           <ToggleChip key={day} pressed={w.days.includes(day)} onClick={() => toggleDay(day)} aria-label={DAY_NAMES[day]} className="h-10 text-sm">
@@ -198,7 +198,7 @@ function WindowEditor({ index, window: w, onChange, onRemove }: { index: number;
           </ToggleChip>
         ))}
       </div>
-      <div className="mt-3.5 grid grid-cols-2 gap-3.5">
+      <div className="mt-4 grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor={fromId}>From</Label>
           <Input id={fromId} type="time" step={AVAILABILITY_STEP * 60} value={minutesClock(w.start)} onChange={(e) => e.target.value && onChange({ start: fieldMinutes(e.target.value, false) })} />
@@ -208,7 +208,7 @@ function WindowEditor({ index, window: w, onChange, onRemove }: { index: number;
           <Input id={toId} type="time" step={AVAILABILITY_STEP * 60} value={minutesClock(w.end)} onChange={(e) => e.target.value && onChange({ end: fieldMinutes(e.target.value, true) })} />
         </div>
       </div>
-      <Button variant="danger" size="compact" onClick={onRemove} className="mt-3.5">
+      <Button variant="danger" size="compact" onClick={onRemove} className="mt-4">
         Remove
       </Button>
     </div>

@@ -12,14 +12,14 @@ interface RsvpButtonProps {
 }
 
 export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProps) {
-  const sizeClasses = big ? "py-3.25 px-6" : "py-2.5 px-3.75";
+  const sizeClasses = big ? "py-3 px-6" : "py-3 px-4";
 
   if (past) {
     return (
       <div
         title="This event has already happened"
         className={clsx(
-          "inline-flex cursor-not-allowed items-center gap-2.5 border border-faint bg-paper font-sans text-xs font-bold tracking-wide whitespace-nowrap text-soft uppercase",
+          "inline-flex cursor-not-allowed items-center gap-3 border border-faint bg-paper font-sans text-xs font-bold tracking-caps whitespace-nowrap text-soft uppercase",
           sizeClasses,
         )}
       >
@@ -35,7 +35,7 @@ export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProp
     <button
       onClick={onToggle}
       className={clsx(
-        "inline-flex cursor-pointer items-center gap-2.5 border border-ink font-sans text-xs font-bold tracking-wide whitespace-nowrap uppercase",
+        "inline-flex cursor-pointer items-center gap-3 border border-ink font-sans text-xs font-bold tracking-caps whitespace-nowrap uppercase",
         sizeClasses,
         togglePress(!!going),
         going ? "bg-ink text-paper" : "bg-paper text-ink",

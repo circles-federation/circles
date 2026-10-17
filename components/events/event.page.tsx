@@ -70,7 +70,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
         <div className="border-b border-faint py-4">
           <a
             href={`/api/events/${e.id}/calendar`}
-            className="ink-press inline-flex items-center justify-center gap-1.5 border border-ink bg-paper px-3.75 py-2.5 font-sans text-xs font-bold tracking-wide whitespace-nowrap text-ink uppercase no-underline"
+            className="ink-press inline-flex items-center justify-center gap-1.5 border border-ink bg-paper px-4 py-3 font-sans text-xs font-bold tracking-caps whitespace-nowrap text-ink uppercase no-underline"
           >
             <CalendarDaysIcon className="size-4" strokeWidth={2} />
             Add to calendar

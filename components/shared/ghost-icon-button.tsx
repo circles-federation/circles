@@ -21,7 +21,7 @@ export function GhostIconButton({ icon: Icon, label, onClick, className }: Ghost
       title={label}
       className={clsx("group flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink", className)}
     >
-      <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-100 group-active:scale-95 group-active:bg-faint">
+      <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-(--motion-press) group-active:scale-95 group-active:bg-faint">
         <Icon className="size-6" strokeWidth={2} />
       </span>
     </button>

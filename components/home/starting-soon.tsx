@@ -59,7 +59,7 @@ export function StartingSoon({ events, memberId, rsvpState }: { events: Event[];
             <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-flame motion-safe:animate-pulse" />
             <Eyebrow className="text-paper/70">{ms > 0 ? "Starting soon" : "Happening now"}</Eyebrow>
           </div>
-          <div className="mt-2.5 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">{e.title}</div>
+          <div className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">{e.title}</div>
           <div className="mt-3 flex items-end justify-between gap-4">
             <div className="min-w-0 font-serif text-lg leading-snug text-paper/85">
               {fmtTime(e.start)} · {meetingLink(e.location) ? "Online" : e.location}

@@ -88,12 +88,12 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
     <div className="flex min-h-dvh items-center justify-center bg-paper px-6 py-16">
       <OfflineBanner className="fixed inset-x-0 top-0 z-50 pt-[calc(0.5rem+env(safe-area-inset-top))]" />
       <div className="w-full max-w-md">
-        <div className="border-t-[3px] border-t-ink pt-4.5">
+        <div className="border-t-[3px] border-t-ink pt-5">
           <Eyebrow className="text-soft">Welcome to</Eyebrow>
           <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
             Circles
           </h1>
-          <p className="mt-3.5 mb-7 font-serif text-lg leading-normal text-[#222]">
+          <p className="mt-4 mb-7 font-serif text-lg leading-normal text-body">
             Sign in with your email to connect with your community.
           </p>
         </div>
@@ -122,7 +122,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
               We sent a code to <strong className="text-ink">{email}</strong>.
             </p>
             {devCode && (
-              <div className="mb-4 border border-dashed border-soft px-3 py-2.5 font-sans text-sm text-soft">
+              <div className="mb-4 border border-dashed border-soft px-3 py-3 font-sans text-sm text-soft">
                 Dev mode — here&apos;s your code (production only emails it):{" "}
                 <strong className="tracking-[0.08em] text-ink">{devCode}</strong>
               </div>
@@ -173,13 +173,13 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
 
       {demoOpen && (
         <Modal onClose={() => setDemoOpen(false)} className="max-w-110" title="Demo accounts">
-          <p className="border-b border-faint px-4.5 py-3 font-serif text-sm text-soft">Tap a name to fill in their email.</p>
+          <p className="border-b border-faint px-5 py-3 font-serif text-sm text-soft">Tap a name to fill in their email.</p>
           <div className="max-h-[60vh] overflow-y-auto">
             {demoMembers.map((m) => (
               <button
                 key={m.id}
                 onClick={() => selectDemoMember(m)}
-                className="ink-press flex w-full items-baseline justify-between gap-3 border-b border-faint bg-paper cursor-pointer px-4.5 py-3 text-left"
+                className="ink-press flex w-full items-baseline justify-between gap-3 border-b border-faint bg-paper cursor-pointer px-5 py-3 text-left"
               >
                 <span className="font-sans text-sm font-bold whitespace-nowrap">{m.name}</span>
                 <span className="overflow-hidden font-serif text-sm text-ellipsis text-soft">{m.email}</span>

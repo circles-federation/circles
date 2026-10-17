@@ -13,7 +13,7 @@ interface MenuRowProps {
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
-const ROW = "ink-press flex w-full items-center gap-3.5 border border-ink bg-paper px-4.5 py-4 text-left text-ink no-underline";
+const ROW = "ink-press flex w-full items-center gap-4 border border-ink bg-paper px-5 py-4 text-left text-ink no-underline";
 
 /* A boxed row that opens a page of its own, like a row in iOS's Settings:
    Home's way into an admin's applications, and each part of Settings. Boxed

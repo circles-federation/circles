@@ -28,11 +28,11 @@ export function ShiftStatusBanner({ event: e }: { event: Event }) {
 
   if (shiftNeedsSlots(e)) {
     return (
-      <div className="mt-6 flex items-start gap-3 border border-ink border-l-4 border-l-warning bg-warning/10 px-4.5 py-4">
+      <div className="mt-6 flex items-start gap-3 border border-ink border-l-4 border-l-warning bg-warning/10 px-5 py-4">
         <ExclamationTriangleIcon className="mt-px size-5 shrink-0" strokeWidth={2} aria-hidden />
         <div>
           <div className="font-sans text-sm font-extrabold tracking-[0.02em]">Still needs {needed(e)}</div>
-          <p className="mt-1.5 font-serif text-sm leading-relaxed text-[#222]">
+          <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">
             {e.noAutoCancel
               ? "Sign up below so it can run."
               : "It\u2019s cancelled automatically if no one signs up by 15 minutes before it starts. Sign up below to keep it on."}
@@ -45,7 +45,7 @@ export function ShiftStatusBanner({ event: e }: { event: Event }) {
   if (shiftAtRisk(e)) {
     const cancelAt = autoCancelAt(e);
     return (
-      <div role="status" className="mt-6 flex items-start gap-3 border-2 border-warning bg-warning px-4.5 py-4 text-ink">
+      <div role="status" className="mt-6 flex items-start gap-3 border-2 border-warning bg-warning px-5 py-4 text-ink">
         <ExclamationTriangleIcon className="mt-px size-5 shrink-0" strokeWidth={2} aria-hidden />
         <div>
           <div className="font-sans text-sm font-extrabold tracking-[0.02em]">

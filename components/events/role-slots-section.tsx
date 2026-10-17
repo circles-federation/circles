@@ -27,28 +27,28 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
   const disabled = past || full || !!e.cancelled;
 
   return (
-    <div className={clsx("border px-4.5 py-4", unmet ? "border-ink" : "border-faint")}>
+    <div className={clsx("border px-5 py-4", unmet ? "border-ink" : "border-faint")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="font-sans text-lg font-extrabold">{role.label}</span>
             {role.min > 0 ? (
-              <span className={clsx("border px-2 py-0.5 font-sans text-label font-bold uppercase tracking-[0.08em]", unmet ? "border-ink bg-ink text-paper" : "border-leaf text-leaf")}>
+              <span className={clsx("border px-2 py-0.5 font-sans text-label font-bold uppercase tracking-caps", unmet ? "border-ink bg-ink text-paper" : "border-leaf text-leaf")}>
                 {unmet ? "Needed" : "Filled"}
               </span>
             ) : (
-              <span className="border border-faint px-2 py-0.5 font-sans text-label font-bold uppercase tracking-[0.08em] text-soft">
+              <span className="border border-faint px-2 py-0.5 font-sans text-label font-bold uppercase tracking-caps text-soft">
                 Optional
               </span>
             )}
             {roleFull(role) && (
-              <span className="border border-faint px-2 py-0.5 font-sans text-label font-bold uppercase tracking-[0.08em] text-soft">
+              <span className="border border-faint px-2 py-0.5 font-sans text-label font-bold uppercase tracking-caps text-soft">
                 Full
               </span>
             )}
           </div>
           {role.description && (
-            <p className="mt-1.5 max-w-[40em] font-serif text-sm leading-[1.45] text-[#333]">{role.description}</p>
+            <p className="mt-1.5 max-w-[40em] font-serif text-sm leading-[1.45] text-body">{role.description}</p>
           )}
           <Eyebrow className="mt-1.5 text-soft">
             {filled.length}{role.max != null ? `/${role.max}` : ""} {filled.length === 1 && role.max == null ? "person" : "people"}{role.min > 0 ? ` · needs ${role.min}` : (role.max == null ? " · any number" : "")}
@@ -59,7 +59,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
           disabled={disabled}
           title={full ? "This role is full" : undefined}
           className={clsx(
-            "whitespace-nowrap border px-4 py-2.75 font-sans text-xs font-bold uppercase tracking-[0.08em]",
+            "whitespace-nowrap border px-4 py-3 font-sans text-xs font-bold uppercase tracking-caps",
             disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer border-ink", togglePress(mine), mine ? "bg-ink text-paper" : "bg-paper text-ink"),
           )}
         >
@@ -67,12 +67,12 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
         </button>
       </div>
       {filled.length > 0 && (
-        <div className="mt-3.5 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           {filled.map((m) => (
             <button
               key={m.id}
               onClick={() => onOpenMember(m)}
-              className={clsx("ink-press flex cursor-pointer items-center gap-2 border border-ink py-1.5 pr-2.5 pl-1.5", m.id === profile.id ? "bg-wash" : "bg-paper")}
+              className={clsx("ink-press flex cursor-pointer items-center gap-2 border border-ink py-1.5 pr-3 pl-1.5", m.id === profile.id ? "bg-wash" : "bg-paper")}
             >
               <Avatar member={m} size={28} />
               <span className="font-sans text-xs font-bold">{m.name}{m.id === profile.id ? " (you)" : ""}</span>
@@ -100,7 +100,7 @@ export function RoleSlotsSection({ event: e, profile, onToggleRoleSlot, onOpenMe
   return (
     <section className="pt-8">
       <EyebrowGroup label="Roles">
-        <div className="flex flex-col gap-4.5">
+        <div className="flex flex-col gap-5">
           {e.roles.map((role) => (
             <RoleSlotCard
               key={role.key}

@@ -21,9 +21,9 @@ const NON_PRIMARY_VARIANTS: Record<Exclude<ButtonVariant, "primary">, string> = 
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  default: "py-3.25 px-6",
+  default: "py-3 px-6",
   // drawn under 44px tall, so their tap areas are made up to it (hit)
-  compact: "hit py-2.5 px-3.75",
+  compact: "hit py-3 px-4",
   inline: "hit py-1.5 px-3",
 };
 
@@ -39,7 +39,7 @@ function buttonClass({ variant = "primary", accent = "ink", size = "default" }: 
   const variantClass = variant === "primary" ? PRIMARY_ACCENTS[accent] : NON_PRIMARY_VARIANTS[variant];
   return clsx(
     "inline-flex items-center justify-center gap-1.5 whitespace-nowrap border",
-    "font-sans text-xs font-bold uppercase tracking-wide",
+    "font-sans text-xs font-bold uppercase tracking-caps",
     SIZES[size],
     disabled ? "cursor-not-allowed border-faint bg-paper text-soft" : clsx("cursor-pointer", variantClass),
     className,

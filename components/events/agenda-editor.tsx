@@ -31,11 +31,11 @@ export function AgendaEditor({ items, onChange }: { items: AgendaDraft[]; onChan
   const control = "inline-flex size-7 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink disabled:cursor-default disabled:opacity-30";
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="flex flex-col gap-4">
       {items.map((item, i) => (
-        <div key={i} className="border border-t-[3px] border-faint border-t-agenda px-3.5 pt-3 pb-4">
+        <div key={i} className="border border-t-[3px] border-faint border-t-agenda px-4 pt-3 pb-4">
           <div className="mb-3 flex items-center justify-between">
-            <span className="font-sans text-eyebrow font-bold tracking-[0.08em] text-soft uppercase">Topic {i + 1}</span>
+            <span className="font-sans text-eyebrow font-bold tracking-caps text-soft uppercase">Topic {i + 1}</span>
             <div className="-mr-1.5 flex items-center">
               <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title="Move up" aria-label={`Move topic ${i + 1} up`} className={control}>
                 <ArrowUpIcon className="size-4" strokeWidth={2} />
@@ -81,7 +81,7 @@ export function AgendaEditor({ items, onChange }: { items: AgendaDraft[]; onChan
             {AGENDA_CATEGORY[item.category].hint}
           </p>
 
-          <div className="mt-3 flex flex-col gap-2.5">
+          <div className="mt-3 flex flex-col gap-3">
             <Input value={item.title} onChange={(e) => set(i, { title: e.target.value })} placeholder="Topic (e.g. Repair budget)" aria-label={`Topic ${i + 1} title`} />
             <TextArea value={item.details} onChange={(e) => set(i, { details: e.target.value })} rows={2} placeholder="Details (optional)" aria-label={`Topic ${i + 1} details`} />
           </div>

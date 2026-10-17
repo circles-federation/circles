@@ -21,7 +21,7 @@ export const FIELD_ROW = "flex items-stretch border-0 border-b border-soft bg-wa
 // such a row that can't be changed, as DISABLED_FIELD looks
 export const FIELD_ROW_DISABLED = "flex items-stretch border border-dashed border-faint bg-paper";
 // a bare input inside a FIELD_ROW
-export const ROW_INPUT = "min-w-0 flex-1 border-0 bg-transparent px-3 py-2.75 font-serif text-base outline-none disabled:cursor-not-allowed disabled:text-soft disabled:opacity-100 disabled:[-webkit-text-fill-color:var(--color-soft)]";
+export const ROW_INPUT = "min-w-0 flex-1 border-0 bg-transparent px-3 py-3 font-serif text-base outline-none disabled:cursor-not-allowed disabled:text-soft disabled:opacity-100 disabled:[-webkit-text-fill-color:var(--color-soft)]";
 
 /* Shared single-line text field — the bordered, serif-body look already
    established throughout the app's forms. */
@@ -29,7 +29,7 @@ export const ROW_INPUT = "min-w-0 flex-1 border-0 bg-transparent px-3 py-2.75 fo
 export function Input({ className, ...rest }: ComponentPropsWithRef<"input">) {
   return (
     <input
-      className={clsx("w-full px-3 py-2.75 font-serif text-base", FIELD, DISABLED_FIELD, className)}
+      className={clsx("w-full px-3 py-3 font-serif text-base", FIELD, DISABLED_FIELD, className)}
       {...rest}
     />
   );

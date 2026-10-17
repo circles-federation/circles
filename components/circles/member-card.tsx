@@ -1,4 +1,4 @@
-import { Avatar, Chip, Eyebrow } from "@/components/shared";
+import { Avatar, Chip } from "@/components/shared";
 import { useCirclesById } from "@/lib/hooks";
 import type { Member, Profile } from "@/lib/types";
 
@@ -24,7 +24,7 @@ export function MemberCard({ m, profile, onOpenMember, showNeighborhoodChip = tr
   return (
     <button
       onClick={() => onOpenMember(m)}
-      className="ink-press bg-paper flex cursor-pointer items-center gap-3.5 border-r border-b border-ink p-4.5 text-left"
+      className="ink-press bg-paper flex cursor-pointer items-center gap-4 border-r border-b border-ink p-5 text-left"
     >
       <Avatar member={m} size={56} />
       <div className="min-w-0">
@@ -32,9 +32,10 @@ export function MemberCard({ m, profile, onOpenMember, showNeighborhoodChip = tr
           {m.name}
           {m.id === profile.id && <span className="font-semibold text-soft"> (you)</span>}
         </div>
-        <Eyebrow className="text-soft">{m.role}</Eyebrow>
+        {/* information, so in sentence case rather than small caps */}
+        <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{m.role}</span>
         {showNeighborhoodChip && home && (
-          <div className="mt-1.75">
+          <div className="mt-2">
             <Chip title={`Neighborhood: ${home.name}`}>{home.name}</Chip>
           </div>
         )}

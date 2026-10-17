@@ -47,13 +47,13 @@ export function Modal({ onClose, className, title, centered, role = "dialog", ch
         role={role}
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className={clsx("w-full bg-paper shadow-[0_6px_20px_rgba(10,10,10,0.28)]", className)}
+        className={clsx("w-full bg-paper shadow-overlay", className)}
       >
         {title && (
-          // laid out like the top bar: -ml-2.5 lines the X up with the edge,
+          // laid out like the top bar: -ml-3 lines the X up with the edge,
           // as the bar's Back is
-          <div className="flex h-14.5 items-center gap-1 border-b border-faint px-4.5">
-            <GhostIconButton icon={XMarkIcon} label="Close" onClick={onClose} className="-ml-2.5" />
+          <div className="flex h-14.5 items-center gap-1 border-b border-faint px-5">
+            <GhostIconButton icon={XMarkIcon} label="Close" onClick={onClose} className="-ml-3" />
             <h2 className="m-0 truncate font-sans text-lg font-extrabold tracking-[-0.02em]">{title}</h2>
           </div>
         )}

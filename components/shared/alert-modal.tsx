@@ -20,14 +20,14 @@ export function AlertModal({ title, message, onClose }: AlertModalProps) {
     <Modal onClose={onClose} className="max-w-105" centered role="alertdialog">
       <div className="p-6">
         <h2 className="m-0 font-sans text-lg font-extrabold tracking-tight">{title}</h2>
-        <p className="mt-2.5 font-serif text-sm leading-relaxed text-soft">{message}</p>
+        <p className="mt-3 font-serif text-sm leading-relaxed text-soft">{message}</p>
       </div>
       <div className="flex border-t border-ink">
         <button
           onClick={() => act("ok", onClose)}
           data-pressed={pressed("ok")}
           autoFocus
-          className="btn-invert btn-ink flex-1 cursor-pointer bg-ink py-3.5 font-sans text-xs font-bold uppercase tracking-wide text-paper"
+          className="btn-invert btn-ink flex-1 cursor-pointer bg-ink py-4 font-sans text-xs font-bold uppercase tracking-caps text-paper"
         >
           OK
         </button>

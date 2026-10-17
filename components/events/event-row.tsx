@@ -45,7 +45,7 @@ export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent"
       // border-b-ink (not the border-ink shorthand) on purpose: the
       // shorthand also sets border-left-color, which would fight
       // the accent's border below over the same property
-      "flex items-start gap-4.5 border-b border-b-ink py-5",
+      "flex items-start gap-5 border-b border-b-ink py-5",
       // a plain row has no side edges, so no side padding either (as circle
       // resources' rows): its content runs flush with the list. Only an
       // accented one is inset, and only on its left, beside its bar: the right
@@ -58,10 +58,10 @@ export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent"
         className="flex-1 cursor-pointer border-none bg-transparent p-0 text-left"
       >
         <div className="flex flex-wrap items-center gap-2">{tags}</div>
-        <div className={clsx("mt-1.75 mb-1.5 font-sans text-lg min-[720px]:text-xl font-extrabold tracking-[-0.025em] leading-[1.05]", titleMuted ? "text-soft" : "text-ink")}>
+        <div className={clsx("mt-2 mb-1.5 font-sans text-lg min-[720px]:text-xl font-extrabold tracking-[-0.025em] leading-[1.05]", titleMuted ? "text-soft" : "text-ink")}>
           {title}
         </div>
-        <div className={clsx("font-serif text-sm", metaMuted ? "text-soft" : "text-[#222]")}>
+        <div className={clsx("font-serif text-sm", metaMuted ? "text-soft" : "text-body")}>
           {meta}
         </div>
       </button>

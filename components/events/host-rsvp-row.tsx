@@ -34,7 +34,7 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   const roleStatusClass = e.cancelled ? "text-soft" : shiftAtRisk(e) || shiftNeedsSlots(e) ? "bg-warning px-1.5 py-0.5 text-ink" : "text-leaf";
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-faint py-4.5">
+    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-faint py-5">
       <div className="flex items-center gap-3">
         {host && (
           <button onClick={() => onOpenMember(host)} aria-label={host.name} className="hit cursor-pointer border-none bg-transparent p-0">

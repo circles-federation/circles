@@ -14,11 +14,11 @@ export function LegalShell({ title, children }: { title: string; children: React
   return (
     <div className="flex min-h-dvh justify-center bg-paper px-6 pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
       <div className="w-full max-w-md">
-        <Link href="/" className="-ml-1 inline-flex items-center gap-1.5 font-sans text-xs font-bold tracking-wide text-ink uppercase no-underline">
+        <Link href="/" className="-ml-1 inline-flex items-center gap-1.5 font-sans text-xs font-bold tracking-caps text-ink uppercase no-underline">
           <ArrowLeftIcon className="size-4" strokeWidth={2.5} />
           Circles
         </Link>
-        <div className="mt-6 border-t-[3px] border-t-ink pt-4.5">
+        <div className="mt-6 border-t-[3px] border-t-ink pt-5">
           <Eyebrow className="text-soft">Circles beta · Updated {updated}</Eyebrow>
           <h1 className="mt-3 mb-5 font-sans text-title font-extrabold tracking-[-0.04em] leading-[0.95]">{title}</h1>
         </div>

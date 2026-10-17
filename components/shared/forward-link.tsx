@@ -10,7 +10,7 @@ export function ForwardLink({ onClick, children, className }: ComponentPropsWith
       onClick={onClick}
       className={clsx(
         "inline-flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer",
-        "font-sans text-eyebrow tracking-[0.06em] uppercase font-bold text-ink",
+        "font-sans text-eyebrow tracking-caps uppercase font-bold text-ink",
         className
       )}
     >

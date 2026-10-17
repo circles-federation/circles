@@ -80,7 +80,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         // beneath the top bar, whose height it publishes as --top-bar-height
         // (the notch included); where there's no bar (the welcome page), below
         // the notch instead
-        className="pointer-events-none fixed top-[calc(var(--top-bar-height,env(safe-area-inset-top))+0.625rem)] right-0 left-0 z-1000 flex w-full max-w-full flex-col gap-2.5 px-2.5 min-[720px]:top-[calc(var(--top-bar-height,env(safe-area-inset-top))+1rem)] min-[720px]:right-4 min-[720px]:left-auto min-[720px]:w-auto min-[720px]:max-w-95 min-[720px]:px-0"
+        className="pointer-events-none fixed top-[calc(var(--top-bar-height,env(safe-area-inset-top))+0.625rem)] right-0 left-0 z-1000 flex w-full max-w-full flex-col gap-3 px-3 min-[720px]:top-[calc(var(--top-bar-height,env(safe-area-inset-top))+1rem)] min-[720px]:right-4 min-[720px]:left-auto min-[720px]:w-auto min-[720px]:max-w-95 min-[720px]:px-0"
       >
         {toasts.map((t) => {
           const tone = TOAST_TONES[t.tone] || TOAST_TONES.info;
@@ -90,12 +90,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               className={clsx(
                 // floating chrome, like a dialog: no outline, the bottom nav's
                 // soft shadow, and its tone as a rule down the left
-                "pointer-events-auto flex items-start gap-1 border-l-[5px] bg-paper py-3.5 pr-1.5 pl-4 text-ink shadow-[0_6px_20px_rgba(10,10,10,0.28)] animate-[toastIn_0.18s_ease-out]",
+                "pointer-events-auto flex items-start gap-1 border-l-[5px] bg-paper py-4 pr-1.5 pl-4 text-ink shadow-overlay animate-[toastIn_var(--motion-screen)_var(--ease-enter)]",
                 tone.border,
               )}
             >
               <div className="min-w-0 flex-1">
-                <div className={clsx("font-sans text-eyebrow font-extrabold tracking-wide uppercase", tone.text)}>
+                <div className={clsx("font-sans text-eyebrow font-extrabold tracking-caps uppercase", tone.text)}>
                   {t.title || tone.label}
                 </div>
                 <div className="mt-1 font-serif text-sm leading-[1.45]">{t.message}</div>

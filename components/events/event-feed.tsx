@@ -69,7 +69,7 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
         {visible.map((e, i) => (
           <Fragment key={e.id}>
             {showSeam && i === upcoming.length && (
-              <div aria-label="Past events below" className="flex items-center gap-3 border-b border-ink px-4 py-3.5">
+              <div aria-label="Past events below" className="flex items-center gap-3 border-b border-ink px-4 py-4">
                 <span className="h-px flex-1 bg-faint" />
                 <Eyebrow className="text-soft">Past</Eyebrow>
                 <span className="h-px flex-1 bg-faint" />

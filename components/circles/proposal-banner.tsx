@@ -25,7 +25,7 @@ export function ProposalBanner({ proposal: p, memberId, circleName, className }:
   return (
     <Link
       href={`/proposals/${p.id}`}
-      className={clsx("flame-press flex items-center gap-3 border border-flame border-l-4 border-l-flame px-4.5 py-4 text-ink no-underline", className)}
+      className={clsx("flame-press flex items-center gap-3 border border-flame border-l-4 border-l-flame px-5 py-4 text-ink no-underline", className)}
     >
       <HandRaisedIcon className="size-5 shrink-0 text-flame" strokeWidth={2} />
       <span className="min-w-0 flex-1">

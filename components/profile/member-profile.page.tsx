@@ -31,9 +31,10 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
 
   return (
     <PageContainer size="normal">
-      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5">
+      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-6">
         <div className="flex items-center justify-between gap-3">
-          <Eyebrow className="shrink-0 text-soft">{m.pronouns}</Eyebrow>
+          {/* as they wrote them, not in small caps */}
+          <span className="shrink-0 font-sans text-sm font-semibold text-soft">{m.pronouns}</span>
           {home && (
             <MastheadChip title={m.homeCircleId === profile.homeCircleId ? "Your neighborhood" : "Their neighborhood"} onClick={() => onOpenCircle(home)}>
               {home.name}
@@ -44,11 +45,13 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
           <Avatar member={m} size={96} />
           <div className="min-w-0">
             <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{m.name}</h1>
-            {/* a new member may not have filled it in yet */}
-            {m.role && <div className="mt-3"><Tag filled>{m.role}</Tag></div>}
+            {/* as a member card shows it, under the name in sentence case (it's
+                information, not a label), a size up for the larger name; a new
+                member may not have filled it in yet */}
+            {m.role && <p className="mt-2 font-serif text-lg leading-snug text-soft">{m.role}</p>}
           </div>
         </div>
-        {m.bio && <p className="mt-4.5 font-serif text-xl text-[#222] italic">{m.bio}</p>}
+        {m.bio && <p className="mt-5 font-serif text-xl text-body italic">{m.bio}</p>}
       </div>
 
       <SectionGroup>
@@ -103,7 +106,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
             <EyebrowGroup label="Get in touch">
               <a
                 href={`mailto:${m.email}`}
-                className="ink-press inline-flex min-h-11 items-center gap-2 border border-ink px-3.25 py-2.25 font-sans text-sm font-bold break-all text-ink"
+                className="ink-press inline-flex min-h-11 items-center gap-2 border border-ink px-3 py-2 font-sans text-sm font-bold break-all text-ink"
               >
                 <EnvelopeIcon className="size-4 shrink-0" strokeWidth={2} />
                 {m.email}
@@ -113,7 +116,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         )}
 
         {(m.skills.length > 0 || m.interests.length > 0) && (
-          <Section className="flex flex-col gap-5.5">
+          <Section className="flex flex-col gap-6">
             {m.skills.length > 0 && (
               <EyebrowGroup label="Skills offered">
                 {m.skills.map((s) => <Tag key={s}>{s}</Tag>)}

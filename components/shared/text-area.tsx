@@ -9,7 +9,7 @@ import type { ComponentPropsWithoutRef } from "react";
 export function TextArea({ className, ...rest }: ComponentPropsWithoutRef<"textarea">) {
   return (
     <textarea
-      className={clsx("w-full resize-y px-3 py-2.75 font-serif text-base leading-normal disabled:resize-none", FIELD, DISABLED_FIELD, className)}
+      className={clsx("w-full resize-y px-3 py-3 font-serif text-base leading-normal disabled:resize-none", FIELD, DISABLED_FIELD, className)}
       {...rest}
     />
   );

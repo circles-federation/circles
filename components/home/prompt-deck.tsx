@@ -56,7 +56,7 @@ export function PromptDeck({ prompts }: { prompts: Prompt[] }) {
 
   return (
     <Section>
-      <div className={clsx("relative transition-[padding] duration-200", ROOM[Math.max(edges, 0)])}>
+      <div className={clsx("relative transition-[padding] duration-(--motion-small)", ROOM[Math.max(edges, 0)])}>
         {/* deepest first, so each sheet lies under the one above it */}
         {(EDGE[edges] ?? []).map((place, i) => ({ place, depth: i + 1 })).reverse().map(({ place, depth }) => (
           <div key={depth} aria-hidden className={clsx("absolute border border-ink bg-paper", place)} />

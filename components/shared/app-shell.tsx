@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           label={fab.shown.label}
           onClick={fab.run}
           className={clsx(
-            "fixed right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-40 transition-[bottom] duration-300 ease-out motion-reduce:transition-none min-[720px]:hidden",
+            "fixed right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-40 transition-[bottom] duration-(--motion-screen) ease-(--ease-enter) motion-reduce:transition-none min-[720px]:hidden",
             showNav ? "bottom-[calc(var(--bottom-nav-gap)+4.5rem)]" : "bottom-(--bottom-nav-gap)"
           )}
         />

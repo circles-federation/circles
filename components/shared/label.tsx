@@ -8,7 +8,7 @@ import type { ComponentPropsWithoutRef } from "react";
 export function Label({ children, className, ...rest }: ComponentPropsWithoutRef<"label">) {
   return (
     <label
-      className={clsx("mb-2 block font-sans text-eyebrow font-bold uppercase tracking-[0.12em] text-soft", className)}
+      className={clsx("mb-2 block font-sans text-eyebrow font-bold uppercase tracking-caps text-soft", className)}
       {...rest}
     >
       {children}

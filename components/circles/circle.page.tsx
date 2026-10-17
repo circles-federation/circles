@@ -99,7 +99,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
 
   return (
     <PageContainer size="normal">
-      <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
+      <div className="flex flex-col items-stretch gap-5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-6 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="min-w-0 flex-1">
           {/* where it sits in the tree: its parent, as a chip opposite the type */}
           <div className="flex items-center justify-between gap-3">
@@ -113,7 +113,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
             )}
           </div>
           <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{c.name}</h1>
-          <p className="mt-3.5 font-serif text-xl text-[#222] italic">{c.tagline}</p>
+          <p className="mt-4 font-serif text-xl text-body italic">{c.tagline}</p>
           {lastEditor && (
             <div className="mt-4 font-sans text-label tracking-[0.02em] text-soft">
               Last edited by{" "}
@@ -155,7 +155,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
           {c.facts.length > 0 && (
             <div className="mt-8 grid grid-cols-1 gap-px border-y border-ink bg-faint min-[480px]:grid-cols-2 min-[720px]:grid-cols-4">
               {c.facts.map(([k, v]) => (
-                <div key={k} className="bg-paper px-3.5 py-4">
+                <div key={k} className="bg-paper px-4 py-4">
                   <Eyebrow className="text-soft">{k}</Eyebrow>
                   <div className="mt-2 font-sans text-lg font-extrabold tracking-[-0.01em]">{v}</div>
                 </div>
@@ -217,7 +217,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                     // so shown as typed rather than dropped
                     <div className="min-w-0">
                       <Eyebrow className="text-soft">Website</Eyebrow>
-                      <div className="mt-1 font-serif text-base leading-[1.35] break-words text-[#222]">{c.website}</div>
+                      <div className="mt-1 font-serif text-base leading-[1.35] break-words text-body">{c.website}</div>
                     </div>
                   ) : null}
                   {c.address && <MapsLink address={c.address} />}
@@ -234,7 +234,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                     // not an email or a number, so shown as typed
                     <div className="min-w-0">
                       <Eyebrow className="text-soft">Get in touch</Eyebrow>
-                      <div className="mt-1 font-serif text-base leading-[1.35] break-words text-[#222]">{c.contact}</div>
+                      <div className="mt-1 font-serif text-base leading-[1.35] break-words text-body">{c.contact}</div>
                     </div>
                   ) : null}
                 </div>
@@ -246,7 +246,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                 <EyebrowGroup label="Open hours">
                   <div className="max-w-90">
                     {c.hours.map(([d, t]) => (
-                      <div key={d} className="flex justify-between gap-3 border-b border-faint py-2 font-serif text-base text-[#222] last:border-b-0">
+                      <div key={d} className="flex justify-between gap-3 border-b border-faint py-2 font-serif text-base text-body last:border-b-0">
                         <span className="text-soft">{d}</span>
                         <span>{t}</span>
                       </div>
@@ -277,12 +277,12 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                   <button
                     key={m.id}
                     onClick={() => onOpenMember(m)}
-                    className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-3.5 text-left"
+                    className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-4 text-left"
                   >
                     <Avatar member={m} size={44} />
                     <div className="min-w-0">
                       <div className="font-sans text-sm font-bold">{m.name}</div>
-                      <Eyebrow className="text-soft">{m.role}</Eyebrow>
+                      <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{m.role}</span>
                       {/* everyone here belongs to this circle, so no neighborhood chip —
                           a role they hold in it takes that spot, as an outlined badge */}
                       {rolesHeldBy(c, m.id).length > 0 && (
@@ -291,7 +291,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                             <span
                               key={role}
                               title={`Role in ${c.name}`}
-                              className="ink-press-badge inline-flex items-center whitespace-nowrap border border-ink bg-paper px-2.25 py-1 font-sans text-label font-bold uppercase tracking-[0.08em] text-ink"
+                              className="ink-press-badge inline-flex items-center whitespace-nowrap border border-ink bg-paper px-2 py-1 font-sans text-label font-bold uppercase tracking-caps text-ink"
                             >
                               {role}
                             </span>
@@ -313,7 +313,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
           {invited.length > 0 && (
             <Section>
               <Eyebrow className="text-soft">Invited</Eyebrow>
-              <div className="mt-3.5 grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
+              <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
                 {invited.map((inv) => {
                   const m = memberById(inv.memberId);
                   const by = inv.invitedBy !== undefined ? memberById(inv.invitedBy) : undefined;
@@ -321,12 +321,12 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                     <button
                       key={inv.id}
                       onClick={() => onOpenInvitation(inv)}
-                      className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-3.5 text-left"
+                      className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-4 text-left"
                     >
                       {m && <Avatar member={m} size={44} />}
                       <div className="min-w-0">
                         <div className="font-sans text-sm font-bold">{m?.name ?? "Someone"}{m?.id === profile.id && <span className="font-semibold text-soft"> (you)</span>}</div>
-                        <Eyebrow className="text-soft">{by ? `Invited by ${by.id === profile.id ? "you" : by.name}` : "Invited"}</Eyebrow>
+                        <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{by ? `Invited by ${by.id === profile.id ? "you" : by.name}` : "Invited"}</span>
                       </div>
                     </button>
                   );
@@ -418,7 +418,7 @@ function VisitLink({ href, newTab, icon: Icon, tone, label, value, name }: { hre
       </span>
       <div className="hidden min-w-0 min-[720px]:block" aria-hidden>
         <Eyebrow className="text-soft">{label}</Eyebrow>
-        <div className="mt-1 font-serif text-base leading-[1.35] text-[#222]">{value}</div>
+        <div className="mt-1 font-serif text-base leading-[1.35] text-body">{value}</div>
       </div>
     </a>
   );

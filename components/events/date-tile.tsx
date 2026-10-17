@@ -26,13 +26,13 @@ export function DateTile({ iso, large, accent = "ink" }: DateTileProps) {
   const tileClass = clsx("shrink-0 border bg-paper text-center", large ? "w-21" : "w-14.5", border);
   // the small tile's month and weekday are the one place under the 11px
   // minimum: any larger and the tile grows too tall for a list on a phone
-  const badgeClass = clsx("font-sans font-bold text-paper uppercase tracking-[0.18em]", bg, large ? "py-1.25 text-label" : "py-1 text-[9px]");
+  const badgeClass = clsx("font-sans font-bold text-paper uppercase tracking-[0.18em]", bg, large ? "py-1 text-label" : "py-1 text-[9px]");
 
   if (!valid) {
     return (
       <div className={tileClass}>
         <div className={badgeClass}>TBD</div>
-        <div className={clsx("font-sans font-extrabold tracking-tight leading-[1.1] text-soft", large ? "py-2.5 text-[30px]" : "py-1.75 text-[22px]")}>
+        <div className={clsx("font-sans font-extrabold tracking-tight leading-[1.1] text-soft", large ? "py-3 text-[30px]" : "py-2 text-[22px]")}>
           —
         </div>
       </div>

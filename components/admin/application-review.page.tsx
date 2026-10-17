@@ -49,7 +49,7 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
 
   return (
     <PageContainer size="normal">
-      <div className="flex flex-col gap-5 border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5 min-[480px]:flex-row min-[480px]:items-center">
+      <div className="flex flex-col gap-5 border-t-[3px] border-t-ink border-b border-b-ink pt-5 pb-6 min-[480px]:flex-row min-[480px]:items-center">
         {/* eslint-disable-next-line @next/next/no-img-element -- served per admin by /api/applications/[id]/photo, never cached */}
         <img src={`/api/applications/${a.id}/photo`} alt={`Photo of ${name}`} className="size-48 shrink-0 border border-ink object-cover" />
         <div className="min-w-0">
@@ -59,7 +59,7 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
       </div>
 
       <SectionGroup>
-        <Section className="flex flex-col gap-5.5">
+        <Section className="flex flex-col gap-6">
           <EyebrowGroup label="Neighborhood">
             <p className="font-sans text-lg font-bold">{a.neighborhoodName}</p>
           </EyebrowGroup>
@@ -79,8 +79,8 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
 
       {confirming === "approve" && (
         <Modal onClose={() => !busy && setConfirming(null)} className="max-w-105" title={`Approve ${a.firstName}?`}>
-          <div className="px-4.5 py-5">
-            <p className="font-serif text-base leading-normal text-[#222]">
+          <div className="px-5 py-5">
+            <p className="font-serif text-base leading-normal text-body">
               {name} becomes a member of {a.neighborhoodName}, with this photo, and is emailed to sign in.
             </p>
             <Button onClick={() => decide(true)} disabled={busy} className="mt-5 w-full">
@@ -92,7 +92,7 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
 
       {confirming === "decline" && (
         <Modal onClose={() => !busy && setConfirming(null)} className="max-w-105" title={`Decline ${a.firstName}?`}>
-          <div className="px-4.5 py-5">
+          <div className="px-5 py-5">
             <Label htmlFor="note">Note to {a.firstName} (optional)</Label>
             <TextArea id="note" value={note} onChange={(e) => setNote(e.target.value)} rows={4} maxLength={APPLICATION_NOTE_MAX} placeholder="For example, what would let you approve it" />
             <p className="mt-1.5 font-serif text-sm text-soft">Included in the email telling them it was declined.</p>

@@ -25,8 +25,8 @@ export function FloatingActionButton({ icon: Icon, label, size = "large", classN
       title={label}
       aria-label={label}
       className={clsx(
-        "app-chrome flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink bg-paper/80 text-ink backdrop-blur-md transition-transform duration-100 active:scale-95",
-        size === "large" ? "size-14 shadow-[0_4px_14px_rgba(10,10,10,0.18)]" : "size-8 shadow-[0_2px_6px_rgba(10,10,10,0.14)]",
+        "app-chrome flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink bg-paper/80 text-ink backdrop-blur-md transition-transform duration-(--motion-press) active:scale-95",
+        size === "large" ? "size-14 shadow-float" : "size-8 shadow-float",
         className
       )}
       {...rest}

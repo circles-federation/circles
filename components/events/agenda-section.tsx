@@ -16,7 +16,7 @@ export function AgendaSection({ event: e }: { event: Event }) {
         {items.length === 0 ? (
           <p className="font-serif text-lg text-soft">No agenda yet.</p>
         ) : (
-          <ol className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-3.5">
+          <ol className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-4">
             {items.map((item, i) => (
               <AgendaCard key={i} item={item} number={i + 1} />
             ))}
@@ -29,14 +29,14 @@ export function AgendaSection({ event: e }: { event: Event }) {
 
 function AgendaCard({ item, number }: { item: AgendaItem; number: number }) {
   return (
-    <li className="flex flex-col border border-t-[3px] border-ink border-t-agenda bg-paper p-3.5">
+    <li className="flex flex-col border border-t-[3px] border-ink border-t-agenda bg-paper p-4">
       <div className="flex items-center gap-2">
         <AgendaBadge category={item.category} />
         <Eyebrow className="min-w-0 flex-1 truncate text-agenda">{AGENDA_CATEGORY[item.category].label}</Eyebrow>
         <span className="font-sans text-eyebrow font-bold text-soft tabular-nums" aria-label={`Topic ${number}`}>{number}</span>
       </div>
-      <div className="mt-2.5 font-sans text-base leading-tight font-bold wrap-anywhere">{item.title}</div>
-      {item.details && <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-[#222]">{item.details}</p>}
+      <div className="mt-3 font-sans text-base leading-tight font-bold wrap-anywhere">{item.title}</div>
+      {item.details && <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-body">{item.details}</p>}
     </li>
   );
 }

@@ -45,7 +45,7 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
        date, with the time on a line of its own beneath it. */
     <div
       className={clsx(
-        "grid grid-cols-1 border-t-[3px] border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:grid-cols-[auto_minmax(0,1fr)] min-[720px]:gap-x-5.5",
+        "grid grid-cols-1 border-t-[3px] border-b border-b-ink pt-5 pb-6 min-[720px]:grid-cols-[auto_minmax(0,1fr)] min-[720px]:gap-x-6",
         topBorderClass
       )}
     >
@@ -86,7 +86,7 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
           </ButtonLink>
         </div>
       ) : (
-        <p className="row-start-3 mt-3 font-serif text-lg text-[#222] min-[720px]:col-start-2">{e.location}</p>
+        <p className="row-start-3 mt-3 font-serif text-lg text-body min-[720px]:col-start-2">{e.location}</p>
       )}
     </div>
   );

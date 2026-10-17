@@ -77,9 +77,9 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
 
   return (
     <div>
-      <div className="mb-2.5 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         {values.map((v) => (
-          <span key={v} className="inline-flex items-center gap-1.75 border border-ink py-1.25 pr-2 pl-2.75 font-sans text-eyebrow font-semibold">
+          <span key={v} className="inline-flex items-center gap-2 border border-ink py-1 pr-2 pl-3 font-sans text-eyebrow font-semibold">
             {v}
             <button
               onClick={() => onChange(values.filter((x) => x !== v))}
@@ -141,7 +141,7 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
               onPointerUp={() => setTimeout(() => (picking.current = false), PICK_GRACE_MS)}
               onPointerCancel={() => (picking.current = false)}
               style={room !== null ? { maxHeight: room } : undefined}
-              className="absolute inset-x-0 top-full z-20 m-0 list-none overflow-y-auto overscroll-contain border border-t-0 border-ink bg-paper p-0 shadow-[0_6px_16px_rgba(10,10,10,0.12)]"
+              className="absolute inset-x-0 top-full z-20 m-0 list-none overflow-y-auto overscroll-contain border border-t-0 border-ink bg-paper p-0 shadow-float"
             >
               {suggestions.map((s, i) => (
                 <li
@@ -154,7 +154,7 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(s)}
                   onMouseEnter={() => setActive(i)}
-                  className={clsx("cursor-pointer border-b border-faint px-3 py-2.5 font-serif text-base last:border-b-0", i === active && "bg-wash")}
+                  className={clsx("cursor-pointer border-b border-faint px-3 py-3 font-serif text-base last:border-b-0", i === active && "bg-wash")}
                 >
                   {s}
                 </li>

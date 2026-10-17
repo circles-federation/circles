@@ -82,7 +82,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
   return (
     <PageContainer size="wide">
       {/* identity masthead */}
-      <div className="flex flex-col items-stretch gap-4.5 border-t-[3px] border-t-ink border-b border-b-ink pt-4.5 pb-5.5 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
+      <div className="flex flex-col items-stretch gap-5 border-t-[3px] border-t-ink border-b border-b-ink pt-5 pb-6 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
         <div className="flex min-w-0 flex-1 items-center gap-5">
           {/* opens your own profile, as others see it; the photo inverts while pressed */}
           <button type="button" onClick={onOpenProfile} aria-label="View your profile" className="press-invert shrink-0 cursor-pointer border-0 bg-transparent p-0">
@@ -92,7 +92,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
             <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em] wrap-break-word">
               <span className="block min-[720px]:inline">{profile.name}</span>
               {profile.lastName && (
-                <span title="Stored in the system, but not shown to other members" className="block cursor-help text-[#9a9a9a] min-[720px]:ml-[0.3em] min-[720px]:inline">
+                <span title="Stored in the system, but not shown to other members" className="block cursor-help text-ghost min-[720px]:ml-[0.3em] min-[720px]:inline">
                   {profile.lastName}
                 </span>
               )}

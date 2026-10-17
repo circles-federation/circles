@@ -13,7 +13,7 @@ export function Eyebrow({ children, style, className }: EyebrowProps) {
   if (typeof merged.fontSize === "number" && merged.fontSize < 11) delete merged.fontSize;
   return (
     <span
-      className={clsx("font-sans text-eyebrow tracking-[0.2em] uppercase font-bold", className)}
+      className={clsx("font-sans text-eyebrow tracking-eyebrow uppercase font-bold", className)}
       style={merged}
     >
       {children}

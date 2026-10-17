@@ -94,26 +94,26 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
   return (
     <div className="flex min-h-dvh justify-center bg-paper px-6 pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
       <div className="w-full max-w-md">
-        <Link href="/" className="-ml-1 inline-flex items-center gap-1.5 font-sans text-xs font-bold tracking-wide text-ink uppercase no-underline">
+        <Link href="/" className="-ml-1 inline-flex items-center gap-1.5 font-sans text-xs font-bold tracking-caps text-ink uppercase no-underline">
           <ArrowLeftIcon className="size-4" strokeWidth={2.5} />
           Sign in instead
         </Link>
 
-        <div className="mt-6 border-t-[3px] border-t-ink pt-4.5">
+        <div className="mt-6 border-t-[3px] border-t-ink pt-5">
           <Eyebrow className="text-soft">Apply to join</Eyebrow>
           <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">Circles</h1>
           {step === "form" && (
-            <p className="mt-3.5 mb-7 font-serif text-lg leading-normal text-[#222]">
+            <p className="mt-4 mb-7 font-serif text-lg leading-normal text-body">
               Circles is for neighbors. Every application is read by a person, who checks that your photo shows your face and that you live in the neighborhood you choose.
             </p>
           )}
         </div>
 
         {step === "form" && (
-          <form onSubmit={handleContinue} noValidate className="flex flex-col gap-5.5">
+          <form onSubmit={handleContinue} noValidate className="flex flex-col gap-6">
             <PhotoField photo={photo} onChange={setPhoto} error={errors.photo} />
 
-            <div className="grid grid-cols-1 gap-5.5 min-[480px]:grid-cols-2 min-[480px]:gap-3">
+            <div className="grid grid-cols-1 gap-6 min-[480px]:grid-cols-2 min-[480px]:gap-3">
               <div>
                 <Label htmlFor="firstName">First name</Label>
                 <Input id="firstName" value={input.firstName} onChange={(e) => set({ firstName: e.target.value })} maxLength={APPLICATION_NAME_MAX} autoComplete="given-name" />
@@ -151,7 +151,7 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
 
         {step === "agree" && (
           <div className="mt-7">
-            <p className="font-serif text-lg leading-normal text-[#222]">
+            <p className="font-serif text-lg leading-normal text-body">
               Before you send your application, please read the short terms and privacy notes for the beta.
             </p>
             <h2 className="mt-9 border-t border-t-ink pt-4 font-sans text-xl font-extrabold tracking-[-0.02em]">Beta terms</h2>
@@ -169,11 +169,11 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
 
         {step === "confirm" && (
           <form onSubmit={handleConfirm} className="mt-7">
-            <p className="mb-4 font-serif text-lg leading-normal text-[#222]">
+            <p className="mb-4 font-serif text-lg leading-normal text-body">
               One more step. We sent a code to <strong className="text-ink">{input.email.trim()}</strong> — enter it here to send your application for review.
             </p>
             {devCode && (
-              <div className="mb-4 border border-dashed border-soft px-3 py-2.5 font-sans text-sm text-soft">
+              <div className="mb-4 border border-dashed border-soft px-3 py-3 font-sans text-sm text-soft">
                 Dev mode — here&apos;s your code (production only emails it):{" "}
                 <strong className="tracking-[0.08em] text-ink">{devCode}</strong>
               </div>
@@ -201,7 +201,7 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
 
         {step === "done" && (
           <div className="mt-7">
-            <p className="font-serif text-lg leading-normal text-[#222]">
+            <p className="font-serif text-lg leading-normal text-body">
               Thank you, {input.firstName.trim()}. Your application is with us. Once someone has reviewed it, we&apos;ll email <strong className="text-ink">{input.email.trim()}</strong> to let you know.
             </p>
             <Link href="/" className="mt-7 inline-block font-sans text-sm font-bold text-ink underline underline-offset-2">

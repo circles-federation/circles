@@ -54,7 +54,7 @@ export function BulletinSection({ circleId, adding, onAdd, onAddingDone, onEditP
       ) : (
         // a board of pinned cards, as many columns as fit; dense, so a wide
         // announcement doesn't leave holes behind it
-        <div className="grid grid-flow-row-dense grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-3.5">
+        <div className="grid grid-flow-row-dense grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-4">
           {mine.map((r) => (
             <BulletinCard key={r.id} resource={r} onEdit={() => (isPhoneWidth() ? onEditPage(r) : setEditing(r))} />
           ))}
@@ -98,7 +98,7 @@ function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdi
   return (
     <div
       className={clsx(
-        "relative flex flex-col border border-t-[3px] border-ink bg-paper p-3.5",
+        "relative flex flex-col border border-t-[3px] border-ink bg-paper p-4",
         TYPE_RULE[r.icon],
         announcement ? "col-span-full min-[720px]:col-span-2" : "ink-press",
       )}
@@ -110,7 +110,7 @@ function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdi
           <PencilIcon className="size-4" strokeWidth={2} />
         </button>
       </div>
-      <div className="mt-2.5 font-sans text-base leading-tight font-bold wrap-anywhere">
+      <div className="mt-3 font-sans text-base leading-tight font-bold wrap-anywhere">
         {announcement ? r.title : (
           <a href={r.url} target="_blank" rel="noopener noreferrer" className="after:absolute after:inset-0">
             {r.title}
@@ -119,7 +119,7 @@ function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdi
       </div>
       {announcement ? (
         <>
-          <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-[#222]">{r.message}</p>
+          <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-body">{r.message}</p>
           <PostedBy resource={r} />
         </>
       ) : (

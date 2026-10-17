@@ -30,13 +30,13 @@ export function AttendeesSection({ event: e, profile, onOpenMember }: AttendeesS
         {attendees.map((m) => (
           <button
             key={m.id}
-            className={clsx("ink-press flex cursor-pointer items-center gap-3 border-0 border-r border-b border-ink p-3.5 text-left", m.id === profile.id ? "bg-[#f4f4f4]" : "bg-paper")}
+            className={clsx("ink-press flex cursor-pointer items-center gap-3 border-0 border-r border-b border-ink p-4 text-left", m.id === profile.id ? "bg-wash" : "bg-paper")}
             onClick={() => onOpenMember(m)}
           >
             <Avatar member={m} size={44} />
             <div>
               <div className="font-sans text-sm font-bold">{m.name}{m.id === profile.id ? " (you)" : ""}</div>
-              <Eyebrow className="text-soft">{m.role}</Eyebrow>
+              <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{m.role}</span>
             </div>
           </button>
         ))}

@@ -37,7 +37,7 @@ type FilterGroupData = FilterGroupDataSingle | FilterGroupDataMulti;
 function SearchField({ query, onQuery, placeholder }: { query: string; onQuery: (value: string) => void; placeholder?: string }) {
   return (
     <>
-      <span className="flex items-center pl-3.5">
+      <span className="flex items-center pl-4">
         <MagnifyingGlassIcon className="size-4" strokeWidth={2} />
       </span>
       <input
@@ -45,7 +45,7 @@ function SearchField({ query, onQuery, placeholder }: { query: string; onQuery: 
         onChange={(e) => onQuery(e.target.value)}
         placeholder={placeholder}
         enterKeyHint="search"
-        className="min-w-0 flex-1 border-none bg-transparent py-3 pr-3.5 pl-2 font-serif text-base outline-none"
+        className="min-w-0 flex-1 border-none bg-transparent py-3 pr-4 pl-2 font-serif text-base outline-none"
       />
       {query && (
         <button
@@ -94,7 +94,7 @@ function FilterOption({ label, selected, isLast, onSelect }: { label: string; se
     <button
       onClick={onSelect}
       className={clsx(
-        "cursor-pointer flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left font-sans text-xs font-semibold tracking-[0.04em]",
+        "cursor-pointer flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-sans text-xs font-semibold tracking-[0.04em]",
         !isLast && "border-b border-faint",
         selected ? "bg-ink text-paper" : "bg-paper text-ink",
       )}
@@ -115,12 +115,12 @@ function FilterGroup({ group: g, isLast }: { group: FilterGroupData; isLast: boo
 
   return (
     <div className={clsx(!isLast && "border-b-2 border-ink")}>
-      <div className="flex items-center justify-between border-b border-faint bg-[#f4f4f4] px-3.5 pt-2.25 pb-2">
+      <div className="flex items-center justify-between border-b border-faint bg-wash px-4 pt-2 pb-2">
         <Eyebrow className="text-soft">{g.label}</Eyebrow>
         {isActive && (
           <button
             onClick={() => (g.multi ? g.onFilter([]) : g.onFilter(null))}
-            className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-[0.06em] text-flame uppercase"
+            className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-caps text-flame uppercase"
           >
             Clear
           </button>
@@ -153,7 +153,7 @@ function FilterGroup({ group: g, isLast }: { group: FilterGroupData; isLast: boo
    below the search row. */
 function FilterMenu({ groups }: { groups: FilterGroupData[] }) {
   return (
-    <div className="absolute top-[calc(100%+4px)] right-0 z-40 max-h-100 min-w-55 max-w-full overflow-y-auto border border-ink bg-paper shadow-[4px_4px_0_rgba(10,10,10,0.08)]">
+    <div className="absolute top-[calc(100%+4px)] right-0 z-40 max-h-100 min-w-55 max-w-full overflow-y-auto border border-ink bg-paper shadow-float">
       {groups.map((g, gi) => (
         <FilterGroup key={g.label || gi} group={g} isLast={gi === groups.length - 1} />
       ))}

@@ -27,13 +27,13 @@ export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConf
     <Modal onClose={onCancel} className="max-w-105" centered>
       <div className="p-6">
         <h2 className="font-sans text-lg font-extrabold tracking-tight m-0">{title}</h2>
-        <p className="mt-2.5 font-serif text-sm leading-relaxed text-soft">{message}</p>
+        <p className="mt-3 font-serif text-sm leading-relaxed text-soft">{message}</p>
       </div>
       <div className="flex border-t border-ink">
         <button
           onClick={() => act("cancel", onCancel)}
           data-pressed={pressed("cancel")}
-          className="btn-invert btn-ink flex-1 cursor-pointer border-r border-ink bg-ink py-3.5 font-sans text-xs font-bold uppercase tracking-wide text-paper"
+          className="btn-invert btn-ink flex-1 cursor-pointer border-r border-ink bg-ink py-4 font-sans text-xs font-bold uppercase tracking-caps text-paper"
         >
           {cancelLabel}
         </button>
@@ -41,7 +41,7 @@ export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConf
           onClick={() => act("confirm", onConfirm)}
           data-pressed={pressed("confirm")}
           className={clsx(
-            "flex-1 cursor-pointer bg-paper py-3.5 font-sans text-xs font-bold uppercase tracking-wide",
+            "flex-1 cursor-pointer bg-paper py-4 font-sans text-xs font-bold uppercase tracking-caps",
             tone === "flame" ? "flame-press text-flame" : "danger-press text-danger"
           )}
         >

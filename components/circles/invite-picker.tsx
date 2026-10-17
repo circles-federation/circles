@@ -64,7 +64,7 @@ export function InvitePicker({ circle }: { circle: Circle }) {
                   {home && <div className="truncate font-serif text-sm text-soft">{home.name}</div>}
                 </div>
                 {invited.has(m.id) ? (
-                  <span className="shrink-0 font-sans text-label font-bold tracking-[0.08em] text-soft uppercase">Invited</span>
+                  <span className="shrink-0 font-sans text-label font-bold tracking-caps text-soft uppercase">Invited</span>
                 ) : (
                   <Button size="compact" variant="secondary" onClick={() => invite(m.id)} disabled={sending !== null} className="shrink-0">
                     {sending === m.id ? "Inviting…" : "Invite"}
@@ -83,7 +83,7 @@ export function InvitePicker({ circle }: { circle: Circle }) {
 export function InviteModal({ circle, onClose }: { circle: Circle; onClose: () => void }) {
   return (
     <Modal onClose={onClose} className="max-w-110" title={`Invite to ${circle.name}`}>
-      <div className="px-4.5 py-5">
+      <div className="px-5 py-5">
         <InvitePicker circle={circle} />
       </div>
     </Modal>

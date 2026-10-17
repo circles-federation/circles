@@ -25,7 +25,7 @@ const TABS: [string, string][] = [
   ["/events", "Events"],
 ];
 
-const NAV_LINK = "border-b-2 py-1 font-sans text-xs font-semibold tracking-wide text-ink uppercase no-underline";
+const NAV_LINK = "border-b-2 py-1 font-sans text-xs font-semibold tracking-caps text-ink uppercase no-underline";
 
 // the right-hand slot for an icon button: its 44px tap area, with the 40px
 // circle inside so the bar is no taller; -mr-0.5 lines the circle's edge up
@@ -49,7 +49,7 @@ function IconButtonCircle({ icon: Icon, variant }: { icon: ComponentType<SVGProp
   return (
     <span
       className={clsx(
-        "flex size-10 items-center justify-center rounded-full shadow-[0_2px_8px_rgba(10,10,10,0.25)] transition-[filter,transform,background-color] duration-100 group-active:scale-95",
+        "flex size-10 items-center justify-center rounded-full shadow-float transition-[filter,transform,background-color] duration-(--motion-press) group-active:scale-95",
         ICON_BUTTON_FILL[variant],
         "group-disabled:border group-disabled:border-faint group-disabled:bg-transparent group-disabled:text-soft group-disabled:shadow-none group-disabled:group-active:scale-100 group-disabled:group-active:brightness-100",
       )}
@@ -173,14 +173,14 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   return (
     <div
       ref={barRef}
-      className="app-chrome sticky top-0 z-50 bg-linear-to-t from-paper/85 to-paper pt-[env(safe-area-inset-top)] backdrop-blur-md shadow-[0_2px_6px_rgba(10,10,10,0.08)] standalone:absolute standalone:inset-x-0"
+      className="app-chrome sticky top-0 z-50 bg-linear-to-t from-paper/85 to-paper pt-[env(safe-area-inset-top)] backdrop-blur-md shadow-raised standalone:absolute standalone:inset-x-0"
     >
       {/* the title on the left, the page's action on the right, and on desktop the
           tabs centred on the bar itself (not between the two), so a long title
           can't push them off-centre: it stops short of them instead */}
       <div className="relative mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1 min-[720px]:max-w-[calc(50%-9rem)]">
-          {!isTabRoot && <GhostIconButton icon={ArrowLeftIcon} label="Back" onClick={goBack} className="-ml-2.5" />}
+          {!isTabRoot && <GhostIconButton icon={ArrowLeftIcon} label="Back" onClick={goBack} className="-ml-3" />}
           <span className="truncate font-sans text-lg font-extrabold tracking-[-0.02em]">
             {pageTitle(pathname, circles, events, members, resources)}
           </span>
@@ -205,7 +205,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
             onClick={runPageOwn}
             disabled={pageOwn.disabled}
             aria-label={pageOwn.label}
-            className="-mr-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink disabled:cursor-default disabled:text-faint"
+            className="-mr-3 flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink disabled:cursor-default disabled:text-faint"
           >
             <pageOwn.icon className="size-6" strokeWidth={2} />
           </button>

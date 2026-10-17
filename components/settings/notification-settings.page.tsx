@@ -151,7 +151,7 @@ function SettingRows({ children }: { children: ReactNode }) {
 }
 
 function RowShell({ children }: { children: ReactNode }) {
-  return <div className="flex items-center gap-4 border-b border-faint py-3.5 last:border-b-ink">{children}</div>;
+  return <div className="flex items-center gap-4 border-b border-faint py-4 last:border-b-ink">{children}</div>;
 }
 
 function SettingRow({ label, detail, checked, onChange, disabled }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {

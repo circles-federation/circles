@@ -23,7 +23,7 @@ export function LanguagesEditor({ value, onChange }: { value: MemberLanguage[]; 
             const endonym = languageEndonym(l.code);
             const english = languageName(l.code);
             return (
-              <div key={l.code} className="flex items-center gap-3 border-b border-faint py-2.5">
+              <div key={l.code} className="flex items-center gap-3 border-b border-faint py-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-sans text-base font-bold">{endonym}</div>
                   <div className="truncate font-serif text-sm text-soft">

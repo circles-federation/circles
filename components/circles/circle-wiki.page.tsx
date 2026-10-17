@@ -104,13 +104,13 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
         <Label>Quick facts</Label>
         <div className="grid grid-cols-1 border border-ink min-[720px]:grid-cols-4">
           {facts.map((f, i) => (
-            <div key={i} className={clsx("p-3.5", i < facts.length - 1 && "border-b border-faint min-[720px]:border-r min-[720px]:border-b-0")}>
+            <div key={i} className={clsx("p-4", i < facts.length - 1 && "border-b border-faint min-[720px]:border-r min-[720px]:border-b-0")}>
               <input
                 value={f.label}
                 onChange={(e) => updateFact(i, "label", e.target.value)}
                 placeholder="Label"
                 aria-label={`Fact ${i + 1} label`}
-                className={clsx("w-full px-2 py-1.5 font-sans text-label font-bold uppercase tracking-[0.15em] text-soft touch:text-base touch:tracking-[0.06em]", FIELD)}
+                className={clsx("w-full px-2 py-1.5 font-sans text-label font-bold uppercase tracking-eyebrow text-soft touch:text-base touch:tracking-caps", FIELD)}
               />
               <input
                 value={f.value}
@@ -147,7 +147,7 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
         </Section>
 
         <Section>
-          <div className="flex flex-col gap-5.5">
+          <div className="flex flex-col gap-6">
             <div>
               <Label htmlFor="wiki-website">Website</Label>
               <Input id="wiki-website" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder={`yourorg.${circleDomainEnding(o.type)}`} />
@@ -163,7 +163,7 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
 
             <div>
               <Label>Open hours</Label>
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-3">
                 {hours.map((h, i) => (
                   <div key={i} className={FIELD_ROW}>
                     <input
@@ -181,7 +181,7 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
                     <button
                       onClick={() => setHours((prev) => prev.filter((_, j) => j !== i))}
                       aria-label="Remove"
-                      className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent px-3.5 text-soft"
+                      className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent px-4 text-soft"
                     >
                       <XMarkIcon className="size-3.5" strokeWidth={2.5} />
                     </button>
@@ -197,7 +197,7 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
         </Section>
 
         <Section>
-          <div className="flex flex-col gap-5.5">
+          <div className="flex flex-col gap-6">
             <div>
               <Label htmlFor="wiki-join">How to join</Label>
               <TextArea

@@ -62,7 +62,7 @@ export function InvitationPage({ invitation: inv, circle, onOpenCircle, onOpenMe
   const sent = fmtNumericDate(inv.createdAt);
   return (
     <PageContainer size="normal">
-      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5.5">
+      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-6">
         <Eyebrow className="text-soft">Invitation to join</Eyebrow>
         {circle ? (
           <button type="button" onClick={() => onOpenCircle(circle)} className="mt-3 block cursor-pointer border-0 bg-transparent p-0 text-left">
@@ -71,7 +71,7 @@ export function InvitationPage({ invitation: inv, circle, onOpenCircle, onOpenMe
         ) : (
           <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{inv.circleName}</h1>
         )}
-        {inv.circleTagline && <p className="mt-3.5 font-serif text-xl text-[#222] italic">{inv.circleTagline}</p>}
+        {inv.circleTagline && <p className="mt-4 font-serif text-xl text-body italic">{inv.circleTagline}</p>}
       </div>
 
       <SectionGroup>

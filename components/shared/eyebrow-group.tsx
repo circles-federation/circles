@@ -7,21 +7,21 @@ interface EyebrowGroupProps {
 }
 
 /* Pairs an Eyebrow label with the content beneath it, enforcing the
-   consistent mt-3.5 gap between them (established across Home, the
+   consistent mt-4 gap between them (established across Home, the
    Circles pages, and detail-page sections) instead of each call site
    re-picking its own margin. Renders as one wrapping div — not a fragment —
    specifically so a flex/grid `gap` on the caller's container (e.g.
-   member-profile.page.tsx's `flex flex-col gap-5.5`) sees each group as a single
+   member-profile.page.tsx's `flex flex-col gap-6`) sees each group as a single
    item and only spaces *between* groups; a fragment's children get gapped
    individually too, which doubled the label-to-content spacing on top of
-   this component's own mt-3.5. Not a fit for a header that also carries a
+   this component's own mt-4. Not a fit for a header that also carries a
    count or a neighborhood chip alongside the label (see AttendeesSection,
    circle.page.tsx's facts grid) — those stay bespoke. */
 export function EyebrowGroup({ label, children }: EyebrowGroupProps) {
   return (
     <div>
       <Eyebrow className="text-soft">{label}</Eyebrow>
-      <div className="mt-3.5">{children}</div>
+      <div className="mt-4">{children}</div>
     </div>
   );
 }

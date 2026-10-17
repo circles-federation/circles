@@ -6,9 +6,9 @@ export function LegalHeading({ children }: { children: ReactNode }) {
 }
 
 export function LegalParagraph({ children }: { children: ReactNode }) {
-  return <p className="mt-2 font-serif text-base leading-normal text-[#222]">{children}</p>;
+  return <p className="mt-2 font-serif text-base leading-normal text-body">{children}</p>;
 }
 
 export function LegalList({ children }: { children: ReactNode }) {
-  return <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 font-serif text-base leading-normal text-[#222]">{children}</ul>;
+  return <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 font-serif text-base leading-normal text-body">{children}</ul>;
 }

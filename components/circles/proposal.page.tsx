@@ -120,7 +120,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
                 <>
                   {mine && <p className="mb-3 font-serif text-base">You answered: <strong className="font-sans">{RESPONSE_LABEL[mine.response]}</strong>. You can change it until it closes.</p>}
                   {consentIsRsvp && <p className="mb-3 font-serif text-sm leading-snug text-soft">Liking or accepting it also marks you as going.</p>}
-                  <div className="grid grid-cols-1 gap-2.5 min-[720px]:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 min-[720px]:grid-cols-3">
                     {(["like", "accept", "object"] as const).map((r) => {
                       const Icon = ANSWER_STYLE[r].icon;
                       // the black outline is only ever your answer as it stands; red
@@ -136,7 +136,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
                         aria-pressed={r === "object" ? undefined : chosen}
                         aria-expanded={r === "object" ? objecting : undefined}
                         className={clsx(
-                          "inline-flex cursor-pointer items-center justify-center gap-2 border-2 px-4 py-3.5 font-sans text-sm font-extrabold tracking-[0.02em] disabled:cursor-default disabled:opacity-60",
+                          "inline-flex cursor-pointer items-center justify-center gap-2 border-2 px-4 py-4 font-sans text-sm font-extrabold tracking-[0.02em] disabled:cursor-default disabled:opacity-60",
                           drafting ? "danger-press border-danger bg-paper text-danger" : ANSWER_STYLE[r].button,
                           chosen && "outline-3 outline-offset-2 outline-ink"
                         )}
@@ -155,8 +155,8 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
                       <p className="mt-1 font-serif text-sm leading-snug text-soft">
                         An objection stops the proposal. Say what would need to change for you to consent.
                       </p>
-                      <TextArea id="objection" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={OBJECTION_REASON_MAX} rows={3} className="mt-2.5" />
-                      <div className="mt-3 flex gap-2.5">
+                      <TextArea id="objection" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={OBJECTION_REASON_MAX} rows={3} className="mt-3" />
+                      <div className="mt-3 flex gap-3">
                         <Button variant="danger" disabled={busy || !reason.trim()} onClick={() => answer("object")}>
                           Object
                         </Button>
@@ -192,7 +192,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
                           {r ? RESPONSE_LABEL[r.response] : open ? "No answer yet" : "Didn't answer"}
                         </span>
                       </div>
-                      {r?.reason && <p className="mt-1.5 font-serif text-sm leading-snug italic text-[#222]">&ldquo;{r.reason}&rdquo;</p>}
+                      {r?.reason && <p className="mt-1.5 font-serif text-sm leading-snug italic text-body">&ldquo;{r.reason}&rdquo;</p>}
                     </div>
                   );
                 })}
@@ -244,11 +244,11 @@ function Outcome({ proposal: p, objectorName, event }: { proposal: CircleProposa
             : [XCircleIcon, "border-l-soft", "Withdrawn", "It was withdrawn before it was decided, so the event won't be held. It can be proposed again."]
           : [XCircleIcon, "border-l-danger", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${event ? "held" : "made"}. It can be proposed again, changed to meet the objection.`];
   return (
-    <div role="status" className={clsx("mt-6 flex items-start gap-3 border border-ink border-l-4 px-4.5 py-4", tone)}>
+    <div role="status" className={clsx("mt-6 flex items-start gap-3 border border-ink border-l-4 px-5 py-4", tone)}>
       <Icon className="mt-px size-5 shrink-0" strokeWidth={2} />
       <div>
         <div className="font-sans text-sm font-extrabold tracking-[0.02em]">{heading}</div>
-        <p className="mt-1.5 font-serif text-sm leading-relaxed text-[#222]">{text}</p>
+        <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">{text}</p>
       </div>
     </div>
   );

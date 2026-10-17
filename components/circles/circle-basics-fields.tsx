@@ -42,7 +42,7 @@ export function CircleBasicsFields({ domain, onDomainChange, aims, onAimsChange,
       <div id="field-aims">
         <Label>Aims</Label>
         <p className="mb-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">What this circle is there to achieve. At least one.</p>
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-3">
           {aims.map((a, i) => (
             <div key={i} className={disabled ? FIELD_ROW_DISABLED : FIELD_ROW}>
               <input
@@ -59,7 +59,7 @@ export function CircleBasicsFields({ domain, onDomainChange, aims, onAimsChange,
                   onClick={() => onAimsChange(aims.filter((_, j) => j !== i))}
                   disabled={disabled}
                   aria-label={`Remove aim ${i + 1}`}
-                  className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent px-3.5 text-soft"
+                  className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent px-4 text-soft"
                 >
                   <XMarkIcon className="size-3.5" strokeWidth={2.5} />
                 </button>

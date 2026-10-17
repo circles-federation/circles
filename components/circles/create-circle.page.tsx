@@ -88,7 +88,7 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
         </Section>
 
         <Section>
-          <div className="flex flex-col gap-5.5">
+          <div className="flex flex-col gap-6">
             <div>
               <Label htmlFor="circle-name">Name</Label>
               <Input id="circle-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={CIRCLE_NAME_MAX} placeholder="What it's called" />
@@ -138,19 +138,19 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
    one chosen picked out, so they can be compared before choosing. */
 function TypeInfo({ chosen }: { chosen: CircleType | "" }) {
   return (
-    <div className="mt-4 border border-ink border-l-4 px-4.5 py-4">
+    <div className="mt-4 border border-ink border-l-4 px-5 py-4">
       <div className="flex items-center gap-2">
         <InformationCircleIcon className="size-5 shrink-0" strokeWidth={2} />
         <span className="font-sans text-sm font-extrabold tracking-[0.02em]">What kind of circle?</span>
       </div>
-      <p className="mt-1.5 font-serif text-sm leading-relaxed text-[#222]">
+      <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">
         Every kind but a group has a public page, can host events and hold meetings, and can give its members roles like Leader.
       </p>
-      <dl className="mt-3 flex flex-col gap-2.5">
+      <dl className="mt-3 flex flex-col gap-3">
         {CREATABLE_CIRCLE_TYPES.map((t) => (
           <div key={t} className={clsx("border-l-2 pl-3", t === chosen ? "border-ink" : "border-transparent")}>
             <dt className={clsx("font-sans text-sm font-extrabold", t === chosen || chosen === "" ? "text-ink" : "text-soft")}>{CIRCLE_TYPE_LABEL[t]}</dt>
-            <dd className={clsx("mt-0.5 font-serif text-sm leading-snug", t === chosen || chosen === "" ? "text-[#222]" : "text-soft")}>
+            <dd className={clsx("mt-0.5 font-serif text-sm leading-snug", t === chosen || chosen === "" ? "text-body" : "text-soft")}>
               {CIRCLE_TYPE_DESCRIPTION[t]}
             </dd>
           </div>

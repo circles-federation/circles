@@ -46,7 +46,7 @@ export function ConsentNotice({ circle, openProposal, memberId, error }: { circl
           <p className="mt-1.5 max-w-[42em] font-serif text-sm leading-normal text-soft">
             {circle.name} decides one change at a time, so nothing here can be proposed until this one is decided.
           </p>
-          <ProposalBanner proposal={openProposal} memberId={memberId} className="mt-3.5 bg-paper" />
+          <ProposalBanner proposal={openProposal} memberId={memberId} className="mt-4 bg-paper" />
         </div>
       )}
       {error && <p className={clsx("font-sans text-sm font-bold text-danger", openProposal && "mt-3")}>{error}</p>}

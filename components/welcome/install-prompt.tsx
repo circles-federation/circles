@@ -21,9 +21,9 @@ export function InstallPrompt() {
 
   return (
     <>
-      <div className="mt-10 border-t border-ink pt-4.5">
+      <div className="mt-10 border-t border-ink pt-5">
         <Eyebrow className="text-soft">On your iPhone?</Eyebrow>
-        <p className="mt-2 mb-4 font-serif text-base leading-normal text-[#222]">
+        <p className="mt-2 mb-4 font-serif text-base leading-normal text-body">
           Install Circles on your home screen to open it like any other app.
         </p>
         <Button type="button" variant="secondary" onClick={() => setOpen(true)} className="w-full">

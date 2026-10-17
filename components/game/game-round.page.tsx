@@ -24,7 +24,7 @@ export function GameRoundPage({ round, idx, roundsLength, score, picked, answere
 
   return (
     <PageContainer size="compact">
-      <div className="flex items-baseline justify-between border-b border-ink pb-2.75">
+      <div className="flex items-baseline justify-between border-b border-ink pb-3">
         <Eyebrow>Who is this?</Eyebrow>
         <span className="font-sans text-xs font-extrabold tracking-[0.08em]">
           {String(idx + 1).padStart(2, "0")} / {roundsLength} · Score {score}
@@ -32,7 +32,7 @@ export function GameRoundPage({ round, idx, roundsLength, score, picked, answere
       </div>
 
       <div className="-mt-px h-0.5 bg-faint">
-        <div className="h-0.5 bg-ink transition-[width] duration-300" style={{ width: `${(idx / roundsLength) * 100}%` }} />
+        <div className="h-0.5 bg-ink transition-[width] duration-(--motion-screen)" style={{ width: `${(idx / roundsLength) * 100}%` }} />
       </div>
 
       <div className="mt-9 flex justify-center">
@@ -59,7 +59,7 @@ export function GameRoundPage({ round, idx, roundsLength, score, picked, answere
               onClick={() => onChoose(name)}
               disabled={answered}
               className={clsx(
-                "relative px-4 py-5.5 text-left font-sans text-lg font-bold tracking-[0.01em] transition-colors",
+                "relative px-4 py-6 text-left font-sans text-lg font-bold tracking-[0.01em] transition-colors",
                 answered ? "cursor-default" : "ink-press cursor-pointer",
                 i % 2 === 0 && "border-r border-ink",
                 i >= 2 && "border-t border-ink",

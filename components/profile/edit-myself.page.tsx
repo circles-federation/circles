@@ -83,7 +83,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
               setPhotoError(null);
             }}
           />
-          {photoError && <p className="mt-2.5 font-sans text-xs font-bold text-danger">{photoError}</p>}
+          {photoError && <p className="mt-3 font-sans text-xs font-bold text-danger">{photoError}</p>}
         </Section>
 
         {/* one of the common three with a tap (tapped again, none), which
@@ -101,7 +101,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
                   role="radio"
                   aria-checked={chosen}
                   onClick={() => set({ pronouns: chosen ? "" : option })}
-                  className={clsx("hit cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", togglePress(chosen), chosen ? "bg-ink text-paper" : "bg-paper text-ink")}
+                  className={clsx("hit cursor-pointer border border-ink px-4 py-2 font-sans text-sm font-extrabold", togglePress(chosen), chosen ? "bg-ink text-paper" : "bg-paper text-ink")}
                 >
                   {option}
                 </button>
@@ -116,13 +116,13 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
             placeholder="e.g. she/her, he/him, they/them"
             className="mt-3"
           />
-          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Optional. They show beside your name on your profile.</p>
+          <p className="mt-3 font-serif text-sm leading-normal text-soft">Optional. They show beside your name on your profile.</p>
         </Section>
 
         <Section>
           <Label htmlFor="occupation">Occupation</Label>
           <Input id="occupation" value={draft.role} onChange={(e) => set({ role: e.target.value })} maxLength={OCCUPATION_MAX} placeholder="e.g. Teacher, Electrician, Student" />
-          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Optional. It shows under your name.</p>
+          <p className="mt-3 font-serif text-sm leading-normal text-soft">Optional. It shows under your name.</p>
         </Section>
 
         {/* bio */}
@@ -145,7 +145,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
                   aria-checked={chosen}
                   onClick={() => set({ birthDecade: decade })}
                   className={clsx(
-                    "hit cursor-pointer border border-ink px-3.5 py-2 font-sans text-sm font-extrabold", togglePress(chosen),
+                    "hit cursor-pointer border border-ink px-4 py-2 font-sans text-sm font-extrabold", togglePress(chosen),
                     chosen ? "bg-ink text-paper" : "bg-paper text-ink",
                     decade === undefined && "font-bold text-soft",
                     decade === undefined && chosen && "text-paper",
@@ -156,13 +156,13 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
               );
             })}
           </div>
-          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Just the decade, never a birthdate. It shows on your profile.</p>
+          <p className="mt-3 font-serif text-sm leading-normal text-soft">Just the decade, never a birthdate. It shows on your profile.</p>
         </Section>
 
         <Section>
           <Label>Languages</Label>
           <LanguagesEditor value={draft.languages ?? []} onChange={(languages) => set({ languages })} />
-          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">Tap a bar to say how well you speak each one, from beginner to native.</p>
+          <p className="mt-3 font-serif text-sm leading-normal text-soft">Tap a bar to say how well you speak each one, from beginner to native.</p>
         </Section>
 
         {/* email + visibility */}
@@ -177,13 +177,13 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
               value={draft.email || ""}
               readOnly
               aria-readonly="true"
-              className="min-w-0 flex-1 cursor-default border border-dashed border-faint bg-paper px-3 py-2.75 font-serif text-base text-soft outline-none"
+              className="min-w-0 flex-1 cursor-default border border-dashed border-faint bg-paper px-3 py-3 font-serif text-base text-soft outline-none"
             />
             <div className="flex items-stretch border border-ink">
               <button
                 onClick={() => set({ emailPublic: true })}
                 className={clsx(
-                  "inline-flex min-w-11 cursor-pointer items-center justify-center gap-1.5 border-r border-ink px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                  "inline-flex min-w-11 cursor-pointer items-center justify-center gap-1.5 border-r border-ink px-4 font-sans text-eyebrow font-bold tracking-caps whitespace-nowrap uppercase",
                   togglePress(draft.emailPublic),
                   draft.emailPublic ? "bg-ink text-paper" : "bg-paper text-ink",
                 )}
@@ -195,7 +195,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
               <button
                 onClick={() => set({ emailPublic: false })}
                 className={clsx(
-                  "inline-flex min-w-11 cursor-pointer items-center justify-center gap-1.5 px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                  "inline-flex min-w-11 cursor-pointer items-center justify-center gap-1.5 px-4 font-sans text-eyebrow font-bold tracking-caps whitespace-nowrap uppercase",
                   togglePress(!draft.emailPublic),
                   !draft.emailPublic ? "bg-ink text-paper" : "bg-paper text-ink",
                 )}
@@ -206,7 +206,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
               </button>
             </div>
           </div>
-          <p className="mt-2.5 font-serif text-sm leading-normal text-soft">
+          <p className="mt-3 font-serif text-sm leading-normal text-soft">
             {draft.emailPublic
               ? "Your email is shown here so neighbors can reach you directly."
               : "Your email is private. Neighbors won't see a way to email you."}{" "}

@@ -50,13 +50,13 @@ export function TabbedPanel({ tabs, active, onChange, bodyPad = true, className,
               disabled={t.disabled}
               className={clsx(
                 "relative -mb-px inline-flex flex-1 items-center justify-center gap-2",
-                "border-t border-t-ink border-r border-r-ink py-3.25 px-2",
-                "font-sans text-eyebrow font-bold tracking-wide uppercase",
+                "border-t border-t-ink border-r border-r-ink py-3 px-2",
+                "font-sans text-eyebrow font-bold tracking-caps uppercase",
                 i === 0 ? "border-l border-l-ink" : "border-l-0",
                 t.disabled ? "cursor-not-allowed" : "cursor-pointer",
                 on
                   ? clsx("z-2 border-b border-b-transparent bg-paper text-ink", ACCENT_SHADOW[t.variant || "ink"])
-                  : "z-1 border-b border-b-ink bg-[#f4f4f4] text-soft",
+                  : "z-1 border-b border-b-ink bg-wash text-soft",
               )}
             >
               {!t.disabled && t.label}
@@ -65,7 +65,7 @@ export function TabbedPanel({ tabs, active, onChange, bodyPad = true, className,
           );
         })}
       </div>
-      <div className={clsx("relative z-1 border border-ink", bodyPad ? "px-5.5 pt-5.5 pb-6.5" : "p-0")}>
+      <div className={clsx("relative z-1 border border-ink", bodyPad ? "px-6 pt-6 pb-7" : "p-0")}>
         {children}
       </div>
     </div>

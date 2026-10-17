@@ -89,12 +89,12 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
       </p>
       <div id="field-roles">
         <div className="border border-ink">
-          <div className="hidden border-b border-ink px-3.5 py-2 min-[720px]:grid min-[720px]:grid-cols-2 min-[720px]:gap-3.5">
+          <div className="hidden border-b border-ink px-4 py-2 min-[720px]:grid min-[720px]:grid-cols-2 min-[720px]:gap-4">
             <Eyebrow className="text-soft">Role</Eyebrow>
             <Eyebrow className="text-soft">Member</Eyebrow>
           </div>
           {roleRows.map((r) => (
-            <div key={r.key} className="grid grid-cols-1 gap-2 border-b border-faint px-3.5 py-3 last:border-b-0 min-[720px]:grid-cols-2 min-[720px]:items-start min-[720px]:gap-3.5">
+            <div key={r.key} className="grid grid-cols-1 gap-2 border-b border-faint px-4 py-3 last:border-b-0 min-[720px]:grid-cols-2 min-[720px]:items-start min-[720px]:gap-4">
               {r.builtin ? (
                 <div>
                   <div className="font-sans text-sm font-bold">{r.label}</div>
@@ -111,7 +111,7 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
                     maxLength={CIRCLE_ROLE_LABEL_MAX}
                     placeholder="Role name"
                     aria-label="Role name"
-                    className={clsx("min-w-0 flex-1 px-2.5 py-2 font-sans text-sm font-bold touch:text-base", FIELD, DISABLED_FIELD)}
+                    className={clsx("min-w-0 flex-1 px-3 py-2 font-sans text-sm font-bold touch:text-base", FIELD, DISABLED_FIELD)}
                   />
                   {!locked && (
                   <button

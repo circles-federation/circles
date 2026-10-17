@@ -25,7 +25,7 @@ export function SlotsEditor({ slots, onChange }: { slots: SlotDraft[]; onChange:
     <div>
       <ul className="border-t border-ink">
         {slots.map((s, i) => (
-          <li key={i} className="flex flex-col gap-2.5 border-b border-faint py-4">
+          <li key={i} className="flex flex-col gap-3 border-b border-faint py-4">
             <div className="flex items-center gap-2">
               <Input
                 value={s.label}

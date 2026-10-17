@@ -466,7 +466,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 aria-checked={on}
                 onClick={() => changeType(key)}
                 className={clsx(
-                  "ink-press relative flex cursor-pointer flex-col items-stretch justify-start border bg-paper px-4 py-3.5 text-left",
+                  "ink-press relative flex cursor-pointer flex-col items-stretch justify-start border bg-paper px-4 py-4 text-left",
                   on ? clsx(accent.border, accent.ring) : "border-faint",
                 )}
               >
@@ -488,12 +488,12 @@ export function EventFormPage(props: EventFormPageProps) {
           <Label htmlFor="circle">Which circle is meeting?</Label>
           {circleSelect}
           {circle && approverRole && (
-            <p className="mt-3 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-[#222]">
+            <p className="mt-3 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-body">
               As {circle.name}&apos;s <strong>{approverRole}</strong>, you schedule it directly, without asking for consent, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
             </p>
           )}
           {circle && !approverRole && (
-            <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-[#222]">
+            <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-body">
               This is a proposal to {circle.name}. It&apos;s scheduled once its {circle.type === "neighborhood" ? "residents" : "members"} consent, or after 3 days if no one objects. Until then it&apos;s in no list. You and everyone who consents are marked as going.
             </p>
           )}
@@ -508,7 +508,7 @@ export function EventFormPage(props: EventFormPageProps) {
         </Section>
 
         <Section className="flex flex-col gap-5 py-6">
-          <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">
             <div>
               <Label htmlFor="date">Date</Label>
               {/* the day only moves one date at a time */}
@@ -523,7 +523,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 disabled={seriesLive && scope === "upcoming"}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3.5 min-[720px]:col-span-2">
+            <div className="grid grid-cols-2 gap-4 min-[720px]:col-span-2">
               <div>
                 <Label htmlFor="start">Start</Label>
                 <Input
@@ -547,7 +547,7 @@ export function EventFormPage(props: EventFormPageProps) {
           {gov && circleId && <MeetingAvailability circleId={circleId} date={date} start={start} end={end} />}
 
           {mode === "create" ? (!gov && (
-            <div className="grid grid-cols-1 gap-3.5 min-[720px]:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">
               <div className={repeat ? "min-[720px]:col-span-2" : "min-[720px]:col-span-3"}>
                 <Label htmlFor="repeat">Repeats</Label>
                 <Select id="repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as RepeatFrequency | "")}>
@@ -575,7 +575,7 @@ export function EventFormPage(props: EventFormPageProps) {
           )) : series && (
             <div>
               <Label htmlFor="scope">Repeats</Label>
-              <p className="mb-2.5 font-serif text-base">{repeatSummary(series)}</p>
+              <p className="mb-3 font-serif text-base">{repeatSummary(series)}</p>
               {seriesLive ? (
                 <>
                   <Select id="scope" value={scope} onChange={(e) => { setScope(e.target.value as SeriesScope); setDate(initialValues.date); }}>
@@ -645,7 +645,7 @@ export function EventFormPage(props: EventFormPageProps) {
           {gov ? (
             <div>
               <Label>{approverRole ? "Scheduled by" : "Proposed by"}</Label>
-              <div className="flex items-center gap-2.5 border border-ink bg-paper px-3 py-2.75">
+              <div className="flex items-center gap-3 border border-ink bg-paper px-3 py-3">
                 <Avatar member={profile} size={26} />
                 <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
               </div>
@@ -684,7 +684,7 @@ export function EventFormPage(props: EventFormPageProps) {
       {/* cancelling the event itself (not this form): on every screen size,
           since it isn't one of the form's own buttons */}
       {mode === "edit" && !isPastEvent(props.event) && (
-        <div className="mt-8 border-t border-ink pt-5.5">
+        <div className="mt-8 border-t border-ink pt-6">
           <Eyebrow className="text-soft">Cancel {noun}</Eyebrow>
           <p className="mt-2 mb-4 font-serif text-sm leading-normal text-soft">
             {othersGoing > 0

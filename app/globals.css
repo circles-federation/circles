@@ -6,10 +6,28 @@
    a parallel lib/theme.js of JS constants for components still using
    inline style={{...}}) until every component finished migrating to
    Tailwind utility classes and lib/theme.js was deleted.
+
+   Colours by job. Reach for a meaning, not a hex value; several names share
+   a hue on purpose, so each can change apart.
+     Neutrals     ink (headings, rules, filled controls), body (running
+                  text), soft (secondary text, field rules), ghost (text
+                  deliberately faded), faint (hairlines), wash (fields,
+                  boxes set apart), paper (the page)
+     Action       action: the one blue for a primary control
+     Meanings     flame: a decision is waiting (a proposal)
+                  leaf: done, approved, consented
+                  danger: destructive, urgent, an objection
+                  warning: a heads-up that something may not go ahead
+     Signals      attention: an unread or waiting badge (the dot)
+     By kind      teal (your neighbourhood), agenda, folder, file, video,
+                  announcement, accept, phone, email: each one thing's colour
    ============================================================ */
 @theme {
   --color-ink: #0a0a0a;
   --color-paper: #ffffff;
+  --color-body: #222222; /* running text: a touch softer than ink against white */
+  --color-ghost: #9a9a9a; /* text deliberately faded: what only you see (your last name on Home) */
+  --color-attention: #ff3b30; /* the attention dot: something unread or waiting */
   --color-soft: #6b6b6b;
   --color-faint: #e4e4e4;
   --color-wash: #f4f4f4; /* a light grey ground: a field that can't be changed, a box set apart from the page */
@@ -27,6 +45,14 @@
   --color-action: #1f5fbf; /* a primary icon button, like the top bar's Save (the same blue as file, for a different job) */
   --color-accept: #f0b400; /* a proposal's yellow answer, "Accept this": between leaf ("Like this") and danger ("Object"), with ink text on it */
   --color-warning: #f0b400; /* a heads-up that something may not go ahead (a slot still short): yellow, kept apart from flame, which means a decision is waiting. Too light for text on white, so it fills, rules and tints, with ink on it */
+
+  /* elevation: three levels, for what sits above the page. Raised rests along
+     an edge (the top bar); float hovers over the page (the floating button,
+     the top bar's filled circles, menus); overlay is over everything (dialogs,
+     toasts, the bottom nav). Anything on the page itself has none. */
+  --shadow-raised: 0 2px 6px rgba(10, 10, 10, 0.08);
+  --shadow-float: 0 4px 14px rgba(10, 10, 10, 0.18);
+  --shadow-overlay: 0 6px 20px rgba(10, 10, 10, 0.28);
 
   --font-sans: "Helvetica Neue", Arial, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
@@ -48,24 +74,27 @@
   /* display headings share tight negative tracking; eyebrows share wide tracking */
   --tracking-tight: -0.03em;
   --tracking-wide: 0.1em;
+  /* the two kinds of small caps: an eyebrow heads a section (and a fact, as
+     the circle page shows them); caps is every other uppercase label, on a
+     control or a category (a button, a chip, a tag, a badge, a field's
+     label). Information isn't set in caps at all: an occupation, a time, a
+     pronoun read in sentence case. The small date tile keeps its own. */
+  --tracking-eyebrow: 0.2em;
+  --tracking-caps: 0.08em;
 
   /* for something that should only appear if a wait is long enough to
      notice (PageLoading's spinner): invisible for its first second */
-  --animate-fade-in-late: fade-in 0.2s ease-out 1s both;
+  --animate-fade-in-late: fade-in var(--motion-small) var(--ease-enter) 1s both;
   @keyframes fade-in {
     from {
       opacity: 0;
     }
   }
 
-  /* a page's content arriving (PageContainer): from blurred and clear to
-     sharp. `backwards`, not `both`: the blur only applies while it runs —
-     a filter left on the container would make it the frame a modal inside it
-     positions itself against, instead of the screen. */
   /* Home's prompt deck (PromptDeck): an answered card is pulled off the top,
      opaque, so it uncovers the next rather than showing through onto it,
      and the next is dealt up into its place from the stack below */
-  --animate-deal-out: deal-out 0.3s ease-in forwards;
+  --animate-deal-out: deal-out var(--motion-screen) var(--ease-exit) forwards;
   @keyframes deal-out {
     80% {
       opacity: 1;
@@ -75,14 +104,18 @@
       transform: translateX(-110%) rotate(-4deg);
     }
   }
-  --animate-deal-in: deal-in 0.26s ease-out backwards;
+  --animate-deal-in: deal-in var(--motion-screen) var(--ease-enter) backwards;
   @keyframes deal-in {
     from {
       transform: translateY(10px) scale(0.97);
     }
   }
 
-  --animate-blur-in: blur-in 0.25s ease-out backwards;
+  /* a page's content arriving (PageContainer): from blurred and clear to
+     sharp. `backwards`, not `both`: the blur only applies while it runs —
+     a filter left on the container would make it the frame a modal inside it
+     positions itself against, instead of the screen. */
+  --animate-blur-in: blur-in var(--motion-screen) var(--ease-enter) backwards;
   @keyframes blur-in {
     from {
       opacity: 0;
@@ -176,6 +209,18 @@ body {
    other isn't). Base layer lets Tailwind's utilities layer — which comes
    after base — correctly override this default, same as its own resets. */
 @layer base {
+  /* Motion: three durations and two curves. Press is a press's feedback;
+     small, a small change in place (a spacing, a fade); screen, something
+     moving on or off or across the screen (a nav, a sheet, a card, a toast,
+     a page arriving). Enter for what arrives or moves; exit for what leaves. */
+  :root {
+    --motion-press: 80ms;
+    --motion-small: 150ms;
+    --motion-screen: 250ms;
+    --ease-enter: cubic-bezier(0.2, 0, 0, 1);
+    --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+  }
+
   a {
     color: inherit;
     text-decoration: none;
@@ -227,7 +272,7 @@ body {
    :active: PressFeedback (components/shared/press-feedback.tsx) sets it
    only for a deliberate press, so the start of a scroll doesn't flash.
    ============================================================ */
-.ink-press { transition: background 0.08s, color 0.08s; }
+.ink-press { transition: background var(--motion-press), color var(--motion-press); }
 .ink-press[data-pressed] { background: var(--color-ink) !important; color: var(--color-paper) !important; }
 .ink-press[data-pressed] * { color: var(--color-paper) !important; border-color: var(--color-paper) !important; }
 .ink-press[data-pressed] span[style*="background"] { background: transparent !important; }
@@ -237,15 +282,15 @@ body {
    badge with black text. More specific than that rule, so it wins. */
 .ink-press[data-pressed] .ink-press-badge { color: var(--color-ink) !important; }
 /* ink-press for a destructive control: it fills red rather than black */
-.danger-press { transition: background 0.08s, color 0.08s; }
+.danger-press { transition: background var(--motion-press), color var(--motion-press); }
 .danger-press[data-pressed] { background: var(--color-danger) !important; color: var(--color-paper) !important; }
 .danger-press[data-pressed] * { color: var(--color-paper) !important; }
 /* ink-press for something waiting on members' decision (an open proposal's
    banner): it fills with the governance orange rather than black */
-.flame-press { transition: background 0.08s, color 0.08s; }
+.flame-press { transition: background var(--motion-press), color var(--motion-press); }
 .flame-press[data-pressed] { background: var(--color-flame) !important; color: var(--color-paper) !important; border-color: var(--color-flame) !important; }
 .flame-press[data-pressed] * { color: var(--color-paper) !important; }
-.btn-invert { transition: background 0.08s, color 0.08s; }
+.btn-invert { transition: background var(--motion-press), color var(--motion-press); }
 .btn-ink[data-pressed] { background: var(--color-paper) !important; color: var(--color-ink) !important; }
 .btn-ink[data-pressed] * { color: var(--color-ink) !important; }
 .btn-teal[data-pressed] { background: var(--color-paper) !important; color: var(--color-teal) !important; }
@@ -264,7 +309,7 @@ body {
    button does, to paper with its icon and outline in its colour. The square
    sets its colour as --press-color; its outline is there all along, in the
    same colour as its fill, so the inverted square keeps its shape. */
-.fill-press .fill-press-square { transition: background 0.08s, color 0.08s; }
+.fill-press .fill-press-square { transition: background var(--motion-press), color var(--motion-press); }
 .fill-press[data-pressed] .fill-press-square { background: var(--color-paper) !important; color: var(--press-color) !important; }
 /* A tap area of at least 44×44px (Apple's and Google's minimum) for a control
    drawn smaller than that (a tag's ×, a name, a chip, a switch), without
@@ -280,5 +325,5 @@ body {
 /* A pressable image (Home's own photo, which opens your profile): the
    background ink-press turns to ink would be hidden behind the photo, so the
    photo itself inverts instead, border and all. */
-.press-invert > * { transition: filter 0.08s; }
+.press-invert > * { transition: filter var(--motion-press); }
 .press-invert[data-pressed] > * { filter: invert(1); }

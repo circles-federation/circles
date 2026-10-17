@@ -13,7 +13,7 @@ export function CancelledBanner({ event: e }: { event: Event }) {
   const organizer = memberById(e.organizerId);
   const noun = e.kind === "meeting" ? "meeting" : "event";
   return (
-    <div role="status" className="mt-6 flex items-start gap-3 border-2 border-ink bg-ink px-4.5 py-4 text-paper">
+    <div role="status" className="mt-6 flex items-start gap-3 border-2 border-ink bg-ink px-5 py-4 text-paper">
       <XCircleIcon className="mt-px size-5 shrink-0" strokeWidth={2} />
       <div>
         <div className="font-sans text-sm font-extrabold tracking-[0.02em]">This {noun} has been cancelled</div>

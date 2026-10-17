@@ -11,7 +11,7 @@ import { Modal } from "./modal";
 export function InstallStepsModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal onClose={onClose} className="max-w-110" title="Install Circles">
-      <ol className="px-4.5 py-2 font-serif text-base leading-normal">
+      <ol className="px-5 py-2 font-serif text-base leading-normal">
         <Step n={1}>
           Tap <strong className="font-sans">Share</strong>
           <ArrowUpOnSquareIcon className="mx-1 inline size-5 align-text-bottom" strokeWidth={2} aria-hidden />
@@ -32,7 +32,7 @@ export function InstallStepsModal({ onClose }: { onClose: () => void }) {
 
 function Step({ n, children }: { n: number; children: ReactNode }) {
   return (
-    <li className="flex gap-3.5 border-b border-faint py-3 last:border-b-0">
+    <li className="flex gap-4 border-b border-faint py-3 last:border-b-0">
       <span className="flex size-6 shrink-0 items-center justify-center bg-ink font-sans text-xs font-bold text-paper">{n}</span>
       <span>{children}</span>
     </li>

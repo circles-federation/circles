@@ -12,7 +12,7 @@ export function Select({ className, children, ...rest }: ComponentPropsWithoutRe
   return (
     <div className={clsx("relative", className)}>
       <select
-        className={clsx("peer w-full cursor-pointer appearance-none px-3 py-2.75 pr-9 font-serif text-base", FIELD, DISABLED_FIELD)}
+        className={clsx("peer w-full cursor-pointer appearance-none px-3 py-3 pr-9 font-serif text-base", FIELD, DISABLED_FIELD)}
         {...rest}
       >
         {children}

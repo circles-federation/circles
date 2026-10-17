@@ -48,7 +48,7 @@ export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showK
     // room for justify-between to push the chip to the far side
     <button
       onClick={() => onOpenCircle(c)}
-      className="ink-press bg-paper flex cursor-pointer flex-col items-stretch border-r border-b border-ink p-5.5 text-left"
+      className="ink-press bg-paper flex cursor-pointer flex-col items-stretch border-r border-b border-ink p-6 text-left"
     >
       {showKindEyebrow && (
         <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
@@ -64,7 +64,7 @@ export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showK
         {c.name}
         {isHome && <HomeIcon className="size-5 shrink-0 text-teal" strokeWidth={2} />}
       </div>
-      <p className="mt-2.5 font-serif text-sm leading-[1.4] text-[#222]">{c.tagline}</p>
+      <p className="mt-3 font-serif text-sm leading-[1.4] text-body">{c.tagline}</p>
       <div className="mt-auto flex items-center justify-between pt-4">
         <span className="flex">
           {/* member ids on a circle always resolve — internal seed-data
