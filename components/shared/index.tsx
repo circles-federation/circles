@@ -11,6 +11,7 @@ export { BottomNav } from "./bottom-nav";
 export { Button, ButtonLink } from "./button";
 export { Chip, MastheadChip } from "./chip";
 export { ConfirmModal } from "./confirm-modal";
+export { EmptyState } from "./empty-state";
 export { Eyebrow } from "./eyebrow";
 export { EyebrowGroup } from "./eyebrow-group";
 export { FloatingActionButton } from "./floating-action-button";

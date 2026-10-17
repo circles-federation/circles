@@ -55,26 +55,22 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
       {/* the eyebrow lines as one block, with the chip opposite its top */}
       <div className="row-start-1 flex min-w-0 items-start justify-between gap-3 min-[720px]:col-start-2">
         <div className="min-w-0">
-          {/* a phone: the date, then the time and how it repeats, a line each */}
-          <div className="min-[720px]:hidden">
-            <Eyebrow className="block text-soft">
-              {govLabel && <>{govLabel} · </>}
-              {dateLabel}
-            </Eyebrow>
-            <Eyebrow className="mt-1.5 block text-soft">{time}</Eyebrow>
-            {repeats && <Eyebrow className="mt-1.5 block text-soft">{repeats}</Eyebrow>}
-          </div>
-          {/* wide: the time and how it repeats, beside the tile's date */}
-          <Eyebrow className="hidden text-soft min-[720px]:block">
-            {govLabel && <>{govLabel} · </>}
+          {/* when it is, which is what people come to an event's page for:
+              in sentence case, the date first and confident on a phone (which
+              has no room for the tile), then the time and how it repeats.
+              Wide, the tile has the date, so it's the time line alone. A
+              proposal's status, a label rather than information, stays in caps */}
+          {govLabel && <Eyebrow className="mb-1.5 block">{govLabel}</Eyebrow>}
+          <div className="font-sans text-lg leading-snug font-bold text-ink min-[720px]:hidden">{dateLabel}</div>
+          <div className="mt-0.5 font-sans text-base leading-snug font-semibold text-soft min-[720px]:mt-0">
             {time}
             {repeats && ` · ${repeats}`}
-          </Eyebrow>
+          </div>
         </div>
         {/* capped, so a long circle name ends in "…" instead of squeezing the time */}
         {circle ? <MastheadChip max="max-w-[45%]" title={`${circle.name}: who can see this event`}>{circle.name}</MastheadChip> : <span />}
       </div>
-      <h1 className="row-start-2 mt-3 font-sans text-heading leading-[0.95] font-extrabold tracking-[-0.035em] min-[720px]:col-start-2 min-[720px]:text-title">
+      <h1 className="row-start-2 mt-4 min-[720px]:mt-3 font-sans text-heading leading-[0.95] font-extrabold tracking-[-0.035em] min-[720px]:col-start-2 min-[720px]:text-title">
         {e.title}
       </h1>
       {/* an online event's location is its link: a button to it, not the address */}

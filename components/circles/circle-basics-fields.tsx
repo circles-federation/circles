@@ -61,14 +61,14 @@ export function CircleBasicsFields({ domain, onDomainChange, aims, onAimsChange,
                   aria-label={`Remove aim ${i + 1}`}
                   className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent px-4 text-soft"
                 >
-                  <XMarkIcon className="size-3.5" strokeWidth={2.5} />
+                  <XMarkIcon className="size-4" strokeWidth={2.5} />
                 </button>
               )}
             </div>
           ))}
           {aims.length < MAX_CIRCLE_AIMS && !disabled && (
             <Button variant="secondary" size="compact" onClick={() => onAimsChange([...aims, ""])} disabled={disabled} className="self-start">
-              <PlusIcon className="size-3.5" strokeWidth={2.5} />
+              <PlusIcon className="size-4" strokeWidth={2.5} />
               Add aim
             </Button>
           )}

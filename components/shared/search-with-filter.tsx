@@ -75,7 +75,7 @@ function FilterTrigger({ activeCount, onClick }: { activeCount: number; onClick:
         activeCount > 0 ? "bg-ink text-paper" : "bg-transparent text-ink",
       )}
     >
-      <FunnelIcon className="size-3.5" strokeWidth={2.5} />
+      <FunnelIcon className="size-4" strokeWidth={2.5} />
       {activeCount > 0 && (
         <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-flame px-1 font-sans text-label leading-none font-extrabold text-paper">
           {activeCount}
@@ -100,7 +100,7 @@ function FilterOption({ label, selected, isLast, onSelect }: { label: string; se
       )}
     >
       {label}
-      {selected && <CheckIcon className="size-3" strokeWidth={3} />}
+      {selected && <CheckIcon className="size-4" strokeWidth={3} />}
     </button>
   );
 }

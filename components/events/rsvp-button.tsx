@@ -4,14 +4,15 @@ import { togglePress } from "@/components/shared";
 
 interface RsvpButtonProps {
   going?: boolean;
-  count: number;
   onToggle: () => void;
   big?: boolean;
   // an event that has already happened can no longer be RSVP'd to
   past?: boolean;
 }
 
-export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProps) {
+/* RSVPing, and nothing else: how many are going is said beside it, not
+   inside it, where "RSVP 2" read as one label. */
+export function RsvpButton({ going, onToggle, big, past }: RsvpButtonProps) {
   const sizeClasses = big ? "py-3 px-6" : "py-3 px-4";
 
   if (past) {
@@ -24,10 +25,9 @@ export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProp
         )}
       >
         <span className="inline-flex items-center gap-1">
-          {going && <CheckIcon className="size-3" strokeWidth={3} />}
+          {going && <CheckIcon className="size-4" strokeWidth={3} />}
           {going ? "Attended" : "Ended"}
         </span>
-        <span className="font-extrabold opacity-70">{count}</span>
       </div>
     );
   }
@@ -42,10 +42,9 @@ export function RsvpButton({ going, count, onToggle, big, past }: RsvpButtonProp
       )}
     >
       <span className="inline-flex items-center gap-1">
-        {going && <CheckIcon className="size-3" strokeWidth={3} />}
-        {going ? "Attending" : "RSVP"}
+        {going && <CheckIcon className="size-4" strokeWidth={3} />}
+        {going ? "Going" : "RSVP"}
       </span>
-      <span className="font-extrabold opacity-70">{count}</span>
     </button>
   );
 }

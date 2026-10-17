@@ -189,7 +189,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
                 )}
                 title="Visible to neighbors"
               >
-                <EyeIcon className="size-3.5" strokeWidth={2.5} />
+                <EyeIcon className="size-4" strokeWidth={2.5} />
                 <span className="hidden min-[720px]:inline">Visible</span>
               </button>
               <button
@@ -201,7 +201,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
                 )}
                 title="Hidden from other members"
               >
-                <LockClosedIcon className="size-3.5" strokeWidth={2.5} />
+                <LockClosedIcon className="size-4" strokeWidth={2.5} />
                 <span className="hidden min-[720px]:inline">Hidden</span>
               </button>
             </div>

@@ -8,20 +8,20 @@ interface StatCardProps {
   onClick?: () => void;
 }
 
-/* A square statistic card: large Helvetica numeral over a label. */
+/* A compact statistic card: a large Helvetica numeral over its label, short
+   enough that a row of them leaves room on a phone's first screen for what
+   people come back for (their circles and events). */
 export function StatCard({ value, label, onClick }: StatCardProps) {
   return (
     <button
       onClick={onClick}
       className={clsx(
-        "flex aspect-square w-full flex-col items-stretch justify-between border border-ink bg-paper p-5",
+        "flex w-full flex-col items-start justify-between gap-2 border border-ink bg-paper p-3 text-left min-[720px]:p-4",
         onClick ? "ink-press cursor-pointer" : "cursor-default",
       )}
     >
-      <Eyebrow className="text-left text-soft">{label}</Eyebrow>
-      <div className="text-right font-sans text-hero leading-[0.9] font-extrabold tracking-[-0.04em]">
-        {value}
-      </div>
+      <div className="font-sans text-heading leading-none font-extrabold tracking-[-0.04em]">{value}</div>
+      <Eyebrow className="text-soft">{label}</Eyebrow>
     </button>
   );
 }

@@ -125,7 +125,7 @@ function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdi
       ) : (
         <div className="mt-auto flex items-center gap-1 pt-3 font-serif text-sm text-soft">
           <span className="min-w-0 truncate">{resourceHost(r.url ?? "")}</span>
-          <ArrowTopRightOnSquareIcon className="size-3.5 shrink-0" strokeWidth={2.5} />
+          <ArrowTopRightOnSquareIcon className="size-4 shrink-0" strokeWidth={2.5} />
         </div>
       )}
     </div>

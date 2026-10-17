@@ -15,7 +15,7 @@ export function ForwardLink({ onClick, children, className }: ComponentPropsWith
       )}
     >
       {children}
-      <ArrowRightIcon className="size-3.5" strokeWidth={2.5} />
+      <ArrowRightIcon className="size-4" strokeWidth={2.5} />
     </button>
   );
 }

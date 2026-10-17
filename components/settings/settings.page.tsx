@@ -51,7 +51,7 @@ export function SettingsPage({ notifications, availability, onLogout }: Settings
 
         <Section>
           <Button variant="danger" onClick={() => setConfirmingLogout(true)} className="w-full">
-            <ArrowRightStartOnRectangleIcon className="size-3.5" strokeWidth={2.5} />
+            <ArrowRightStartOnRectangleIcon className="size-4" strokeWidth={2.5} />
             Log out
           </Button>
         </Section>

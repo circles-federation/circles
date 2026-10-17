@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
+import { EmptyState, FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
 import { ParentCircle } from "./parent-circle";
@@ -156,7 +156,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
             )}
           </>
         ) : (
-          <p className="font-serif text-sm text-soft">Nothing here yet.</p>
+          <EmptyState>{searching || typeFilter.length > 0 ? "Nothing matches your search or filter." : "No circles or neighbors here yet."}</EmptyState>
         )}
       </div>
     </PageContainer>

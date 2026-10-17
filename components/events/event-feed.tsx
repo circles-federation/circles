@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { Button, Eyebrow } from "@/components/shared";
+import { Button, EmptyState, Eyebrow } from "@/components/shared";
 import { OrdinaryRow } from "./ordinary-row";
 import { hasEnded, parseDay } from "@/lib/format.util";
 import { awaitingConsent } from "@/lib/governance.util";
@@ -14,6 +14,8 @@ interface EventFeedProps {
   onOpenEvent: (e: Event) => void;
   pageSize?: number;
   emptyText?: string;
+  // what to do about an empty feed (create one, go find some)
+  emptyAction?: { label: string; href: string };
 }
 
 /* A single chronological event feed: upcoming events first (soonest at top).
@@ -22,7 +24,7 @@ interface EventFeedProps {
    revealed via the link below. Paginates with "Load more", which appends
    older events. Spacing above the list is the caller's job (e.g.
    home.page.jsx wraps this in an EyebrowGroup), not this component's. */
-export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No events yet." }: EventFeedProps) {
+export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No events yet.", emptyAction }: EventFeedProps) {
   const now = useClock();
   const { upcoming, past } = useMemo(() => {
     const up: Event[] = [], pa: Event[] = [];
@@ -49,13 +51,16 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
   if (ordered.length === 0) {
     return (
       <>
-        <p className="mt-4 font-serif text-base text-soft">{!showPast && past.length > 0 ? "No upcoming events." : emptyText}</p>
+        <div className="mt-4">
+          {/* with past events to show instead, the button below is the way on */}
+          {!showPast && past.length > 0 ? <EmptyState>No upcoming events.</EmptyState> : <EmptyState {...(emptyAction ? { action: emptyAction } : {})}>{emptyText}</EmptyState>}
+        </div>
         {!showPast && past.length > 0 && (
           <Button variant="secondary" onClick={() => setShowPast(true)} className="mt-3 w-full">
             Show past events
             <span className="inline-flex items-center gap-1 text-soft">
               {past.length}
-              <ChevronDownIcon className="size-3" strokeWidth={3} />
+              <ChevronDownIcon className="size-4" strokeWidth={3} />
             </span>
           </Button>
         )}
@@ -84,7 +89,7 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
           Load older events
           <span className="inline-flex items-center gap-1 text-soft">
             {remaining} more
-            <ChevronDownIcon className="size-3" strokeWidth={3} />
+            <ChevronDownIcon className="size-4" strokeWidth={3} />
           </span>
         </Button>
       )}
@@ -93,7 +98,7 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
           Show past events
           <span className="inline-flex items-center gap-1 text-soft">
             {past.length}
-            <ChevronDownIcon className="size-3" strokeWidth={3} />
+            <ChevronDownIcon className="size-4" strokeWidth={3} />
           </span>
         </Button>
       )}

@@ -7,13 +7,16 @@ interface TagProps {
   onClick?: MouseEventHandler<HTMLSpanElement>;
 }
 
+/* A thing someone offers, needs, knows or likes: information, so in sentence
+   case, and filled grey with no outline, since an outline here means
+   something to tap. */
 export function Tag({ children, filled, onClick }: TagProps) {
   return (
     <span
       onClick={onClick}
       className={clsx(
-        "inline-block font-sans text-xs tracking-caps py-1.5 px-3 mr-2 mb-2 uppercase font-semibold border border-ink",
-        filled ? "bg-ink text-paper" : "bg-paper text-ink",
+        "mr-2 mb-2 inline-block px-3 py-1.5 font-sans text-sm font-semibold",
+        filled ? "bg-ink text-paper" : "bg-wash text-ink",
         onClick ? "cursor-pointer" : "cursor-default"
       )}
     >

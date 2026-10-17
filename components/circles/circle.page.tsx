@@ -255,16 +255,15 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                 </EyebrowGroup>
               </Section>
             )}
-          </SectionGroup>
 
-          {c.join && (
-            <section className="pt-8">
-              <div className="border border-ink p-6">
-                <Eyebrow className="text-soft">How to join</Eyebrow>
-                <p className="mt-3 font-serif text-base leading-normal">{c.join}</p>
-              </div>
-            </section>
-          )}
+            {c.join && (
+              <Section>
+                <EyebrowGroup label="How to join">
+                  <p className="max-w-[40em] font-serif text-base leading-normal text-body">{c.join}</p>
+                </EyebrowGroup>
+              </Section>
+            )}
+          </SectionGroup>
         </>
       )}
 

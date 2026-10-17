@@ -119,7 +119,7 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
                     aria-label={`Remove ${r.label || "role"}`}
                     className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-soft hover:text-ink"
                   >
-                    <XMarkIcon className="size-3.5" strokeWidth={2.5} />
+                    <XMarkIcon className="size-4" strokeWidth={2.5} />
                   </button>
                   )}
                 </div>
@@ -141,7 +141,7 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
         </div>
         {!locked && (
           <Button variant="secondary" size="compact" onClick={addRole} className="mt-3">
-            <PlusIcon className="size-3.5" strokeWidth={2.5} />
+            <PlusIcon className="size-4" strokeWidth={2.5} />
             Add role
           </Button>
         )}

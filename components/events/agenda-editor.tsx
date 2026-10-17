@@ -89,7 +89,7 @@ export function AgendaEditor({ items, onChange }: { items: AgendaDraft[]; onChan
       ))}
       {items.length < MAX_AGENDA_ITEMS && (
         <Button variant="secondary" size="compact" onClick={() => onChange([...items, { ...BLANK_AGENDA_ITEM }])} className="self-start">
-          <PlusIcon className="size-3.5" strokeWidth={2.5} />
+          <PlusIcon className="size-4" strokeWidth={2.5} />
           Add topic
         </Button>
       )}

@@ -136,7 +136,7 @@ export function AvailabilitySettingsPage({ windows, onSave, onBack }: Availabili
               {draft.length === 0 && <p className="font-serif text-sm leading-normal text-soft">No windows yet. Pick one above, or add your own.</p>}
               {draft.length < MAX_AVAILABILITY_WINDOWS && (
                 <Button variant="secondary" size="compact" onClick={() => edit([...draft, { ...BLANK_WINDOW }])} className="self-start">
-                  <PlusIcon className="size-3.5" strokeWidth={2.5} />
+                  <PlusIcon className="size-4" strokeWidth={2.5} />
                   Add window
                 </Button>
               )}

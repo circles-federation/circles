@@ -66,7 +66,12 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
       </div>
       {/* RSVPs open once its circle has consented; a cancelled event takes
           none, though its attendees are still listed below */}
-      {!hasRoles(e) && !proposal && !e.cancelled && <RsvpButton going={going} count={attendeeCount} onToggle={onToggleRsvp} big past={past} />}
+      {!hasRoles(e) && !proposal && !e.cancelled && (
+        <div className="flex items-center gap-4">
+          <span className="font-sans text-sm font-semibold whitespace-nowrap text-soft">{attendeeCount} {past ? "went" : "going"}</span>
+          <RsvpButton going={going} onToggle={onToggleRsvp} big past={past} />
+        </div>
+      )}
       {hasRoles(e) && !proposal && (
         <div className="text-right">
           <Eyebrow className={roleStatusClass}>{roleStatus}</Eyebrow>

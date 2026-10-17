@@ -40,7 +40,7 @@ export function SlotsEditor({ slots, onChange }: { slots: SlotDraft[]; onChange:
                 aria-label={`Remove role ${i + 1}`}
                 className="flex size-9 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-soft hover:text-ink"
               >
-                <XMarkIcon className="size-4.5" strokeWidth={2.5} />
+                <XMarkIcon className="size-4" strokeWidth={2.5} />
               </button>
             </div>
             <Input value={s.description} onChange={(e) => set(i, { description: e.target.value })} placeholder="Description (optional)" aria-label={`Role ${i + 1} description`} />
@@ -66,7 +66,7 @@ export function SlotsEditor({ slots, onChange }: { slots: SlotDraft[]; onChange:
         }}
         className="mt-4"
       >
-        <PlusIcon className="size-3.5" strokeWidth={2.5} />
+        <PlusIcon className="size-4" strokeWidth={2.5} />
         Add role
       </Button>
     </div>

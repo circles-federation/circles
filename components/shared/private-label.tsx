@@ -10,7 +10,7 @@ export function PrivateLabel({ children }: { children: ReactNode }) {
     // rather than on the line
     <span className="inline-flex items-center gap-1.5 leading-none">
       {children}
-      <LockClosedIcon className="size-3.5 shrink-0 -translate-y-px" strokeWidth={2.25} aria-label="Private" />
+      <LockClosedIcon className="size-4 shrink-0 -translate-y-px" strokeWidth={2.25} aria-label="Private" />
     </span>
   );
 }

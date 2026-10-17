@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { PlayIcon } from "@heroicons/react/24/solid";
-import { AlertModal, AttentionDot, Avatar, Chip, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
+import { AlertModal, AttentionDot, EmptyState, Avatar, Chip, LinkRow, Eyebrow, EyebrowGroup, FolderGrid, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { ProposalBanner } from "@/components/circles/proposal-banner";
 import { EventFeed } from "@/components/events/event-feed";
@@ -171,17 +171,19 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
         {/* my neighborhood — one compact panel of stats */}
         <Section>
           <EyebrowGroup label="My neighborhood">
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min((100%-1rem)/2,160px),1fr))] gap-4">
+            {/* a row of three short stat cards, and the game as a bar under
+                them on a phone (beside them wider) */}
+            <div className="grid grid-cols-3 gap-3 min-[720px]:grid-cols-4">
               <StatCard value={neighbors.length} label="Neighbors" onClick={onOpenNeighbors} />
               <StatCard value={localCircles.length} label="Local circles" onClick={onOpenLocalCircles} />
               <StatCard value={meetings.length} label="Upcoming meetings" onClick={() => setView("events")} />
               <button
                 onClick={playGame}
                 title="Play the neighbor name game"
-                className="btn-invert btn-teal flex aspect-square w-full cursor-pointer flex-col items-stretch justify-between border border-teal bg-teal p-5 text-paper"
+                className="btn-invert btn-teal col-span-3 flex w-full cursor-pointer items-center justify-between gap-3 border border-teal bg-teal px-4 py-4 text-paper min-[720px]:col-span-1 min-[720px]:flex-col min-[720px]:items-start"
               >
                 <Eyebrow className="text-left text-paper">Meet My Neighbors</Eyebrow>
-                <PlayIcon className="h-(--text-hero) w-(--text-hero) self-end" />
+                <PlayIcon className="size-8 min-[720px]:self-end" />
               </button>
             </div>
           </EyebrowGroup>
@@ -198,9 +200,9 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
             />
           ) : (
             <EyebrowGroup label="My circles">
-              <p className="font-serif text-base text-soft">
-                You’re not a member of any circle yet. Browse Circles to find one.
-              </p>
+              <EmptyState action={{ label: "Browse circles", href: "/circles" }}>
+                You’re not a member of any circle yet. The circles you join show up here.
+              </EmptyState>
             </EyebrowGroup>
           )}
         </Section>
@@ -213,6 +215,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, setView
               onOpenEvent={onOpenEvent}
               pageSize={5}
               emptyText="You're not on any events yet. RSVP to one and it'll show up here."
+              emptyAction={{ label: "Browse events", href: "/events" }}
             />
           </EyebrowGroup>
         </Section>

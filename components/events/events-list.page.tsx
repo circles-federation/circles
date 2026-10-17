@@ -49,7 +49,8 @@ export function EventsList({ events, onOpenEvent }: EventsListProps) {
         <EventFeed
           events={filtered}
           onOpenEvent={onOpenEvent}
-          emptyText={query || type ? "No events match your search." : "No events yet. Create one to get started."}
+          emptyText={query || type ? "No events match your search." : "No events yet. They appear here as people in your circles create them."}
+          {...(query || type ? {} : { emptyAction: { label: "Create an event", href: "/events/new" } })}
         />
       </div>
     </PageContainer>

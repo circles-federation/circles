@@ -86,7 +86,7 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
               aria-label={`Remove ${v}`}
               className="hit inline-flex cursor-pointer border-none bg-transparent p-0 text-soft"
             >
-              <XMarkIcon className="size-3" strokeWidth={3} />
+              <XMarkIcon className="size-4" strokeWidth={2.5} />
             </button>
           </span>
         ))}

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
+import { EmptyState, FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { CIRCLE_TYPE_LABEL, isGroup } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
@@ -75,7 +75,9 @@ export function CirclesRootPage({ circles, onOpenCircle }: CirclesRootPageProps)
           ))}
         </div>
       ) : (
-        <p className="mt-7 font-serif text-sm text-soft">Nothing here yet.</p>
+        <div className="mt-7">
+          <EmptyState>{q ? `Nothing matches “${query.trim()}”.` : "No circles here yet. Start one with the + above."}</EmptyState>
+        </div>
       )}
     </PageContainer>
   );
