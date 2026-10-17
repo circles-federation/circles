@@ -7,7 +7,7 @@ import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Button, ConfirmModal, Input, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
-import { circleDomainEnding, circleTypeNoun } from "@/lib/circles.util";
+import { circleDomainEnding, circleTypeNoun, circleWebsiteUrl } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
 
 // matches circle.page.tsx's read-only facts grid (label above a bold value,
@@ -151,6 +151,9 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
             <div>
               <Label htmlFor="wiki-website">Website</Label>
               <Input id="wiki-website" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder={`yourorg.${circleDomainEnding(o.type)}`} />
+              {website.trim() && !circleWebsiteUrl(website) && (
+                <p className="mt-2 font-serif text-sm leading-normal text-soft">That isn&rsquo;t a web address, so it&rsquo;ll show as text rather than a link.</p>
+              )}
             </div>
 
             <div>

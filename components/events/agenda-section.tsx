@@ -49,7 +49,8 @@ export function AgendaBadge({ category, outline = false }: { category: AgendaCat
       aria-hidden
       className={clsx(
         "inline-flex size-6 shrink-0 items-center justify-center border border-agenda font-sans text-sm font-extrabold",
-        outline ? "bg-paper text-agenda" : "bg-agenda text-paper",
+        // ink-press-badge: on a pressed (inked) choice it stays paper with an ink letter
+        outline ? "ink-press-badge bg-paper text-agenda" : "bg-agenda text-paper",
       )}
     >
       {AGENDA_CATEGORY[category].letter}

@@ -198,10 +198,10 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
 
             {/* where to find it online and in person: a square each, opening
                 its website or its address in the visitor's maps app */}
-            {(websiteUrl || c.address) && (
+            {(c.website || c.address) && (
               <Section>
                 <div className="flex flex-wrap gap-3 min-[720px]:gap-x-10 min-[720px]:gap-y-4">
-                  {websiteUrl && (
+                  {websiteUrl ? (
                     <VisitLink
                       href={websiteUrl.href}
                       newTab
@@ -210,7 +210,14 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
                       label="Website"
                       value={websiteUrl.hostname.replace(/^www\./, "")}
                     />
-                  )}
+                  ) : c.website ? (
+                    // not an address it can link to (an Instagram handle, say),
+                    // so shown as typed rather than dropped
+                    <div className="min-w-0">
+                      <Eyebrow className="text-soft">Website</Eyebrow>
+                      <div className="mt-1 font-serif text-base leading-[1.35] break-words text-[#222]">{c.website}</div>
+                    </div>
+                  ) : null}
                   {c.address && <MapsLink address={c.address} />}
                 </div>
               </Section>
@@ -381,7 +388,8 @@ function MapsLink({ address }: { address: string }) {
           </>
         );
       })()}
-      name={`Directions to ${address}`}
+      // its visible label first, so voice control can say "click Address"
+      name={`Address: ${address}`}
     />
   );
 }

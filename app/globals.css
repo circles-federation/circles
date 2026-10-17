@@ -228,6 +228,7 @@ body {
 .flame-press[data-pressed] * { color: var(--color-paper) !important; }
 .btn-invert { transition: background 0.08s, color 0.08s; }
 .btn-ink[data-pressed] { background: var(--color-paper) !important; color: var(--color-ink) !important; }
+.btn-ink[data-pressed] * { color: var(--color-ink) !important; }
 .btn-teal[data-pressed] { background: var(--color-paper) !important; color: var(--color-teal) !important; }
 .btn-teal[data-pressed] * { color: var(--color-teal) !important; }
 .btn-flame[data-pressed] { background: var(--color-paper) !important; color: var(--color-flame) !important; }
