@@ -9,7 +9,7 @@ export { AttentionDot } from "./attention-dot";
 export { Avatar } from "./avatar";
 export { BottomNav } from "./bottom-nav";
 export { Button, ButtonLink } from "./button";
-export { Chip } from "./chip";
+export { Chip, MastheadChip } from "./chip";
 export { ConfirmModal } from "./confirm-modal";
 export { Eyebrow } from "./eyebrow";
 export { EyebrowGroup } from "./eyebrow-group";

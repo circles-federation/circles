@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowTopRightOnSquareIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, Chip, Eyebrow, EyebrowGroup, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
@@ -105,11 +105,9 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
             </Eyebrow>
             {parent && (
-              <span className="flex min-w-0 justify-end">
-                <Chip title={`Part of ${parent.name}`} onClick={() => onOpenCircle(parent)}>
-                  {parent.name}
-                </Chip>
-              </span>
+              <MastheadChip title={`Part of ${parent.name}`} onClick={() => onOpenCircle(parent)}>
+                {parent.name}
+              </MastheadChip>
             )}
           </div>
           <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{c.name}</h1>

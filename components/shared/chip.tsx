@@ -46,6 +46,8 @@ export function Chip({ children, title, onClick }: ChipProps) {
     // pressed, a filled chip turns paper and a hollow one ink, as buttons do
     onClick && ["cursor-pointer", local ? "btn-invert btn-teal" : federation ? "btn-invert btn-ink" : "ink-press"],
   );
+  // a truncated name can still be read in full on hover
+  const label = title ?? (place || undefined);
   const content = (
     <>
       <CircleRingIcon />
@@ -53,12 +55,24 @@ export function Chip({ children, title, onClick }: ChipProps) {
     </>
   );
   return onClick ? (
-    <button type="button" title={title} onClick={onClick} className={className}>
+    <button type="button" title={label} onClick={onClick} className={className}>
       {content}
     </button>
   ) : (
-    <span title={title} className={className}>
+    <span title={label} className={className}>
       {content}
+    </span>
+  );
+}
+
+/* A chip at the top of a masthead, opposite its eyebrow (a circle's parent,
+   a profile's neighborhood, a proposal's or event's circle): capped at part
+   of the row, so a long name ends in "…" instead of running off the screen
+   or crowding out the eyebrow. `max` is that cap. */
+export function MastheadChip({ max = "max-w-[60%]", ...chip }: ChipProps & { max?: string }) {
+  return (
+    <span className={clsx("flex min-w-0 shrink justify-end", max)}>
+      <Chip {...chip} />
     </span>
   );
 }

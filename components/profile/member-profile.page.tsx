@@ -1,7 +1,7 @@
 "use client";
 
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Avatar, Chip, Eyebrow, EyebrowGroup, FolderGrid, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, MastheadChip, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { circlesForMember } from "@/lib/circles.util";
@@ -35,11 +35,9 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="shrink-0 text-soft">{m.pronouns}</Eyebrow>
           {home && (
-            <span className="flex min-w-0 justify-end">
-              <Chip title={m.homeCircleId === profile.homeCircleId ? "Your neighborhood" : "Their neighborhood"} onClick={() => onOpenCircle(home)}>
-                {home.name}
-              </Chip>
-            </span>
+            <MastheadChip title={m.homeCircleId === profile.homeCircleId ? "Your neighborhood" : "Their neighborhood"} onClick={() => onOpenCircle(home)}>
+              {home.name}
+            </MastheadChip>
           )}
         </div>
         <div className="mt-4 flex items-center gap-5">
