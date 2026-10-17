@@ -30,3 +30,47 @@ export function birthDecadeLabel(decade: number): string {
 export function isProfileBlank(m: Member): boolean {
   return !m.pronouns.trim() && !m.role.trim() && !m.bio.trim() && m.skills.length === 0 && m.interests.length === 0 && !m.languages?.length && m.birthDecade === undefined;
 }
+
+/* Suggestions for a member's skills or interests as they're typed, from what
+   other members have already added, so the same thing is called the same
+   thing (and can be counted together). `pool` is every entry of that kind
+   across members, repeats included; entries that differ only in case are one,
+   shown in their most common form. A match contains what's typed: ones that
+   start with it first, then the most used, then A–Z. Nothing already chosen
+   is suggested. */
+export function tagSuggestions(pool: string[], query: string, chosen: string[], limit = 6): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const taken = new Set(chosen.map((c) => c.trim().toLowerCase()));
+  return tagCounts(pool)
+    .filter((t) => t.key.includes(q) && !taken.has(t.key))
+    .sort((a, b) => Number(b.key.startsWith(q)) - Number(a.key.startsWith(q)) || b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, limit)
+    .map((t) => t.label);
+}
+
+// what's typed, as the form other members already use for it if there's one
+// (any case), so "permaculture" joins "Permaculture" rather than splitting it
+export function canonicalTag(value: string, pool: string[]): string {
+  const key = value.trim().toLowerCase();
+  return tagCounts(pool).find((t) => t.key === key)?.label ?? value.trim();
+}
+
+// each distinct entry (case aside), how many members use it, and its most
+// common spelling
+function tagCounts(pool: string[]): { key: string; label: string; count: number }[] {
+  const byKey = new Map<string, Map<string, number>>();
+  for (const raw of pool) {
+    const label = raw.trim();
+    if (!label) continue;
+    const forms = byKey.get(label.toLowerCase()) ?? new Map<string, number>();
+    forms.set(label, (forms.get(label) ?? 0) + 1);
+    byKey.set(label.toLowerCase(), forms);
+  }
+  return [...byKey].map(([key, forms]) => {
+    // the most used; on a tie, the capitalised one ("Permaculture" over "permaculture")
+    const capital = (form: string) => Number(/^\p{Lu}/u.test(form));
+    const [label] = [...forms].sort((a, b) => b[1] - a[1] || capital(b[0]) - capital(a[0]) || a[0].localeCompare(b[0]))[0]!;
+    return { key, label, count: [...forms.values()].reduce((n, c) => n + c, 0) };
+  });
+}

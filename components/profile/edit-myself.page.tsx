@@ -10,6 +10,7 @@ import type { MutationResult } from "@/components/providers/app-state-provider";
 import { EditableTags } from "./editable-tags";
 import { LanguagesEditor } from "./languages-editor";
 import { PhotoPicker } from "./photo-picker";
+import { useMembers } from "@/lib/hooks";
 import { BIRTH_DECADES, OCCUPATION_MAX, PRONOUN_OPTIONS, PRONOUNS_MAX, birthDecadeLabel } from "@/lib/members.util";
 import type { Profile } from "@/lib/types";
 
@@ -23,6 +24,12 @@ interface EditMyselfPageProps {
 /* Edit Myself — the editing form, reached from the Myself page's Edit button.
    Saves back to the profile and returns to the view. */
 export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMyselfPageProps) {
+  // what other members have added, suggested as skills and interests are
+  // typed (each only from its own kind), so the same thing is called the same
+  // thing across the neighborhood
+  const members = useMembers();
+  const skillPool = members.filter((m) => m.id !== profile.id).flatMap((m) => m.skills);
+  const interestPool = members.filter((m) => m.id !== profile.id).flatMap((m) => m.interests);
   const [draft, setDraft] = useState<Profile>({ ...profile, skills: [...profile.skills], interests: [...profile.interests], languages: [...(profile.languages ?? [])] });
   const set = (patch: Partial<Profile>) => setDraft((p) => ({ ...p, ...patch }));
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -207,13 +214,13 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
         {/* skills */}
         <Section>
           <Label>Skills I offer</Label>
-          <EditableTags values={draft.skills} onChange={(v) => set({ skills: v })} placeholder="Add a skill and press Enter" />
+          <EditableTags values={draft.skills} onChange={(v) => set({ skills: v })} pool={skillPool} placeholder="Add a skill and press Enter" />
         </Section>
 
         {/* interests */}
         <Section>
           <Label>Interests</Label>
-          <EditableTags values={draft.interests} onChange={(v) => set({ interests: v })} placeholder="Add an interest and press Enter" />
+          <EditableTags values={draft.interests} onChange={(v) => set({ interests: v })} pool={interestPool} placeholder="Add an interest and press Enter" />
         </Section>
       </SectionGroup>
 

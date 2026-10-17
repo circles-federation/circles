@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithRef } from "react";
 
 /* How a form field looks when it can't be changed (disabled): a grey wash,
    a faint border and grey text, so it doesn't pass for one that can. iOS
@@ -12,7 +12,8 @@ export const DISABLED_FIELD =
 
 /* Shared single-line text field — the bordered, serif-body look already
    established throughout the app's forms. */
-export function Input({ className, ...rest }: ComponentPropsWithoutRef<"input">) {
+// a ref, as React 19 passes it, reaches the <input> with the rest
+export function Input({ className, ...rest }: ComponentPropsWithRef<"input">) {
   return (
     <input
       className={clsx("w-full border border-ink bg-paper px-3 py-2.75 font-serif text-base outline-none", DISABLED_FIELD, className)}
