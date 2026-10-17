@@ -2,8 +2,7 @@
 
 import type { ReactNode } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import clsx from "clsx";
-import { Button, DISABLED_FIELD, Label, TextArea } from "@/components/shared";
+import { Button, FIELD_ROW, FIELD_ROW_DISABLED, Label, ROW_INPUT, TextArea } from "@/components/shared";
 import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, MAX_CIRCLE_AIMS } from "@/lib/circles.util";
 
 interface CircleBasicsFieldsProps {
@@ -45,7 +44,7 @@ export function CircleBasicsFields({ domain, onDomainChange, aims, onAimsChange,
         <p className="mb-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">What this circle is there to achieve. At least one.</p>
         <div className="flex flex-col gap-2.5">
           {aims.map((a, i) => (
-            <div key={i} className={clsx("flex items-stretch border", disabled ? "border-faint bg-wash" : "border-ink")}>
+            <div key={i} className={disabled ? FIELD_ROW_DISABLED : FIELD_ROW}>
               <input
                 value={a}
                 onChange={(e) => onAimsChange(aims.map((x, j) => (j === i ? e.target.value : x)))}
@@ -53,14 +52,14 @@ export function CircleBasicsFields({ domain, onDomainChange, aims, onAimsChange,
                 maxLength={CIRCLE_AIM_MAX}
                 placeholder={i === 0 ? "e.g. Keep the block's money transparent" : "Another aim"}
                 aria-label={`Aim ${i + 1}`}
-                className={clsx("min-w-0 flex-1 border-0 px-3 py-2.75 font-serif text-base outline-none", DISABLED_FIELD, "disabled:bg-transparent")}
+                className={ROW_INPUT}
               />
               {aims.length > 1 && !disabled && (
                 <button
                   onClick={() => onAimsChange(aims.filter((_, j) => j !== i))}
                   disabled={disabled}
                   aria-label={`Remove aim ${i + 1}`}
-                  className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 border-l border-ink bg-paper px-3.5 text-soft"
+                  className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent px-3.5 text-soft"
                 >
                   <XMarkIcon className="size-3.5" strokeWidth={2.5} />
                 </button>

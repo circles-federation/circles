@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { DISABLED_FIELD } from "./input";
+import { DISABLED_FIELD, FIELD } from "./input";
 import type { ComponentPropsWithoutRef } from "react";
 
 /* Shared multi-line text field — same bordered, serif-body look as
@@ -9,7 +9,7 @@ import type { ComponentPropsWithoutRef } from "react";
 export function TextArea({ className, ...rest }: ComponentPropsWithoutRef<"textarea">) {
   return (
     <textarea
-      className={clsx("w-full resize-y border border-ink bg-paper px-3 py-2.75 font-serif text-base leading-normal outline-none disabled:resize-none", DISABLED_FIELD, className)}
+      className={clsx("w-full resize-y px-3 py-2.75 font-serif text-base leading-normal disabled:resize-none", FIELD, DISABLED_FIELD, className)}
       {...rest}
     />
   );

@@ -168,21 +168,23 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
         {/* email + visibility */}
         <Section>
           <Label htmlFor="email">Email</Label>
-          <div className="flex items-stretch border border-ink">
+          <div className="flex items-stretch gap-2">
             {/* read-only: it's also what they sign in with (lib/session.ts finds
-                their member by it), so changing it here would lock them out */}
+                their member by it), so changing it here would lock them out.
+                Shown as a field that can't be changed (DISABLED_FIELD's look) */}
             <input
               id="email"
               value={draft.email || ""}
               readOnly
               aria-readonly="true"
-              className="min-w-0 flex-1 cursor-default border-none bg-faint/40 px-3 py-2.75 font-serif text-base text-soft outline-none"
+              className="min-w-0 flex-1 cursor-default border border-dashed border-faint bg-paper px-3 py-2.75 font-serif text-base text-soft outline-none"
             />
-            <div className="flex items-stretch border-l border-ink">
+            <div className="flex items-stretch border border-ink">
               <button
                 onClick={() => set({ emailPublic: true })}
                 className={clsx(
-                  "ink-press inline-flex cursor-pointer items-center gap-1.5 border-r border-ink px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                  "inline-flex cursor-pointer items-center gap-1.5 border-r border-ink px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                  togglePress(draft.emailPublic),
                   draft.emailPublic ? "bg-ink text-paper" : "bg-paper text-ink",
                 )}
                 title="Visible to neighbors"
@@ -193,7 +195,8 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
               <button
                 onClick={() => set({ emailPublic: false })}
                 className={clsx(
-                  "ink-press inline-flex cursor-pointer items-center gap-1.5 px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                  "inline-flex cursor-pointer items-center gap-1.5 px-3.5 font-sans text-eyebrow font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                  togglePress(!draft.emailPublic),
                   !draft.emailPublic ? "bg-ink text-paper" : "bg-paper text-ink",
                 )}
                 title="Hidden from other members"

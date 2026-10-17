@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { HandRaisedIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { Button, ConfirmModal, DISABLED_FIELD, Eyebrow, PageContainer, Select } from "@/components/shared";
+import { Button, ConfirmModal, DISABLED_FIELD, Eyebrow, FIELD, PageContainer, Select } from "@/components/shared";
 import { CIRCLE_ROLE_LABEL_MAX, builtinRoleDescription, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { changedFields, checkChanges, hasChanges } from "@/lib/proposals.util";
 import { useMemberById } from "@/lib/hooks";
@@ -111,7 +111,7 @@ export function CircleRolesPage({ circle: o, circles, memberId, openProposal, on
                     maxLength={CIRCLE_ROLE_LABEL_MAX}
                     placeholder="Role name"
                     aria-label="Role name"
-                    className={clsx("min-w-0 flex-1 border border-faint bg-paper px-2.5 py-2 font-sans text-sm font-bold outline-none focus:border-ink touch:text-base", DISABLED_FIELD)}
+                    className={clsx("min-w-0 flex-1 px-2.5 py-2 font-sans text-sm font-bold touch:text-base", FIELD, DISABLED_FIELD)}
                   />
                   {!locked && (
                   <button

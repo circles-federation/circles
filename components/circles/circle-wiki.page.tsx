@@ -5,7 +5,7 @@ import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { Button, ConfirmModal, Input, Label, PageContainer, Section, SectionGroup, TextArea } from "@/components/shared";
+import { Button, ConfirmModal, FIELD, FIELD_ROW, Input, Label, PageContainer, ROW_INPUT, Section, SectionGroup, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
 import { circleContact, circleDomainEnding, circleTypeNoun, circleWebsiteUrl } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
@@ -110,14 +110,14 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
                 onChange={(e) => updateFact(i, "label", e.target.value)}
                 placeholder="Label"
                 aria-label={`Fact ${i + 1} label`}
-                className="w-full border border-faint bg-paper px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft outline-none focus:border-ink touch:text-base touch:tracking-[0.06em]"
+                className={clsx("w-full px-2 py-1.5 font-sans text-micro font-bold uppercase tracking-[0.15em] text-soft touch:text-base touch:tracking-[0.06em]", FIELD)}
               />
               <input
                 value={f.value}
                 onChange={(e) => updateFact(i, "value", e.target.value)}
                 placeholder="Value"
                 aria-label={`Fact ${i + 1} value`}
-                className="mt-2 w-full border border-faint bg-paper px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink outline-none focus:border-ink"
+                className={clsx("mt-2 w-full px-2 py-1.5 font-sans text-lg font-extrabold tracking-tight text-ink", FIELD)}
               />
             </div>
           ))}
@@ -165,23 +165,23 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
               <Label>Open hours</Label>
               <div className="flex flex-col gap-2.5">
                 {hours.map((h, i) => (
-                  <div key={i} className="flex items-stretch border border-ink">
+                  <div key={i} className={FIELD_ROW}>
                     <input
                       value={h.day}
                       onChange={(e) => updateHour(i, "day", e.target.value)}
                       placeholder="Day (e.g. Tue or Mon–Fri)"
-                      className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
+                      className={clsx(ROW_INPUT, "border-r border-paper")}
                     />
                     <input
                       value={h.time}
                       onChange={(e) => updateHour(i, "time", e.target.value)}
                       placeholder="Hours (e.g. 4–8pm)"
-                      className="min-w-0 flex-1 border-0 border-r border-ink px-3 py-2.75 font-serif text-base outline-none"
+                      className={ROW_INPUT}
                     />
                     <button
                       onClick={() => setHours((prev) => prev.filter((_, j) => j !== i))}
                       aria-label="Remove"
-                      className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-paper px-3.5 text-soft"
+                      className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent px-3.5 text-soft"
                     >
                       <XMarkIcon className="size-3.5" strokeWidth={2.5} />
                     </button>

@@ -45,14 +45,14 @@ function SearchField({ query, onQuery, placeholder }: { query: string; onQuery: 
         onChange={(e) => onQuery(e.target.value)}
         placeholder={placeholder}
         enterKeyHint="search"
-        className="min-w-0 flex-1 border-none bg-paper py-3 pr-3.5 pl-2 font-serif text-base outline-none"
+        className="min-w-0 flex-1 border-none bg-transparent py-3 pr-3.5 pl-2 font-serif text-base outline-none"
       />
       {query && (
         <button
           onClick={() => onQuery("")}
           aria-label="Clear search"
           title="Clear search"
-          className="flex cursor-pointer items-center justify-center border-none bg-paper px-3 text-soft"
+          className="flex cursor-pointer items-center justify-center border-none bg-transparent px-3 text-soft"
         >
           <XMarkIcon className="size-4" strokeWidth={2} />
         </button>
@@ -70,9 +70,9 @@ function FilterTrigger({ activeCount, onClick }: { activeCount: number; onClick:
       aria-label="Filter"
       title="Filter"
       className={clsx(
-        "relative flex cursor-pointer items-center justify-center border-0 border-l border-ink px-3.5 text-base",
+        "relative flex w-12.5 shrink-0 cursor-pointer items-center justify-center border-0 text-base",
         togglePress(activeCount > 0),
-        activeCount > 0 ? "bg-ink text-paper" : "bg-paper text-ink",
+        activeCount > 0 ? "bg-ink text-paper" : "bg-transparent text-ink",
       )}
     >
       <FunnelIcon className="size-3.5" strokeWidth={2.5} />
@@ -202,7 +202,7 @@ export function SearchWithFilter({ query, onQuery, placeholder, filters, filterL
 
   return (
     <div ref={wrapRef} className={clsx("relative", className)}>
-      <div className="flex items-stretch border border-ink">
+      <div className="flex items-stretch border-b border-soft bg-wash has-[input:focus]:border-ink has-[input:focus]:shadow-[inset_0_-1px_0_var(--color-ink)]">
         <SearchField query={query} onQuery={onQuery} placeholder={placeholder} />
         {groups.length > 0 && <FilterTrigger activeCount={activeCount} onClick={() => setOpen((o) => !o)} />}
       </div>
