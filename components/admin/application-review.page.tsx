@@ -18,7 +18,7 @@ import type { PendingApplication } from "@/lib/db/applications";
 export function ApplicationReviewPage({ application: a }: { application: PendingApplication }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const { applicationDecided } = useAppState();
+  const { reviewDecided } = useAppState();
   const [confirming, setConfirming] = useState<"approve" | "decline" | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,7 +35,7 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
       showToast({ tone: "error", title: "Couldn't save that decision", message: result.error });
       return;
     }
-    applicationDecided();
+    reviewDecided();
     showToast({
       tone: "success",
       title: approve ? `${a.firstName} is a member` : "Application declined",
@@ -43,7 +43,7 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
         ? `We've emailed ${a.email} to let them know.`
         : `But we couldn't email ${a.email} — let them know yourself.`,
     });
-    router.push("/admin/applications");
+    router.push("/admin/review");
     router.refresh();
   }
 

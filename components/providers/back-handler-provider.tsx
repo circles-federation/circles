@@ -74,6 +74,8 @@ function parentRoute(pathname: string): string {
   if (pathname === "/profile/edit") return "/settings";
   const parent = pathname.replace(/\/[^/]+\/?$/, "");
   if (parent === "" || parent === "/profile" || parent === "/admin" || parent === "/invitations" || parent === "/proposals") return "/home";
+  // an application or a photo is reviewed from the admin's one list of both
+  if (parent === "/admin/applications" || parent === "/admin/photos") return "/admin/review";
   // a bulletin item's form is reached from its circle's Bulletin tab
   const bulletin = parent.match(/^(\/circles\/[^/]+)\/bulletin$/);
   if (bulletin) return `${bulletin[1]}?tab=bulletin`;

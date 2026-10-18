@@ -43,8 +43,8 @@ export function useCirclesById(): CirclesById {
    (admins only) or invitations sent to them — for the dot on its nav tab.
    Stands in for a notifications screen until there is one. */
 export function useHomeNeedsAttention(): boolean {
-  const { pendingApplications, invitations, proposals, profile } = useAppState();
-  return (pendingApplications ?? 0) > 0 || invitations.some((i) => i.memberId === profile.id) || proposals.some((p) => awaitingResponse(p, profile.id));
+  const { pendingReviews, invitations, proposals, profile } = useAppState();
+  return (pendingReviews ?? 0) > 0 || invitations.some((i) => i.memberId === profile.id) || proposals.some((p) => awaitingResponse(p, profile.id));
 }
 
 function subscribeToConnection(onChange: () => void) {

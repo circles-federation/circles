@@ -127,6 +127,13 @@ export function invitationPush(d: { invitationId: string; inviterName?: string; 
   return message(`${d.inviterName ?? "A member"} invited you to ${d.circleName}`, d.tagline || "Open it to accept or decline.", `/invitations/${d.invitationId}`, `invitation-${d.invitationId}`);
 }
 
+// a system admin's decision on a member's new photo, opening where they'd act on it
+export function photoDecisionPush(d: { memberId: number; approved: boolean; note?: string }): PushMessage {
+  return d.approved
+    ? message("Your new photo is up", "Your neighbors now see it on your profile.", `/profile/${d.memberId}`, "photo-review")
+    : message("Your new photo wasn't approved", d.note || "Your profile keeps the photo it had. You're welcome to send another.", "/profile/edit", "photo-review");
+}
+
 /* The daily digest's push is only a nudge toward the email, with none of its
    detail: the digest is the place for a day's worth of news. A web app can't
    open the mail app, so a tap opens the events list. Tagged so today's

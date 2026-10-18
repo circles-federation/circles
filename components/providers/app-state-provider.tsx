@@ -50,7 +50,7 @@ export interface AppStateValue {
   // the proposals of their circles: open ones, and those decided lately
   proposals: CircleProposal[];
   // applications waiting for review: a number for a system admin, else null
-  pendingApplications: number | null;
+  pendingReviews: number | null;
   rsvpState: Record<string, boolean>;
   profile: Profile;
   toggleRsvp(eventId: string): void;
@@ -66,15 +66,17 @@ export interface AppStateValue {
   // was decided at once (a circle of one)
   proposeCircleChanges(circleId: string, changes: ProposalChanges): Promise<{ ok: true; proposal: CircleProposal; passed: boolean } | { ok: false; error: string }>;
   respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult>;
-  saveProfile(next: Profile): void;
-  savePhoto(photo: Blob): Promise<MutationResult>;
+  // photoPending: a new photo saved with it is waiting for review, which the toast says
+  saveProfile(next: Profile, options?: { photoPending?: boolean }): void;
+  // pending: it waits for a system admin's review, so only they see it yet
+  savePhoto(photo: Blob): Promise<{ ok: true; pending: boolean } | { ok: false; error: string }>;
   saveNotificationSettings(settings: NotificationSettings): Promise<MutationResult>;
   saveAvailability(windows: AvailabilityWindow[]): Promise<MutationResult>;
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
   removeResource(id: string): Promise<MutationResult>;
   // an admin decided one, so there's one fewer waiting (until the next refresh)
-  applicationDecided(): void;
+  reviewDecided(): void;
   inviteToCircle(circleId: string, memberId: number): Promise<MutationResult>;
   // resolves to the circle joined, for the caller to go to
   acceptInvitation(id: string): Promise<{ ok: true; circleId: string } | { ok: false; error: string }>;
@@ -140,13 +142,13 @@ interface AppStateProviderProps {
   initialCircles: Circle[];
   initialMembers: Member[];
   initialResources: CircleResource[];
-  initialPendingApplications: number | null;
+  initialPendingReviews: number | null;
   initialInvitations: CircleInvitation[];
   initialProposals: CircleProposal[];
   initialProfile: Profile;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingApplications, initialInvitations, initialProposals }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingReviews, initialInvitations, initialProposals }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
@@ -156,7 +158,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // than a static seed array; the signed-in member's own edits are mirrored in
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [resources, setResources] = useState<CircleResource[]>(initialResources);
-  const [pendingApplications, setPendingApplications] = useState(initialPendingApplications);
+  const [pendingReviews, setPendingReviews] = useState(initialPendingReviews);
   const [invitations, setInvitations] = useState<CircleInvitation[]>(initialInvitations);
   const [proposals, setProposals] = useState<CircleProposal[]>(initialProposals);
   // rsvpState: { [eventId]: true } — the current user's own RSVPs, persisted across routes
@@ -202,7 +204,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setResources(fresh.resources);
     setInvitations(fresh.invitations);
     setProposals(fresh.proposals);
-    setPendingApplications(fresh.pendingApplications);
+    setPendingReviews(fresh.pendingReviews);
     setRsvpState(ownFlags(fresh.events, (e) => e.rsvps.includes(currentUserId)));
     setProfile(fresh.profile);
   }
@@ -476,10 +478,13 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   }
 
   // save edits from the Edit Myself page back to the profile
-  function saveProfile(next: Profile) {
+  function saveProfile(next: Profile, { photoPending = false }: { photoPending?: boolean } = {}) {
     // the photo isn't part of this save (see savePhoto), and may have just
     // changed since the form's draft was copied
-    setProfile((p) => ({ ...next, photoVersion: p.photoVersion }));
+    setProfile((p) => {
+      const { pendingPhotoVersion: _stale, ...rest } = next;
+      return { ...rest, photoVersion: p.photoVersion, ...(p.pendingPhotoVersion !== undefined ? { pendingPhotoVersion: p.pendingPhotoVersion } : {}) };
+    });
     setMembers((prev) =>
       prev.map((m) =>
         m.id === next.id
@@ -493,21 +498,32 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     dbUpdateMember({ ...next, birthDecade: next.birthDecade ?? null }).then((result) => {
       if (!result.ok) console.error(result.error);
     });
-    showToast({ tone: "success", title: "Changes saved", message: "Your details have been updated." });
+    showToast({
+      tone: "success",
+      title: "Changes saved",
+      message: photoPending ? "Your new photo will show once a Circles admin has approved it." : "Your details have been updated.",
+    });
   }
 
   // await-then-update, like the resources below: the server can refuse the
   // file, and the new photo's URL depends on the version it assigns. No toast
-  // of its own — the Edit Myself page follows it with saveProfile's.
-  async function savePhoto(photo: Blob): Promise<MutationResult> {
+  // of its own — the Edit Myself page follows it with saveProfile's. Most
+  // members' new photo waits for review, so it's only their own Profile that
+  // learns of it; an admin's goes live, as before.
+  async function savePhoto(photo: Blob): Promise<{ ok: true; pending: boolean } | { ok: false; error: string }> {
     const form = new FormData();
     form.set("photo", photo);
     const result = await dbUpdateMemberPhoto(form).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
-    const photoVersion = result.value;
-    setProfile((p) => ({ ...p, photoVersion }));
+    const saved = result.value;
+    if ("pending" in saved) {
+      setProfile((p) => ({ ...p, pendingPhotoVersion: saved.pending }));
+      return { ok: true, pending: true };
+    }
+    const photoVersion = saved.live;
+    setProfile(({ pendingPhotoVersion: _replaced, ...p }) => ({ ...p, photoVersion }));
     setMembers((prev) => prev.map((m) => (m.id === profile.id ? { ...m, photoVersion } : m)));
-    return { ok: true };
+    return { ok: true, pending: false };
   }
 
   // await-then-update: Settings → Notifications stays open to say why if the
@@ -611,12 +627,12 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events, circles, members, resources, invitations, proposals, pendingApplications, rsvpState, profile,
+        events, circles, members, resources, invitations, proposals, pendingReviews, rsvpState, profile,
         inviteToCircle: tracked(inviteToCircle),
         acceptInvitation: tracked(acceptInvitation),
         leaveCircle: tracked(leaveCircle),
         deleteInvitation: tracked(deleteInvitation),
-        applicationDecided: tracked(() => setPendingApplications((n) => (n === null ? n : Math.max(0, n - 1)))),
+        reviewDecided: tracked(() => setPendingReviews((n) => (n === null ? n : Math.max(0, n - 1)))),
         toggleRsvp: tracked(toggleRsvp),
         toggleRoleSlot: tracked(toggleRoleSlot),
         createEvent: tracked(createEvent),

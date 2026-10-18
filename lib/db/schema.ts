@@ -100,6 +100,19 @@ export const memberPhotos = pgTable("member_photos", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* A new photo a member has uploaded, waiting for a system admin to approve
+   (see lib/db/photo-reviews.ts): at most one per member, a new upload
+   replacing it. Until it's approved everyone else is shown the member_photos
+   one; approving moves it there, declining deletes it. */
+export const memberPendingPhotos = pgTable("member_pending_photos", {
+  memberId: integer("member_id")
+    .primaryKey()
+    .references(() => members.id, { onDelete: "cascade" }),
+  data: bytea("data").notNull(),
+  contentType: text("content_type").notNull(),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /* One row per device a member has turned push notifications on for (see
    lib/push/index.ts). The endpoint is the push service's address for that
    browser install, so it's the key: if someone else signs in on the same

@@ -1,4 +1,4 @@
-import { countPendingApplications } from "./applications";
+import { countPendingReviews } from "./photo-reviews";
 import { getCirclesForMember } from "./circles";
 import { getEventsForMember } from "./events";
 import { getInvitationsForMember } from "./invitations";
@@ -18,8 +18,9 @@ export interface AppStateData {
   proposals: CircleProposal[];
   // the member themself, with whether they let others see their email
   profile: Profile;
-  // applications waiting for review, for a system admin; null for anyone else
-  pendingApplications: number | null;
+  // what's waiting for a system admin's review (applications and new
+  // photos); null for anyone else
+  pendingReviews: number | null;
 }
 
 /* Everything AppStateProvider holds, as the given member may see it: what
@@ -29,17 +30,17 @@ export interface AppStateData {
    scoped to circles: only the ones the member may see are fetched, so nothing
    else reaches their browser. Null if the member no longer exists. */
 export async function getAppStateForMember(memberId: number): Promise<AppStateData | null> {
-  const [events, circles, members, resources, invitations, proposals, pendingApplications] = await Promise.all([
+  const [events, circles, members, resources, invitations, proposals, pendingReviews] = await Promise.all([
     getEventsForMember(memberId),
     getCirclesForMember(memberId),
     getMembersForViewer(memberId),
     getResourcesForMember(memberId),
     getInvitationsForMember(memberId),
     getProposalsForMember(memberId),
-    countPendingApplications(memberId),
+    countPendingReviews(memberId),
   ]);
   const me = members.find((m) => m.id === memberId);
   if (!me) return null;
   const profile: Profile = { ...me, ...(await getOwnSettings(memberId)) };
-  return { events, circles, members, resources, invitations, proposals, profile, pendingApplications };
+  return { events, circles, members, resources, invitations, proposals, profile, pendingReviews };
 }

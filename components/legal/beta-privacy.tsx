@@ -29,6 +29,7 @@ export function BetaPrivacy() {
         <li>When you can do meetings isn&apos;t shown to anyone as a schedule. When a member of one of your circles plans a meeting, they see whether you can make the time they pick, and until when you&apos;re free if you&apos;re free as it begins.</li>
         <li>Events, bulletin posts, and who&apos;s going to something are seen by the members of the circle they belong to. Answers to a proposal aren&apos;t secret: every member of its circle sees who answered what, and why anyone objected.</li>
         <li>Your application photo is seen only by the person reviewing it, and is no longer kept with the application once it&apos;s decided.</li>
+        <li>When you change your photo, a Circles admin sees the new one, beside your current one, before anyone else does. Others keep seeing your current photo until it&apos;s approved, and a declined one is deleted.</li>
       </LegalList>
 
       <LegalHeading>What Circles never does</LegalHeading>

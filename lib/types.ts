@@ -61,7 +61,9 @@ export interface NotificationSettings {
 // null until they've set when they can do meetings (Settings → Meeting
 // availability); their own, since others only learn whether they're free at
 // a given time, from the meeting form
-export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings; availability: AvailabilityWindow[] | null };
+// pendingPhotoVersion: a new photo they've sent that a system admin hasn't
+// decided on yet, which only they (and admins) can see
+export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings; availability: AvailabilityWindow[] | null; pendingPhotoVersion?: number };
 
 // who in a circle can make a meeting's date and time, as the meeting form
 // shows it: `freeUntil` is minutes from midnight, for someone free as it begins

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { CameraIcon } from "@heroicons/react/24/outline";
 import { Avatar, Button } from "@/components/shared";
+import { useAppState } from "@/components/providers/app-state-provider";
 import type { Member } from "@/lib/types";
 
 const PHOTO_SIZE = 512;
@@ -36,8 +37,18 @@ interface PhotoPickerProps {
 
 /* Choosing a replacement only — there's deliberately no way to remove a
    photo, here or on the server. Shows the chosen photo in place of the
-   current one until the caller saves it. */
+   current one until the caller saves it. A new photo waits for a system
+   admin's review before anyone else sees it (lib/db/photo-reviews.ts), so
+   one already waiting shows here as it does on their profile, and choosing
+   another replaces it; an admin's own goes up at once. */
 export function PhotoPicker({ member, onChange }: PhotoPickerProps) {
+  const { profile, pendingReviews } = useAppState();
+  const isAdmin = pendingReviews !== null;
+  const hint = isAdmin
+    ? "Shown to neighbors who share a circle with you."
+    : profile.pendingPhotoVersion
+      ? "Your new photo is waiting for review. Until it's approved, others see your current one. Choosing another replaces it."
+      : "Shown to neighbors who share a circle with you, once a Circles admin has checked it.";
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -72,7 +83,7 @@ export function PhotoPicker({ member, onChange }: PhotoPickerProps) {
       {previewUrl ? (
         <img src={previewUrl} alt="" className="size-24 shrink-0 border border-ink object-cover" />
       ) : (
-        <Avatar member={member} size={96} />
+        <Avatar member={member} size={96} showPending />
       )}
       <div>
         <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
@@ -83,7 +94,7 @@ export function PhotoPicker({ member, onChange }: PhotoPickerProps) {
         {error ? (
           <p className="mt-2 font-sans text-xs font-bold text-danger">{error}</p>
         ) : (
-          <p className="mt-2 font-serif text-sm leading-normal text-soft">Shown to neighbors who share a circle with you.</p>
+          <p className="mt-2 font-serif text-sm leading-normal text-soft">{hint}</p>
         )}
       </div>
     </div>

@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
-import { circleMembers, memberPhotos, members } from "./schema";
+import { circleMembers, memberPendingPhotos, memberPhotos, members } from "./schema";
 import { validateLanguages } from "@/lib/languages.util";
 import { OCCUPATION_MAX, PRONOUNS_MAX, isBirthDecade } from "@/lib/members.util";
 import { normalizeAvailability, validateAvailability } from "@/lib/availability.util";
@@ -64,13 +64,19 @@ export async function getMembersForViewer(viewerId: number): Promise<Member[]> {
 
 // the settings only a member themself sees, for their own profile: whether
 // others may see their email, how they're told about things, and when they
-// can do meetings
-export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications" | "availability">> {
+// can do meetings, and a new photo still waiting for review
+export async function getOwnSettings(id: number): Promise<Pick<Profile, "emailPublic" | "notifications" | "availability" | "pendingPhotoVersion">> {
   const [row] = await db
-    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush, availability: members.availability })
+    .select({ emailPublic: members.emailPublic, email: members.notifyEmail, push: members.notifyPush, availability: members.availability, pendingAt: memberPendingPhotos.submittedAt })
     .from(members)
+    .leftJoin(memberPendingPhotos, eq(memberPendingPhotos.memberId, members.id))
     .where(eq(members.id, id));
-  return { emailPublic: row?.emailPublic ?? false, notifications: { email: row?.email ?? true, push: row?.push ?? true }, availability: row?.availability ?? null };
+  return {
+    emailPublic: row?.emailPublic ?? false,
+    notifications: { email: row?.email ?? true, push: row?.push ?? true },
+    availability: row?.availability ?? null,
+    ...(row?.pendingAt ? { pendingPhotoVersion: row.pendingAt.getTime() } : {}),
+  };
 }
 
 // Settings → Meeting availability, always the member's own (the action
@@ -157,19 +163,6 @@ export async function readPhoto(file: Blob, Refusal: new (message: string) => Er
   const contentType = sniffImageType(data);
   if (!contentType) throw new Refusal("That file isn't a JPEG, PNG or WebP image.");
   return { data, contentType };
-}
-
-/* Replaces the member's photo — there's no removing one (see memberPhotos in
-   schema.ts). Like updateMember, `id` is always the acting member. Returns the
-   new photoVersion. */
-export async function setMemberPhoto(id: number, file: Blob): Promise<number> {
-  const { data, contentType } = await readPhoto(file, MemberError);
-  const updatedAt = new Date();
-  await db
-    .insert(memberPhotos)
-    .values({ memberId: id, data, contentType, updatedAt })
-    .onConflictDoUpdate({ target: memberPhotos.memberId, set: { data, contentType, updatedAt } });
-  return updatedAt.getTime();
 }
 
 const viewerMembership = alias(circleMembers, "viewer_membership");

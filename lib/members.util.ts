@@ -4,7 +4,16 @@ import type { Member } from "./types";
    placeholder — neutral silhouettes, seeded */
 export function avatarFor(m: Member): string {
   if (m.photoVersion) return `/api/members/${m.id}/photo?v=${m.photoVersion}`;
-  return `https://i.pravatar.cc/300?img=${m.id + 8}`;
+  return placeholderFor(m.id);
+}
+
+export function placeholderFor(memberId: number): string {
+  return `https://i.pravatar.cc/300?img=${memberId + 8}`;
+}
+
+// a new photo waiting for review, which only the member and admins may fetch
+export function pendingPhotoFor(memberId: number, version: number): string {
+  return `/api/members/${memberId}/photo?pending&v=${version}`;
 }
 
 // the decades someone can say they were born in, oldest first

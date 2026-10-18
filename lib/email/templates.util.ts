@@ -727,6 +727,27 @@ export function applicationDeclinedEmail(d: { firstName: string; neighborhoodNam
   };
 }
 
+// a system admin's decision on the new photo a member sent
+export function photoDecisionEmail(d: { name: string; approved: boolean; note?: string; url: string }): Body {
+  const body = d.approved
+    ? "Your new photo has been approved, and your neighbors now see it on your profile."
+    : "Your new photo wasn't approved, so your profile keeps the photo it had. You're welcome to send another.";
+  const noteLabel = "A note from the reviewer";
+  return {
+    subject: d.approved ? "Your new photo is up" : "About your new photo",
+    text: `${d.name},\n\n${body}\n\n${d.note ? `${noteLabel}:\n${d.note}\n\n` : ""}Your profile: ${d.url}`,
+    html: shell(
+      applicationMasthead("Your new photo on") +
+        `<tr><td style="padding-top:24px"></td></tr>` +
+        paragraph(`${esc(d.name)}, ${esc(body)}`) +
+        (d.note
+          ? `<tr><td style="padding-bottom:20px">${eyebrow(noteLabel)}<div style="margin-top:8px;border-left:3px solid ${INK};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(d.note).replace(/\n/g, "<br>")}</div></td></tr>`
+          : "") +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(d.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">${d.approved ? "See your profile" : "Choose another"}</a></td></tr>`
+    ),
+  };
+}
+
 // a member invited you to join their circle
 export function invitationEmail(d: { name: string; inviterName?: string; circleName: string; tagline: string; url: string }): Body {
   const who = d.inviterName ?? "A member";

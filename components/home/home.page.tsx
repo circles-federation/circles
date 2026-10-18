@@ -34,7 +34,7 @@ interface HomeProps {
    dial), and their events. Profile editing lives on a separate page. */
 export function Home({ profile, events, circles, rsvpState, onOpenEvent, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onOpenProfile }: HomeProps) {
   const members = useMembers();
-  const { pendingApplications, invitations, proposals } = useAppState();
+  const { pendingReviews, invitations, proposals } = useAppState();
   // proposals in my circles still waiting on my answer, soonest to close first
   const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
   // the ones I proposed, still open: nothing for me to answer, but the way back
@@ -75,7 +75,7 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, onOpenN
         <div className="flex min-w-0 flex-1 items-center gap-5">
           {/* opens your own profile, as others see it; the photo inverts while pressed */}
           <button type="button" onClick={onOpenProfile} aria-label="View your profile" className="press-invert shrink-0 cursor-pointer border-0 bg-transparent p-0">
-            <Avatar member={profile} sizeClassName="size-24 min-[720px]:size-30" />
+            <Avatar member={profile} sizeClassName="size-24 min-[720px]:size-30" showPending />
           </button>
           <div className="min-w-0">
             <h1 className="m-0 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em] wrap-break-word">
@@ -98,11 +98,11 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, onOpenN
 
         <HomePrompts />
 
-        {/* a system admin's way into the applications waiting for them */}
-        {pendingApplications !== null && (
+        {/* a system admin's way into what's waiting for their review: applications and new photos */}
+        {pendingReviews !== null && (
           <Section>
-            <EyebrowGroup label={<AttentionLabel on={pendingApplications > 0}>Applications</AttentionLabel>}>
-              <MenuRow href="/admin/applications" label={pendingApplications === 0 ? "Nothing waiting for review" : `${pendingApplications} waiting for review`} />
+            <EyebrowGroup label={<AttentionLabel on={pendingReviews > 0}>Review</AttentionLabel>}>
+              <MenuRow href="/admin/review" label={pendingReviews === 0 ? "Nothing waiting for review" : `${pendingReviews} waiting for review`} />
             </EyebrowGroup>
           </Section>
         )}

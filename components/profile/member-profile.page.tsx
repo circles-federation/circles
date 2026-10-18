@@ -42,7 +42,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
           )}
         </div>
         <div className="mt-4 flex items-center gap-5">
-          <Avatar member={m} size={96} />
+          <Avatar member={m} size={96} showPending />
           <div className="min-w-0">
             <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{m.name}</h1>
             {/* as a member card shows it, under the name in sentence case (it's

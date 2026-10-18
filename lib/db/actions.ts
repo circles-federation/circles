@@ -9,14 +9,15 @@ import { UserFacingError } from "./errors";
 import * as events from "./events";
 import * as invitations from "./invitations";
 import * as members from "./members";
+import * as photoReviews from "./photo-reviews";
 import * as proposals from "./proposals";
 import * as push from "./push";
 import * as resources from "./resources";
 import { sendEmail } from "@/lib/email";
-import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail } from "@/lib/email/templates.util";
+import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail, photoDecisionEmail } from "@/lib/email/templates.util";
 import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
-import { invitationPush } from "@/lib/push/messages.util";
+import { invitationPush, photoDecisionPush } from "@/lib/push/messages.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
@@ -54,10 +55,11 @@ export async function meetingAvailabilityAction(circleId: string, date: string, 
 }
 
 // like updateMemberAction, always the session member's own photo; the file
-// comes as FormData since that's how a Server Action takes a Blob
+// comes as FormData since that's how a Server Action takes a Blob. It waits
+// for a system admin's review (lib/db/photo-reviews.ts) unless they are one.
 export async function updateMemberPhotoAction(form: FormData) {
   const photo = form.get("photo");
-  return asMember((memberId) => members.setMemberPhoto(memberId, photo instanceof Blob ? photo : new Blob()));
+  return asMember((memberId) => photoReviews.submitMemberPhoto(memberId, photo instanceof Blob ? photo : new Blob()));
 }
 
 // AppStateProvider's refresh when the app returns to the foreground: the same
@@ -208,6 +210,32 @@ export async function approveApplicationAction(id: string) {
 
 export async function declineApplicationAction(id: string, note: string) {
   return asMember(async (memberId) => tellApplicant(await applications.declineApplication(memberId, id, note), false));
+}
+
+/* A system admin's decision on a member's new photo (lib/db/photo-reviews.ts
+   checks they are one, and that it's the version they looked at). The member
+   is told once, by email and push, right after the response is sent; like an
+   invitation it isn't queued, since their profile shows the outcome anyway. */
+export async function approvePhotoAction(memberId: number, version: number) {
+  const result = await asMember((adminId) => photoReviews.approvePhoto(adminId, memberId, version));
+  if (result.ok) after(() => tellPhotoDecision(result.value, true));
+  return result.ok ? { ok: true as const, value: null } : result;
+}
+
+export async function declinePhotoAction(memberId: number, version: number, note: string) {
+  const result = await asMember((adminId) => photoReviews.declinePhoto(adminId, memberId, version, note));
+  if (result.ok) after(() => tellPhotoDecision(result.value, false));
+  return result.ok ? { ok: true as const, value: null } : result;
+}
+
+async function tellPhotoDecision(d: photoReviews.PhotoDecision, approved: boolean) {
+  const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const url = approved ? `${base}/profile/${d.memberId}` : `${base}/profile/edit`;
+  await Promise.all([
+    d.email &&
+      sendEmail({ to: d.email, ...photoDecisionEmail({ ...d, approved, url }) }).catch((err) => console.error("Couldn't email a photo decision:", err)),
+    pushToMember(d.memberId, photoDecisionPush({ ...d, approved })).catch((err) => console.error("Couldn't push a photo decision:", err)),
+  ]);
 }
 
 /* Invitations to a circle (lib/db/invitations.ts checks who may do each).

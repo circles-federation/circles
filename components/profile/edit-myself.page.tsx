@@ -16,8 +16,8 @@ import type { Profile } from "@/lib/types";
 
 interface EditMyselfPageProps {
   profile: Profile;
-  onSave: (next: Profile) => void;
-  onSavePhoto: (photo: Blob) => Promise<MutationResult>;
+  onSave: (next: Profile, options?: { photoPending?: boolean }) => void;
+  onSavePhoto: (photo: Blob) => Promise<{ ok: true; pending: boolean } | { ok: false; error: string }>;
   onBack: () => void;
 }
 
@@ -51,6 +51,7 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
   // the photo goes first and is awaited: if the server refuses it, nothing
   // else has been saved yet and the form stays open to say why
   async function handleSave() {
+    let photoPending = false;
     if (photo) {
       setSaving(true);
       const result = await onSavePhoto(photo);
@@ -59,8 +60,9 @@ export function EditMyselfPage({ profile, onSave, onSavePhoto, onBack }: EditMys
         setPhotoError(result.error);
         return;
       }
+      photoPending = result.pending;
     }
-    onSave(draft);
+    onSave(draft, { photoPending });
     onBack();
   }
 
