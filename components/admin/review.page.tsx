@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { EyebrowGroup, LinkRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { fmtNumericDate } from "@/lib/format.util";
 import { pendingPhotoFor } from "@/lib/members.util";
@@ -10,6 +12,10 @@ import type { PhotoReview } from "@/lib/db/photo-reviews";
    each oldest first and opening its own review page. Both are the same
    check, that a photo shows a real person, so they're one place to look. */
 export function ReviewPage({ applications, photos }: { applications: PendingApplication[]; photos: PhotoReview[] }) {
+  const router = useRouter();
+  // fetched afresh each time it's shown: a review page comes back here with
+  // Back, which would otherwise show the list as it was, decided one and all
+  useEffect(() => router.refresh(), [router]);
   return (
     <PageContainer size="normal">
       <SectionGroup>

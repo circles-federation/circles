@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, Label, Modal, PageContainer, Section, SectionGroup, TextArea, useToast } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { useGoBack } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { approvePhotoAction, declinePhotoAction } from "@/lib/db/actions";
 import { APPLICATION_NOTE_MAX } from "@/lib/applications.util";
@@ -17,7 +17,7 @@ import type { PhotoReview } from "@/lib/db/photo-reviews";
    bar's action; Decline is at the foot, with a note for the member. Each
    asks first, since either one tells them. */
 export function PhotoReviewPage({ review: r }: { review: PhotoReview }) {
-  const router = useRouter();
+  const goBack = useGoBack();
   const { showToast } = useToast();
   const { reviewDecided } = useAppState();
   const [confirming, setConfirming] = useState<"approve" | "decline" | null>(null);
@@ -38,8 +38,9 @@ export function PhotoReviewPage({ review: r }: { review: PhotoReview }) {
     }
     reviewDecided();
     showToast({ tone: "success", title: approve ? "Photo approved" : "Photo declined", message: `We'll let ${r.name} know.` });
-    router.push("/admin/review");
-    router.refresh();
+    // back to the list it was opened from, not a new copy of it on top: this
+    // page 404s once decided, so it mustn't be left behind in the history
+    goBack();
   }
 
   return (

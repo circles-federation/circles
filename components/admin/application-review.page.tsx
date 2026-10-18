@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { Button, EyebrowGroup, Label, Modal, PageContainer, Section, SectionGroup, TextArea, useToast } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { useGoBack } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { approveApplicationAction, declineApplicationAction } from "@/lib/db/actions";
 import { APPLICATION_NOTE_MAX } from "@/lib/applications.util";
@@ -16,7 +16,7 @@ import type { PendingApplication } from "@/lib/db/applications";
    Decline is at the foot, with a note for the applicant. Each asks first,
    since either one emails them. */
 export function ApplicationReviewPage({ application: a }: { application: PendingApplication }) {
-  const router = useRouter();
+  const goBack = useGoBack();
   const { showToast } = useToast();
   const { reviewDecided } = useAppState();
   const [confirming, setConfirming] = useState<"approve" | "decline" | null>(null);
@@ -43,8 +43,9 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
         ? `We've emailed ${a.email} to let them know.`
         : `But we couldn't email ${a.email} — let them know yourself.`,
     });
-    router.push("/admin/review");
-    router.refresh();
+    // back to the list it was opened from, not a new copy of it on top: this
+    // page 404s once decided, so it mustn't be left behind in the history
+    goBack();
   }
 
   return (
