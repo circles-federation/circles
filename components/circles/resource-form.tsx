@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import clsx from "clsx";
 import { Button, ConfirmModal, Input, Label, Modal, TextArea, togglePress } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { RESOURCE_MESSAGE_MAX, RESOURCE_TITLE_MAX, isAnnouncement, validateResourceInput, type ResourceErrors } from "@/lib/resources.util";
+import { RESOURCE_MESSAGE_MAX, RESOURCE_TITLE_MAX, isAnnouncement, validateResourceInput, type ResourceErrors, type ResourceInput } from "@/lib/resources.util";
 import type { CircleResource, ResourceIcon } from "@/lib/types";
 import { RESOURCE_ICONS, RESOURCE_ICON_TEXT, RESOURCE_OPTIONS, resourceFormTitle, resourceOption } from "./resource-kinds";
 
@@ -15,7 +15,9 @@ import { RESOURCE_ICONS, RESOURCE_ICON_TEXT, RESOURCE_OPTIONS, resourceFormTitle
    what else to fill in: a link for a folder, file or video, a message for an
    announcement. Both are kept while the form is open, so switching kind
    doesn't lose what was typed; only the one the kind uses is saved. */
-export function useResourceForm(circleId: string, resource: CircleResource | null, onSaved: () => void) {
+// `save` in place of adding to the circle's bulletin: a neighborhood post,
+// which is proposed rather than saved (NeighborhoodPostPage)
+export function useResourceForm(circleId: string, resource: CircleResource | null, onSaved: () => void, save?: (input: ResourceInput) => Promise<{ ok: true } | { ok: false; error: string }>) {
   const { addResource, updateResource } = useAppState();
   const [icon, setIcon] = useState<ResourceIcon>(resource?.icon ?? "folder");
   const [title, setTitle] = useState(resource?.title ?? "");
@@ -41,7 +43,7 @@ export function useResourceForm(circleId: string, resource: CircleResource | nul
     setServerError("");
     if (Object.keys(found).length > 0) return;
     setBusy(true);
-    const result = resource ? await updateResource(resource.id, input) : await addResource(circleId, input);
+    const result = save ? await save(input) : resource ? await updateResource(resource.id, input) : await addResource(circleId, input);
     setBusy(false);
     if (result.ok) onSaved();
     else setServerError(result.error);
@@ -52,7 +54,8 @@ export function useResourceForm(circleId: string, resource: CircleResource | nul
 
 export type ResourceFormState = ReturnType<typeof useResourceForm>;
 
-export function ResourceFields({ form }: { form: ResourceFormState }) {
+// `audience`: who reads it, for the message's prompt ("members", "neighbors")
+export function ResourceFields({ form, audience = "members" }: { form: ResourceFormState; audience?: string }) {
   const { icon, setIcon, title, setTitle, url, setUrl, message, setMessage, errors, serverError } = form;
   return (
     <>
@@ -93,7 +96,7 @@ export function ResourceFields({ form }: { form: ResourceFormState }) {
       {isAnnouncement(icon) ? (
         <div>
           <Label htmlFor="resource-message">Message</Label>
-          <TextArea id="resource-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={RESOURCE_MESSAGE_MAX} rows={5} placeholder="What do members need to know?" />
+          <TextArea id="resource-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={RESOURCE_MESSAGE_MAX} rows={5} placeholder={`What do ${audience} need to know?`} />
           {errors.message && <p className="mt-1.5 font-sans text-xs font-bold text-danger">{errors.message}</p>}
         </div>
       ) : (

@@ -20,7 +20,7 @@ import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
 import { announcementPush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
-import { announcementEmail, eventChanges, eventDigestEmail, eventNotificationEmail, proposalEmail } from "@/lib/email/templates.util";
+import { announcementEmail, digestEmail, eventChanges, eventNotificationEmail, proposalEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
@@ -272,19 +272,29 @@ export async function deliverDigests(now: Date = new Date()): Promise<void> {
           if (!byEvent.has(e.id) || e.notice === "approved") byEvent.set(e.id, e);
         }
         const upcoming = [...byEvent.values()];
-        if (!digest.email || upcoming.length === 0) {
-          await markDigestSent(digest.keys);
+        // and the neighborhood's news: posts still up, proposals still open
+        // (claimDigests leaves out the rest)
+        const { posts, proposals } = digest;
+        if (!digest.email || upcoming.length + posts.length + proposals.length === 0) {
+          await markDigestSent(digest);
           continue;
         }
         try {
-          await sendEmail({ to: digest.email, ...eventDigestEmail(upcoming.map((e) => ({ ...e, url: eventUrl(e.id) }))) });
-          await markDigestSent(digest.keys);
+          await sendEmail({
+            to: digest.email,
+            ...digestEmail({
+              events: upcoming.map((e) => ({ ...e, url: eventUrl(e.id) })),
+              posts: posts.map(({ neighborhoodId, ...p }) => ({ ...p, pageUrl: `${appUrl}/circles/${neighborhoodId}` })),
+              proposals: proposals.map(({ id, ...p }) => ({ ...p, url: `${appUrl}/proposals/${id}` })),
+            }),
+          });
+          await markDigestSent(digest);
           // a nudge toward the email just sent, on whatever devices have push
           // on; best effort, since a late nudge would point at old news
           await pushToMember(digest.memberId, digestPush()).catch((err) => console.error(`Couldn't push the digest nudge to member ${digest.memberId}:`, err));
         } catch (err) {
           console.error(`Couldn't email the digest to member ${digest.memberId}:`, err);
-          await markDigestFailed(digest.keys, err instanceof Error ? err.message : String(err));
+          await markDigestFailed(digest, err instanceof Error ? err.message : String(err));
         }
       }
     }

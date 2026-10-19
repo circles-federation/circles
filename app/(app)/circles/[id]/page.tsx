@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { notFound, useParams, useSearchParams } from "next/navigation";
+import { notFound, useParams, useRouter, useSearchParams } from "next/navigation";
 import { CirclePage } from "@/components/circles/circle.page";
 import { NeighborhoodPage } from "@/components/circles/neighborhood.page";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -17,6 +17,7 @@ import { useAppNav, useMemberById, useMembers } from "@/lib/hooks";
 function CircleRoute() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { circles, events, profile } = useAppState();
   const nav = useAppNav();
   const members = useMembers();
@@ -34,6 +35,7 @@ function CircleRoute() {
         profile={profile}
         onOpenCircle={(c) => nav.openCircle(c)}
         onOpenMember={nav.openMember}
+        onProposePost={() => router.push(`/circles/${circle.id}/bulletin/new`)}
         initialTypeFilter={searchParams.get("types")?.split(",")}
       />
     );

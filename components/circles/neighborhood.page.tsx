@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { EmptyState, FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
+import { NeighborhoodBulletin } from "./neighborhood-bulletin";
 import { ParentCircle } from "./parent-circle";
 import { ProposalBanner } from "./proposal-banner";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -24,6 +25,8 @@ interface NeighborhoodPageProps {
   profile: Profile;
   onOpenCircle: (c: Circle) => void;
   onOpenMember: (m: Member) => void;
+  // its bulletin's form, to propose a post (for a member of a Circle in it)
+  onProposePost: () => void;
   // seeds the Type filter — e.g. Home's "Neighbors"/"Local circles" stat
   // cards land here pre-filtered rather than on the unfiltered folder view.
   // Invalid/unrecognized values (a hand-edited URL, say) are dropped rather
@@ -44,7 +47,7 @@ interface NeighborhoodPageProps {
    browsed), so CircleCard/MemberCard's neighborhood chips remain off throughout —
    unlike CirclesRootPage, where cards span multiple neighborhoods and the
    chip is what tells them apart. */
-export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenMember, initialTypeFilter }: NeighborhoodPageProps) {
+export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenMember, onProposePost, initialTypeFilter }: NeighborhoodPageProps) {
   // only a circle's members are ever sent its proposals
   const { proposals } = useAppState();
   const openProposals = proposals.filter((p) => p.circleId === circle.id && p.status === "open");
@@ -119,6 +122,9 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
             {openProposals.map((p) => <ProposalBanner key={p.id} proposal={p} memberId={profile.id} />)}
           </div>
         )}
+        {/* what its Circles have posted for everyone who lives here: like the
+            proposals, not something search or the filter matches */}
+        {!searching && typeFilter.length === 0 && <NeighborhoodBulletin neighborhood={circle} onPropose={onProposePost} />}
         {!searching && typeFilter.length === 0 && <ParentCircle circle={circle} onOpenCircle={onOpenCircle} />}
         {anySections ? (
           <>

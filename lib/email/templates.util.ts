@@ -4,7 +4,7 @@ import { isEventProposal, proposalTitle } from "@/lib/proposals.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
-import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind, ProposalChanges, ProposalLine, ProposalNoticeKind } from "@/lib/types";
+import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind, ProposalChanges, ProposalKind, ProposalLine, ProposalNoticeKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
    Each returns everything but the recipient, so the caller (which knows who
@@ -292,8 +292,32 @@ const dateBox = (iso: string) => {
    reader belongs to (for a proposal, the host circle that votes on it),
    soonest first. The caller passes only what's still to come, one entry per
    event. */
-export function eventDigestEmail(events: DigestEventData[]): Body {
-  const count = events.length;
+// a post a Circle put on the reader's neighborhood's bulletin
+export interface DigestPostData {
+  title: string;
+  announcement: boolean;
+  url?: string;
+  message?: string;
+  circleName: string;
+  neighborhoodName: string;
+  posterName?: string;
+  // the neighborhood's page, where the bulletin is
+  pageUrl: string;
+}
+
+// something the reader's neighborhood is asked to decide (a new Circle in it)
+export interface DigestProposalData {
+  title: string;
+  neighborhoodName: string;
+  proposerName: string;
+  closesAt: Date;
+  url: string;
+}
+
+/* The daily digest: a neighborhood's news (posts on its bulletin, then what
+   it's asked to decide) above the events, which are grouped as before. */
+export function digestEmail({ events, posts = [], proposals = [] }: { events: DigestEventData[]; posts?: DigestPostData[]; proposals?: DigestProposalData[] }): Body {
+  const count = events.length + posts.length + proposals.length;
   const groupOf = (e: DigestEventData) => (e.notice === "proposed" ? (e.hostCircleName ?? e.circleName) : e.circleName);
   const groups = new Map<string, DigestEventData[]>();
   for (const e of [...events].sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))) {
@@ -302,7 +326,7 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
   const circleNames = [...groups.keys()].sort((a, b) => a.localeCompare(b));
   // "3 new events" while that's all it is; "3 updates" once it mixes in votes to
   // cast or meetings approved
-  const allNew = events.every((e) => e.notice === "new");
+  const allNew = posts.length === 0 && proposals.length === 0 && events.every((e) => e.notice === "new");
   const heading = allNew ? `${count} new event${count === 1 ? "" : "s"}` : `${count} update${count === 1 ? "" : "s"}`;
   const meta = (e: DigestEventData) => `${fmtEventWhen(e)} · ${e.location}`;
   const by = (e: DigestEventData) =>
@@ -321,11 +345,25 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
         : e.kind === "meeting"
           ? e.approvedByRole ? { text: "Meeting", color: INK } : { text: "Meeting · Vote to Approve", color: FLAME }
           : null;
-  const openAll = `${events[0]?.url.replace(/\/events\/.*$/, "") ?? ""}/events`;
-  const why = `You're getting this because you're a member of ${circleNames.join(", ")}.`;
+  const base = events[0]?.url.replace(/\/events\/.*$/, "") ?? posts[0]?.pageUrl.replace(/\/circles\/.*$/, "") ?? proposals[0]?.url.replace(/\/proposals\/.*$/, "") ?? "";
+  const openAll = `${base}/events`;
+  const neighborhoods = [...new Set([...posts.map((p) => p.neighborhoodName), ...proposals.map((p) => p.neighborhoodName)])];
+  const why = `You're getting this because you're a member of ${[...new Set([...neighborhoods, ...circleNames])].sort((a, b) => a.localeCompare(b)).join(", ")}.`;
+  const postBy = (p: DigestPostData) => `From ${p.circleName}${p.posterName ? `, posted by ${p.posterName}` : ""}`;
+  const proposalBy = (p: DigestProposalData) => `Proposed by ${p.proposerName}. Answer by ${fmtDateTime(p.closesAt)}; if no one objects, it goes ahead.`;
+  const neighborhoodText =
+    (posts.length > 0
+      ? `${neighborhoods.length === 1 ? `${neighborhoods[0]!.toUpperCase()}'S` : "YOUR NEIGHBORHOOD'S"} BULLETIN\n` +
+        posts.map((p) => `- ${p.title}\n  ${postBy(p)}${p.message ? `\n\n  ${p.message.replace(/\n/g, "\n  ")}` : ""}\n  ${p.url ?? p.pageUrl}`).join("\n\n") +
+        "\n\n"
+      : "") +
+    (proposals.length > 0
+      ? `FOR YOUR NEIGHBORHOOD TO DECIDE\n` + proposals.map((p) => `- ${p.title} (${p.neighborhoodName})\n  ${proposalBy(p)}\n  ${p.url}`).join("\n\n") + "\n\n"
+      : "");
 
   const text =
     `Your Circles digest — ${heading}\n\n` +
+    neighborhoodText +
     circleNames
       .map((c) =>
         `${c.toUpperCase()}\n` +
@@ -335,7 +373,8 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
           .join("\n\n")
       )
       .join("\n\n") +
-    `\n\nSee all events: ${openAll}\n\n${why}`;
+    (events.length > 0 ? `\n\nSee all events: ${openAll}` : "") +
+    `\n\n${why}`;
 
   const row = (e: DigestEventData) => {
     const l = label(e);
@@ -350,6 +389,25 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
     );
   };
 
+  const section = (title: string) => `<tr><td style="padding-top:26px"><div style="border-bottom:1px solid ${INK};padding-bottom:8px;margin-bottom:16px">${eyebrow(esc(title))}</div></td></tr>`;
+  const postRow = (p: DigestPostData) =>
+    `<tr><td style="padding:0 0 20px">` +
+    eyebrow(p.announcement ? "Announcement" : "Link") +
+    `<div style="height:3px"></div>` +
+    (p.url
+      ? `<a href="${esc(p.url)}" style="font-family:${SANS};font-size:18px;font-weight:700;line-height:1.25;color:${INK};text-decoration:underline">${esc(p.title)}</a>`
+      : `<div style="font-family:${SANS};font-size:18px;font-weight:700;line-height:1.25;color:${INK}">${esc(p.title)}</div>`) +
+    (p.message ? `<div style="margin-top:6px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(p.message).replace(/\n/g, "<br>")}</div>` : "") +
+    `<div style="margin-top:4px;font-family:${SERIF};font-size:15px;line-height:1.45;color:${SOFT}">${esc(postBy(p))}</div>` +
+    `</td></tr>`;
+  const proposalRow = (p: DigestProposalData) =>
+    `<tr><td style="padding:0 0 18px">` +
+    eyebrow("Proposal · Your answer is asked", FLAME) +
+    `<div style="height:3px"></div>` +
+    `<a href="${esc(p.url)}" style="font-family:${SANS};font-size:18px;font-weight:700;line-height:1.25;color:${INK};text-decoration:underline">${esc(p.title)}</a>` +
+    `<div style="margin-top:3px;font-family:${SERIF};font-size:15px;line-height:1.45;color:${SOFT}">${esc(proposalBy(p))}</div>` +
+    `</td></tr>`;
+
   return {
     subject: `Circles digest: ${heading}`,
     text,
@@ -358,6 +416,8 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
         eyebrow("Your daily digest") +
         `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${heading}</div>` +
         `</td></tr>` +
+        (posts.length > 0 ? section(neighborhoods.length === 1 ? `${neighborhoods[0]}'s bulletin` : "Your neighborhood's bulletin") + posts.map(postRow).join("") : "") +
+        (proposals.length > 0 ? section("For your neighborhood to decide") + proposals.map(proposalRow).join("") : "") +
         circleNames
           .map(
             (c) =>
@@ -365,7 +425,9 @@ export function eventDigestEmail(events: DigestEventData[]): Body {
               groups.get(c)!.map(row).join("")
           )
           .join("") +
-        `<tr><td style="padding:10px 0 28px"><a href="${esc(openAll)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">See all events</a></td></tr>` +
+        (events.length > 0
+          ? `<tr><td style="padding:10px 0 28px"><a href="${esc(openAll)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">See all events</a></td></tr>`
+          : `<tr><td style="padding-bottom:12px"></td></tr>`) +
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };
@@ -566,7 +628,11 @@ export interface ProposalEmailData {
   // which email this is: it's open for an answer, or how it ended
   notice: ProposalNoticeKind;
   proposalId: string;
+  kind: ProposalKind;
+  // whose members decide it; for a change its neighborhood decides too, the
+  // circle it would change
   circleName: string;
+  subjectCircleName?: string;
   changes: ProposalChanges;
   lines: ProposalLine[];
   closesAt: Date;
@@ -587,15 +653,14 @@ export function proposalEmail(d: ProposalEmailData): Body {
   // a group's event, proposed for its consent, rather than a change to the circle
   const event = isEventProposal(d);
   const deadline = fmtDateTime(d.closesAt);
+  const { made, ask, passed } = proposalWords(d);
   const [subject, eyebrowText, accent, note, action] =
     d.notice === "opened"
       ? [
           `Proposal for ${d.circleName}: ${title}`,
           `Proposal · ${d.circleName}`,
           INK,
-          event
-            ? `${d.proposerName} proposes that ${d.circleName} hold this event, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's scheduled then.`
-            : `${d.proposerName} proposes a change to ${d.circleName}, which needs its members' consent. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's made then.`,
+          `${d.proposerName} proposes ${ask}. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's ${made} then.`,
           "Respond",
         ]
       : d.notice === "objected"
@@ -603,11 +668,11 @@ export function proposalEmail(d: ProposalEmailData): Body {
             `Objection: ${title}`,
             `Objected · ${d.circleName}`,
             DANGER,
-            `${d.objectorName ?? "A member"} objected to ${d.proposerName}'s proposal, so it won't be ${event ? "held" : "made"}.${d.reason ? ` Their reason: “${d.reason}”.` : ""} It can be proposed again, changed to meet the objection.`,
+            `${d.objectorName ?? "A member"} objected to ${d.proposerName}'s proposal, so it won't be ${event ? "held" : made}.${d.reason ? ` Their reason: “${d.reason}”.` : ""} It can be proposed again, changed to meet the objection.`,
             "View proposal",
           ]
-        : [`Passed: ${title}`, `Passed · ${d.circleName}`, LEAF, `No one objected to ${d.proposerName}'s proposal, so the change has been made to ${d.circleName}.`, "View proposal"];
-  const why = `You're getting this because you're a member of ${d.circleName}.`;
+        : [`Passed: ${title}`, `Passed · ${d.circleName}`, LEAF, `No one objected to ${d.proposerName}'s proposal, so ${passed}.`, "View proposal"];
+  const why = `You're getting this because you're a member of ${d.subjectCircleName ?? d.circleName}${d.kind === "new_circle" ? ", or proposed it" : ""}.`;
   const line = (l: ProposalLine) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(esc(l.label))}` +
     (l.after ? `<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(l.after).replace(/\n/g, "<br>")}</div>` : "") +
@@ -627,6 +692,23 @@ export function proposalEmail(d: ProposalEmailData): Body {
         `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
     ),
   };
+}
+
+/* What a proposal asks, and what becomes of it, in words for its kind: a
+   change to a circle (one its neighborhood decides too, when it becomes a
+   Circle there), an event the circle would hold, a post to its
+   neighborhood's bulletin, or a new Circle. */
+export function proposalWords(d: Pick<ProposalEmailData, "kind" | "circleName" | "subjectCircleName" | "changes">): { made: string; ask: string; passed: string } {
+  if (d.kind === "event") return { made: "scheduled", ask: `that ${d.circleName} hold this event, which needs its members' consent`, passed: "the event has been scheduled" };
+  if (d.kind === "post") return { made: "posted", ask: `that ${d.circleName} post this to its neighborhood's bulletin, which needs its members' consent`, passed: "it's now on the neighborhood's bulletin" };
+  if (d.kind === "new_circle") {
+    const name = d.changes.name ?? "a new Circle";
+    return { made: "started", ask: `starting ${name}, a Circle in ${d.circleName}, which needs the consent of everyone who lives there`, passed: `${name} has been started` };
+  }
+  if (d.subjectCircleName) {
+    return { made: "made", ask: `a change to ${d.subjectCircleName}, which needs the consent of its members and of everyone in ${d.circleName}`, passed: `the change has been made to ${d.subjectCircleName}` };
+  }
+  return { made: "made", ask: `a change to ${d.circleName}, which needs its members' consent`, passed: `the change has been made to ${d.circleName}` };
 }
 
 export interface AnnouncementEmailData {

@@ -29,6 +29,7 @@ import type {
   NotificationChannel,
   NotificationKind,
   ProposalChanges,
+  ProposalKind,
   ProposalLine,
   ProposalNoticeKind,
   ProposalStatus,
@@ -533,11 +534,46 @@ export const announcementNotifications = pgTable(
    passes if no one has objected; one objection closes it as objected, and it
    passes early once every member has consented. Only one open at a time per
    circle, so two can't change the same thing at once. */
+/* A post to a neighborhood's bulletin by a Circle inside it (see
+   lib/db/neighborhood-posts.ts): unpublished (published_at null) while its
+   circle decides it by consent, then seen by the neighborhood's residents
+   and told to them in their daily digest. An objection or a withdrawal
+   deletes it; its proposal keeps what it said. */
+export const neighborhoodPosts = pgTable(
+  "neighborhood_posts",
+  {
+    id: text("id").primaryKey(),
+    neighborhoodId: text("neighborhood_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    url: text("url"),
+    message: text("message"),
+    icon: resourceIcon("icon").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: integer("created_by").references(() => members.id, { onDelete: "set null" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("neighborhood_posts_neighborhood_idx").on(t.neighborhoodId),
+    check(
+      "neighborhood_posts_link_or_message",
+      sql`(${t.icon}::text = 'announcement' and ${t.message} is not null and ${t.url} is null) or (${t.icon}::text <> 'announcement' and ${t.url} is not null and ${t.message} is null)`
+    ),
+  ]
+);
+
 export const circleProposals = pgTable(
   "circle_proposals",
   {
     id: text("id").primaryKey(),
+    // what it's for (ProposalKind)
+    kind: text("kind").$type<ProposalKind>().notNull().default("change"),
+    // whose members decide it: see CircleProposal in lib/types.ts
     circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    // a change a neighborhood (circle_id) decides about a circle inside it
+    subjectCircleId: text("subject_circle_id").references((): AnyPgColumn => circles.id, { onDelete: "cascade" }),
+    // a post to the neighborhood's bulletin, kept null once it's gone
+    postId: text("post_id").references((): AnyPgColumn => neighborhoodPosts.id, { onDelete: "set null" }),
     proposerId: integer("proposer_id").notNull().references(() => members.id),
     // set for a proposal to hold an event the circle hosts (a group's: see
     // lib/db/proposals.ts), rather than to change the circle. Kept when the
@@ -556,8 +592,10 @@ export const circleProposals = pgTable(
   },
   (t) => [
     index("circle_proposals_circle_idx").on(t.circleId),
-    // one open change to a circle at a time; any number of events can be open
-    uniqueIndex("circle_proposals_one_open").on(t.circleId).where(sql`${t.status} = 'open' and ${t.eventId} is null`),
+    // one open change to a circle at a time, whoever decides it; any number of
+    // events, posts and new circles can be open
+    uniqueIndex("circle_proposals_one_open").on(sql`coalesce(${t.subjectCircleId}, ${t.circleId})`).where(sql`${t.status} = 'open' and ${t.kind} = 'change'`),
+    index("circle_proposals_subject_idx").on(t.subjectCircleId),
     index("circle_proposals_open_idx").on(t.closesAt).where(sql`${t.status} = 'open'`),
   ]
 );
@@ -594,6 +632,31 @@ export const proposalNotifications = pgTable(
   (t) => [
     primaryKey({ columns: [t.proposalId, t.memberId, t.kind, t.channel] }),
     index("proposal_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
+  ]
+);
+
+/* The queue behind a neighborhood's news in its residents' daily digest: a
+   post published to its bulletin, or a proposal it's been asked to decide (a
+   new Circle in it, say). Email only, drained with the event digest rows
+   (lib/notify.ts's deliverDigests), leased and retried as they are. */
+export const neighborhoodNotifications = pgTable(
+  "neighborhood_notifications",
+  {
+    // exactly one of the two
+    postId: text("post_id").references(() => neighborhoodPosts.id, { onDelete: "cascade" }),
+    proposalId: text("proposal_id").references(() => circleProposals.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastError: text("last_error"),
+  },
+  (t) => [
+    uniqueIndex("neighborhood_notifications_post").on(t.postId, t.memberId),
+    uniqueIndex("neighborhood_notifications_proposal").on(t.proposalId, t.memberId),
+    index("neighborhood_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`),
+    check("neighborhood_notifications_one_item", sql`(${t.postId} is null) <> (${t.proposalId} is null)`),
   ]
 );
 

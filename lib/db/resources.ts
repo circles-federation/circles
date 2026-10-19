@@ -58,7 +58,8 @@ async function assertCanManage(memberId: number, circleId: string) {
 // only what the kind uses is saved, and the other is cleared — so a resource
 // changed from a link to an announcement (or back) keeps nothing stale, which
 // the table's own check constraint also insists on
-function cleanInput(input: ResourceInput): { title: string; icon: ResourceInput["icon"]; url: string | null; message: string | null } {
+// (also a neighborhood post's, lib/db/neighborhood-posts.ts)
+export function cleanInput(input: ResourceInput): { title: string; icon: ResourceInput["icon"]; url: string | null; message: string | null } {
   const first = Object.values(validateResourceInput(input))[0];
   if (first) throw new ResourceError(first);
   const announcement = isAnnouncement(input.icon);

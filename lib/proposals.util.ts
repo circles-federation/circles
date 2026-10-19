@@ -1,9 +1,10 @@
 import { isBuiltinRole, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
-import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, parentCircleOptions } from "./circles.util";
+import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, circleNeighborhood, parentCircleOptions, type CirclesById, type NewCircleInput } from "./circles.util";
 import { AGENDA_CATEGORY } from "./agenda.util";
 import { fmtEventWhen } from "./format.util";
 import { repeatSummary } from "./recurrence.util";
-import type { Circle, CircleProposal, CircleType, ConsentResponse, Event, ProposalChanges, ProposalLine, ProposalResponse } from "./types";
+import { isAnnouncement } from "./resources.util";
+import type { Circle, CircleProposal, CircleType, ConsentResponse, Event, NeighborhoodPost, ProposalChanges, ProposalLine, ProposalResponse } from "./types";
 
 /* Consent, as Sociocracy for All describes it: a decision is made unless
    someone has a reasoned objection to it. Some changes to a circle are its
@@ -178,16 +179,67 @@ export function describeEventProposal(e: Pick<Event, "title" | "kind" | "date" |
   ];
 }
 
-// it proposes an event rather than a change to its circle — told by its lines,
-// since its event_id goes if the event does
-export function isEventProposal(p: Pick<CircleProposal, "changes" | "lines">): boolean {
-  return !hasChanges(p.changes) && p.lines[0]?.label === EVENT_LINE;
+// it proposes an event rather than a change to its circle
+export function isEventProposal(p: Pick<CircleProposal, "kind">): boolean {
+  return p.kind === "event";
+}
+
+/* A post to the neighborhood's bulletin, as its circle reads it before
+   consenting: the whole post, and where it'll go. */
+const POST_LINE = "Post";
+export function describePostProposal(post: Pick<NeighborhoodPost, "title" | "icon" | "url" | "message">, neighborhoodName: string, kindLabel: string): ProposalLine[] {
+  return [
+    { label: POST_LINE, before: "", after: post.title },
+    { label: "Where", before: "", after: `${neighborhoodName}'s bulletin, for everyone who lives there` },
+    { label: "Kind", before: "", after: kindLabel },
+    isAnnouncement(post.icon) ? { label: "Message", before: "", after: post.message ?? "" } : { label: "Link", before: "", after: post.url ?? "" },
+  ];
+}
+
+// a new Circle, as its neighborhood reads it before consenting
+export function describeNewCircle(input: NewCircleInput, neighborhoodName: string): ProposalLine[] {
+  const aims = (input.aims ?? []).map((a) => a.trim()).filter(Boolean);
+  return [
+    { label: "Name", before: "", after: input.name.trim() },
+    { label: "Type", before: "", after: CIRCLE_TYPE_LABEL[input.type] },
+    ...(input.tagline.trim() ? [{ label: "Tagline", before: "", after: input.tagline.trim() }] : []),
+    { label: "Domain", before: "", after: (input.domain ?? "").trim() },
+    { label: "Aims", before: "", after: aims.join("; ") },
+    { label: "Where", before: "", after: neighborhoodName },
+  ];
+}
+
+/* A Circle can post to its neighborhood's bulletin (lib/db/neighborhood-
+   posts.ts), so its neighborhood consents to it being one: starting a new
+   Circle there, a circle there becoming a Circle, or a Circle moving there
+   from somewhere else. The neighborhood that decides, or null if none need
+   (it isn't a Circle, or it's citywide). A Circle that leaves a neighborhood
+   for the city needs no one else's say. */
+export function neighborhoodFor(parentId: string | null, byId: CirclesById): Circle | null {
+  const parent = parentId ? byId[parentId] : undefined;
+  return parent ? circleNeighborhood(parent, byId) : null;
+}
+
+export function neighborhoodConsentFor(circle: Circle, changes: ProposalChanges, byId: CirclesById): Circle | null {
+  if ((changes.type ?? circle.type) !== "circle") return null;
+  const destination = neighborhoodFor(changes.parentId ?? circle.parentId, byId);
+  if (!destination) return null;
+  const becomesCircle = circle.type !== "circle";
+  const moves = neighborhoodFor(circle.parentId, byId)?.id !== destination.id;
+  return becomesCircle || moves ? destination : null;
+}
+
+export function newCircleNeighborhood(input: Pick<NewCircleInput, "type" | "parentId">, byId: CirclesById): Circle | null {
+  return input.type === "circle" ? neighborhoodFor(input.parentId, byId) : null;
 }
 
 // a short name for what it proposes: "Rename to Ona Community Garden",
-// "Change the name, type and roles", or "Schedule Saturday coffee"
-export function proposalTitle(p: Pick<CircleProposal, "changes" | "lines">): string {
+// "Change the name, type and roles", "Schedule Saturday coffee", "Post
+// “Survey” to the neighborhood" or "Start the Tenants' Circle"
+export function proposalTitle(p: Pick<CircleProposal, "kind" | "changes" | "lines">): string {
   if (isEventProposal(p)) return `Schedule ${p.lines[0]!.after}`;
+  if (p.kind === "post") return `Post “${p.lines[0]?.after ?? ""}”`;
+  if (p.kind === "new_circle") return `Start ${p.changes.name ?? "a Circle"}`;
   const c = p.changes;
   const parts = [c.name !== undefined && "name", c.tagline !== undefined && "tagline", c.type !== undefined && "type", c.parentId !== undefined && "parent circle", c.domain !== undefined && "domain", c.aims !== undefined && "aims", c.roles !== undefined && "roles"].filter(
     (x): x is string => !!x

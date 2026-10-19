@@ -215,7 +215,8 @@ export function useManagedCircle({ allowGone = false } = {}): { circle: Circle; 
     if (allowGone) return null;
     notFound();
   }
-  const openProposal = proposals.find((p) => p.circleId === circle.id && p.status === "open" && !p.eventId);
+  // a change to it, whether its own members decide it or its neighborhood does too
+  const openProposal = proposals.find((p) => p.kind === "change" && p.status === "open" && (p.subjectCircleId ?? p.circleId) === circle.id);
   return { circle, ...(openProposal ? { openProposal } : {}) };
 }
 
@@ -223,7 +224,7 @@ export function useManagedCircle({ allowGone = false } = {}): { circle: Circle; 
    decides it at once, so it's back to the menu; otherwise on to the
    proposal's page, where the proposer can watch the answers come in. */
 export function useProposeCircleChanges(circle: Circle) {
-  const { proposeCircleChanges } = useAppState();
+  const { proposeCircleChanges, circles } = useAppState();
   const { showToast } = useToast();
   const router = useRouter();
   const goBack = useGoBack();
@@ -234,7 +235,13 @@ export function useProposeCircleChanges(circle: Circle) {
       showToast({ tone: "success", title: "Changes saved", message: "You're its only member, so they were made at once." });
       goBack();
     } else {
-      showToast({ tone: "success", title: "Proposal sent", message: `${circle.name}'s members have been asked to consent.` });
+      // a change its neighborhood decides too asks the residents in their digest
+      const neighborhood = result.proposal.subjectCircleId ? circles.find((c) => c.id === result.proposal.circleId) : undefined;
+      showToast({
+        tone: "success",
+        title: "Proposal sent",
+        message: neighborhood ? `${circle.name}'s members, and everyone in ${neighborhood.name}, have been asked to consent.` : `${circle.name}'s members have been asked to consent.`,
+      });
       router.replace(`/proposals/${result.proposal.id}`);
     }
     return { ok: true };

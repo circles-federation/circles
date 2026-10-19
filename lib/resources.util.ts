@@ -8,6 +8,8 @@ export const RESOURCE_TITLE_MAX = 120;
 export const RESOURCE_URL_MAX = 2048;
 export const RESOURCE_MESSAGE_MAX = 2000;
 export const RESOURCE_ICONS: readonly ResourceIcon[] = ["folder", "file", "video", "announcement"];
+// each kind's name, as a proposal or an email reads it
+export const RESOURCE_KIND_LABEL: Record<ResourceIcon, string> = { folder: "Folder", file: "File", video: "Video", announcement: "Announcement" };
 
 // what the form sends: it keeps both a link and a message as it's edited (so
 // switching kind doesn't lose either), and only the one the kind uses is

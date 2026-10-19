@@ -26,7 +26,7 @@ export const CREATABLE_CIRCLE_TYPES: CircleType[] = ["circle", "collective", "co
 
 // what each creatable type is, for the info box beside Create circle's Type
 export const CIRCLE_TYPE_DESCRIPTION: Partial<Record<CircleType, string>> = {
-  circle: "A council or working group whose members decide things together, like a neighborhood council or a finance committee.",
+  circle: "A council or working group whose members decide things together, like a neighborhood council or a finance committee. It can post to its neighborhood's bulletin, so the neighborhood consents to a new one.",
   collective: "People organized around a shared project or service, run by its members, like a tool library or a community garden.",
   cooperative: "An enterprise its members own and run together, like a food co-op or a worker co-op.",
   group: "A private circle: only its members know it exists. It has a bulletin and its members' events, but it can't host events or hold meetings.",
@@ -209,6 +209,14 @@ export function circleNeighborhood(circle: Circle, byId: CirclesById): Circle | 
     current = current.parentId ? byId[current.parentId] : undefined;
   }
   return null;
+}
+
+/* The circles `memberId` can post to `neighborhood`'s bulletin for: the
+   Circles (type "circle") they belong to inside it, however deep (see
+   lib/db/neighborhood-posts.ts, which holds the server to the same rule). */
+export function postingCirclesFor(memberId: number, neighborhood: Circle, circles: Circle[]): Circle[] {
+  const byId = indexCircles(circles);
+  return circles.filter((c) => c.type === "circle" && c.id !== neighborhood.id && c.members.includes(memberId) && circleNeighborhood(c, byId)?.id === neighborhood.id);
 }
 
 // every circle anywhere below `circle` in the tree (not including itself),

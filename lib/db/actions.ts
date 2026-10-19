@@ -9,6 +9,7 @@ import { UserFacingError } from "./errors";
 import * as events from "./events";
 import * as invitations from "./invitations";
 import * as members from "./members";
+import * as neighborhoodPosts from "./neighborhood-posts";
 import * as photoReviews from "./photo-reviews";
 import * as proposals from "./proposals";
 import * as push from "./push";
@@ -21,7 +22,8 @@ import { invitationPush, photoDecisionPush } from "@/lib/push/messages.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
-import { isEventProposal } from "@/lib/proposals.util";
+import { newCircleNeighborhood } from "@/lib/proposals.util";
+import { indexCircles } from "@/lib/circles.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges } from "@/lib/types";
 
@@ -72,8 +74,17 @@ export async function loadAppStateAction(): Promise<{ ok: true; value: AppStateD
 }
 
 // Create circle: the session member creates it and becomes its first member
+/* A Circle in a neighborhood can post to its bulletin, so it's proposed to
+   the neighborhood rather than made (lib/db/proposals.ts's proposeNewCircle):
+   then it hands back the proposal, and the whole app state, since a
+   neighborhood of one makes it at once. Anything else is made straight away. */
 export async function createCircleAction(input: NewCircleInput) {
-  return asMember((memberId) => circles.createCircle(memberId, input));
+  return asMember(async (memberId) => {
+    const all = await circles.getCirclesForMember(memberId);
+    if (!newCircleNeighborhood(input, indexCircles(all))) return { circle: await circles.createCircle(memberId, input) };
+    const { proposal, circleId } = await proposals.proposeNewCircle(memberId, input);
+    return { proposal, circleId, state: await stateFor(memberId) };
+  });
 }
 
 /* Proposals: changes to a circle its members decide by consent
@@ -91,7 +102,9 @@ export async function createProposalAction(circleId: string, changes: ProposalCh
 export async function respondToProposalAction(id: string, response: ConsentResponse, reason?: string) {
   const result = await asMember(async (memberId) => {
     const answered = await proposals.respondToProposal(memberId, id, response, reason);
-    return isEventProposal(answered.proposal) ? { ...answered, state: await stateFor(memberId) } : answered;
+    // one that moves more than a proposal and a circle (an event, a post, a
+    // new circle) hands back everything
+    return answered.proposal.kind === "change" ? answered : { ...answered, state: await stateFor(memberId) };
   });
   if (result.ok) after(() => Promise.all([deliverProposalNotifications(), deliverEventNotifications()]));
   return result;
@@ -126,6 +139,22 @@ async function asMember<T>(run: (memberId: number) => Promise<T>): Promise<{ ok:
   }
 }
 
+
+/* A neighborhood's bulletin (lib/db/neighborhood-posts.ts checks who may):
+   proposing a post asks its circle, and a circle of one posts it at once, so
+   each hands back the whole app state. */
+export async function proposeNeighborhoodPostAction(circleId: string, input: ResourceInput) {
+  const result = await asMember(async (memberId) => ({ ...(await neighborhoodPosts.proposeNeighborhoodPost(memberId, circleId, input)), state: await stateFor(memberId) }));
+  if (result.ok) after(() => deliverProposalNotifications());
+  return result;
+}
+
+export async function removeNeighborhoodPostAction(id: string) {
+  return asMember(async (memberId) => {
+    await neighborhoodPosts.removeNeighborhoodPost(memberId, id);
+    return stateFor(memberId);
+  });
+}
 
 // a new announcement has queued emails to the circle's members, sent once the
 // response is out

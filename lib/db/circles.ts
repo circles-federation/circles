@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, like, or } from "drizzle-orm";
-import { db } from "./client";
+import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleInvitations, circleMembers, circleRoles, circles } from "./schema";
 import { groupBy } from "./util";
@@ -137,33 +137,41 @@ function slugify(name: string): string {
    slug, with -2, -3… added if that's taken (or reserved), and it starts
    with the creator as its last editor. The rest of its page (about, offers,
    facts…) is filled in from Manage circle. */
+/* A Circle in a neighborhood is that neighborhood's to consent to (see
+   neighborhoodFor in lib/proposals.util.ts), so it isn't created here: the
+   caller (createCircleAction) proposes it instead, and it's made when that
+   passes, by insertCircle. */
 export async function createCircle(memberId: number, input: NewCircleInput): Promise<Circle> {
   const problem = validateNewCircle(input, await getCirclesForMember(memberId));
   if (problem) throw new CircleError(problem);
-  const base = slugify(input.name);
-  const id = await db.transaction(async (tx) => {
-    const taken = new Set(
-      (await tx.select({ id: circles.id }).from(circles).where(or(eq(circles.id, base), like(circles.id, `${base}-%`)))).map((r) => r.id)
-    );
-    let id = base;
-    for (let n = 2; taken.has(id) || RESERVED_IDS.has(id); n++) id = `${base}-${n}`;
-    await tx.insert(circles).values({
-      id,
-      type: input.type,
-      name: input.name.trim(),
-      parentId: input.parentId,
-      tagline: input.tagline.trim(),
-      about: "",
-      ...(input.type === "circle" ? { domain: (input.domain ?? "").trim(), aims: cleanAims(input.aims) } : {}),
-      lastEditedBy: memberId,
-      lastEditedAt: new Date(),
-    });
-    await tx.insert(circleMembers).values({ circleId: id, circleType: input.type, memberId });
-    return id;
-  });
+  const id = await db.transaction((tx) => insertCircle(tx, memberId, input));
   const created = await getCircleById(id);
   if (!created) throw new CircleError("The circle couldn't be created. Try again.");
   return created;
+}
+
+// the circle itself, already checked, with `memberId` as its first member and
+// last editor; returns its id
+export async function insertCircle(tx: Tx, memberId: number, input: NewCircleInput): Promise<string> {
+  const base = slugify(input.name);
+  const taken = new Set(
+    (await tx.select({ id: circles.id }).from(circles).where(or(eq(circles.id, base), like(circles.id, `${base}-%`)))).map((r) => r.id)
+  );
+  let id = base;
+  for (let n = 2; taken.has(id) || RESERVED_IDS.has(id); n++) id = `${base}-${n}`;
+  await tx.insert(circles).values({
+    id,
+    type: input.type,
+    name: input.name.trim(),
+    parentId: input.parentId,
+    tagline: input.tagline.trim(),
+    about: "",
+    ...(input.type === "circle" ? { domain: (input.domain ?? "").trim(), aims: cleanAims(input.aims) } : {}),
+    lastEditedBy: memberId,
+    lastEditedAt: new Date(),
+  });
+  await tx.insert(circleMembers).values({ circleId: id, circleType: input.type, memberId });
+  return id;
 }
 
 /* `memberId` leaves a circle they belong to, deliberately (Manage circle).

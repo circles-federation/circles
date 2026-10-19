@@ -13,6 +13,8 @@ import {
   eventSeries,
   members,
   events,
+  neighborhoodNotifications,
+  neighborhoodPosts,
   proposalNotifications,
   proposalResponses,
   pushSubscriptions,
@@ -20,7 +22,9 @@ import {
   roles,
 } from "./schema";
 import { groupBy } from "./util";
-import type { AnnouncementEmailData, DigestEventData, EventNotificationData, ProposalEmailData } from "@/lib/email/templates.util";
+import type { AnnouncementEmailData, DigestEventData, DigestPostData, DigestProposalData, EventNotificationData, ProposalEmailData } from "@/lib/email/templates.util";
+import { isAnnouncement } from "@/lib/resources.util";
+import { proposalTitle } from "@/lib/proposals.util";
 import { REMINDER_HOURS } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
@@ -426,13 +430,33 @@ export async function markNotificationFailed(n: NotificationKey, error: string):
 }
 
 export type DigestKey = NotificationKey & { channel: "email" };
+// a neighborhood_notifications row: a post, or a proposal
+export type NeighborhoodKey = { postId: string; memberId: number } | { proposalId: string; memberId: number };
 
 export interface PendingDigest {
   memberId: number;
   email: string;
   // every queue row this digest covers — marked sent (or failed) together
   keys: DigestKey[];
+  neighborhoodKeys: NeighborhoodKey[];
   events: (Omit<DigestEventData, "url"> & { id: string })[];
+  posts: (Omit<DigestPostData, "pageUrl"> & { neighborhoodId: string })[];
+  proposals: (Omit<DigestProposalData, "url"> & { id: string })[];
+}
+
+/* A neighborhood's news for its residents' daily digest (`memberIds`): a post
+   just published to its bulletin, or a proposal it's asked to decide. Email
+   only, like any digest line; someone who's turned email off isn't queued.
+   Runs in the transaction that earns it. */
+export async function enqueueNeighborhoodNotifications(tx: Tx, item: { postId: string } | { proposalId: string }, memberIds: number[]): Promise<number> {
+  if (memberIds.length === 0) return 0;
+  const recipients = await channelsFor(tx, inArray(members.id, memberIds), { push: false });
+  if (recipients.length === 0) return 0;
+  await tx
+    .insert(neighborhoodNotifications)
+    .values(recipients.map((r) => ({ ...item, memberId: r.memberId })))
+    .onConflictDoNothing();
+  return membersIn(recipients);
 }
 
 /* Take up to `limit` members' worth of due digest rows. A digest row is due
@@ -444,7 +468,17 @@ export interface PendingDigest {
 export async function claimDigests(cutoff: Date, limit: number): Promise<PendingDigest[]> {
   const organizer = alias(members, "organizer");
   const hostCircle = alias(circles, "host_circle");
+  const poster = alias(members, "poster");
+  const postingCircle = alias(circles, "posting_circle");
+  const proposer = alias(members, "proposer");
   return db.transaction(async (tx) => {
+    // a neighborhood's news is due on the same terms as an event's digest line
+    const dueNeighborhood = and(
+      isNull(neighborhoodNotifications.sentAt),
+      lt(neighborhoodNotifications.attempts, MAX_ATTEMPTS),
+      lte(neighborhoodNotifications.createdAt, cutoff),
+      or(isNull(neighborhoodNotifications.lastAttemptAt), lt(neighborhoodNotifications.lastAttemptAt, sql`now() - ${RETRY_AFTER}`))
+    );
     // digest rows are only ever queued for email (see queueFor)
     const due = and(
       eq(eventNotifications.digest, true),
@@ -454,21 +488,87 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
       lte(eventNotifications.createdAt, cutoff),
       or(isNull(eventNotifications.lastAttemptAt), lt(eventNotifications.lastAttemptAt, sql`now() - ${RETRY_AFTER}`))
     );
-    const dueMembers = await tx.selectDistinct({ memberId: eventNotifications.memberId }).from(eventNotifications).where(due).orderBy(eventNotifications.memberId).limit(limit);
-    if (dueMembers.length === 0) return [];
+    // whoever has anything due, from either queue, lowest ids first
+    const [eventMembers, neighborhoodMembers] = await Promise.all([
+      tx.selectDistinct({ memberId: eventNotifications.memberId }).from(eventNotifications).where(due).orderBy(eventNotifications.memberId).limit(limit),
+      tx.selectDistinct({ memberId: neighborhoodNotifications.memberId }).from(neighborhoodNotifications).where(dueNeighborhood).orderBy(neighborhoodNotifications.memberId).limit(limit),
+    ]);
+    const memberIds = [...new Set([...eventMembers, ...neighborhoodMembers].map((m) => m.memberId))].sort((a, b) => a - b).slice(0, limit);
+    if (memberIds.length === 0) return [];
     const taken = await tx
       .select({ eventId: eventNotifications.eventId, memberId: eventNotifications.memberId, kind: eventNotifications.kind })
       .from(eventNotifications)
-      .where(and(due, inArray(eventNotifications.memberId, dueMembers.map((m) => m.memberId))))
+      .where(and(due, inArray(eventNotifications.memberId, memberIds)))
       .for("update", { skipLocked: true });
-    if (taken.length === 0) return [];
+    const takenNeighborhood = await tx
+      .select({ postId: neighborhoodNotifications.postId, proposalId: neighborhoodNotifications.proposalId, memberId: neighborhoodNotifications.memberId })
+      .from(neighborhoodNotifications)
+      .where(and(dueNeighborhood, inArray(neighborhoodNotifications.memberId, memberIds)))
+      .for("update", { skipLocked: true });
+    if (taken.length === 0 && takenNeighborhood.length === 0) return [];
     const isTaken = and(
       eq(eventNotifications.digest, true),
       eq(eventNotifications.channel, "email"),
-      sql`(${eventNotifications.eventId}, ${eventNotifications.memberId}, ${eventNotifications.kind}) in (${sql.join(taken.map((t) => sql`(${t.eventId}, ${t.memberId}, ${t.kind})`), sql`, `)})`
+      taken.length > 0
+        ? sql`(${eventNotifications.eventId}, ${eventNotifications.memberId}, ${eventNotifications.kind}) in (${sql.join(taken.map((t) => sql`(${t.eventId}, ${t.memberId}, ${t.kind})`), sql`, `)})`
+        : sql`false`
     );
-    await tx.update(eventNotifications).set({ attempts: sql`${eventNotifications.attempts} + 1`, lastAttemptAt: sql`now()` }).where(isTaken);
-    const rows = await tx
+    const neighborhoodKeys: NeighborhoodKey[] = takenNeighborhood.flatMap((t): NeighborhoodKey[] =>
+      t.postId !== null ? [{ postId: t.postId, memberId: t.memberId }] : t.proposalId !== null ? [{ proposalId: t.proposalId, memberId: t.memberId }] : []
+    );
+    const takenPosts = neighborhoodKeys.flatMap((k) => ("postId" in k ? [k] : []));
+    const takenProposals = neighborhoodKeys.flatMap((k) => ("proposalId" in k ? [k] : []));
+    if (taken.length > 0) await tx.update(eventNotifications).set({ attempts: sql`${eventNotifications.attempts} + 1`, lastAttemptAt: sql`now()` }).where(isTaken);
+    if (neighborhoodKeys.length > 0) {
+      await tx
+        .update(neighborhoodNotifications)
+        .set({ attempts: sql`${neighborhoodNotifications.attempts} + 1`, lastAttemptAt: sql`now()` })
+        .where(or(...neighborhoodKeys.map(isNeighborhoodRow)));
+    }
+    const emails = await tx.select({ id: members.id, email: emailIfWanted }).from(members).where(inArray(members.id, memberIds));
+    // a post as it stands now, if it's still up (removing one cascades its rows away)
+    const postRows =
+      takenPosts.length === 0
+        ? []
+        : await tx
+            .select({
+              memberId: neighborhoodNotifications.memberId,
+              neighborhoodId: neighborhoodPosts.neighborhoodId,
+              title: neighborhoodPosts.title,
+              icon: neighborhoodPosts.icon,
+              url: neighborhoodPosts.url,
+              message: neighborhoodPosts.message,
+              circleName: postingCircle.name,
+              neighborhoodName: circles.name,
+              posterName: poster.name,
+            })
+            .from(neighborhoodNotifications)
+            .innerJoin(neighborhoodPosts, eq(neighborhoodPosts.id, neighborhoodNotifications.postId))
+            .innerJoin(postingCircle, eq(postingCircle.id, neighborhoodPosts.circleId))
+            .innerJoin(circles, eq(circles.id, neighborhoodPosts.neighborhoodId))
+            .leftJoin(poster, eq(poster.id, neighborhoodPosts.createdBy))
+            .where(and(isNotNull(neighborhoodPosts.publishedAt), or(...takenPosts.map(isNeighborhoodRow))));
+    // a proposal only while it's still open: one decided since needs no answer
+    const proposalRows =
+      takenProposals.length === 0
+        ? []
+        : await tx
+            .select({
+              memberId: neighborhoodNotifications.memberId,
+              id: circleProposals.id,
+              kind: circleProposals.kind,
+              changes: circleProposals.changes,
+              lines: circleProposals.lines,
+              closesAt: circleProposals.closesAt,
+              neighborhoodName: circles.name,
+              proposerName: proposer.name,
+            })
+            .from(neighborhoodNotifications)
+            .innerJoin(circleProposals, eq(circleProposals.id, neighborhoodNotifications.proposalId))
+            .innerJoin(circles, eq(circles.id, circleProposals.circleId))
+            .innerJoin(proposer, eq(proposer.id, circleProposals.proposerId))
+            .where(and(eq(circleProposals.status, "open"), or(...takenProposals.map(isNeighborhoodRow))));
+    const rows = taken.length === 0 ? [] : await tx
       .select({
         eventId: events.id,
         memberId: members.id,
@@ -495,16 +595,31 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
       .leftJoin(eventSeries, eq(eventSeries.id, events.seriesId))
       .where(isTaken);
     const byMember = new Map<number, PendingDigest>();
-    for (const t of taken) {
-      const key: DigestKey = { eventId: t.eventId, memberId: t.memberId, notice: t.kind, channel: "email" };
-      const digest = byMember.get(t.memberId);
-      if (digest) digest.keys.push(key);
-      else byMember.set(t.memberId, { memberId: t.memberId, email: "", keys: [key], events: [] });
+    const digestOf = (memberId: number): PendingDigest => {
+      let digest = byMember.get(memberId);
+      if (!digest) {
+        digest = { memberId, email: emails.find((e) => e.id === memberId)?.email ?? "", keys: [], neighborhoodKeys: [], events: [], posts: [], proposals: [] };
+        byMember.set(memberId, digest);
+      }
+      return digest;
+    };
+    for (const t of taken) digestOf(t.memberId).keys.push({ eventId: t.eventId, memberId: t.memberId, notice: t.kind, channel: "email" });
+    for (const k of neighborhoodKeys) digestOf(k.memberId).neighborhoodKeys.push(k);
+    for (const { memberId, icon, url, message, posterName, ...p } of postRows) {
+      digestOf(memberId).posts.push({
+        ...p,
+        announcement: isAnnouncement(icon),
+        ...(url !== null ? { url } : {}),
+        ...(message !== null ? { message } : {}),
+        ...(posterName ? { posterName } : {}),
+      });
+    }
+    for (const { memberId, kind, changes, lines, ...p } of proposalRows) {
+      digestOf(memberId).proposals.push({ ...p, title: proposalTitle({ kind, changes, lines }) });
     }
     for (const { hostCircleName, approvedByRole, frequency, startsOn, until, ...r } of rows) {
       const digest = byMember.get(r.memberId);
       if (!digest) continue;
-      digest.email = r.email ?? "";
       digest.events.push({
         ...r,
         id: r.eventId,
@@ -520,12 +635,24 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
   });
 }
 
-export async function markDigestSent(keys: DigestKey[]): Promise<void> {
-  for (const k of keys) await markNotificationSent(k);
+const isNeighborhoodRow = (k: NeighborhoodKey) =>
+  and(
+    "postId" in k ? eq(neighborhoodNotifications.postId, k.postId) : eq(neighborhoodNotifications.proposalId, k.proposalId),
+    eq(neighborhoodNotifications.memberId, k.memberId)
+  );
+
+export async function markDigestSent(digest: Pick<PendingDigest, "keys" | "neighborhoodKeys">): Promise<void> {
+  for (const k of digest.keys) await markNotificationSent(k);
+  if (digest.neighborhoodKeys.length > 0) {
+    await db.update(neighborhoodNotifications).set({ sentAt: sql`now()`, lastError: null }).where(or(...digest.neighborhoodKeys.map(isNeighborhoodRow)));
+  }
 }
 
-export async function markDigestFailed(keys: DigestKey[], error: string): Promise<void> {
-  for (const k of keys) await markNotificationFailed(k, error);
+export async function markDigestFailed(digest: Pick<PendingDigest, "keys" | "neighborhoodKeys">, error: string): Promise<void> {
+  for (const k of digest.keys) await markNotificationFailed(k, error);
+  if (digest.neighborhoodKeys.length > 0) {
+    await db.update(neighborhoodNotifications).set({ lastError: error.slice(0, 500) }).where(or(...digest.neighborhoodKeys.map(isNeighborhoodRow)));
+  }
 }
 
 /* An announcement was just posted to a circle's bulletin: tell each of the
@@ -642,6 +769,7 @@ export type PendingProposalNotification = Omit<ProposalEmailData, "url"> &
 export async function claimProposalNotifications(limit: number, channel: NotificationChannel): Promise<PendingProposalNotification[]> {
   const proposer = alias(members, "proposer");
   const objector = alias(members, "objector");
+  const subject = alias(circles, "subject");
   return db.transaction(async (tx) => {
     const due = await tx
       .select({ proposalId: proposalNotifications.proposalId, memberId: proposalNotifications.memberId, kind: proposalNotifications.kind })
@@ -671,6 +799,8 @@ export async function claimProposalNotifications(limit: number, channel: Notific
         channel: proposalNotifications.channel,
         email: emailIfWanted,
         circleName: circles.name,
+        kind: circleProposals.kind,
+        subjectCircleName: subject.name,
         changes: circleProposals.changes,
         lines: circleProposals.lines,
         closesAt: circleProposals.closesAt,
@@ -683,12 +813,14 @@ export async function claimProposalNotifications(limit: number, channel: Notific
       .innerJoin(circles, eq(circles.id, circleProposals.circleId))
       .innerJoin(members, eq(members.id, proposalNotifications.memberId))
       .innerJoin(proposer, eq(proposer.id, circleProposals.proposerId))
+      .leftJoin(subject, eq(subject.id, circleProposals.subjectCircleId))
       // the objection, for an "objected" notice (one closes it, so there's one)
       .leftJoin(proposalResponses, and(eq(proposalResponses.proposalId, circleProposals.id), eq(proposalResponses.response, "object")))
       .leftJoin(objector, eq(objector.id, proposalResponses.memberId))
       .where(isDue);
-    return rows.map(({ objectorName, reason, ...r }) => ({
+    return rows.map(({ objectorName, reason, subjectCircleName, ...r }) => ({
       ...r,
+      ...(subjectCircleName ? { subjectCircleName } : {}),
       ...(objectorName ? { objectorName } : {}),
       ...(reason ? { reason } : {}),
     }));

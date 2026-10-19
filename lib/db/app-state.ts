@@ -3,15 +3,18 @@ import { getCirclesForMember } from "./circles";
 import { getEventsForMember } from "./events";
 import { getInvitationsForMember } from "./invitations";
 import { getMembersForViewer, getOwnSettings } from "./members";
+import { getNeighborhoodPostsForMember } from "./neighborhood-posts";
 import { getProposalsForMember } from "./proposals";
 import { getResourcesForMember } from "./resources";
-import type { Circle, CircleInvitation, CircleProposal, CircleResource, Event, Member, Profile } from "@/lib/types";
+import type { Circle, CircleInvitation, CircleProposal, CircleResource, Event, Member, NeighborhoodPost, Profile } from "@/lib/types";
 
 export interface AppStateData {
   events: Event[];
   circles: Circle[];
   members: Member[];
   resources: CircleResource[];
+  // their neighborhood's bulletin, and what their own circles have posted
+  neighborhoodPosts: NeighborhoodPost[];
   // their own invitations, and those to the circles they're in
   invitations: CircleInvitation[];
   // the proposals of their circles: open ones, and those decided lately
@@ -30,7 +33,7 @@ export interface AppStateData {
    scoped to circles: only the ones the member may see are fetched, so nothing
    else reaches their browser. Null if the member no longer exists. */
 export async function getAppStateForMember(memberId: number): Promise<AppStateData | null> {
-  const [events, circles, members, resources, invitations, proposals, pendingReviews] = await Promise.all([
+  const [events, circles, members, resources, invitations, proposals, pendingReviews, neighborhoodPosts] = await Promise.all([
     getEventsForMember(memberId),
     getCirclesForMember(memberId),
     getMembersForViewer(memberId),
@@ -38,9 +41,10 @@ export async function getAppStateForMember(memberId: number): Promise<AppStateDa
     getInvitationsForMember(memberId),
     getProposalsForMember(memberId),
     countPendingReviews(memberId),
+    getNeighborhoodPostsForMember(memberId),
   ]);
   const me = members.find((m) => m.id === memberId);
   if (!me) return null;
   const profile: Profile = { ...me, ...(await getOwnSettings(memberId)) };
-  return { events, circles, members, resources, invitations, proposals, profile, pendingReviews };
+  return { events, circles, members, resources, neighborhoodPosts, invitations, proposals, profile, pendingReviews };
 }

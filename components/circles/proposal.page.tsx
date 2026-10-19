@@ -13,11 +13,20 @@ import type { Circle, CircleProposal, ConsentResponse, Member } from "@/lib/type
 interface ProposalPageProps {
   proposal: CircleProposal;
   circle: Circle;
+  // everyone with a say in it, whose answers are listed: its circle's members,
+  // and the members of a circle its neighborhood decides about
+  deciders: number[];
+  // why these people decide it, where that isn't just its circle: a post, a
+  // new Circle, or a change its neighborhood decides too
+  explainer?: string;
+  // a new Circle that was started: its page
+  onOpenStarted?: () => void;
   memberId: number;
   onOpenCircle: () => void;
   onOpenMember: (m: Member) => void;
   onRespond: (response: ConsentResponse, reason?: string) => Promise<MutationResult>;
-  // a group's event proposal: its event's page, and withdrawing it while it's open
+  // an event proposal: its event's page, and withdrawing it while it's open (an
+  // event's or a post's)
   onOpenEvent?: () => void;
   // an event proposal where consenting is also an RSVP (one without signup roles)
   consentIsRsvp?: boolean;
@@ -38,7 +47,10 @@ const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon:
    asking why; and where every member stands, as a sociocratic round shows
    everyone's answer. Reached from its email or push, the circle's banner,
    and Home. */
-export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw }: ProposalPageProps) {
+// what each kind is about, as its section heads it
+const ABOUT: Record<CircleProposal["kind"], string> = { change: "What it changes", event: "The event", post: "The post", new_circle: "The circle" };
+
+export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenStarted, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw }: ProposalPageProps) {
   // it proposes holding an event, not changing the circle
   const event = isEventProposal(p);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -87,13 +99,14 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
           )}{" "}
           on {fmtDateTime(new Date(p.createdAt))}
         </p>
+        {explainer && <p className="mt-2 font-serif text-sm leading-snug text-soft">{explainer}</p>}
       </div>
 
-      <Outcome proposal={p} objectorName={objector?.name} event={event} />
+      <Outcome proposal={p} objectorName={objector?.name} />
 
       <SectionGroup>
         <Section>
-          <EyebrowGroup label={event ? "The event" : "What it changes"}>
+          <EyebrowGroup label={ABOUT[p.kind]}>
             <div className="border-t border-ink">
               {p.lines.map((l) => (
                 <div key={l.label} className="border-b border-faint py-3 last:border-b-ink">
@@ -106,6 +119,11 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
             {onOpenEvent && (
               <button type="button" onClick={onOpenEvent} className="mt-3 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2">
                 See the event&rsquo;s page
+              </button>
+            )}
+            {onOpenStarted && (
+              <button type="button" onClick={onOpenStarted} className="mt-3 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2">
+                Go to {p.changes.name ?? "the circle"}
               </button>
             )}
           </EyebrowGroup>
@@ -176,7 +194,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
         <Section>
           <EyebrowGroup label="Answers">
             <div className="border-t border-ink">
-              {circle.members
+              {deciders
                 .map((id) => memberById(id))
                 .filter((m): m is Member => !!m)
                 .map((m) => {
@@ -201,7 +219,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
         </Section>
         {onWithdraw && (
           <Section>
-            <p className="mb-3 font-serif text-sm leading-snug text-soft">Withdrawing it means the event won&rsquo;t be held, and closes this proposal.</p>
+            <p className="mb-3 font-serif text-sm leading-snug text-soft">Withdrawing it means {p.kind === "post" ? "it won’t be posted" : "the event won’t be held"}, and closes this proposal.</p>
             <Button variant="danger" disabled={withdrawing} onClick={() => setWithdrawing(true)} className="w-full min-[480px]:w-auto">
               Withdraw
             </Button>
@@ -213,7 +231,7 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
       {withdrawing && onWithdraw && (
         <ConfirmModal
           title="Withdraw this proposal?"
-          message="The event won't be held, and the proposal closes. It can be proposed again."
+          message={`${p.kind === "post" ? "It won't be posted" : "The event won't be held"}, and the proposal closes. It can be proposed again.`}
           confirmLabel="Withdraw"
           cancelLabel="Keep it"
           onCancel={() => setWithdrawing(false)}
@@ -229,20 +247,28 @@ export function ProposalPage({ proposal: p, circle, memberId, onOpenCircle, onOp
   );
 }
 
+// what becomes of each kind: "it's {made}", "{done}", "it won't be {notDone}"
+const WORDS: Record<CircleProposal["kind"], { made: string; done: string; notDone: string }> = {
+  change: { made: "made", done: "the change was made", notDone: "made" },
+  event: { made: "scheduled", done: "the event was scheduled", notDone: "held" },
+  post: { made: "posted", done: "it was posted to the neighborhood's bulletin", notDone: "posted" },
+  new_circle: { made: "started", done: "the circle was started", notDone: "started" },
+};
+
 // until when it's open and what happens then, or how it ended — for an event,
 // whether it's scheduled
-function Outcome({ proposal: p, objectorName, event }: { proposal: CircleProposal; objectorName?: string; event: boolean }) {
-  const made = event ? "scheduled" : "made";
+function Outcome({ proposal: p, objectorName }: { proposal: CircleProposal; objectorName?: string }) {
+  const { made, done, notDone } = WORDS[p.kind];
   const [Icon, tone, heading, text] =
     p.status === "open"
       ? [HandRaisedIcon, "border-l-ink", `Open until ${fmtDateTime(new Date(p.closesAt))}`, `If no one objects by then, it's ${made}. It's ${made} sooner if everyone consents.`]
       : p.status === "passed"
-        ? [CheckCircleIcon, "border-l-leaf", "Passed", `No one objected, so ${event ? "the event was scheduled" : "the change was made"}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
+        ? [CheckCircleIcon, "border-l-leaf", "Passed", `No one objected, so ${done}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
         : p.status === "withdrawn"
           ? p.lapsed
             ? [XCircleIcon, "border-l-soft", "Withdrawn automatically", "Its start time came before the circle had decided, so it was withdrawn and the event won't be held. It can be proposed again for another time."]
-            : [XCircleIcon, "border-l-soft", "Withdrawn", "It was withdrawn before it was decided, so the event won't be held. It can be proposed again."]
-          : [XCircleIcon, "border-l-danger", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${event ? "held" : "made"}. It can be proposed again, changed to meet the objection.`];
+            : [XCircleIcon, "border-l-soft", "Withdrawn", `It was withdrawn before it was decided, so it won't be ${notDone}. It can be proposed again.`]
+          : [XCircleIcon, "border-l-danger", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${notDone}. It can be proposed again, changed to meet the objection.`];
   return (
     <div role="status" className={clsx("mt-6 flex items-start gap-3 border border-ink border-l-4 px-5 py-4", tone)}>
       <Icon className="mt-px size-5 shrink-0" strokeWidth={2} />

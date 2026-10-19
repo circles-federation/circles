@@ -1,8 +1,8 @@
 import type { PushMessage } from "./index";
-import { eventChanges, type EventNotificationData } from "@/lib/email/templates.util";
+import { eventChanges, proposalWords, type EventNotificationData } from "@/lib/email/templates.util";
 import { fmtDateTime, fmtEventWhen, fmtTime, withArticle } from "@/lib/format.util";
 import { isEventProposal, proposalTitle } from "@/lib/proposals.util";
-import type { ProposalChanges, ProposalLine, ProposalNoticeKind } from "@/lib/types";
+import type { ProposalChanges, ProposalKind, ProposalLine, ProposalNoticeKind } from "@/lib/types";
 import { endedBefore, relativeDayWord } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
 
@@ -104,8 +104,10 @@ export function announcementPush(a: { resourceId: string; circleId: string; circ
 // a proposal to change a circle: open for an answer, or how it ended
 export function proposalPush(d: {
   proposalId: string;
+  kind: ProposalKind;
   notice: ProposalNoticeKind;
   circleName: string;
+  subjectCircleName?: string;
   changes: ProposalChanges;
   lines: ProposalLine[];
   closesAt: Date;
@@ -119,7 +121,7 @@ export function proposalPush(d: {
   const tag = `proposal-${d.proposalId}`;
   if (d.notice === "opened") return message(`Proposal: ${title}`, `${d.circleName} · from ${d.proposerName}. Respond by ${fmtDateTime(d.closesAt)}.`, url, tag);
   if (d.notice === "objected") return message(`Objected: ${title}`, `${d.objectorName ?? "A member"}${event ? ", so it won't be held" : ""}: ${d.reason ?? "objected"}`, url, tag);
-  return message(`Passed: ${title}`, `No one objected, so ${d.circleName} has made the change.`, url, tag);
+  return message(`Passed: ${title}`, `No one objected, so ${proposalWords(d).passed}.`, url, tag);
 }
 
 // an invitation to join a circle, opened where it's accepted or declined

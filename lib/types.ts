@@ -238,6 +238,12 @@ export interface ProposalLine {
 // how it ended
 export type ProposalNoticeKind = "opened" | "objected" | "passed";
 
+// what a proposal is for: a change to a circle (its own, or, decided by its
+// neighborhood, one inside it: see subjectCircleId), holding an event the
+// circle hosts, posting to its neighborhood's bulletin, or starting a new
+// Circle in a neighborhood
+export type ProposalKind = "change" | "event" | "post" | "new_circle";
+
 export interface ProposalResponse {
   memberId: number;
   response: ConsentResponse;
@@ -248,7 +254,15 @@ export interface ProposalResponse {
 
 export interface CircleProposal {
   id: string;
+  kind: ProposalKind;
+  // the circle whose members decide it: its own, or for a post its posting
+  // circle, or for a change a neighborhood must consent to, that neighborhood
   circleId: string;
+  // a change decided by a neighborhood (circleId) about a circle in it, which
+  // that circle's members decide too
+  subjectCircleId?: string;
+  // a post to the neighborhood's bulletin, while it exists
+  postId?: string;
   proposerId: number;
   // set when it proposes holding an event the circle hosts, rather than
   // changing the circle (null once that event is gone)
@@ -293,6 +307,24 @@ export interface CircleResource {
   // ISO timestamp it was posted, and by whom (unknown for older items)
   createdAt: string;
   createdBy?: number;
+}
+
+/* A post on a neighborhood's bulletin, by one of the Circles in it, seen only
+   by its residents (and the posting circle's members): the same kinds as a
+   circle's bulletin. Its circle consents to each one before it's published
+   (lib/db/neighborhood-posts.ts). */
+export interface NeighborhoodPost {
+  id: string;
+  neighborhoodId: string;
+  circleId: string;
+  title: string;
+  icon: ResourceIcon;
+  url?: string;
+  message?: string;
+  createdAt: string;
+  createdBy?: number;
+  // when its circle consented and it went up
+  publishedAt: string;
 }
 
 // what an event_notifications row is telling a member: an event or meeting a

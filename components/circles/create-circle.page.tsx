@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, HandRaisedIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
@@ -12,10 +12,12 @@ import {
   CIRCLE_TYPE_DESCRIPTION,
   CIRCLE_TYPE_LABEL,
   CREATABLE_CIRCLE_TYPES,
+  indexCircles,
   parentCircleOptions,
   validateNewCircle,
   type NewCircleInput,
 } from "@/lib/circles.util";
+import { newCircleNeighborhood } from "@/lib/proposals.util";
 import type { Circle, CircleType } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
 import { ParentCircleSelect } from "./parent-circle-select";
@@ -33,7 +35,9 @@ interface CreateCirclePageProps {
    Manage circle once it exists. The parent starts as wherever Create was
    pressed (a neighborhood's page, or the Circles root for the city), and can
    be changed. Created by the top bar's check, disabled until every required
-   field has a value; Back asks before discarding. */
+   field has a value; Back asks before discarding. A Circle in a neighborhood
+   can post to its bulletin, so it's proposed to the neighborhood instead: the
+   top bar's orange Propose, which asks first. */
 export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }: CreateCirclePageProps) {
   const parents = parentCircleOptions(circles);
   const root = circles.find((c) => c.parentId === null);
@@ -49,8 +53,11 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [confirmingProposal, setConfirmingProposal] = useState(false);
 
   const input: NewCircleInput | null = type ? { type, name, tagline, parentId, ...(type === "circle" ? { domain, aims } : {}) } : null;
+  // the neighborhood whose consent it needs, if it does
+  const neighborhood = input ? newCircleNeighborhood(input, indexCircles(circles)) : null;
   const problem = input ? validateNewCircle(input, circles) : "Choose what kind of circle this is.";
   const dirty = type !== "" || name !== "" || tagline !== "" || parentId !== startingParent || domain !== "" || aims.some((a) => a !== "");
 
@@ -66,7 +73,11 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
   }
 
   useBackHandler(dirty && !creating ? () => setConfirmingDiscard(true) : null);
-  useTopBarAction({ label: creating ? "Creating" : "Create circle", icon: CheckIcon, onAction: create, disabled: !!problem || creating, variant: "primary" });
+  useTopBarAction(
+    neighborhood
+      ? { label: creating ? "Proposing" : "Propose circle", icon: HandRaisedIcon, onAction: () => setConfirmingProposal(true), disabled: !!problem || creating, variant: "propose" }
+      : { label: creating ? "Creating" : "Create circle", icon: CheckIcon, onAction: create, disabled: !!problem || creating, variant: "primary" }
+  );
 
   return (
     <PageContainer size="normal">
@@ -116,9 +127,24 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
       </SectionGroup>
 
       <p className="mt-2 font-serif text-sm leading-normal text-soft">
-        You&rsquo;ll be its first member. Add more about it, like what it does and how to join, from Manage circle once it&rsquo;s created.
+        You&rsquo;ll be its first member. Add more about it, like what it does and how to join, from Manage circle once it&rsquo;s {neighborhood ? "started" : "created"}.
       </p>
       {error && <p className="mt-3 font-sans text-sm font-bold text-danger">{error}</p>}
+
+      {confirmingProposal && neighborhood && (
+        <ConfirmModal
+          title="Propose this circle?"
+          message={`A Circle can post to ${neighborhood.name}'s bulletin, so it needs the consent of everyone who lives there. They're asked in their daily digest.`}
+          confirmLabel="Propose circle"
+          cancelLabel="Not yet"
+          tone="flame"
+          onConfirm={() => {
+            setConfirmingProposal(false);
+            void create();
+          }}
+          onCancel={() => setConfirmingProposal(false)}
+        />
+      )}
 
       {confirmingDiscard && (
         <ConfirmModal

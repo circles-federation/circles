@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowTopRightOnSquareIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Eyebrow } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -84,14 +84,18 @@ export function BulletinSection({ circleId, adding, onAdd, onAddingDone, onEditP
 // the colored rule along a card's top, in its kind's color
 const TYPE_RULE = { folder: "border-t-folder", file: "border-t-file", video: "border-t-video", announcement: "border-t-announcement" };
 
+// what a card shows: a circle's bulletin item, or a neighborhood's post
+export type BulletinItem = Pick<CircleResource, "title" | "icon" | "url" | "message" | "createdAt" | "createdBy">;
+
 /* One card pinned to the bulletin: its kind (icon and name, in that kind's
    color, which also rules the card's top edge), its title, and then either
    where a link goes or an announcement's whole message. A link card is a
    link all over — its title's link is stretched across it — and inverts
    while pressed; an announcement is read where it is, and spans more of the
-   board. Its edit button (where removing it lives too) sits above the
-   stretched link, and doesn't press it. */
-function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdit: () => void }) {
+   board. Its one control, an edit button (where removing it lives too) or,
+   on a neighborhood's bulletin, a remove button, sits above the stretched
+   link, and doesn't press it. `from` names who posted it there (a circle). */
+export function BulletinCard({ resource: r, onEdit, onRemove, from }: { resource: BulletinItem; onEdit?: () => void; onRemove?: () => void; from?: string }) {
   const Icon = RESOURCE_ICONS[r.icon];
   const announcement = isAnnouncement(r.icon);
   const control = "hit relative z-10 -my-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink";
@@ -106,10 +110,18 @@ function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdi
       <div className="flex items-center gap-1.5">
         <Icon className={clsx("size-4 shrink-0", RESOURCE_ICON_TEXT[r.icon])} strokeWidth={2} aria-hidden />
         <Eyebrow className={clsx("min-w-0 flex-1 truncate", RESOURCE_ICON_TEXT[r.icon])}>{resourceOption(r.icon).label}</Eyebrow>
-        <button type="button" data-press-ignore onClick={onEdit} title="Edit" aria-label={`Edit ${r.title}`} className={clsx(control, "-mr-1.5")}>
-          <PencilIcon className="size-4" strokeWidth={2} />
-        </button>
+        {onEdit && (
+          <button type="button" data-press-ignore onClick={onEdit} title="Edit" aria-label={`Edit ${r.title}`} className={clsx(control, "-mr-1.5")}>
+            <PencilIcon className="size-4" strokeWidth={2} />
+          </button>
+        )}
+        {onRemove && (
+          <button type="button" data-press-ignore onClick={onRemove} title="Take down" aria-label={`Take down ${r.title}`} className={clsx(control, "-mr-1.5")}>
+            <TrashIcon className="size-4" strokeWidth={2} />
+          </button>
+        )}
       </div>
+      {from && <p className="mt-2 font-sans text-xs font-bold text-soft">From {from}</p>}
       <div className="mt-3 font-sans text-base leading-tight font-bold wrap-anywhere">
         {announcement ? r.title : (
           <a href={r.url} target="_blank" rel="noopener noreferrer" className="after:absolute after:inset-0">
@@ -134,7 +146,7 @@ function BulletinCard({ resource: r, onEdit }: { resource: CircleResource; onEdi
 
 // signed like a note: "— Dillon Fagan on 2/24/2026". An item from before
 // posters were recorded, or whose poster has since left, shows just the date.
-function PostedBy({ resource: r }: { resource: CircleResource }) {
+function PostedBy({ resource: r }: { resource: BulletinItem }) {
   const memberById = useMemberById();
   const poster = r.createdBy !== undefined ? memberById(r.createdBy) : undefined;
   const date = fmtNumericDate(r.createdAt);

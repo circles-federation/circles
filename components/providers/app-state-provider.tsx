@@ -25,6 +25,8 @@ import {
   saveNotificationSettingsAction as dbSaveNotificationSettings,
   saveAvailabilityAction as dbSaveAvailability,
   createCircleAction as dbCreateCircle,
+  proposeNeighborhoodPostAction as dbProposeNeighborhoodPost,
+  removeNeighborhoodPostAction as dbRemoveNeighborhoodPost,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
@@ -33,7 +35,7 @@ import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, ConsentResponse, Event, Member, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
+import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, ConsentResponse, Event, Member, NeighborhoodPost, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -45,6 +47,9 @@ export interface AppStateValue {
   members: Member[];
   // members-only: only the viewer's own circles' resources are ever loaded
   resources: CircleResource[];
+  // their neighborhood's bulletin, and what their own circles have posted
+  // (only residents, and the posting circle's members, are ever sent a post)
+  neighborhoodPosts: NeighborhoodPost[];
   // their own invitations to circles, and those to the circles they're in
   invitations: CircleInvitation[];
   // the proposals of their circles: open ones, and those decided lately
@@ -59,8 +64,10 @@ export interface AppStateValue {
   createEvent(draft: EventDraft): Promise<{ ok: true; event: Event; proposalId?: string } | { ok: false; error: string }>;
   updateEventDetails(id: string, details: EventDetails, scope?: SeriesScope): Promise<MutationResult>;
   cancelEvent(id: string, scope?: SeriesScope): Promise<{ ok: true; deleted: boolean } | { ok: false; error: string }>;
-  // resolves to the new circle, for the caller to go to
-  createCircle(input: NewCircleInput): Promise<{ ok: true; circle: Circle } | { ok: false; error: string }>;
+  // resolves to the new circle, for the caller to go to, or for a Circle in a
+  // neighborhood, the proposal asking the neighborhood (and the circle, if
+  // a neighborhood of one made it at once)
+  createCircle(input: NewCircleInput): Promise<{ ok: true; circle: Circle } | { ok: true; proposal: CircleProposal; circleId: string | null } | { ok: false; error: string }>;
   saveCircle(id: string, patch: Partial<Circle>): void;
   // propose changes to a circle, for its members' consent; `passed` when it
   // was decided at once (a circle of one)
@@ -75,6 +82,10 @@ export interface AppStateValue {
   addResource(circleId: string, input: ResourceInput): Promise<MutationResult>;
   updateResource(id: string, input: ResourceInput): Promise<MutationResult>;
   removeResource(id: string): Promise<MutationResult>;
+  // propose a post to the neighborhood's bulletin for `circleId`'s consent;
+  // `published` when a circle of one posted it at once
+  proposeNeighborhoodPost(circleId: string, input: ResourceInput): Promise<{ ok: true; proposalId: string; published: boolean } | { ok: false; error: string }>;
+  removeNeighborhoodPost(id: string): Promise<MutationResult>;
   // an admin decided one, so there's one fewer waiting (until the next refresh)
   reviewDecided(): void;
   inviteToCircle(circleId: string, memberId: number): Promise<MutationResult>;
@@ -142,13 +153,14 @@ interface AppStateProviderProps {
   initialCircles: Circle[];
   initialMembers: Member[];
   initialResources: CircleResource[];
+  initialNeighborhoodPosts: NeighborhoodPost[];
   initialPendingReviews: number | null;
   initialInvitations: CircleInvitation[];
   initialProposals: CircleProposal[];
   initialProfile: Profile;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialProfile, initialPendingReviews, initialInvitations, initialProposals }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialNeighborhoodPosts, initialProfile, initialPendingReviews, initialInvitations, initialProposals }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
@@ -158,6 +170,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   // than a static seed array; the signed-in member's own edits are mirrored in
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [resources, setResources] = useState<CircleResource[]>(initialResources);
+  const [neighborhoodPosts, setNeighborhoodPosts] = useState<NeighborhoodPost[]>(initialNeighborhoodPosts);
   const [pendingReviews, setPendingReviews] = useState(initialPendingReviews);
   const [invitations, setInvitations] = useState<CircleInvitation[]>(initialInvitations);
   const [proposals, setProposals] = useState<CircleProposal[]>(initialProposals);
@@ -202,6 +215,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setCircles(fresh.circles);
     setMembers(fresh.members);
     setResources(fresh.resources);
+    setNeighborhoodPosts(fresh.neighborhoodPosts);
     setInvitations(fresh.invitations);
     setProposals(fresh.proposals);
     setPendingReviews(fresh.pendingReviews);
@@ -450,12 +464,37 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
 
   // await-then-update, like resources: the server can refuse, and it chooses
   // the id the new circle's page is reached by
-  async function createCircle(input: NewCircleInput): Promise<{ ok: true; circle: Circle } | { ok: false; error: string }> {
+  async function createCircle(input: NewCircleInput): Promise<{ ok: true; circle: Circle } | { ok: true; proposal: CircleProposal; circleId: string | null } | { ok: false; error: string }> {
     const result = await dbCreateCircle(input).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
-    const circle = result.value;
+    const made = result.value;
+    if (made.state) {
+      adopt(made.state);
+      return { ok: true, proposal: made.proposal, circleId: made.circleId };
+    }
+    const circle = made.circle;
     setCircles((prev) => [...prev, circle]);
     return { ok: true, circle };
+  }
+
+  // await-then-update: the server checks it's a Circle in a neighborhood, and
+  // a circle of one posts it at once; either way the whole state comes back
+  async function proposeNeighborhoodPost(circleId: string, input: ResourceInput): Promise<{ ok: true; proposalId: string; published: boolean } | { ok: false; error: string }> {
+    const result = await dbProposeNeighborhoodPost(circleId, input).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    adopt(result.value.state);
+    return { ok: true, proposalId: result.value.proposalId, published: result.value.published };
+  }
+
+  async function removeNeighborhoodPost(id: string): Promise<MutationResult> {
+    const result = await dbRemoveNeighborhoodPost(id).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) {
+      showToast({ tone: "error", title: "Couldn't take it down", message: result.error });
+      return result;
+    }
+    adopt(result.value);
+    showToast({ tone: "success", message: "Taken down from the bulletin." });
+    return { ok: true };
   }
 
   // save edits to a circle and record who edited it and when
@@ -627,7 +666,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events, circles, members, resources, invitations, proposals, pendingReviews, rsvpState, profile,
+        events, circles, members, resources, neighborhoodPosts, invitations, proposals, pendingReviews, rsvpState, profile,
         inviteToCircle: tracked(inviteToCircle),
         acceptInvitation: tracked(acceptInvitation),
         leaveCircle: tracked(leaveCircle),
@@ -649,6 +688,8 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         addResource: tracked(addResource),
         updateResource: tracked(updateResource),
         removeResource: tracked(removeResource),
+        proposeNeighborhoodPost: tracked(proposeNeighborhoodPost),
+        removeNeighborhoodPost: tracked(removeNeighborhoodPost),
       }}
     >
       {children}

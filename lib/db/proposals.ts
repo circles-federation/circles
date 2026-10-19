@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { db, type Tx } from "./client";
-import { getCircleById, getCirclesForMember } from "./circles";
+import { getCircleById, getCirclesForMember, insertCircle } from "./circles";
 import { writeCircleRoles } from "./circle-roles";
 import { UserFacingError } from "./errors";
 import { approveHostedEvent, discardEvent, getEvent } from "./events";
-import { enqueueProposalNotifications, wallClock } from "./notifications";
+import { discardPost, publishPost } from "./neighborhood-posts";
+import { enqueueNeighborhoodNotifications, enqueueProposalNotifications, wallClock } from "./notifications";
 import { circleMembers, circleProposals, circles, eventRsvps, eventVotes, events, members, proposalResponses, roles as eventRoles } from "./schema";
 import { groupBy } from "./util";
 import {
@@ -13,15 +14,21 @@ import {
   PROPOSAL_WINDOW_MS,
   changedFields,
   describeChanges,
+  describeNewCircle,
+  describePostProposal,
   everyoneConsented,
   describeEventProposal,
   hasChanges,
   missingCircleBasics,
+  neighborhoodConsentFor,
+  newCircleNeighborhood,
   validateChanges,
 } from "@/lib/proposals.util";
+import { indexCircles, validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
+import { RESOURCE_KIND_LABEL } from "@/lib/resources.util";
 import { majority } from "@/lib/governance.util";
 import { localDay } from "@/lib/recurrence.util";
-import type { Circle, CircleProposal, ConsentResponse, Event, ProposalChanges, ProposalResponse } from "@/lib/types";
+import type { Circle, CircleProposal, ConsentResponse, Event, NeighborhoodPost, ProposalChanges, ProposalResponse } from "@/lib/types";
 
 export class ProposalError extends UserFacingError {}
 
@@ -39,7 +46,10 @@ type ProposalRow = typeof circleProposals.$inferSelect;
 function toProposal(row: ProposalRow, responses: ProposalResponse[]): CircleProposal {
   return {
     id: row.id,
+    kind: row.kind,
     circleId: row.circleId,
+    ...(row.subjectCircleId !== null ? { subjectCircleId: row.subjectCircleId } : {}),
+    ...(row.postId !== null ? { postId: row.postId } : {}),
     proposerId: row.proposerId,
     ...(row.eventId !== null ? { eventId: row.eventId } : {}),
     changes: row.changes,
@@ -65,16 +75,19 @@ async function withResponses(rows: ProposalRow[], tx: Tx | typeof db = db): Prom
   return rows.map((row) => toProposal(row, byProposal.get(row.id) ?? []));
 }
 
-/* The proposals of every circle this member belongs to: open ones, and those
-   decided in the last month — AppState's `proposals`. */
+/* The proposals this member has a say in, or made: their circles', those
+   about one of their circles that its neighborhood decides too, and their
+   own (a new Circle proposed to a neighborhood they don't live in, say).
+   Open ones, and those decided in the last month — AppState's `proposals`. */
 export async function getProposalsForMember(memberId: number): Promise<CircleProposal[]> {
   const since = new Date(Date.now() - DECIDED_KEPT_DAYS * 24 * 60 * 60 * 1000);
+  const mine = db.select({ id: circleMembers.circleId }).from(circleMembers).where(eq(circleMembers.memberId, memberId));
   const rows = await db
     .select()
     .from(circleProposals)
     .where(
       and(
-        inArray(circleProposals.circleId, db.select({ id: circleMembers.circleId }).from(circleMembers).where(eq(circleMembers.memberId, memberId))),
+        or(inArray(circleProposals.circleId, mine), inArray(circleProposals.subjectCircleId, mine), eq(circleProposals.proposerId, memberId)),
         or(eq(circleProposals.status, "open"), gte(circleProposals.decidedAt, since))
       )
     )
@@ -86,6 +99,26 @@ async function memberIdsOf(tx: Tx, circleId: string): Promise<number[]> {
   return (await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.id);
 }
 
+/* Who decides it: its circle's members, and for a change its neighborhood
+   decides (subjectCircleId, while open), the members of the circle it would
+   change too, who needn't live there. A new Circle is its neighborhood's
+   alone, and its proposer has consented by proposing whether or not they
+   live there. */
+async function decidersOf(tx: Tx, row: Pick<ProposalRow, "kind" | "circleId" | "subjectCircleId">): Promise<number[]> {
+  const ids = await memberIdsOf(tx, row.circleId);
+  if (row.kind !== "change" || row.subjectCircleId === null) return ids;
+  return [...new Set([...ids, ...(await memberIdsOf(tx, row.subjectCircleId))])];
+}
+
+/* Who hears how one ended, by email and push: everyone who decides it, but
+   for one a neighborhood decides, only its proposer and the members of the
+   circle it's about, since a neighborhood is too big to email about each. */
+async function toldOfOutcome(tx: Tx, row: ProposalRow): Promise<number[]> {
+  if (row.kind === "new_circle") return [row.proposerId];
+  if (row.kind === "change" && row.subjectCircleId !== null) return [...new Set([row.proposerId, ...(await memberIdsOf(tx, row.subjectCircleId))])];
+  return decidersOf(tx, row);
+}
+
 /* Make a passed proposal's changes, in the transaction that passes it. What
    was agreed is checked again against the circle as it is now: a role holder
    who has since left is left out (as writeCircleRoles always does), and
@@ -93,7 +126,7 @@ async function memberIdsOf(tx: Tx, circleId: string): Promise<number[]> {
    rather than failing the whole decision. Its proposer is recorded as the
    page's last editor. */
 async function applyProposal(tx: Tx, proposal: ProposalRow): Promise<void> {
-  const circle = await getCircleById(proposal.circleId);
+  const circle = await getCircleById(proposal.subjectCircleId ?? proposal.circleId);
   if (!circle) return;
   const all = await getCirclesForMember(proposal.proposerId);
   const { roles, ...fields } = proposal.changes;
@@ -121,13 +154,32 @@ async function pass(tx: Tx, proposal: ProposalRow, actorId: number | null): Prom
     return;
   }
   await tx.update(circleProposals).set({ status: "passed", decidedAt: new Date() }).where(eq(circleProposals.id, proposal.id));
-  if (proposal.eventId !== null) {
-    await approveHostedEvent(tx, proposal.eventId, actorId);
+  if (proposal.kind === "event") {
+    if (proposal.eventId !== null) await approveHostedEvent(tx, proposal.eventId, actorId);
     return;
   }
-  await applyProposal(tx, proposal);
-  const tell = (await memberIdsOf(tx, proposal.circleId)).filter((m) => m !== actorId);
-  await enqueueProposalNotifications(tx, proposal.id, "passed", tell);
+  const tell = await toldOfOutcome(tx, proposal);
+  if (proposal.kind === "post") {
+    if (proposal.postId !== null) await publishPost(tx, proposal.postId);
+  } else if (proposal.kind === "new_circle") {
+    await startCircle(tx, proposal);
+  } else {
+    await applyProposal(tx, proposal);
+  }
+  await enqueueProposalNotifications(tx, proposal.id, "passed", tell.filter((m) => m !== actorId));
+}
+
+/* A new Circle its neighborhood consented to: made now, by its proposer, who
+   becomes its first member, and recorded on the proposal (subjectCircleId)
+   so its page can lead there. Checked again first, against the circles as
+   they are now; one that no longer fits (its neighborhood's gone) isn't made. */
+async function startCircle(tx: Tx, proposal: ProposalRow): Promise<void> {
+  const c = proposal.changes;
+  if (!c.type || !c.name || !c.parentId) return;
+  const input: NewCircleInput = { type: c.type, name: c.name, tagline: c.tagline ?? "", parentId: c.parentId, domain: c.domain ?? "", aims: c.aims ?? [] };
+  if (validateNewCircle(input, await getCirclesForMember(proposal.proposerId))) return;
+  const id = await insertCircle(tx, proposal.proposerId, input);
+  await tx.update(circleProposals).set({ subjectCircleId: id }).where(eq(circleProposals.id, proposal.id));
 }
 
 // whether an event's start (its community wall-clock date and time) has come
@@ -214,6 +266,76 @@ export async function openEventProposal(tx: Tx, proposerId: number, event: Event
   return id;
 }
 
+/* Propose a post to the neighborhood's bulletin (proposeNeighborhoodPost in
+   lib/db/neighborhood-posts.ts), in the transaction that saves it
+   unpublished: like an event, its proposer consents by proposing, the rest
+   of the circle is asked, and a circle of one posts it at once. Returns its id. */
+export async function openPostProposal(tx: Tx, proposerId: number, post: NeighborhoodPost, neighborhoodName: string): Promise<string> {
+  const id = randomUUID();
+  const [row] = await tx
+    .insert(circleProposals)
+    .values({
+      id,
+      kind: "post",
+      circleId: post.circleId,
+      proposerId,
+      postId: post.id,
+      changes: {},
+      lines: describePostProposal(post, neighborhoodName, RESOURCE_KIND_LABEL[post.icon]),
+      closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS),
+    })
+    .returning();
+  await tx.insert(proposalResponses).values({ proposalId: id, memberId: proposerId, response: "like" });
+  const memberIds = await memberIdsOf(tx, post.circleId);
+  if (everyoneConsented({ responses: [{ memberId: proposerId, response: "like", respondedAt: "" }] }, memberIds)) await pass(tx, row!, proposerId);
+  else await enqueueProposalNotifications(tx, id, "opened", memberIds.filter((m) => m !== proposerId));
+  return id;
+}
+
+// a post taken down while it waited (removeNeighborhoodPost): closed, with no notices
+export async function withdrawPostProposal(tx: Tx, postId: string): Promise<void> {
+  await tx
+    .update(circleProposals)
+    .set({ status: "withdrawn", decidedAt: new Date() })
+    .where(and(eq(circleProposals.postId, postId), eq(circleProposals.status, "open")));
+}
+
+/* Propose starting a Circle in a neighborhood, which can then post to its
+   bulletin, so it's the neighborhood's to consent to (createCircleAction
+   comes here instead of creating it, for a Circle whose parent is in one).
+   Its residents are asked in their next daily digest; its proposer, who may
+   not live there, consents by proposing. A neighborhood whose only resident
+   is its proposer decides it at once. Returns it, and the new circle's id if
+   it was made then and there. */
+export async function proposeNewCircle(memberId: number, input: NewCircleInput): Promise<{ proposal: CircleProposal; circleId: string | null }> {
+  const visible = await getCirclesForMember(memberId);
+  const problem = validateNewCircle(input, visible);
+  if (problem) throw new ProposalError(problem);
+  const neighborhood = newCircleNeighborhood(input, indexCircles(visible));
+  if (!neighborhood) throw new ProposalError("Only a Circle in a neighborhood needs the neighborhood's consent.");
+  const changes: ProposalChanges = {
+    type: input.type,
+    name: input.name.trim(),
+    tagline: input.tagline.trim(),
+    parentId: input.parentId,
+    domain: (input.domain ?? "").trim(),
+    aims: (input.aims ?? []).map((a) => a.trim()).filter(Boolean),
+  };
+  const id = randomUUID();
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(circleProposals)
+      .values({ id, kind: "new_circle", circleId: neighborhood.id, proposerId: memberId, changes, lines: describeNewCircle(input, neighborhood.name), closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS) })
+      .returning();
+    await tx.insert(proposalResponses).values({ proposalId: id, memberId, response: "like" });
+    const residents = await memberIdsOf(tx, neighborhood.id);
+    if (everyoneConsented({ responses: [{ memberId, response: "like", respondedAt: "" }] }, residents)) await pass(tx, row!, memberId);
+    else await enqueueNeighborhoodNotifications(tx, { proposalId: id }, residents.filter((m) => m !== memberId));
+  });
+  const [proposal] = await withResponses(await db.select().from(circleProposals).where(eq(circleProposals.id, id)));
+  return { proposal: proposal!, circleId: proposal!.status === "passed" ? (proposal!.subjectCircleId ?? null) : null };
+}
+
 /* Move every upcoming meeting and circle-hosted event that's still waiting
    on a majority vote to consent: each becomes an open consent proposal by its
    organizer, the votes already cast counted as consents, so it's scheduled at
@@ -292,25 +414,40 @@ export async function createProposal(memberId: number, circleId: string, draft: 
   if (problem) throw new ProposalError(problem);
   const names = await memberNames([...(changes.roles ?? []), ...(circle.roles ?? [])].flatMap((r) => (r.memberId !== null ? [r.memberId] : [])));
   const lines = describeChanges(circle, changes, visible, (id) => names.get(id) ?? "A former member");
+  // becoming a Circle in a neighborhood, or a Circle moving into one, is that
+  // neighborhood's to consent to as well as the circle's own
+  const neighborhood = neighborhoodConsentFor(circle, changes, indexCircles(visible));
 
   const id = randomUUID();
   const passed = await db.transaction(async (tx) => {
     const [open] = await tx
       .select({ id: circleProposals.id })
       .from(circleProposals)
-      .where(and(eq(circleProposals.circleId, circleId), eq(circleProposals.status, "open"), isNull(circleProposals.eventId)));
+      .where(and(eq(circleProposals.kind, "change"), eq(circleProposals.status, "open"), sql`coalesce(${circleProposals.subjectCircleId}, ${circleProposals.circleId}) = ${circleId}`));
     if (open) throw new ProposalError(`${circle.name} already has a proposal open. Once it's decided, you can propose this.`);
     const [row] = await tx
       .insert(circleProposals)
-      .values({ id, circleId, proposerId: memberId, changes, lines, closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS) })
+      .values({
+        id,
+        circleId: neighborhood?.id ?? circleId,
+        ...(neighborhood ? { subjectCircleId: circleId } : {}),
+        proposerId: memberId,
+        changes,
+        lines,
+        closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS),
+      })
       .returning();
     await tx.insert(proposalResponses).values({ proposalId: id, memberId, response: "like" });
-    const memberIds = await memberIdsOf(tx, circleId);
-    if (everyoneConsented({ responses: [{ memberId, response: "like", respondedAt: "" }] }, memberIds)) {
+    const deciders = await decidersOf(tx, row!);
+    if (everyoneConsented({ responses: [{ memberId, response: "like", respondedAt: "" }] }, deciders)) {
       await pass(tx, row!, memberId);
       return true;
     }
-    await enqueueProposalNotifications(tx, id, "opened", memberIds.filter((m) => m !== memberId));
+    // the circle's own members by email and push, and the rest of a
+    // neighborhood that decides it in their next digest
+    const own = (await memberIdsOf(tx, circleId)).filter((m) => m !== memberId);
+    await enqueueProposalNotifications(tx, id, "opened", own);
+    if (neighborhood) await enqueueNeighborhoodNotifications(tx, { proposalId: id }, deciders.filter((m) => m !== memberId && !own.includes(m)));
     return false;
   });
   const [proposal] = await withResponses(await db.select().from(circleProposals).where(eq(circleProposals.id, id)));
@@ -336,8 +473,8 @@ export async function respondToProposal(
 
   const passed = await db.transaction(async (tx) => {
     const [row] = await tx.select().from(circleProposals).where(eq(circleProposals.id, id)).for("update");
-    const memberIds = row ? await memberIdsOf(tx, row.circleId) : [];
-    // to anyone outside the circle it doesn't exist
+    const memberIds = row ? await decidersOf(tx, row) : [];
+    // to anyone with no say in it, it doesn't exist
     if (!row || !memberIds.includes(memberId)) throw new ProposalError("That proposal doesn't exist.");
     if (row.status !== "open" || row.closesAt <= new Date()) throw new ProposalError("This proposal has already been decided.");
     if (row.proposerId === memberId) throw new ProposalError("You proposed this, so you've already consented.");
@@ -350,9 +487,11 @@ export async function respondToProposal(
       });
     if (response === "object") {
       await tx.update(circleProposals).set({ status: "objected", decidedAt: new Date() }).where(eq(circleProposals.id, id));
-      // an event that won't be held: it was never scheduled, so it simply goes
+      // an event that won't be held, or a post that won't go up: never
+      // scheduled or published, so it simply goes
       if (row.eventId !== null) await discardEvent(tx, row.eventId);
-      await enqueueProposalNotifications(tx, id, "objected", memberIds.filter((m) => m !== memberId));
+      if (row.postId !== null) await discardPost(tx, row.postId);
+      await enqueueProposalNotifications(tx, id, "objected", (await toldOfOutcome(tx, row)).filter((m) => m !== memberId));
       return false;
     }
     if (row.eventId !== null) await rsvpConsenters(tx, row.eventId, [memberId]);
@@ -364,7 +503,7 @@ export async function respondToProposal(
     return false;
   });
   const [proposal] = await withResponses(await db.select().from(circleProposals).where(eq(circleProposals.id, id)));
-  return { proposal: proposal!, circle: passed ? await getCircleById(proposal!.circleId) : null };
+  return { proposal: proposal!, circle: passed ? await getCircleById(proposal!.subjectCircleId ?? proposal!.circleId) : null };
 }
 
 /* Pass the open proposals whose window has ended: an objection would already
