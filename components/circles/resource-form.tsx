@@ -19,7 +19,7 @@ import { resourceFormTitle, resourceOption } from "./resource-kinds";
 // which is proposed rather than saved (NeighborhoodPostPage)
 export function useResourceForm(circleId: string, resource: CircleResource | null, onSaved: () => void, save?: (input: ResourceInput) => Promise<{ ok: true } | { ok: false; error: string }>) {
   const { addResource, updateResource } = useAppState();
-  const [icon, setIcon] = useState<ResourceIcon>(resource?.icon ?? "folder");
+  const [icon, setIcon] = useState<ResourceIcon>(resource?.icon ?? "announcement");
   const [title, setTitle] = useState(resource?.title ?? "");
   const [url, setUrl] = useState(resource?.url ?? "");
   const [message, setMessage] = useState(resource?.message ?? "");
@@ -29,7 +29,7 @@ export function useResourceForm(circleId: string, resource: CircleResource | nul
 
   // only what the chosen kind saves counts as a change
   const dirty =
-    icon !== (resource?.icon ?? "folder") ||
+    icon !== (resource?.icon ?? "announcement") ||
     title !== (resource?.title ?? "") ||
     (isAnnouncement(icon) ? message !== (resource?.message ?? "") : url !== (resource?.url ?? ""));
 
