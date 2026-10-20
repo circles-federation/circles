@@ -6,6 +6,7 @@ import { ConfirmModal, Label, PageContainer, Select } from "@/components/shared"
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
+import { validateResourceInput } from "@/lib/resources.util";
 import type { Circle } from "@/lib/types";
 import { ResourceFields, useResourceForm } from "./resource-form";
 
@@ -23,11 +24,14 @@ interface NeighborhoodPostPageProps {
    then the same fields as a circle's bulletin item. It isn't saved but
    proposed, for that circle's consent (the top bar's orange Propose, which
    asks first), and goes up once it's given; a circle of one posts it at
-   once. A page on every screen, like the event form, since it starts a
+   once. Which Circle it's from is always chosen, from none to start, even
+   for someone in only one: it's posted as that circle, and that circle is
+   asked. A page on every screen, like the event form, since it starts a
    proposal rather than pinning something up. */
 export function NeighborhoodPostPage({ neighborhood, circles, onPosted, onProposed, onDiscard }: NeighborhoodPostPageProps) {
   const { proposeNeighborhoodPost } = useAppState();
-  const [circleId, setCircleId] = useState(circles[0]?.id ?? "");
+  // always chosen, never assumed, even from one: it's posted as that circle
+  const [circleId, setCircleId] = useState("");
   const circle = circles.find((c) => c.id === circleId);
   const alone = circle?.members.length === 1;
   const [confirming, setConfirming] = useState(false);
@@ -40,11 +44,14 @@ export function NeighborhoodPostPage({ neighborhood, circles, onPosted, onPropos
     return { ok: true };
   });
 
+  // nothing to post until it's whole: a title, and a valid link or a message
+  const ready = !!circle && !form.busy && Object.keys(validateResourceInput({ title: form.title, icon: form.icon, url: form.url, message: form.message })).length === 0;
+
   useBackHandler(form.dirty && !form.busy ? () => setConfirmingDiscard(true) : null);
   useTopBarAction(
     alone
-      ? { label: form.busy ? "Posting" : "Post", icon: CheckIcon, onAction: () => void form.submit(), disabled: !form.dirty || form.busy, variant: "primary" }
-      : { label: form.busy ? "Proposing" : "Propose post", icon: HandRaisedIcon, onAction: () => setConfirming(true), disabled: !form.dirty || form.busy, variant: "propose" }
+      ? { label: form.busy ? "Posting" : "Post", icon: CheckIcon, onAction: () => void form.submit(), disabled: !ready, variant: "primary" }
+      : { label: form.busy ? "Proposing" : "Propose post", icon: HandRaisedIcon, onAction: () => setConfirming(true), disabled: !ready, variant: "propose" }
   );
 
   return (
@@ -52,17 +59,16 @@ export function NeighborhoodPostPage({ neighborhood, circles, onPosted, onPropos
       <form onSubmit={(e) => e.preventDefault()} noValidate className="flex flex-col gap-5">
         <div>
           <Label htmlFor="post-from">From</Label>
-          {circles.length > 1 ? (
-            <Select id="post-from" value={circleId} onChange={(e) => setCircleId(e.target.value)}>
-              {circles.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          ) : (
-            <p id="post-from" className="font-sans text-base font-bold">{circle?.name}</p>
-          )}
+          <Select id="post-from" value={circleId} onChange={(e) => setCircleId(e.target.value)}>
+            <option value="" disabled>
+              Choose a circle
+            </option>
+            {circles.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
           <p className="mt-1.5 font-serif text-sm leading-snug text-soft">It goes on {neighborhood.name}&rsquo;s bulletin, for everyone who lives there, and into their daily digest.</p>
         </div>
         <ResourceFields form={form} audience="neighbors" />

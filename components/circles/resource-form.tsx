@@ -79,7 +79,7 @@ export function ResourceFields({ form, audience = "members" }: { form: ResourceF
               >
                 <Icon className={clsx("size-5", !selected && RESOURCE_ICON_TEXT[o.key])} strokeWidth={2} />
                 <span className="font-sans text-sm font-bold">{o.label}</span>
-                <span className={clsx("font-serif text-xs leading-snug", selected ? "text-paper/80" : "text-soft")}>{o.hint}</span>
+                <span className={clsx("font-serif text-xs leading-snug", selected ? "text-paper/80" : "text-soft")}>{o.key === "announcement" ? `A message for ${audience}` : o.hint}</span>
               </button>
             );
           })}
