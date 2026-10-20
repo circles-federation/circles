@@ -1,0 +1,4 @@
+ALTER TABLE "circle_resources" DROP CONSTRAINT "circle_resources_link_or_message";--> statement-breakpoint
+ALTER TABLE "neighborhood_posts" DROP CONSTRAINT "neighborhood_posts_link_or_message";--> statement-breakpoint
+ALTER TABLE "circle_resources" ADD CONSTRAINT "circle_resources_link_or_message" CHECK (("circle_resources"."icon"::text = 'announcement' and "circle_resources"."message" is not null and "circle_resources"."url" is null) or ("circle_resources"."icon"::text <> 'announcement' and "circle_resources"."url" is not null));--> statement-breakpoint
+ALTER TABLE "neighborhood_posts" ADD CONSTRAINT "neighborhood_posts_link_or_message" CHECK (("neighborhood_posts"."icon"::text = 'announcement' and "neighborhood_posts"."message" is not null and "neighborhood_posts"."url" is null) or ("neighborhood_posts"."icon"::text <> 'announcement' and "neighborhood_posts"."url" is not null));

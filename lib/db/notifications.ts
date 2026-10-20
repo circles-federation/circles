@@ -713,6 +713,7 @@ export async function claimAnnouncementNotifications(limit: number, channel: Not
         channel: announcementNotifications.channel,
         email: emailIfWanted,
         title: circleResources.title,
+        icon: circleResources.icon,
         message: circleResources.message,
         createdAt: circleResources.createdAt,
         circleName: circles.name,
@@ -724,9 +725,9 @@ export async function claimAnnouncementNotifications(limit: number, channel: Not
       .innerJoin(members, eq(members.id, announcementNotifications.memberId))
       .leftJoin(poster, eq(poster.id, circleResources.createdBy))
       .where(isDue);
-    // an item edited into a link since has no message left to send (the row
-    // stays claimed until it runs out of attempts)
-    return rows.flatMap(({ message, posterName, ...r }) => (message !== null ? [{ ...r, message, ...(posterName ? { posterName } : {}) }] : []));
+    // an item edited into a link since is no announcement to send, whatever
+    // message it has (the row stays claimed until it runs out of attempts)
+    return rows.flatMap(({ icon, message, posterName, ...r }) => (icon === "announcement" && message !== null ? [{ ...r, message, ...(posterName ? { posterName } : {}) }] : []));
   });
 }
 

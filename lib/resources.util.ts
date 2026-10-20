@@ -12,8 +12,8 @@ export const RESOURCE_ICONS: readonly ResourceIcon[] = ["folder", "file", "video
 export const RESOURCE_KIND_LABEL: Record<ResourceIcon, string> = { folder: "Folder", file: "File", video: "Video", announcement: "Announcement", survey: "Survey" };
 
 // what the form sends: it keeps both a link and a message as it's edited (so
-// switching kind doesn't lose either), and only the one the kind uses is
-// checked and saved — an announcement's message, every other kind's link
+// switching kind doesn't lose either). An announcement is its message alone;
+// every other kind is its link, with a message about it if there is one
 export interface ResourceInput {
   title: string;
   icon: ResourceIcon;
@@ -23,7 +23,8 @@ export interface ResourceInput {
 
 export type ResourceErrors = Partial<Record<keyof ResourceInput, string>>;
 
-// an announcement is a message to the circle; every other kind is a link
+// an announcement is a message to the circle; every other kind is a link (with
+// an optional message)
 export function isAnnouncement(icon: ResourceIcon): boolean {
   return icon === "announcement";
 }
@@ -54,6 +55,7 @@ export function validateResourceInput(input: ResourceInput): ResourceErrors {
     else if (message.length > RESOURCE_MESSAGE_MAX) errors.message = `Keep it under ${RESOURCE_MESSAGE_MAX} characters.`;
     return errors;
   }
+  if (input.message.trim().length > RESOURCE_MESSAGE_MAX) errors.message = `Keep it under ${RESOURCE_MESSAGE_MAX} characters.`;
   const url = input.url.trim();
   if (!url) errors.url = "Add a link.";
   else if (url.length > RESOURCE_URL_MAX) errors.url = "That link is too long.";

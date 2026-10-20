@@ -55,9 +55,10 @@ async function assertCanManage(memberId: number, circleId: string) {
   if (!membership) throw new ResourceError("Only members of this circle can change its bulletin.");
 }
 
-// only what the kind uses is saved, and the other is cleared — so a resource
-// changed from a link to an announcement (or back) keeps nothing stale, which
-// the table's own check constraint also insists on
+// only what the kind uses is saved: an announcement's message, and clearing
+// its link; or a link, with its message if it has one (an empty one is none)
+// — so a resource changed from a link to an announcement keeps no stale
+// link, which the table's own check constraint also insists on
 // (also a neighborhood post's, lib/db/neighborhood-posts.ts)
 export function cleanInput(input: ResourceInput): { title: string; icon: ResourceInput["icon"]; url: string | null; message: string | null } {
   const first = Object.values(validateResourceInput(input))[0];
@@ -67,7 +68,7 @@ export function cleanInput(input: ResourceInput): { title: string; icon: Resourc
     title: input.title.trim(),
     icon: input.icon,
     url: announcement ? null : input.url.trim(),
-    message: announcement ? input.message.trim() : null,
+    message: announcement ? input.message.trim() : input.message.trim() || null,
   };
 }
 

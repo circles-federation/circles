@@ -12,9 +12,10 @@ import { resourceFormTitle, resourceOption } from "./resource-kinds";
    desktop (ResourceFormModal, below) and a page of its own on a phone
    (ResourceFormPage). Both hold the same state through useResourceForm and
    render the same ResourceFields. What it is comes first, since that decides
-   what else to fill in: a link for a folder, file or video, a message for an
-   announcement. Both are kept while the form is open, so switching kind
-   doesn't lose what was typed; only the one the kind uses is saved. */
+   what else to fill in: a link for a folder, file, video or survey, a message for an
+   announcement, with an optional message for a link too. Both are kept while
+   the form is open, so switching kind doesn't lose what was typed; an
+   announcement saves no link. */
 // `save` in place of adding to the circle's bulletin: a neighborhood post,
 // which is proposed rather than saved (NeighborhoodPostPage)
 export function useResourceForm(circleId: string, resource: CircleResource | null, onSaved: () => void, save?: (input: ResourceInput) => Promise<{ ok: true } | { ok: false; error: string }>) {
@@ -27,11 +28,13 @@ export function useResourceForm(circleId: string, resource: CircleResource | nul
   const [serverError, setServerError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // only what the chosen kind saves counts as a change
+  // only what the chosen kind saves counts as a change: an announcement's
+  // message, or a link and the message that may go with it
   const dirty =
     icon !== (resource?.icon ?? "announcement") ||
     title !== (resource?.title ?? "") ||
-    (isAnnouncement(icon) ? message !== (resource?.message ?? "") : url !== (resource?.url ?? ""));
+    message !== (resource?.message ?? "") ||
+    (!isAnnouncement(icon) && url !== (resource?.url ?? ""));
 
   async function submit(e?: FormEvent) {
     e?.preventDefault();
@@ -78,11 +81,19 @@ export function ResourceFields({ form, audience = "members" }: { form: ResourceF
           {errors.message && <p className="mt-1.5 font-sans text-xs font-bold text-danger">{errors.message}</p>}
         </div>
       ) : (
-        <div>
-          <Label htmlFor="resource-url">Link</Label>
-          <Input id="resource-url" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" placeholder="https://" />
-          {errors.url && <p className="mt-1.5 font-sans text-xs font-bold text-danger">{errors.url}</p>}
-        </div>
+        <>
+          <div>
+            <Label htmlFor="resource-url">Link</Label>
+            <Input id="resource-url" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" placeholder="https://" />
+            {errors.url && <p className="mt-1.5 font-sans text-xs font-bold text-danger">{errors.url}</p>}
+          </div>
+          {/* a few words about the link, if there's something to say */}
+          <div>
+            <Label htmlFor="resource-message">Message (optional)</Label>
+            <TextArea id="resource-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={RESOURCE_MESSAGE_MAX} rows={3} placeholder={`Anything ${audience} should know about it`} />
+            {errors.message && <p className="mt-1.5 font-sans text-xs font-bold text-danger">{errors.message}</p>}
+          </div>
+        </>
       )}
 
       {serverError && <p className="font-sans text-sm font-bold text-danger">{serverError}</p>}

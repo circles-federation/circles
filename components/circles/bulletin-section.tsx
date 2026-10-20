@@ -135,10 +135,14 @@ export function BulletinCard({ resource: r, onEdit, onRemove, from }: { resource
           <PostedBy resource={r} />
         </>
       ) : (
-        <div className="mt-auto flex items-center gap-1 pt-3 font-serif text-sm text-soft">
+        <>
+          {/* what its poster said about it, if anything */}
+          {r.message && <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-body">{r.message}</p>}
+          <div className="mt-auto flex items-center gap-1 pt-3 font-serif text-sm text-soft">
           <span className="min-w-0 truncate">{resourceHost(r.url ?? "")}</span>
           <ArrowTopRightOnSquareIcon className="size-4 shrink-0" strokeWidth={2.5} />
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -323,6 +323,13 @@
       "when": 1792500090825,
       "tag": "0045_bent_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1792500787830,
+      "tag": "0046_wealthy_carmella_unuscione",
+      "breakpoints": true
     }
   ]
 }

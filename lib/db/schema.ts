@@ -484,8 +484,9 @@ export const circleResources = pgTable(
     id: text("id").primaryKey(),
     circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
-    // an announcement is a message to the circle's members; every other kind
-    // (folder, file, video) is a link — each has exactly one of the two
+    // an announcement is a message to the circle's members, with no link;
+    // every other kind (folder, file, video, survey) is a link, with a message
+    // about it if its poster wrote one
     url: text("url"),
     message: text("message"),
     icon: resourceIcon("icon").notNull(),
@@ -501,7 +502,7 @@ export const circleResources = pgTable(
     // transaction that adds it, which a fresh database's migrations share
     check(
       "circle_resources_link_or_message",
-      sql`(${t.icon}::text = 'announcement' and ${t.message} is not null and ${t.url} is null) or (${t.icon}::text <> 'announcement' and ${t.url} is not null and ${t.message} is null)`
+      sql`(${t.icon}::text = 'announcement' and ${t.message} is not null and ${t.url} is null) or (${t.icon}::text <> 'announcement' and ${t.url} is not null)`
     ),
   ]
 );
@@ -557,7 +558,7 @@ export const neighborhoodPosts = pgTable(
     index("neighborhood_posts_neighborhood_idx").on(t.neighborhoodId),
     check(
       "neighborhood_posts_link_or_message",
-      sql`(${t.icon}::text = 'announcement' and ${t.message} is not null and ${t.url} is null) or (${t.icon}::text <> 'announcement' and ${t.url} is not null and ${t.message} is null)`
+      sql`(${t.icon}::text = 'announcement' and ${t.message} is not null and ${t.url} is null) or (${t.icon}::text <> 'announcement' and ${t.url} is not null)`
     ),
   ]
 );

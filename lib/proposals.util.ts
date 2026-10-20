@@ -192,7 +192,8 @@ export function describePostProposal(post: Pick<NeighborhoodPost, "title" | "ico
     { label: POST_LINE, before: "", after: post.title },
     { label: "Where", before: "", after: `${neighborhoodName}'s bulletin, for everyone who lives there` },
     { label: "Kind", before: "", after: kindLabel },
-    isAnnouncement(post.icon) ? { label: "Message", before: "", after: post.message ?? "" } : { label: "Link", before: "", after: post.url ?? "" },
+    ...(isAnnouncement(post.icon) ? [] : [{ label: "Link", before: "", after: post.url ?? "" }]),
+    ...(post.message ? [{ label: "Message", before: "", after: post.message }] : []),
   ];
 }
 
