@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import clsx from "clsx";
-import { Button, ConfirmModal, Input, Label, Modal, TextArea, togglePress } from "@/components/shared";
+import { Button, ConfirmModal, Input, Label, Modal, TextArea } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { RESOURCE_MESSAGE_MAX, RESOURCE_TITLE_MAX, isAnnouncement, validateResourceInput, type ResourceErrors, type ResourceInput } from "@/lib/resources.util";
 import type { CircleResource, ResourceIcon } from "@/lib/types";
-import { RESOURCE_ICONS, RESOURCE_ICON_TEXT, RESOURCE_OPTIONS, resourceFormTitle, resourceOption } from "./resource-kinds";
+import { ResourceKindPicker } from "./resource-kind-picker";
+import { resourceFormTitle, resourceOption } from "./resource-kinds";
 
 /* Adding or editing one bulletin item, in either of two shells: a dialog on
    desktop (ResourceFormModal, below) and a page of its own on a phone
@@ -60,30 +60,8 @@ export function ResourceFields({ form, audience = "members" }: { form: ResourceF
   return (
     <>
       <div>
-        <Label>What are you adding?</Label>
-        <div className="grid grid-cols-2 gap-3">
-          {RESOURCE_OPTIONS.map((o) => {
-            const Icon = RESOURCE_ICONS[o.key];
-            const selected = icon === o.key;
-            return (
-              <button
-                key={o.key}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setIcon(o.key)}
-                className={clsx(
-                  "flex cursor-pointer flex-col items-start gap-1.5 border border-ink p-3 text-left",
-                  togglePress(selected),
-                  selected ? "bg-ink text-paper" : "bg-paper text-ink",
-                )}
-              >
-                <Icon className={clsx("size-5", !selected && RESOURCE_ICON_TEXT[o.key])} strokeWidth={2} />
-                <span className="font-sans text-sm font-bold">{o.label}</span>
-                <span className={clsx("font-serif text-xs leading-snug", selected ? "text-paper/80" : "text-soft")}>{o.key === "announcement" ? `A message for ${audience}` : o.hint}</span>
-              </button>
-            );
-          })}
-        </div>
+        <Label htmlFor="resource-kind">What are you adding?</Label>
+        <ResourceKindPicker id="resource-kind" value={icon} onChange={setIcon} audience={audience} />
         {errors.icon && <p className="mt-1.5 font-sans text-xs font-bold text-danger">{errors.icon}</p>}
       </div>
 

@@ -458,7 +458,7 @@ export const applications = pgTable(
   ]
 );
 
-export const resourceIcon = pgEnum("resource_icon", ["folder", "file", "video", "announcement"]);
+export const resourceIcon = pgEnum("resource_icon", ["folder", "file", "video", "announcement", "survey"]);
 
 // A role a member holds in a circle (see lib/circle-roles.util.ts). A circle's
 // rows are only ever rewritten as a whole, by lib/db/circle-roles.ts, so

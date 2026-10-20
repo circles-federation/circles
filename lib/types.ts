@@ -197,7 +197,7 @@ export interface Event {
   repeat?: EventRepeat;
 }
 
-export type ResourceIcon = "folder" | "file" | "video" | "announcement";
+export type ResourceIcon = "folder" | "file" | "video" | "announcement" | "survey";
 
 // something a circle's members keep for themselves: a link — a folder (a
 // collection, like a shared drive), a file (a single document) or a video —

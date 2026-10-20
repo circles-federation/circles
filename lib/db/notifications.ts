@@ -23,7 +23,7 @@ import {
 } from "./schema";
 import { groupBy } from "./util";
 import type { AnnouncementEmailData, DigestEventData, DigestPostData, DigestProposalData, EventNotificationData, ProposalEmailData } from "@/lib/email/templates.util";
-import { isAnnouncement } from "@/lib/resources.util";
+import { RESOURCE_KIND_LABEL } from "@/lib/resources.util";
 import { proposalTitle } from "@/lib/proposals.util";
 import { REMINDER_HOURS } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -608,7 +608,7 @@ export async function claimDigests(cutoff: Date, limit: number): Promise<Pending
     for (const { memberId, icon, url, message, posterName, ...p } of postRows) {
       digestOf(memberId).posts.push({
         ...p,
-        announcement: isAnnouncement(icon),
+        kindLabel: RESOURCE_KIND_LABEL[icon],
         ...(url !== null ? { url } : {}),
         ...(message !== null ? { message } : {}),
         ...(posterName ? { posterName } : {}),

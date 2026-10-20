@@ -1,0 +1,1 @@
+ALTER TYPE "public"."resource_icon" ADD VALUE 'survey';

@@ -20,7 +20,7 @@
                   warning: a heads-up that something may not go ahead
      Signals      attention: an unread or waiting badge (the dot)
      By kind      teal (your neighbourhood), agenda, folder, file, video,
-                  announcement, accept, phone, email: each one thing's colour
+                  announcement, survey, accept, phone, email: each one thing's colour
    ============================================================ */
 @theme {
   --color-ink: #0a0a0a;
@@ -39,6 +39,7 @@
   --color-file: #1f5fbf; /* circle resources: the file icon (a single document) */
   --color-video: #6d3fb5; /* circle resources: the video icon (a recording) */
   --color-announcement: #c0392b; /* circle resources: the announcement icon (the same red as danger, for a different job) */
+  --color-survey: #56801c; /* circle resources: the survey icon (a form to fill in): an olive green, apart from leaf's and teal's, and still 4.5:1 on white */
   --color-agenda: #008480; /* a meeting's agenda cards: a turquoise teal, as bright as it goes and still reads as text on white (4.5:1) */
   --color-phone: #c0392b; /* a circle's phone number: its red square (the same red as danger, for a different job) */
   --color-email: #3b8fd9; /* a circle's email address: its square, a sky blue lighter than the website's (action) beside it, still 3.4:1 against its white icon */

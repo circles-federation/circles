@@ -82,7 +82,7 @@ export function BulletinSection({ circleId, adding, onAdd, onAddingDone, onEditP
 }
 
 // the colored rule along a card's top, in its kind's color
-const TYPE_RULE = { folder: "border-t-folder", file: "border-t-file", video: "border-t-video", announcement: "border-t-announcement" };
+const TYPE_RULE = { folder: "border-t-folder", file: "border-t-file", video: "border-t-video", announcement: "border-t-announcement", survey: "border-t-survey" };
 
 // what a card shows: a circle's bulletin item, or a neighborhood's post
 export type BulletinItem = Pick<CircleResource, "title" | "icon" | "url" | "message" | "createdAt" | "createdBy">;

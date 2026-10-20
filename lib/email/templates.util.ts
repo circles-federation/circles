@@ -295,7 +295,8 @@ const dateBox = (iso: string) => {
 // a post a Circle put on the reader's neighborhood's bulletin
 export interface DigestPostData {
   title: string;
-  announcement: boolean;
+  // what kind it is ("Announcement", "Survey"…), over it
+  kindLabel: string;
   url?: string;
   message?: string;
   circleName: string;
@@ -392,7 +393,7 @@ export function digestEmail({ events, posts = [], proposals = [] }: { events: Di
   const section = (title: string) => `<tr><td style="padding-top:26px"><div style="border-bottom:1px solid ${INK};padding-bottom:8px;margin-bottom:16px">${eyebrow(esc(title))}</div></td></tr>`;
   const postRow = (p: DigestPostData) =>
     `<tr><td style="padding:0 0 20px">` +
-    eyebrow(p.announcement ? "Announcement" : "Link") +
+    eyebrow(p.kindLabel) +
     `<div style="height:3px"></div>` +
     (p.url
       ? `<a href="${esc(p.url)}" style="font-family:${SANS};font-size:18px;font-weight:700;line-height:1.25;color:${INK};text-decoration:underline">${esc(p.title)}</a>`
