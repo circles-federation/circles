@@ -5,8 +5,8 @@ import { HandRaisedIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { ConfirmModal, Input, Label, PageContainer, Select } from "@/components/shared";
-import { CIRCLE_TYPE_LABEL, circleTypeNoun } from "@/lib/circles.util";
-import { changedFields, checkChanges, checkCircleBasics, hasChanges } from "@/lib/proposals.util";
+import { CIRCLE_TYPE_LABEL, circleTypeNoun, indexCircles } from "@/lib/circles.util";
+import { changedFields, checkChanges, checkCircleBasics, hasChanges, neighborhoodConsentFor } from "@/lib/proposals.util";
 import type { Circle, CircleProposal, CircleType, ProposalChanges } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
 import { ConsentNotice, useConsentError } from "./consent-form";
@@ -35,7 +35,9 @@ interface CircleDetailsPageProps {
 
 /* Manage circle → Details: what a circle is (its name, tagline, type and
    parent, and a Circle's domain and aims), which its members decide by
-   consent, so Save proposes the changes rather than making them. */
+   consent, so Save proposes the changes rather than making them. Becoming a
+   Circle in a neighborhood, or a Circle moving into one, is its residents'
+   to decide too, so that asks first, saying so. */
 export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, onPropose, onBack }: CircleDetailsPageProps) {
   const [parentId, setParentId] = useState<string | null>(o.parentId ?? null);
   const [type, setType] = useState<CircleType>(o.type);
@@ -51,6 +53,7 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
   const locked = !!openProposal;
   const [saving, setSaving] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [confirmingNeighborhood, setConfirmingNeighborhood] = useState(false);
 
   // only what actually changes needs consent
   const proposed = changedFields(o, {
@@ -61,15 +64,21 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
     ...(isCircleType ? { domain, aims } : {}),
   });
   const dirty = hasChanges(proposed);
+  // the neighborhood that would decide this with the circle's members, if any
+  const neighborhood = neighborhoodConsentFor(o, proposed, indexCircles(circles));
+
+  // instant feedback only — the server checks again, and is the real check
+  // a Circle's domain and aims as the form has them, changed or not: a
+  // Circle that hasn't defined itself yet is asked to here, whatever's proposed
+  function check(): boolean {
+    setConsentError(null);
+    const problem = checkChanges(o, proposed, circles) ?? (isCircleType ? checkCircleBasics(o, { ...proposed, domain, aims: aims.map((a) => a.trim()).filter(Boolean) }) : null);
+    if (problem) setConsentError(problem);
+    return !problem;
+  }
 
   async function handleSave() {
-    if (saving) return;
-    setConsentError(null);
-    // instant feedback only — the server checks again, and is the real check
-    // a Circle's domain and aims as the form has them, changed or not: a
-    // Circle that hasn't defined itself yet is asked to here, whatever's proposed
-    const problem = checkChanges(o, proposed, circles) ?? (isCircleType ? checkCircleBasics(o, { ...proposed, domain, aims: aims.map((a) => a.trim()).filter(Boolean) }) : null);
-    if (problem) return setConsentError(problem);
+    if (saving || !check()) return;
     setSaving(true);
     const result = await onPropose(proposed);
     setSaving(false);
@@ -77,7 +86,13 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
   }
 
   useBackHandler(dirty && !saving ? () => setConfirmingDiscard(true) : null);
-  useTopBarAction({ label: saving ? "Saving" : "Propose changes", icon: HandRaisedIcon, onAction: handleSave, disabled: !dirty || saving || locked, variant: "propose" });
+  useTopBarAction({
+    label: saving ? "Saving" : "Propose changes",
+    icon: HandRaisedIcon,
+    onAction: neighborhood ? () => check() && setConfirmingNeighborhood(true) : handleSave,
+    disabled: !dirty || saving || locked,
+    variant: "propose",
+  });
 
   return (
     <PageContainer size="normal">
@@ -169,6 +184,21 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
           />
         )}
       </div>
+
+      {confirmingNeighborhood && neighborhood && (
+        <ConfirmModal
+          title="Propose these changes?"
+          message={`A Circle in ${neighborhood.name} can post to its bulletin, so everyone who lives there decides this with ${o.name}'s members. They're asked in their daily digest.`}
+          confirmLabel="Propose changes"
+          cancelLabel="Not yet"
+          tone="flame"
+          onConfirm={() => {
+            setConfirmingNeighborhood(false);
+            void handleSave();
+          }}
+          onCancel={() => setConfirmingNeighborhood(false)}
+        />
+      )}
 
       {confirmingDiscard && (
         <ConfirmModal
