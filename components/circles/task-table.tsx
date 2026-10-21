@@ -8,11 +8,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useMemberById } from "@/lib/hooks";
 import { localDay } from "@/lib/recurrence.util";
 import { TASK_STATUSES, dueCell, onBackBurner, sortTasksBy, taskPriority, type TaskSortKey } from "@/lib/tasks.util";
-import type { CircleTask, TaskPriority } from "@/lib/types";
-
-// each priority's mark in its own weight of attention: urgent red, high
-// orange, normal ink, and the two that ask for none in grey
-export const PRIORITY_TEXT: Record<TaskPriority, string> = { urgent: "text-danger", high: "text-flame", normal: "text-ink", none: "text-ghost", someday: "text-soft" };
+import type { CircleTask } from "@/lib/types";
 
 // a column a phone leaves out
 const WIDE = "hidden min-[720px]:table-cell";
@@ -150,7 +146,7 @@ export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = tru
                 {TASK_STATUSES.find((s) => s.key === t.status)?.label}
               </td>
               <td className={clsx(CELL, "py-3")}>
-                <span title={priority.label} className={clsx("font-sans text-sm font-extrabold", PRIORITY_TEXT[t.priority])}>
+                <span title={priority.label} className="text-lg leading-none">
                   {priority.mark}
                   <span className="sr-only">{priority.label}</span>
                 </span>

@@ -7,7 +7,6 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useMemberById } from "@/lib/hooks";
 import { TASK_DESCRIPTION_MAX, TASK_PRIORITIES, TASK_STATUSES, TASK_TITLE_MAX, taskPriority, validateTask, type TaskErrors, type TaskInput } from "@/lib/tasks.util";
 import type { Circle, CircleTask, Member } from "@/lib/types";
-import { PRIORITY_TEXT } from "./task-table";
 
 /* Adding or editing one of a circle's tasks, in either of two shells, as a
    bulletin item is: a dialog on desktop (TaskFormModal, below) and a page of
@@ -117,12 +116,13 @@ export function TaskFields({ form, circle }: { form: TaskFormState; circle: Circ
                 title={p.label}
                 onClick={() => set("priority", p.key)}
                 className={clsx(
-                  "hit cursor-pointer border border-ink px-1 py-3 font-sans text-base font-extrabold",
+                  "hit cursor-pointer border border-ink px-1 py-3 font-sans",
                   togglePress(on),
-                  on ? "bg-ink text-paper" : clsx("bg-paper", PRIORITY_TEXT[p.key])
+                  on ? "bg-ink text-paper" : "bg-paper text-soft"
                 )}
               >
-                {p.mark}
+                {/* Normal has no mark of its own, so its button says its name */}
+                {p.mark ? <span className="text-lg leading-none">{p.mark}</span> : <span className="text-xs font-bold tracking-caps uppercase">Normal</span>}
               </button>
             );
           })}

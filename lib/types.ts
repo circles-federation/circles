@@ -313,7 +313,7 @@ export interface CircleResource {
    the rules). Back burner isn't a status: it's a to-do of priority "someday"
    (zzz). */
 export type TaskStatus = "todo" | "doing" | "done";
-// !!!, !!, !, -, zzz
+// Critical, High, Medium, Normal and the back burner (see TASK_PRIORITIES)
 export type TaskPriority = "urgent" | "high" | "normal" | "none" | "someday";
 export interface CircleTask {
   id: string;

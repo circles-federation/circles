@@ -14,13 +14,16 @@ export const TASK_STATUSES: { key: TaskStatus; label: string }[] = [
   { key: "done", label: "Done" },
 ];
 
-// highest first; `mark` is how it's written everywhere, `label` what it means
+// highest first; `mark` is how it's shown everywhere, `label` what it means.
+// Traffic lights, from red down to yellow, so the column reads as a scale at
+// a glance; Normal, the everyday one, shows nothing; the back burner sleeps.
+// (The keys are older than the names: "normal" is Medium and "none" Normal.)
 export const TASK_PRIORITIES: { key: TaskPriority; mark: string; label: string }[] = [
-  { key: "urgent", mark: "!!!", label: "Urgent" },
-  { key: "high", mark: "!!", label: "High" },
-  { key: "normal", mark: "!", label: "Normal" },
-  { key: "none", mark: "–", label: "No priority" },
-  { key: "someday", mark: "zzz", label: "Back burner" },
+  { key: "urgent", mark: "🔴", label: "Critical" },
+  { key: "high", mark: "🟠", label: "High" },
+  { key: "normal", mark: "🟡", label: "Medium" },
+  { key: "none", mark: "", label: "Normal" },
+  { key: "someday", mark: "💤", label: "Back burner" },
 ];
 
 export const taskPriority = (key: TaskPriority) => TASK_PRIORITIES.find((p) => p.key === key) ?? TASK_PRIORITIES[3]!;
