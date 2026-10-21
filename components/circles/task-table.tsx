@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useMemberById } from "@/lib/hooks";
 import { localDay } from "@/lib/recurrence.util";
-import { TASK_STATUSES, dueCell, onBackBurner, sortTasksBy, taskPriority, type TaskSortKey } from "@/lib/tasks.util";
+import { TASK_STATUSES, dueCell, onBackBurner, sortTasks, taskPriority } from "@/lib/tasks.util";
 import type { CircleTask } from "@/lib/types";
 
 // a column a phone leaves out
@@ -27,26 +26,25 @@ interface TaskTableProps {
 }
 
 /* Tasks as one table, whatever their status (what's live, then the back
-   burner, then what's done, each part in the order chosen), under a header
+   burner, then what's done, each soonest due first), under a header
    row in ink, its rows alternately white and grey: a round button that marks
    each done (or not), then its title, status, priority (a column with no
    heading, since each row's mark says what it is), when it's due and who has
-   it, and on Home its circle. A phone keeps the title, priority and due date, with "In progress"
-   under the title in place of the Status column. Sorted by due date to start,
-   or by priority or name by tapping that column's heading (again to reverse),
-   the other two breaking ties. A row opens its task; it doesn't invert when
+   it, and on Home its circle. A phone keeps the title, priority and due date,
+   with "In progress" under the title in place of the Status column. Within
+   each part, the soonest due comes first, undated last, then the most
+   pressing, then by name. A row opens its task; it doesn't invert when
    pressed, being a row, but its round button does. */
 export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = true }: TaskTableProps) {
   const { updateTask } = useAppState();
   const memberById = useMemberById();
-  const [sort, setSort] = useState<{ key: TaskSortKey; ascending: boolean }>({ key: "due", ascending: true });
-  // one table, whatever their status: what's live in the order chosen, then
-  // the back burner, then what's done, each sorted the same way
+  // one table, whatever their status: what's live, then the back burner,
+  // then what's done, each by when it's due
   const sorted = [
     tasks.filter((t) => t.status !== "done" && !onBackBurner(t)),
     tasks.filter(onBackBurner),
     tasks.filter((t) => t.status === "done"),
-  ].flatMap((part) => sortTasksBy(part, sort.key, sort.ascending));
+  ].flatMap(sortTasks);
   const today = localDay();
 
   function toggleDone(t: CircleTask) {
@@ -60,24 +58,8 @@ export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = tru
     });
   }
 
-  // a sortable column's heading: its name, and the way it runs while it's the one
-  function sortHeading(column: TaskSortKey, children: ReactNode, className?: string) {
-    const on = sort.key === column;
-    const Arrow = sort.ascending ? ChevronUpIcon : ChevronDownIcon;
-    return (
-      <th scope="col" aria-sort={on ? (sort.ascending ? "ascending" : "descending") : "none"} className={clsx(CELL, "py-2 text-left font-normal", className)}>
-        <button
-          type="button"
-          onClick={() => setSort((s) => ({ key: column, ascending: s.key === column ? !s.ascending : true }))}
-          className={clsx("hit inline-flex min-h-4 min-w-4 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-sans text-label font-bold tracking-caps uppercase", on ? "text-paper" : "text-paper/70 hover:text-paper")}
-        >
-          {children}
-          {on && <Arrow className="size-4" strokeWidth={2.5} aria-hidden />}
-        </button>
-      </th>
-    );
-  }
-  const plainHeading = clsx(CELL, "py-2 text-left font-sans text-label font-bold tracking-caps text-paper/70 uppercase");
+  // every heading centred on the header row's height, label or not
+  const heading = clsx(CELL, "py-3 text-left align-middle font-sans text-label leading-none font-bold tracking-caps text-paper uppercase");
 
   return (
     // fixed widths, so a long title wraps rather than squeezing the rest
@@ -85,17 +67,18 @@ export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = tru
       {/* the header row in ink; on-ink makes keyboard focus paper there */}
       <thead className="on-ink bg-ink">
         <tr>
-          <th scope="col" className="w-11 py-2 pl-3">
+          <th scope="col" className="w-11 py-3 pl-3 align-middle">
             <span className="sr-only">Done</span>
           </th>
-          {sortHeading("title", "Task")}
-          {circleName && <th scope="col" className={clsx(plainHeading, "w-36", WIDE)}>Circle</th>}
-          <th scope="col" className={clsx(plainHeading, "w-28", WIDE)}>Status</th>
-          {/* no label: each row's mark says what this column is; still a
-              heading to tap to sort by it, its arrow showing when it does */}
-          {sortHeading("priority", <span className="sr-only">Priority</span>, "w-12 min-[720px]:w-16")}
-          {sortHeading("due", "Due", "w-20 min-[720px]:w-28")}
-          {showAssignee && <th scope="col" className={clsx(plainHeading, "w-40", WIDE)}>Assigned to</th>}
+          <th scope="col" className={heading}>Task</th>
+          {circleName && <th scope="col" className={clsx(heading, "w-36", WIDE)}>Circle</th>}
+          <th scope="col" className={clsx(heading, "w-28", WIDE)}>Status</th>
+          {/* no label: each row's mark says what this column is */}
+          <th scope="col" className={clsx(heading, "w-12 min-[720px]:w-16")}>
+            <span className="sr-only">Priority</span>
+          </th>
+          <th scope="col" className={clsx(heading, "w-20 min-[720px]:w-28")}>Due</th>
+          {showAssignee && <th scope="col" className={clsx(heading, "w-40", WIDE)}>Assigned to</th>}
         </tr>
       </thead>
       <tbody>
