@@ -121,8 +121,10 @@ export function TaskFields({ form, circle }: { form: TaskFormState; circle: Circ
                   on ? "bg-ink text-paper" : "bg-paper text-soft"
                 )}
               >
-                {/* Normal has no mark of its own, so its button says its name */}
-                {p.mark ? <span className="text-lg leading-none">{p.mark}</span> : <span className="text-xs font-bold tracking-caps uppercase">Normal</span>}
+                {/* Normal has no mark of its own, so its button says its name:
+                    in sentence case at the smallest size, to fit a fifth of a
+                    phone's width */}
+                {p.mark ? <span className="text-lg leading-none">{p.mark}</span> : <span className="text-label font-bold">Normal</span>}
               </button>
             );
           })}
