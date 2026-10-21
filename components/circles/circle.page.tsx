@@ -11,7 +11,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useFloatingAction } from "@/components/providers/floating-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { CIRCLE_TYPE_LABEL, circleChildren, circleContact, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleChildren, circleContact, circleHasTasks, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
@@ -72,10 +72,14 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   }
   // a group has no wiki (see circleHasWiki), and only its members ever see it
   const hasWiki = circleHasWiki(c);
-  // the bulletin and tasks are members' only, with no hint to anyone else
-  const activeTab = !isMember && (tab === "bulletin" || tab === "tasks") ? "wiki" : !hasWiki && tab === "wiki" ? "bulletin" : tab;
+  // the bulletin and tasks are members' only, with no hint to anyone else;
+  // a group has neither a wiki nor tasks, so its bulletin stands in for them
+  const hasTasks = circleHasTasks(c);
+  const activeTab =
+    !isMember && (tab === "bulletin" || tab === "tasks") ? "wiki" : (!hasWiki && tab === "wiki") || (!hasTasks && tab === "tasks") ? "bulletin" : tab;
   const tabs: { key: CircleTab; label: string }[] = [
-    ...(isMember ? [{ key: "bulletin" as const, label: "Bulletin" }, { key: "tasks" as const, label: "Tasks" }] : []),
+    ...(isMember ? [{ key: "bulletin" as const, label: "Bulletin" }] : []),
+    ...(isMember && hasTasks ? [{ key: "tasks" as const, label: "Tasks" }] : []),
     ...(hasWiki ? [{ key: "wiki" as const, label: "Wiki" }] : []),
     { key: "members", label: "Members" },
     { key: "events", label: "Events" },

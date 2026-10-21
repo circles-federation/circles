@@ -141,6 +141,11 @@ export function circleHasWiki(circle: Pick<Circle, "type">): boolean {
   return !isGroup(circle);
 }
 
+// a backlog of tasks (lib/db/tasks.ts): a circle with a page, but not a group
+export function circleHasTasks(circle: Pick<Circle, "type" | "parentId">): boolean {
+  return circleHasPage(circle) && !isGroup(circle);
+}
+
 // a meeting is its circle's members voting, which a group doesn't do (any
 // circle but the city can host an event, a group included, by consent: see
 // lib/db/proposals.ts)
