@@ -47,7 +47,10 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
   }, [active]);
 
   return (
-    <div className={clsx("relative", className)}>
+    // flow-root, so the row's -mt-3 stays inside this box rather than
+    // collapsing through it, which would lift the + (placed from its top) off
+    // the labels' line
+    <div className={clsx("relative flow-root", className)}>
       {/* room above the labels inside the scrolling row (pt-3, taken back by
           -mt-3), so their tap areas (hit) aren't clipped by it; and no
           scrolling up and down, which the few pixels of tap area below the
