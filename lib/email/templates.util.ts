@@ -831,6 +831,27 @@ export function photoDecisionEmail(d: { name: string; approved: boolean; note?: 
   };
 }
 
+// someone gave you one of a circle's tasks
+export function taskAssignedEmail(d: { name: string; assignerName?: string; circleName: string; title: string; due?: string; url: string }): Body {
+  const who = d.assignerName ?? "A member";
+  const lead = `${who} gave you a task in ${d.circleName}${d.due ? `, ${d.due.charAt(0).toLowerCase()}${d.due.slice(1)}` : ""}.`;
+  const why = `You're getting this because you're a member of ${d.circleName}.`;
+  return {
+    subject: `${who} gave you a task: ${d.title}`,
+    text: `${d.name},\n\n${lead}\n\n${d.title}\n\nOpen it: ${d.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
+        eyebrow(`A task in ${esc(d.circleName)}`) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1.05;color:${INK}">${esc(d.title)}</div>` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:24px"></td></tr>` +
+        paragraph(`${esc(d.name)}, ${esc(lead)}`) +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(d.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">Open the task</a></td></tr>` +
+        footnote(esc(why))
+    ),
+  };
+}
+
 // a member invited you to join their circle
 export function invitationEmail(d: { name: string; inviterName?: string; circleName: string; tagline: string; url: string }): Body {
   const who = d.inviterName ?? "A member";

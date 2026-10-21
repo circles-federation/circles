@@ -30,6 +30,8 @@ import type {
   NotificationKind,
   ProposalChanges,
   ProposalKind,
+  TaskPriority,
+  TaskStatus,
   ProposalLine,
   ProposalNoticeKind,
   ProposalStatus,
@@ -535,6 +537,29 @@ export const announcementNotifications = pgTable(
    passes if no one has objected; one objection closes it as objected, and it
    passes early once every member has consented. Only one open at a time per
    circle, so two can't change the same thing at once. */
+/* A circle's tasks (lib/db/tasks.ts): its members' shared backlog, seen and
+   changed by any of them, by no one else. The assignee, if any, is one of its
+   members; one who leaves it is unassigned (leaveCircle). */
+export const circleTasks = pgTable(
+  "circle_tasks",
+  {
+    id: text("id").primaryKey(),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    status: text("status").$type<TaskStatus>().notNull().default("todo"),
+    priority: text("priority").$type<TaskPriority>().notNull().default("none"),
+    dueDate: date("due_date"),
+    assigneeId: integer("assignee_id").references(() => members.id, { onDelete: "set null" }),
+    createdBy: integer("created_by").references(() => members.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    // when it was marked done, for the Done list's order
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [index("circle_tasks_circle_idx").on(t.circleId), index("circle_tasks_assignee_idx").on(t.assigneeId)]
+);
+
 /* A post to a neighborhood's bulletin by a Circle inside it (see
    lib/db/neighborhood-posts.ts): unpublished (published_at null) while its
    circle decides it by consent, then seen by the neighborhood's residents

@@ -55,6 +55,8 @@ function CircleRoute() {
       onNewEvent={() => nav.newEvent(circle)}
       onAddResourcePage={() => nav.addResource(circle)}
       onEditResourcePage={(r) => nav.editResource(r)}
+      onAddTaskPage={() => router.push(`/circles/${circle.id}/tasks/new`)}
+      onOpenTaskPage={(t) => router.push(`/circles/${t.circleId}/tasks/${t.id}`)}
       onInvitePage={() => nav.inviteTo(circle)}
       onOpenInvitation={(i) => nav.openInvitation(i)}
       // kept in the URL so Back to this page reopens the same tab;

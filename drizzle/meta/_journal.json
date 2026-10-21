@@ -330,6 +330,13 @@
       "when": 1792500787830,
       "tag": "0046_wealthy_carmella_unuscione",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1792555487565,
+      "tag": "0047_faulty_queen_noir",
+      "breakpoints": true
     }
   ]
 }

@@ -79,6 +79,9 @@ function parentRoute(pathname: string): string {
   // a bulletin item's form is reached from its circle's Bulletin tab
   const bulletin = parent.match(/^(\/circles\/[^/]+)\/bulletin$/);
   if (bulletin) return `${bulletin[1]}?tab=bulletin`;
+  // and a task's from its circle's Tasks tab
+  const tasks = parent.match(/^(\/circles\/[^/]+)\/tasks$/);
+  if (tasks) return `${tasks[1]}?tab=tasks`;
   return parent;
 }
 

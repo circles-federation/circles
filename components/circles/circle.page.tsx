@@ -5,6 +5,7 @@ import { Avatar, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabe
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
+import { TasksSection } from "./tasks-section";
 import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useFloatingAction } from "@/components/providers/floating-action-provider";
@@ -12,12 +13,12 @@ import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
 import { CIRCLE_TYPE_LABEL, circleChildren, circleContact, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
-import type { Circle, CircleInvitation, CircleResource, Event, Member } from "@/lib/types";
+import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
 import { isPhoneWidth } from "@/lib/viewport";
 import { ProposalBanner } from "./proposal-banner";
 
-const CIRCLE_TABS = ["bulletin", "wiki", "members", "events"] as const;
+const CIRCLE_TABS = ["bulletin", "tasks", "wiki", "members", "events"] as const;
 type CircleTab = (typeof CIRCLE_TABS)[number];
 
 interface CirclePageProps {
@@ -35,6 +36,9 @@ interface CirclePageProps {
   // the dialog: a new one, or an existing one to edit
   onAddResourcePage: () => void;
   onEditResourcePage: (resource: CircleResource) => void;
+  // a task as a page (a phone; desktop gets a dialog): a new one, or one to edit
+  onAddTaskPage: () => void;
+  onOpenTaskPage: (task: CircleTask) => void;
   // inviting people as a page (a phone; desktop gets a dialog), and an invitation's own page
   onInvitePage: () => void;
   onOpenInvitation: (invitation: CircleInvitation) => void;
@@ -44,7 +48,7 @@ interface CirclePageProps {
   onTabChange: (tab: string) => void;
 }
 
-export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, onInvitePage, onOpenInvitation, initialTab, onTabChange }: CirclePageProps) {
+export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, onAddTaskPage, onOpenTaskPage, onInvitePage, onOpenInvitation, initialTab, onTabChange }: CirclePageProps) {
   const { profile, circles, invitations, proposals } = useAppState();
   // its open proposals: a change to the circle, and any events it's deciding
   const openProposals = proposals.filter((p) => p.circleId === c.id && p.status === "open");
@@ -68,9 +72,10 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   }
   // a group has no wiki (see circleHasWiki), and only its members ever see it
   const hasWiki = circleHasWiki(c);
-  const activeTab = !isMember && tab === "bulletin" ? "wiki" : !hasWiki && tab === "wiki" ? "bulletin" : tab;
+  // the bulletin and tasks are members' only, with no hint to anyone else
+  const activeTab = !isMember && (tab === "bulletin" || tab === "tasks") ? "wiki" : !hasWiki && tab === "wiki" ? "bulletin" : tab;
   const tabs: { key: CircleTab; label: string }[] = [
-    ...(isMember ? [{ key: "bulletin" as const, label: "Bulletin" }] : []),
+    ...(isMember ? [{ key: "bulletin" as const, label: "Bulletin" }, { key: "tasks" as const, label: "Tasks" }] : []),
     ...(hasWiki ? [{ key: "wiki" as const, label: "Wiki" }] : []),
     { key: "members", label: "Members" },
     { key: "events", label: "Events" },
@@ -80,6 +85,9 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   // the bulletin's + lives in the tab row, so opening its add dialog is kept here
   const [adding, setAdding] = useState(false);
   const startAdding = () => (isPhoneWidth() ? onAddResourcePage() : setAdding(true));
+  // so is the tasks' +
+  const [addingTask, setAddingTask] = useState(false);
+  const startAddingTask = () => (isPhoneWidth() ? onAddTaskPage() : setAddingTask(true));
   const [inviting, setInviting] = useState(false);
   const startInviting = () => (isPhoneWidth() ? onInvitePage() : setInviting(true));
   // this circle's invitations not yet accepted
@@ -90,6 +98,8 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   useFloatingAction(
     activeTab === "bulletin"
       ? { label: "Add to bulletin", icon: PlusIcon, onAction: startAdding }
+      : activeTab === "tasks"
+        ? { label: "New task", icon: PlusIcon, onAction: startAddingTask }
       : activeTab === "members" && isMember
         ? { label: "Invite", icon: UserPlusIcon, onAction: startInviting }
         : activeTab === "events" && isMember
@@ -142,6 +152,14 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         <SectionGroup>
           <Section>
             <BulletinSection circleId={c.id} adding={adding} onAdd={startAdding} onAddingDone={() => setAdding(false)} onEditPage={onEditResourcePage} />
+          </Section>
+        </SectionGroup>
+      )}
+
+      {activeTab === "tasks" && (
+        <SectionGroup>
+          <Section>
+            <TasksSection circle={c} adding={addingTask} onAdd={startAddingTask} onAddingDone={() => setAddingTask(false)} onOpenPage={onOpenTaskPage} />
           </Section>
         </SectionGroup>
       )}

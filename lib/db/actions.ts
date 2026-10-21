@@ -14,11 +14,14 @@ import * as photoReviews from "./photo-reviews";
 import * as proposals from "./proposals";
 import * as push from "./push";
 import * as resources from "./resources";
+import * as tasks from "./tasks";
 import { sendEmail } from "@/lib/email";
-import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail, photoDecisionEmail } from "@/lib/email/templates.util";
+import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail, photoDecisionEmail, taskAssignedEmail } from "@/lib/email/templates.util";
 import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
-import { invitationPush, photoDecisionPush } from "@/lib/push/messages.util";
+import { invitationPush, photoDecisionPush, taskAssignedPush } from "@/lib/push/messages.util";
+import { dueLabel, type TaskInput } from "@/lib/tasks.util";
+import { localDay } from "@/lib/recurrence.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
@@ -264,6 +267,40 @@ async function tellPhotoDecision(d: photoReviews.PhotoDecision, approved: boolea
     d.email &&
       sendEmail({ to: d.email, ...photoDecisionEmail({ ...d, approved, url }) }).catch((err) => console.error("Couldn't email a photo decision:", err)),
     pushToMember(d.memberId, photoDecisionPush({ ...d, approved })).catch((err) => console.error("Couldn't push a photo decision:", err)),
+  ]);
+}
+
+/* A circle's tasks (lib/db/tasks.ts checks the caller is one of its
+   members). Giving a task to someone else tells them once, by email and push,
+   right after the response is sent; like an invitation it isn't queued,
+   since the task is on their Home either way. */
+export async function createTaskAction(circleId: string, input: TaskInput) {
+  const result = await asMember((memberId) => tasks.createTask(memberId, circleId, input));
+  if (result.ok && result.value.assignedTo !== null) after(() => tellAssignee(result.value.task.id));
+  return result.ok ? { ok: true as const, value: result.value.task } : result;
+}
+
+export async function updateTaskAction(id: string, input: TaskInput) {
+  const result = await asMember((memberId) => tasks.updateTask(memberId, id, input));
+  if (result.ok && result.value.assignedTo !== null) after(() => tellAssignee(result.value.task.id));
+  return result.ok ? { ok: true as const, value: result.value.task } : result;
+}
+
+export async function deleteTaskAction(id: string) {
+  return asMember((memberId) => tasks.deleteTask(memberId, id));
+}
+
+async function tellAssignee(taskId: string) {
+  const assignerId = await getCurrentUserId();
+  const data = assignerId ? await tasks.getTaskNoticeData(taskId, assignerId).catch(() => null) : null;
+  if (!data) return;
+  const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const due = dueLabel({ dueDate: data.dueDate ?? undefined, status: "todo" }, localDay())?.text;
+  const notice = { ...data, ...(due ? { due } : {}) };
+  await Promise.all([
+    data.email &&
+      sendEmail({ to: data.email, ...taskAssignedEmail({ ...notice, url: `${base}/circles/${data.circleId}/tasks/${taskId}` }) }).catch((err) => console.error("Couldn't email an assignee:", err)),
+    pushToMember(data.memberId, taskAssignedPush({ ...notice, taskId })).catch((err) => console.error("Couldn't push to an assignee:", err)),
   ]);
 }
 

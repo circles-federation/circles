@@ -309,6 +309,28 @@ export interface CircleResource {
   createdBy?: number;
 }
 
+/* A circle's task, on its members' shared backlog (lib/tasks.util.ts holds
+   the rules). Back burner isn't a status: it's a to-do of priority "someday"
+   (zzz). */
+export type TaskStatus = "todo" | "doing" | "done";
+// !!!, !!, !, -, zzz
+export type TaskPriority = "urgent" | "high" | "normal" | "none" | "someday";
+export interface CircleTask {
+  id: string;
+  circleId: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  // YYYY-MM-DD, wall-clock like an event's date
+  dueDate?: string;
+  assigneeId?: number;
+  createdBy?: number;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
 /* A post on a neighborhood's bulletin, by one of the Circles in it, seen only
    by its residents (and the posting circle's members): the same kinds as a
    circle's bulletin. Its circle consents to each one before it's published

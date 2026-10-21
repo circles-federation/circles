@@ -7,6 +7,8 @@ import { CircleCard } from "@/components/circles/circle-card";
 import { ProposalBanner } from "@/components/circles/proposal-banner";
 import { EventFeed } from "@/components/events/event-feed";
 import { HomePrompts } from "./home-prompts";
+import { TaskRow } from "@/components/circles/task-row";
+import { onBackBurner, sortTasks } from "@/lib/tasks.util";
 import { StartingSoon } from "./starting-soon";
 import { isAttending } from "@/lib/events.util";
 import { fmtNumericDate } from "@/lib/format.util";
@@ -14,7 +16,7 @@ import { awaitingResponse } from "@/lib/proposals.util";
 import { circleNeighborhood, circlesForMember, indexCircles } from "@/lib/circles.util";
 import { useMemberById, useMembers } from "@/lib/hooks";
 import { useAppState } from "@/components/providers/app-state-provider";
-import type { Circle, Event, Profile } from "@/lib/types";
+import type { Circle, CircleTask, Event, Profile } from "@/lib/types";
 
 interface HomeProps {
   profile: Profile;
@@ -27,14 +29,18 @@ interface HomeProps {
   onPlayGame: () => void;
   onOpenCircle: (c: Circle) => void;
   onOpenProfile: () => void;
+  onOpenTask: (task: CircleTask) => void;
 }
 
 /* The user's home dashboard. Their landing surface: identity, their
    neighborhood (one panel among several now), their circles (speed
    dial), and their events. Profile editing lives on a separate page. */
-export function Home({ profile, events, circles, rsvpState, onOpenEvent, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onOpenProfile }: HomeProps) {
+export function Home({ profile, events, circles, rsvpState, onOpenEvent, onOpenNeighbors, onOpenLocalCircles, onPlayGame, onOpenCircle, onOpenProfile, onOpenTask }: HomeProps) {
   const members = useMembers();
-  const { pendingReviews, invitations, proposals } = useAppState();
+  const { pendingReviews, invitations, proposals, tasks } = useAppState();
+  // what's yours to do across your circles, most pressing first: not what's
+  // done, nor what's on the back burner
+  const myTasks = sortTasks(tasks.filter((t) => t.assigneeId === profile.id && t.status !== "done" && !onBackBurner(t)));
   // proposals in my circles still waiting on my answer, soonest to close first
   const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
   // the ones I proposed, still open: nothing for me to answer, but the way back
@@ -153,6 +159,18 @@ export function Home({ profile, events, circles, rsvpState, onOpenEvent, onOpenN
                   <ProposalBanner key={p.id} proposal={p} memberId={profile.id} circleName={byId[p.circleId]?.name} />
                 ))}
               </div>
+            </EyebrowGroup>
+          </Section>
+        )}
+
+        {myTasks.length > 0 && (
+          <Section>
+            <EyebrowGroup label="My tasks">
+              <ul className="m-0 list-none border-t border-ink p-0">
+                {myTasks.map((t) => (
+                  <TaskRow key={t.id} task={t} circleName={byId[t.circleId]?.name} onOpen={() => onOpenTask(t)} />
+                ))}
+              </ul>
             </EyebrowGroup>
           </Section>
         )}

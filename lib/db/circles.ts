@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, like, or } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleInvitations, circleMembers, circleRoles, circles } from "./schema";
+import { unassignFromCircle } from "./tasks";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { cleanAims, validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
@@ -175,8 +176,8 @@ export async function insertCircle(tx: Tx, memberId: number, input: NewCircleInp
 }
 
 /* `memberId` leaves a circle they belong to, deliberately (Manage circle).
-   Any role they hold there is left empty, rather than coming back if they
-   rejoin. A neighborhood is their home and the city everyone's, so neither
+   Any role they hold there is left empty, and any of its tasks they hold
+   unassigned, rather than coming back if they rejoin. A neighborhood is their home and the city everyone's, so neither
    can be left this way. The last member out archives it: it's kept, but
    sent to no one any more (getCirclesForMember), and its pending invitations
    go, since there's no one left to welcome anyone in. Their proposals, and
@@ -193,6 +194,7 @@ export async function leaveCircle(memberId: number, circleId: string): Promise<{
       .returning({ id: circleMembers.memberId });
     if (left.length === 0) throw new CircleError(`You're not a member of ${circle.name}.`);
     await tx.update(circleRoles).set({ memberId: null }).where(and(eq(circleRoles.circleId, circleId), eq(circleRoles.memberId, memberId)));
+    await unassignFromCircle(tx, memberId, circleId);
     const [remaining] = await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId)).limit(1);
     if (remaining) return { archived: false };
     await tx.update(circles).set({ archivedAt: new Date() }).where(eq(circles.id, circleId));

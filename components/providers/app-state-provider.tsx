@@ -27,6 +27,9 @@ import {
   createCircleAction as dbCreateCircle,
   proposeNeighborhoodPostAction as dbProposeNeighborhoodPost,
   removeNeighborhoodPostAction as dbRemoveNeighborhoodPost,
+  createTaskAction as dbCreateTask,
+  updateTaskAction as dbUpdateTask,
+  deleteTaskAction as dbDeleteTask,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
@@ -35,7 +38,8 @@ import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, ConsentResponse, Event, Member, NeighborhoodPost, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
+import type { TaskInput } from "@/lib/tasks.util";
+import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, CircleTask, ConsentResponse, Event, Member, NeighborhoodPost, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -50,6 +54,8 @@ export interface AppStateValue {
   // their neighborhood's bulletin, and what their own circles have posted
   // (only residents, and the posting circle's members, are ever sent a post)
   neighborhoodPosts: NeighborhoodPost[];
+  // the tasks of every circle they belong to (only members are sent them)
+  tasks: CircleTask[];
   // their own invitations to circles, and those to the circles they're in
   invitations: CircleInvitation[];
   // the proposals of their circles: open ones, and those decided lately
@@ -86,6 +92,11 @@ export interface AppStateValue {
   // `published` when a circle of one posted it at once
   proposeNeighborhoodPost(circleId: string, input: ResourceInput): Promise<{ ok: true; proposalId: string; published: boolean } | { ok: false; error: string }>;
   removeNeighborhoodPost(id: string): Promise<MutationResult>;
+  // a circle's tasks, saved straight away by any member; resolves to the
+  // task as saved
+  addTask(circleId: string, input: TaskInput): Promise<{ ok: true; task: CircleTask } | { ok: false; error: string }>;
+  updateTask(id: string, input: TaskInput): Promise<{ ok: true; task: CircleTask } | { ok: false; error: string }>;
+  removeTask(id: string): Promise<MutationResult>;
   // an admin decided one, so there's one fewer waiting (until the next refresh)
   reviewDecided(): void;
   inviteToCircle(circleId: string, memberId: number): Promise<MutationResult>;
@@ -154,13 +165,14 @@ interface AppStateProviderProps {
   initialMembers: Member[];
   initialResources: CircleResource[];
   initialNeighborhoodPosts: NeighborhoodPost[];
+  initialTasks: CircleTask[];
   initialPendingReviews: number | null;
   initialInvitations: CircleInvitation[];
   initialProposals: CircleProposal[];
   initialProfile: Profile;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialNeighborhoodPosts, initialProfile, initialPendingReviews, initialInvitations, initialProposals }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialNeighborhoodPosts, initialTasks, initialProfile, initialPendingReviews, initialInvitations, initialProposals }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
@@ -171,6 +183,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [resources, setResources] = useState<CircleResource[]>(initialResources);
   const [neighborhoodPosts, setNeighborhoodPosts] = useState<NeighborhoodPost[]>(initialNeighborhoodPosts);
+  const [tasks, setTasks] = useState<CircleTask[]>(initialTasks);
   const [pendingReviews, setPendingReviews] = useState(initialPendingReviews);
   const [invitations, setInvitations] = useState<CircleInvitation[]>(initialInvitations);
   const [proposals, setProposals] = useState<CircleProposal[]>(initialProposals);
@@ -216,6 +229,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setMembers(fresh.members);
     setResources(fresh.resources);
     setNeighborhoodPosts(fresh.neighborhoodPosts);
+    setTasks(fresh.tasks);
     setInvitations(fresh.invitations);
     setProposals(fresh.proposals);
     setPendingReviews(fresh.pendingReviews);
@@ -486,6 +500,36 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true, proposalId: result.value.proposalId, published: result.value.published };
   }
 
+  // await-then-update, like the bulletin: the server checks the task and
+  // chooses a new one's id
+  const unreachable = () => ({ ok: false as const, error: "Couldn't reach the server — try again." });
+  async function addTask(circleId: string, input: TaskInput): Promise<{ ok: true; task: CircleTask } | { ok: false; error: string }> {
+    const result = await dbCreateTask(circleId, input).catch(unreachable);
+    if (!result.ok) return result;
+    setTasks((prev) => [...prev, result.value]);
+    return { ok: true, task: result.value };
+  }
+
+  async function updateTask(id: string, input: TaskInput): Promise<{ ok: true; task: CircleTask } | { ok: false; error: string }> {
+    const result = await dbUpdateTask(id, input).catch(unreachable);
+    if (!result.ok) {
+      showToast({ tone: "error", title: "Couldn't save the task", message: result.error });
+      return result;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? result.value : t)));
+    return { ok: true, task: result.value };
+  }
+
+  async function removeTask(id: string): Promise<MutationResult> {
+    const result = await dbDeleteTask(id).catch(unreachable);
+    if (!result.ok) {
+      showToast({ tone: "error", title: "Couldn't delete the task", message: result.error });
+      return result;
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    return { ok: true };
+  }
+
   async function removeNeighborhoodPost(id: string): Promise<MutationResult> {
     const result = await dbRemoveNeighborhoodPost(id).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) {
@@ -666,7 +710,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events, circles, members, resources, neighborhoodPosts, invitations, proposals, pendingReviews, rsvpState, profile,
+        events, circles, members, resources, neighborhoodPosts, tasks, invitations, proposals, pendingReviews, rsvpState, profile,
         inviteToCircle: tracked(inviteToCircle),
         acceptInvitation: tracked(acceptInvitation),
         leaveCircle: tracked(leaveCircle),
@@ -690,6 +734,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         removeResource: tracked(removeResource),
         proposeNeighborhoodPost: tracked(proposeNeighborhoodPost),
         removeNeighborhoodPost: tracked(removeNeighborhoodPost),
+        addTask: tracked(addTask),
+        updateTask: tracked(updateTask),
+        removeTask: tracked(removeTask),
       }}
     >
       {children}

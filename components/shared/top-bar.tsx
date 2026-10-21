@@ -109,6 +109,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     // a neighborhood's bulletin takes posts, proposed by the Circles in it
     if (sub === "bulletin") return circles.find((c) => c.id === id)?.type === "neighborhood" ? "New post" : resourceFormTitle(resources.find((r) => r.id === item)?.icon);
     if (sub === "invite") return "Invite";
+    if (sub === "tasks") return item === "new" ? "New task" : "Task";
     return circles.find((c) => c.id === id)?.name ?? "Circles";
   }
   if (section === "events") {

@@ -136,6 +136,11 @@ export function photoDecisionPush(d: { memberId: number; approved: boolean; note
     : message("Your new photo wasn't approved", d.note || "Your profile keeps the photo it had. You're welcome to send another.", "/profile/edit", "photo-review");
 }
 
+// one of a circle's tasks was given to you, opened where it's edited
+export function taskAssignedPush(d: { taskId: string; circleId: string; circleName: string; title: string; assignerName?: string; due?: string }): PushMessage {
+  return message(`${d.assignerName ?? "A member"} gave you a task`, line(d.title, d.circleName, d.due), `/circles/${d.circleId}/tasks/${d.taskId}`, `task-${d.taskId}`);
+}
+
 /* The daily digest's push is only a nudge toward the email, with none of its
    detail: the digest is the place for a day's worth of news. A web app can't
    open the mail app, so a tap opens the events list. Tagged so today's
