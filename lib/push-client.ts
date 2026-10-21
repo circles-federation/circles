@@ -43,17 +43,47 @@ function toKeys(sub: PushSubscription): PushSubscriptionKeys {
 
 /* Register the service worker and, if this device already has push on, save
    its subscription again: that puts back a row the server lost, follows a
-   browser that rotated it, and moves it to whoever is signed in now. Run once
-   when the app opens (AppShell). */
+   browser that rotated it, and moves it to whoever is signed in now. One made
+   with a push key the server no longer has (its keys were rotated) can never
+   be pushed to, so it's replaced with one for the current key; push is
+   already allowed here, so that needs no tap, and if the browser refuses
+   anyway push is simply off on this device until it's turned on again. Run
+   once when the app opens (AppShell). */
 export async function registerServiceWorker(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
   const registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL);
   if (!("PushManager" in window)) return;
-  const sub = await registration.pushManager.getSubscription();
+  let sub = await registration.pushManager.getSubscription();
+  if (sub && !madeWithCurrentKey(sub)) {
+    sub = await replaceStaleSubscription(registration, sub).catch((err) => {
+      console.error("Couldn't renew this device's push subscription:", err);
+      return null;
+    });
+  }
   if (sub) {
     const result = await savePushSubscriptionAction(toKeys(sub));
     if (!result.ok) console.error(result.error);
   }
+}
+
+// whether a subscription was made with the push key this build has; one whose
+// browser doesn't say is taken to be current, rather than churned for nothing
+function madeWithCurrentKey(sub: PushSubscription): boolean {
+  const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const made = sub.options.applicationServerKey;
+  if (!key || !made) return true;
+  const current = keyBytes(key);
+  const bytes = new Uint8Array(made);
+  return bytes.length === current.length && bytes.every((b, i) => b === current[i]);
+}
+
+// a subscription for the current key in place of one for an old key: the old
+// one's server row goes first, while there's a session to delete it with
+async function replaceStaleSubscription(registration: ServiceWorkerRegistration, stale: PushSubscription): Promise<PushSubscription> {
+  const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
+  await deletePushSubscriptionAction(stale.endpoint);
+  await stale.unsubscribe();
+  return registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
 }
 
 // base64url, as the VAPID public key is written, to the bytes subscribe() takes
@@ -80,7 +110,10 @@ export async function subscribeThisDevice(): Promise<boolean> {
   const active = registration.active ? registration : await navigator.serviceWorker.ready;
   let sub: PushSubscription;
   try {
-    sub = (await active.pushManager.getSubscription()) ?? (await active.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) }));
+    // one left over from an old push key is no use: start a new one
+    const existing = await active.pushManager.getSubscription();
+    if (existing && !madeWithCurrentKey(existing)) await existing.unsubscribe();
+    sub = (existing && madeWithCurrentKey(existing) ? existing : null) ?? (await active.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) }));
   } catch (err) {
     // the person said no, or dismissed the prompt
     if ((await pushPermission()) !== "granted") return false;
