@@ -532,11 +532,6 @@ export const announcementNotifications = pgTable(
   ]
 );
 
-/* A change to a circle that needs its members' consent (lib/db/proposals.ts):
-   its name, tagline, type, parent or roles. Open until `closes_at`, when it
-   passes if no one has objected; one objection closes it as objected, and it
-   passes early once every member has consented. Only one open at a time per
-   circle, so two can't change the same thing at once. */
 /* A circle's tasks (lib/db/tasks.ts): its members' shared backlog, seen and
    changed by any of them, by no one else. The assignee, if any, is one of its
    members; one who leaves it is unassigned (leaveCircle). */
@@ -588,6 +583,11 @@ export const neighborhoodPosts = pgTable(
   ]
 );
 
+/* A change to a circle that needs its members' consent (lib/db/proposals.ts):
+   its name, tagline, type, parent or roles. Open until `closes_at`, when it
+   passes if no one has objected; one objection closes it as objected, and it
+   passes early once every member has consented. Only one open at a time per
+   circle, so two can't change the same thing at once. */
 export const circleProposals = pgTable(
   "circle_proposals",
   {

@@ -4,7 +4,7 @@ import { notFound, useParams } from "next/navigation";
 import { TaskFormPage } from "@/components/circles/task-form.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack } from "@/components/providers/back-handler-provider";
-import { isCircleMember } from "@/lib/circles.util";
+import { circleHasPage, isCircleMember } from "@/lib/circles.util";
 
 // a new task, as a page: where a phone adds one (desktop uses the dialog on the
 // circle's Tasks tab). Only a circle with a page has tasks, and only its
@@ -14,6 +14,6 @@ export default function Page() {
   const { circles, profile } = useAppState();
   const goBack = useGoBack();
   const circle = circles.find((c) => c.id === id);
-  if (!circle || circle.type === "neighborhood" || circle.parentId === null || !isCircleMember(circle, profile.id)) notFound();
+  if (!circle || !circleHasPage(circle) || !isCircleMember(circle, profile.id)) notFound();
   return <TaskFormPage circle={circle} task={null} onDone={goBack} />;
 }

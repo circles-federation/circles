@@ -28,7 +28,7 @@ import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { newCircleNeighborhood } from "@/lib/proposals.util";
 import { indexCircles } from "@/lib/circles.util";
 import type { ResourceInput } from "@/lib/resources.util";
-import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges } from "@/lib/types";
+import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges, TaskStatus } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
    connection — Drizzle's Postgres driver is Node-only. These thin wrappers
@@ -275,24 +275,32 @@ async function tellPhotoDecision(d: photoReviews.PhotoDecision, approved: boolea
    right after the response is sent; like an invitation it isn't queued,
    since the task is on their Home either way. */
 export async function createTaskAction(circleId: string, input: TaskInput) {
-  const result = await asMember((memberId) => tasks.createTask(memberId, circleId, input));
-  if (result.ok && result.value.assignedTo !== null) after(() => tellAssignee(result.value.task.id));
-  return result.ok ? { ok: true as const, value: result.value.task } : result;
+  return tellingAssignee(await asMember((memberId) => tasks.createTask(memberId, circleId, input)));
 }
 
 export async function updateTaskAction(id: string, input: TaskInput) {
-  const result = await asMember((memberId) => tasks.updateTask(memberId, id, input));
-  if (result.ok && result.value.assignedTo !== null) after(() => tellAssignee(result.value.task.id));
-  return result.ok ? { ok: true as const, value: result.value.task } : result;
+  return tellingAssignee(await asMember((memberId) => tasks.updateTask(memberId, id, input)));
+}
+
+// the round button: its status alone, so nothing else is overwritten
+export async function setTaskStatusAction(id: string, status: TaskStatus) {
+  return asMember((memberId) => tasks.setTaskStatus(memberId, id, status));
+}
+
+// the saved task, with whoever it was just given to told once the response is out
+function tellingAssignee(result: { ok: true; value: tasks.TaskChange } | { ok: false; error: string }) {
+  if (!result.ok) return result;
+  const { task, assignedTo, assignedBy } = result.value;
+  if (assignedTo !== null) after(() => tellAssignee(task.id, assignedTo, assignedBy));
+  return { ok: true as const, value: task };
 }
 
 export async function deleteTaskAction(id: string) {
   return asMember((memberId) => tasks.deleteTask(memberId, id));
 }
 
-async function tellAssignee(taskId: string) {
-  const assignerId = await getCurrentUserId();
-  const data = assignerId ? await tasks.getTaskNoticeData(taskId, assignerId).catch(() => null) : null;
+async function tellAssignee(taskId: string, assigneeId: number, assignerId: number) {
+  const data = await tasks.getTaskNoticeData(taskId, assigneeId, assignerId).catch(() => null);
   if (!data) return;
   const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const due = dueLabel({ dueDate: data.dueDate ?? undefined, status: "todo" }, localDay())?.text;

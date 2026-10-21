@@ -30,6 +30,7 @@ import {
   createTaskAction as dbCreateTask,
   updateTaskAction as dbUpdateTask,
   deleteTaskAction as dbDeleteTask,
+  setTaskStatusAction as dbSetTaskStatus,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
@@ -39,7 +40,7 @@ import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { TaskInput } from "@/lib/tasks.util";
-import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, CircleTask, ConsentResponse, Event, Member, NeighborhoodPost, NotificationSettings, Profile, ProposalChanges } from "@/lib/types";
+import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, CircleTask, ConsentResponse, Event, Member, NeighborhoodPost, NotificationSettings, Profile, ProposalChanges, TaskStatus } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -96,6 +97,8 @@ export interface AppStateValue {
   // task as saved
   addTask(circleId: string, input: TaskInput): Promise<{ ok: true; task: CircleTask } | { ok: false; error: string }>;
   updateTask(id: string, input: TaskInput): Promise<{ ok: true; task: CircleTask } | { ok: false; error: string }>;
+  // only its status (the table's round button), saying so in a toast if refused
+  setTaskStatus(id: string, status: TaskStatus): Promise<MutationResult>;
   removeTask(id: string): Promise<MutationResult>;
   // an admin decided one, so there's one fewer waiting (until the next refresh)
   reviewDecided(): void;
@@ -510,14 +513,23 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true, task: result.value };
   }
 
+  // the form shows a refusal itself, as adding does
   async function updateTask(id: string, input: TaskInput): Promise<{ ok: true; task: CircleTask } | { ok: false; error: string }> {
     const result = await dbUpdateTask(id, input).catch(unreachable);
+    if (!result.ok) return result;
+    setTasks((prev) => prev.map((t) => (t.id === id ? result.value : t)));
+    return { ok: true, task: result.value };
+  }
+
+  // the round button has nowhere to show a refusal but a toast
+  async function setTaskStatus(id: string, status: TaskStatus): Promise<MutationResult> {
+    const result = await dbSetTaskStatus(id, status).catch(unreachable);
     if (!result.ok) {
-      showToast({ tone: "error", title: "Couldn't save the task", message: result.error });
+      showToast({ tone: "error", title: "Couldn't update the task", message: result.error });
       return result;
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? result.value : t)));
-    return { ok: true, task: result.value };
+    return { ok: true };
   }
 
   async function removeTask(id: string): Promise<MutationResult> {
@@ -736,6 +748,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         removeNeighborhoodPost: tracked(removeNeighborhoodPost),
         addTask: tracked(addTask),
         updateTask: tracked(updateTask),
+        setTaskStatus: tracked(setTaskStatus),
         removeTask: tracked(removeTask),
       }}
     >

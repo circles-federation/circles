@@ -86,17 +86,12 @@ export function dueCell(t: Pick<CircleTask, "dueDate" | "status">, today: string
   return { text: `${WEEKDAYS[day.getDay()]}, ${date}`, overdue: false };
 }
 
-/* When it's due, as a list says it: "Due today", "Due tomorrow", "Due Fri,
-   Oct 24", or "Overdue · Oct 20" once its day has passed (a done task is never
-   overdue). `today` is the wall-clock date, YYYY-MM-DD. */
+/* When it's due, in a sentence (the assignment notice): "Due today", "Due
+   tomorrow", "Due Fri, Oct 24", or "Overdue · Oct 20". The same days as the
+   table's cell, worded to stand on their own. */
 export function dueLabel(t: Pick<CircleTask, "dueDate" | "status">, today: string): { text: string; overdue: boolean } | null {
-  if (!t.dueDate) return null;
-  const day = parseDay(t.dueDate);
-  const date = `${MONTHS[day.getMonth()]} ${day.getDate()}`;
-  if (t.status !== "done" && t.dueDate < today) return { text: `Overdue · ${date}`, overdue: true };
-  if (t.dueDate === today) return { text: "Due today", overdue: false };
-  const tomorrow = parseDay(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (day.getTime() === tomorrow.getTime()) return { text: "Due tomorrow", overdue: false };
-  return { text: `Due ${WEEKDAYS[day.getDay()]}, ${date}`, overdue: false };
+  const cell = dueCell(t, today);
+  if (!cell) return null;
+  if (cell.overdue) return { text: `Overdue · ${cell.text}`, overdue: true };
+  return { text: cell.text === "Today" || cell.text === "Tomorrow" ? `Due ${cell.text.toLowerCase()}` : `Due ${cell.text}`, overdue: false };
 }

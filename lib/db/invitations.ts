@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { circleHasPage } from "@/lib/circles.util";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleInvitations, circleMembers, circles, members } from "./schema";
@@ -55,7 +56,7 @@ export async function getInvitationsForMember(memberId: number): Promise<CircleI
 export async function createInvitation(inviterId: number, circleId: string, inviteeId: number): Promise<CircleInvitation> {
   const [circle] = await db.select({ type: circles.type, parentId: circles.parentId, name: circles.name, tagline: circles.tagline }).from(circles).where(eq(circles.id, circleId));
   if (!circle) throw new InvitationError("That circle doesn't exist.");
-  if (circle.type === "neighborhood" || circle.parentId === null) throw new InvitationError("Neighborhoods and the city don't take invitations — their members are the people who live there.");
+  if (!circleHasPage(circle)) throw new InvitationError("Neighborhoods and the city don't take invitations — their members are the people who live there.");
   const roster = (await db.select({ memberId: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.memberId);
   if (!roster.includes(inviterId)) throw new InvitationError(`Only members of ${circle.name} can invite people to it.`);
   const [invitee] = await db.select({ name: members.name }).from(members).where(eq(members.id, inviteeId));

@@ -167,6 +167,14 @@ export function isCircleMember(circle: Circle | undefined, memberId: number): bo
 }
 
 // the city root is the circle with no parent
+/* A circle with a page of its own (CirclePage): everything but a
+   neighborhood, whose page is a folder of what's in it, and the city. Only
+   these have a bulletin, tasks and invitations, and can be left; a
+   neighborhood's and the city's members are the people who live there. */
+export function circleHasPage(circle: Pick<Circle, "type" | "parentId">): boolean {
+  return circle.type !== "neighborhood" && circle.parentId !== null;
+}
+
 export function isRootCircle(circle: Circle): boolean {
   return circle.parentId === null;
 }

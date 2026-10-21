@@ -5,7 +5,7 @@ import { circleInvitations, circleMembers, circleRoles, circles } from "./schema
 import { unassignFromCircle } from "./tasks";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { cleanAims, validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
+import { cleanAims, validateNewCircle, type NewCircleInput, circleHasPage } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
 
 type CircleRow = typeof circles.$inferSelect;
@@ -187,7 +187,7 @@ export async function leaveCircle(memberId: number, circleId: string): Promise<{
   return db.transaction(async (tx) => {
     const [circle] = await tx.select().from(circles).where(and(eq(circles.id, circleId), isNull(circles.archivedAt))).for("update");
     if (!circle) throw new CircleError("That circle doesn't exist.");
-    if (circle.type === "neighborhood" || circle.parentId === null) throw new CircleError("Your neighborhood and the city can't be left this way.");
+    if (!circleHasPage(circle)) throw new CircleError("Your neighborhood and the city can't be left this way.");
     const left = await tx
       .delete(circleMembers)
       .where(and(eq(circleMembers.circleId, circleId), eq(circleMembers.memberId, memberId)))
