@@ -7,7 +7,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useMemberById } from "@/lib/hooks";
 import { TASK_DESCRIPTION_MAX, TASK_PRIORITIES, TASK_STATUSES, TASK_TITLE_MAX, taskPriority, validateTask, type TaskErrors, type TaskInput } from "@/lib/tasks.util";
 import type { Circle, CircleTask, Member } from "@/lib/types";
-import { PRIORITY_TEXT } from "./task-row";
+import { PRIORITY_TEXT } from "./task-table";
 
 /* Adding or editing one of a circle's tasks, in either of two shells, as a
    bulletin item is: a dialog on desktop (TaskFormModal, below) and a page of

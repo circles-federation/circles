@@ -54,22 +54,42 @@ export function validateTask(input: TaskInput, memberIds: number[]): TaskErrors 
   return errors;
 }
 
-/* A list's order: most pressing first (by priority, then the soonest due,
-   with no date after any date), then the oldest. Done tasks go most recently
-   finished first. */
-export function sortTasks(tasks: CircleTask[]): CircleTask[] {
+// the back burner: to-dos of priority zzz, kept apart from the live list
+export const onBackBurner = (t: CircleTask) => t.status === "todo" && t.priority === "someday";
+
+// how a table sorts its tasks: by when they're due, how pressing, or name
+export type TaskSortKey = "due" | "priority" | "title";
+
+/* A table's order: by `key`, ascending or not, with the other two breaking
+   ties (due date, then priority, then name), so the order is always the same.
+   A task with no due date comes after every dated one either way round. */
+export function sortTasksBy(tasks: CircleTask[], key: TaskSortKey, ascending: boolean): CircleTask[] {
+  const byDue = (a: CircleTask, b: CircleTask) => (a.dueDate === b.dueDate ? 0 : !a.dueDate ? 1 : !b.dueDate ? -1 : a.dueDate.localeCompare(b.dueDate));
+  const byPriority = (a: CircleTask, b: CircleTask) => rank(a.priority) - rank(b.priority);
+  const byTitle = (a: CircleTask, b: CircleTask) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  const order = { due: [byDue, byPriority, byTitle], priority: [byPriority, byDue, byTitle], title: [byTitle, byDue, byPriority] }[key];
   return [...tasks].sort((a, b) => {
-    if (a.status === "done" && b.status === "done") return (b.completedAt ?? "").localeCompare(a.completedAt ?? "");
-    return (
-      rank(a.priority) - rank(b.priority) ||
-      (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") ||
-      a.createdAt.localeCompare(b.createdAt)
-    );
+    const [first, ...rest] = order;
+    // undated stays last whichever way the due column runs
+    const primary = key === "due" && (!a.dueDate || !b.dueDate) ? first!(a, b) : (ascending ? 1 : -1) * first!(a, b);
+    return primary || rest.reduce((n, cmp) => n || cmp(a, b), 0);
   });
 }
 
-// the back burner: to-dos of priority zzz, kept apart from the live list
-export const onBackBurner = (t: CircleTask) => t.status === "todo" && t.priority === "someday";
+/* A due date as a table's cell says it: "Today", "Tomorrow", "Fri, Oct 24",
+   or the date, marked overdue, once its day has passed (a done task is never
+   overdue). */
+export function dueCell(t: Pick<CircleTask, "dueDate" | "status">, today: string): { text: string; overdue: boolean } | null {
+  if (!t.dueDate) return null;
+  const day = parseDay(t.dueDate);
+  const date = `${MONTHS[day.getMonth()]} ${day.getDate()}`;
+  if (t.status !== "done" && t.dueDate < today) return { text: date, overdue: true };
+  if (t.dueDate === today) return { text: "Today", overdue: false };
+  const tomorrow = parseDay(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (day.getTime() === tomorrow.getTime()) return { text: "Tomorrow", overdue: false };
+  return { text: `${WEEKDAYS[day.getDay()]}, ${date}`, overdue: false };
+}
 
 /* When it's due, as a list says it: "Due today", "Due tomorrow", "Due Fri,
    Oct 24", or "Overdue · Oct 20" once its day has passed (a done task is never
