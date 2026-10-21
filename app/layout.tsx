@@ -41,6 +41,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <ToastProvider>{children}</ToastProvider>
+        {/* Installed on iOS 27, the system blurs whatever's under the status
+            bar unless a fixed element with a solid background sits at the very
+            top (at least 6px tall and 80% wide), whose colour it takes instead;
+            theme-color and the status bar style meta tag no longer count. The
+            top bar can't be that element: it isn't fixed in the installed app,
+            its background is a translucent gradient, and its backdrop blur
+            would pin a fixed child to it rather than the screen. So this strip,
+            over just the status bar, does it, for every page. */}
+        <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-[max(env(safe-area-inset-top),6px)] bg-paper standalone:block" />
         <PressFeedback />
       </body>
     </html>
