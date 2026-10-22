@@ -1,11 +1,12 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { createHash } from "node:crypto";
+import { cookies, headers } from "next/headers";
 import { after } from "next/server";
-import { cancelGuestRsvp, confirmGuestRsvp, GUEST_CODE_MINUTES, GuestRsvpError, renewGuestCode, startGuestRsvp } from "@/lib/db/guest-rsvps";
+import { cancelGuestRsvp, confirmGuestRsvp, GUEST_CODE_MINUTES, GuestRsvpError, renewGuestCode, startGuestRsvp, stopGuestEmails, takeCodeAllowance } from "@/lib/db/guest-rsvps";
 import { sendEmail } from "@/lib/email";
 import { guestRsvpCodeEmail } from "@/lib/email/templates.util";
-import { GUEST_COOKIE, guestIdsFrom } from "@/lib/guest-rsvp.util";
+import { GUEST_COOKIE, guestIdsFrom, validateGuest } from "@/lib/guest-rsvp.util";
 import { deliverEventNotifications } from "@/lib/notify";
 
 /* The Server Actions the public event page (/e/[token]) calls to RSVP without
@@ -29,6 +30,16 @@ async function sendCode(to: string, code: string, eventTitle: string): Promise<s
   }
 }
 
+/* Count this request against its connection's hourly allowance of codes (see
+   takeCodeAllowance). Keyed by a hash of the IP address the proxy reports, so
+   the address itself isn't kept. With none to go by (local development) there's
+   nothing to limit by. */
+async function takeAllowance(): Promise<void> {
+  const h = await headers();
+  const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (ip) await takeCodeAllowance(createHash("sha256").update(`${ip}|${process.env.BETTER_AUTH_SECRET ?? ""}`).digest("hex"));
+}
+
 function failure(err: unknown, what: string): { ok: false; error: string } {
   if (err instanceof GuestRsvpError) return { ok: false, error: err.message };
   console.error(`Couldn't ${what}:`, err);
@@ -37,6 +48,10 @@ function failure(err: unknown, what: string): { ok: false; error: string } {
 
 export async function startGuestRsvpAction(token: string, name: string, email: string): Promise<Result<{ id: string; code?: string }>> {
   try {
+    // a mistyped form doesn't spend the allowance
+    const problem = validateGuest(name, email);
+    if (problem) return { ok: false, error: problem };
+    await takeAllowance();
     const started = await startGuestRsvp(token, name, email);
     const failed = await sendCode(started.email, started.code, started.eventTitle);
     return failed ? { ok: false, error: failed } : { ok: true, id: started.id, ...devCode(started.code) };
@@ -47,6 +62,7 @@ export async function startGuestRsvpAction(token: string, name: string, email: s
 
 export async function resendGuestRsvpCodeAction(id: string): Promise<Result<{ code?: string }>> {
   try {
+    await takeAllowance();
     const renewed = await renewGuestCode(id);
     const failed = await sendCode(renewed.email, renewed.code, renewed.eventTitle);
     return failed ? { ok: false, error: failed } : { ok: true, ...devCode(renewed.code) };
@@ -80,5 +96,25 @@ export async function cancelGuestRsvpAction(id: string): Promise<Result> {
     return { ok: true };
   } catch (err) {
     return failure(err, "cancel a guest RSVP");
+  }
+}
+
+/* The two links at the foot of a guest's emails (/e/stop/[id]): the RSVP's id,
+   which only they were sent, is what lets them act on it without a cookie. */
+export async function stopGuestEmailsAction(id: string): Promise<Result> {
+  try {
+    await stopGuestEmails(id);
+    return { ok: true };
+  } catch (err) {
+    return failure(err, "stop a guest's emails");
+  }
+}
+
+export async function removeGuestRsvpAction(id: string): Promise<Result> {
+  try {
+    await cancelGuestRsvp(id);
+    return { ok: true };
+  } catch (err) {
+    return failure(err, "remove a guest RSVP");
   }
 }

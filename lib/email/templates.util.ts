@@ -115,9 +115,16 @@ export interface EventNotificationData {
   today?: string;
   // where to open it in the app
   url: string;
+  // a guest's email carries a link to stop them (see lib/db/guest-rsvps.ts)
+  unsubscribeUrl?: string;
 }
 
 const EXCERPT_CHARS = 400;
+
+// a guest's footer: why they're getting this, and the way to stop it
+const stopText = (n: Pick<EventNotificationData, "unsubscribeUrl">) => (n.unsubscribeUrl ? `\n\nStop these emails: ${n.unsubscribeUrl}` : "");
+const stopHtml = (n: Pick<EventNotificationData, "unsubscribeUrl">) =>
+  n.unsubscribeUrl ? ` <a href="${esc(n.unsubscribeUrl)}" style="color:${SOFT}">Stop these emails</a>.` : "";
 
 export function eventNotificationEmail(n: EventNotificationData): Body {
   if (n.notice === "cancelled") return cancelledEventEmail(n);
@@ -455,7 +462,7 @@ function cancelledEventEmail(n: EventNotificationData): Body {
     `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
   return {
     subject: `Cancelled: ${n.title}`,
-    text: `Cancelled ${noun} in ${n.circleName}\n\n${n.title}\n\n${note}\n\nWas: ${when}\nWhere: ${n.location}\n\nView it: ${n.url}\n\n${why}`,
+    text: `Cancelled ${noun} in ${n.circleName}\n\n${n.title}\n\n${note}\n\nWas: ${when}\nWhere: ${n.location}\n\nView it: ${n.url}\n\n${why}${stopText(n)}`,
     html: shell(
       `<tr><td style="border-top:3px solid ${DANGER};padding-top:18px">` +
         eyebrow(`Cancelled ${noun} · ${esc(n.circleName)}`, DANGER) +
@@ -467,7 +474,7 @@ function cancelledEventEmail(n: EventNotificationData): Body {
         detail("Where", n.location) +
         `</table></td></tr>` +
         `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
-        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}${stopHtml(n)}</td></tr>`
     ),
   };
 }
@@ -509,7 +516,7 @@ function updatedEventEmail(n: EventNotificationData): Body {
     text:
       `Changed ${noun} in ${n.circleName}\n\n${n.title}\n\n${note}\n\n` +
       `When: ${when}\n${wasWhen ? `  (was ${wasWhen})\n` : ""}Where: ${n.location}\n${wasWhere ? `  (was ${wasWhere})\n` : ""}\n` +
-      `View it: ${n.url}\n\n${why}`,
+      `View it: ${n.url}\n\n${why}${stopText(n)}`,
     html: shell(
       `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
         eyebrow(`Changed ${noun} · ${esc(n.circleName)}`) +
@@ -521,7 +528,7 @@ function updatedEventEmail(n: EventNotificationData): Body {
         detail("Where", n.location, wasWhere) +
         `</table></td></tr>` +
         `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View event</a></td></tr>` +
-        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}${stopHtml(n)}</td></tr>`
     ),
   };
 }
@@ -805,7 +812,7 @@ function guestConfirmedEmail(n: EventNotificationData & { guestName: string }): 
     `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
   return {
     subject: `You're going: ${n.title}`,
-    text: `You're going\n\n${n.title}\n\n${note}\n\nWhen: ${when}\nWhere: ${n.location}\n\nSee it: ${n.url}\n\n${why}`,
+    text: `You're going\n\n${n.title}\n\n${note}\n\nWhen: ${when}\nWhere: ${n.location}\n\nSee it: ${n.url}\n\n${why}${stopText(n)}`,
     html: shell(
       `<tr><td style="border-top:3px solid ${LEAF};padding-top:18px">` +
         eyebrow("You're going", LEAF) +
@@ -817,7 +824,7 @@ function guestConfirmedEmail(n: EventNotificationData & { guestName: string }): 
         detail("Where", n.location) +
         `</table></td></tr>` +
         `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">See the event</a></td></tr>` +
-        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}${stopHtml(n)}</td></tr>`
     ),
   };
 }

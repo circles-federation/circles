@@ -1,11 +1,11 @@
 import { createHash, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
-import { and, count, eq, gt, inArray, isNotNull, max, sql } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNotNull, isNull, lt, max, sql } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { getEvent } from "./events";
 import { enqueueGuestConfirmation } from "./guest-notifications";
 import { getMemberByEmail } from "./members";
-import { eventGuestRsvps, eventShareLinks } from "./schema";
+import { eventGuestRsvps, eventShareLinks, events, guestCodeRequests, guestNotifications } from "./schema";
 import { hasEnded } from "@/lib/events.util";
 import { awaitingConsent, isMeeting } from "@/lib/governance.util";
 import { validateGuest } from "@/lib/guest-rsvp.util";
@@ -153,4 +153,65 @@ export async function getVerifiedGuest(ids: string[], id: string): Promise<{ id:
     .from(eventGuestRsvps)
     .where(and(eq(eventGuestRsvps.id, id), isNotNull(eventGuestRsvps.confirmedAt)));
   return row ?? null;
+}
+
+// codes one connection may ask for in an hour, across every event: the RSVP
+// form is public and a code goes to whatever address is typed
+const CODES_PER_IP_PER_HOUR = 10;
+
+/* Count a code request against the requester's hashed IP address, refusing it
+   past the hour's allowance. The per-address and per-event limits in
+   startGuestRsvp stop one inbox or one event being flooded; this stops one
+   connection spreading requests across many of both. */
+export async function takeCodeAllowance(ipHash: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    // serialized per requester, so two at once can't both take the last one
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${ipHash}))`);
+    const [recent] = await tx
+      .select({ n: count() })
+      .from(guestCodeRequests)
+      .where(and(eq(guestCodeRequests.ipHash, ipHash), gt(guestCodeRequests.createdAt, new Date(Date.now() - 3_600_000))));
+    if ((recent?.n ?? 0) >= CODES_PER_IP_PER_HOUR) throw new GuestRsvpError("Too many codes have been asked for from this connection — try again in a little while.");
+    await tx.insert(guestCodeRequests).values({ ipHash });
+  });
+}
+
+// what the stop-emails page names: the event, and whether they've already stopped
+export async function getGuestForStopPage(id: string): Promise<{ title: string; token: string | null; stopped: boolean } | null> {
+  const [row] = await db
+    .select({ title: events.title, emailsOffAt: eventGuestRsvps.emailsOffAt, token: eventShareLinks.token })
+    .from(eventGuestRsvps)
+    .innerJoin(events, eq(events.id, eventGuestRsvps.eventId))
+    .leftJoin(eventShareLinks, and(eq(eventShareLinks.eventId, events.id), eq(eventShareLinks.memberId, eventGuestRsvps.invitedBy)))
+    .where(and(eq(eventGuestRsvps.id, id), isNotNull(eventGuestRsvps.confirmedAt)));
+  return row ? { title: row.title, token: row.token, stopped: row.emailsOffAt !== null } : null;
+}
+
+// an email's link: no more emails about this event, and none still waiting
+export async function stopGuestEmails(id: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.update(eventGuestRsvps).set({ emailsOffAt: new Date() }).where(eq(eventGuestRsvps.id, id));
+    await tx.delete(guestNotifications).where(and(eq(guestNotifications.guestId, id), isNull(guestNotifications.sentAt)));
+  });
+}
+
+// how long a guest's name and email are kept after their event
+export const GUEST_RETENTION_DAYS = 30;
+
+/* Delete what's no longer needed: a guest's details once their event is
+   GUEST_RETENTION_DAYS past, an RSVP never confirmed (the code expires in
+   half an hour) after a day, and request counts after a day. Run by the
+   notification poller, once an hour. Returns how many guests went. */
+export async function purgeGuestData(now: Date = new Date()): Promise<number> {
+  const dayAgo = new Date(now.getTime() - 86_400_000);
+  const cutoff = new Date(now.getTime() - GUEST_RETENTION_DAYS * 86_400_000);
+  const cutoffDay = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
+  const old = await db
+    .delete(eventGuestRsvps)
+    .where(
+      sql`${eventGuestRsvps.eventId} in (select ${events.id} from ${events} where ${events.date} < ${cutoffDay}) or (${eventGuestRsvps.confirmedAt} is null and ${eventGuestRsvps.createdAt} < ${dayAgo})`
+    )
+    .returning({ id: eventGuestRsvps.id });
+  await db.delete(guestCodeRequests).where(lt(guestCodeRequests.createdAt, dayAgo));
+  return old.length;
 }

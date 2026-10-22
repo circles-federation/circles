@@ -14,12 +14,20 @@ import type { EventChange, GuestNoticeKind } from "@/lib/types";
 const MAX_ATTEMPTS = 5;
 const RETRY_AFTER = sql`interval '5 minutes'`;
 
-const confirmedGuestIds = (tx: Tx, eventId: string) =>
+const confirmedGuests = (tx: Tx, eventId: string) =>
   tx.select({ id: eventGuestRsvps.id }).from(eventGuestRsvps).where(and(eq(eventGuestRsvps.eventId, eventId), isNotNull(eventGuestRsvps.confirmedAt)));
 
-// how many have said they're going: an event with any is cancelled, not deleted
+// those who haven't asked to stop hearing about it
+const mailableGuestIds = (tx: Tx, eventId: string) =>
+  tx
+    .select({ id: eventGuestRsvps.id })
+    .from(eventGuestRsvps)
+    .where(and(eq(eventGuestRsvps.eventId, eventId), isNotNull(eventGuestRsvps.confirmedAt), isNull(eventGuestRsvps.emailsOffAt)));
+
+// how many have said they're going, emails or not: an event with any is
+// cancelled, not deleted
 export async function confirmedGuestCount(tx: Tx, eventId: string): Promise<number> {
-  return (await confirmedGuestIds(tx, eventId)).length;
+  return (await confirmedGuests(tx, eventId)).length;
 }
 
 export async function enqueueGuestConfirmation(tx: Tx, guestId: string): Promise<void> {
@@ -30,7 +38,7 @@ export async function enqueueGuestConfirmation(tx: Tx, guestId: string): Promise
 // keeps what it was before the earlier edit, since that's what they last heard;
 // a sent one is replaced, so a later edit is news again.
 export async function enqueueGuestUpdates(tx: Tx, eventId: string, change: EventChange): Promise<void> {
-  const guests = await confirmedGuestIds(tx, eventId);
+  const guests = await mailableGuestIds(tx, eventId);
   if (guests.length === 0) return;
   await tx
     .insert(guestNotifications)
@@ -44,7 +52,7 @@ export async function enqueueGuestUpdates(tx: Tx, eventId: string, change: Event
 
 // it's off: tell its guests, and drop anything unsent that would now be wrong
 export async function enqueueGuestCancellations(tx: Tx, eventId: string): Promise<void> {
-  const guests = await confirmedGuestIds(tx, eventId);
+  const guests = await mailableGuestIds(tx, eventId);
   if (guests.length === 0) return;
   const ids = guests.map((g) => g.id);
   await tx.delete(guestNotifications).where(and(inArray(guestNotifications.guestId, ids), isNull(guestNotifications.sentAt), sql`${guestNotifications.kind} <> 'cancelled'`));

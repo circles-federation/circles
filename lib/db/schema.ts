@@ -595,6 +595,9 @@ export const eventGuestRsvps = pgTable(
     // when the last code went out, for the one-a-minute limit
     codeSentAt: timestamp("code_sent_at", { withTimezone: true }).notNull().defaultNow(),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    // when they asked, from an email's link, to hear no more about the event;
+    // they stay on the list
+    emailsOffAt: timestamp("emails_off_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("event_guest_rsvps_event_email").on(t.eventId, sql`lower(${t.email})`), index("event_guest_rsvps_event_idx").on(t.eventId)]
@@ -619,6 +622,19 @@ export const guestNotifications = pgTable(
     lastError: text("last_error"),
   },
   (t) => [primaryKey({ columns: [t.guestId, t.kind] }), index("guest_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`)]
+);
+
+/* One row per emailed code a guest RSVP asked for, keyed by a hash of the
+   requester's IP address, so the public RSVP form can't be used to mail
+   strangers in bulk (lib/db/guest-rsvps.ts takeCodeAllowance). Kept a day. */
+export const guestCodeRequests = pgTable(
+  "guest_code_requests",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    ipHash: text("ip_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("guest_code_requests_ip_idx").on(t.ipHash, t.createdAt)]
 );
 
 /* A post to a neighborhood's bulletin by a Circle inside it (see

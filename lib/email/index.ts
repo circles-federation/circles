@@ -5,6 +5,8 @@ export interface EmailMessage {
   subject: string;
   text: string;
   html?: string;
+  // extra headers, e.g. List-Unsubscribe
+  headers?: Record<string, string>;
 }
 
 /* The only file that imports "nodemailer" (the same wrapping rule as lib/db/

@@ -14,6 +14,7 @@ import {
   markNotificationFailed,
   markNotificationSent,
 } from "@/lib/db/notifications";
+import { purgeGuestData } from "@/lib/db/guest-rsvps";
 import { claimGuestNotifications, markGuestFailed, markGuestSent } from "@/lib/db/guest-notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
 import { closeDueProposals, withdrawLapsedEventProposals } from "@/lib/db/proposals";
@@ -177,7 +178,12 @@ const deliverGuestEmails = drainer("Guest email", async () => {
         continue;
       }
       try {
-        await sendEmail({ to: n.email, ...guestEmail({ ...n, url: n.shareToken ? `${appUrl}/e/${n.shareToken}` : appUrl }) });
+        const stopUrl = `${appUrl}/e/stop/${n.guestId}`;
+        await sendEmail({
+          to: n.email,
+          ...guestEmail({ ...n, url: n.shareToken ? `${appUrl}/e/${n.shareToken}` : appUrl, unsubscribeUrl: stopUrl }),
+          headers: { "List-Unsubscribe": `<${stopUrl}>` },
+        });
         await markGuestSent(n);
       } catch (err) {
         console.error(`Couldn't email event ${n.eventId} to guest ${n.guestId}:`, err);
@@ -353,7 +359,13 @@ export function startNotificationWorker(): void {
   // globalThis, so dev-server module reloads don't stack up pollers
   const g = globalThis as typeof globalThis & { __notificationPoller?: NodeJS.Timeout };
   if (g.__notificationPoller) return;
+  let lastPurge = 0;
   const tick = () => {
+    // an hour apart: what's purged only goes stale by the day
+    if (Date.now() - lastPurge >= 3_600_000) {
+      lastPurge = Date.now();
+      void purgeGuestData().catch((err) => console.error("Purging old guest data failed:", err));
+    }
     void remindThenDeliver();
     void deliverAnnouncementNotifications();
     void closeThenDeliverProposals();
