@@ -570,6 +570,31 @@ export const eventShareLinks = pgTable(
   (t) => [unique("event_share_links_event_member").on(t.eventId, t.memberId)]
 );
 
+/* Someone without an account saying they're going to an event, from its share
+   link (see lib/db/guest-rsvps.ts). Not a member and not a login: just a name
+   and an email address, proved theirs by the code emailed to them. A row stays
+   unconfirmed (and isn't shown to anyone) until that code is entered. It goes
+   with its event; the member who shared the link is kept for the application
+   that may follow. */
+export const eventGuestRsvps = pgTable(
+  "event_guest_rsvps",
+  {
+    id: text("id").primaryKey(),
+    eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    invitedBy: integer("invited_by").references(() => members.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    codeHash: text("code_hash"),
+    codeExpiresAt: timestamp("code_expires_at", { withTimezone: true }),
+    codeAttempts: integer("code_attempts").notNull().default(0),
+    // when the last code went out, for the one-a-minute limit
+    codeSentAt: timestamp("code_sent_at", { withTimezone: true }).notNull().defaultNow(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("event_guest_rsvps_event_email").on(t.eventId, sql`lower(${t.email})`), index("event_guest_rsvps_event_idx").on(t.eventId)]
+);
+
 /* A post to a neighborhood's bulletin by a Circle inside it (see
    lib/db/neighborhood-posts.ts): unpublished (published_at null) while its
    circle decides it by consent, then seen by the neighborhood's residents

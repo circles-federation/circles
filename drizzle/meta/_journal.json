@@ -344,6 +344,13 @@
       "when": 1792626646569,
       "tag": "0048_flawless_patch",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1792627311559,
+      "tag": "0049_empty_stick",
+      "breakpoints": true
     }
   ]
 }

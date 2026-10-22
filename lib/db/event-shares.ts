@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { getEvent, getVisibleEvent } from "./events";
+import { confirmedGuestNames } from "./guest-rsvps";
 import { circles, eventShareLinks, members } from "./schema";
 import { hasEnded } from "@/lib/events.util";
 import { awaitingConsent, isMeeting } from "@/lib/governance.util";
@@ -75,11 +76,12 @@ export async function getSharedEvent(token: string): Promise<SharedEvent | null>
     cancelled: !!event.cancelled,
     ended: hasEnded(event),
     hasRoles: (event.roles ?? []).length > 0,
+    token,
     circleName: publicName(event.circleId),
     hostCircleName: publicName(event.hostCircleId),
     hostName: names.get(event.organizerId) ?? "A neighbor",
     sharedBy: names.get(link.memberId) ?? "A neighbor",
-    going: event.rsvps.flatMap((id) => names.get(id) ?? []),
+    going: [...event.rsvps.flatMap((id) => names.get(id) ?? []), ...(await confirmedGuestNames(event.id))],
     eventId: event.id,
   };
 }

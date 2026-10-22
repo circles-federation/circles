@@ -1,10 +1,13 @@
 import { UserIcon } from "@heroicons/react/24/outline";
+import { GuestRsvp } from "./guest-rsvp";
 import { Eyebrow } from "@/components/shared";
 import { MONTHS, WEEKDAYS, fmtTime, parseDay } from "@/lib/format.util";
 import type { SharedEvent } from "@/lib/types";
 
 interface SharedEventPageProps {
   event: SharedEvent;
+  // this browser's confirmed RSVP, if it has one
+  guest: { id: string; name: string } | null;
 }
 
 /* An event as someone without an account sees it, from a share link
@@ -12,7 +15,7 @@ interface SharedEventPageProps {
    page rather than under a top bar. Everything here comes from SharedEvent,
    which carries no member ids: the people going are first names beside the
    same grey placeholder for everyone, and nothing in the list is a link. */
-export function SharedEventPage({ event: e }: SharedEventPageProps) {
+export function SharedEventPage({ event: e, guest }: SharedEventPageProps) {
   const day = parseDay(e.date);
   const dateLabel = isNaN(day.getTime()) ? "Date TBD" : `${WEEKDAYS[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()}`;
   const host = e.hostCircleName ?? e.hostName;
@@ -36,6 +39,13 @@ export function SharedEventPage({ event: e }: SharedEventPageProps) {
           <p className="border-b border-faint py-4 font-sans text-sm font-bold text-danger">This event has been cancelled.</p>
         )}
         {!e.cancelled && e.ended && <p className="border-b border-faint py-4 font-sans text-sm font-bold text-soft">This event has ended.</p>}
+
+        {/* a role is taken by a member, so an event with roles has no guest RSVP */}
+        {!e.cancelled && !e.ended && !e.hasRoles && (
+          <div className="border-b border-faint py-5">
+            <GuestRsvp token={e.token} guest={guest} />
+          </div>
+        )}
 
         <div className="border-b border-faint py-5">
           <Eyebrow className="text-soft">Hosted by</Eyebrow>

@@ -378,6 +378,7 @@ export interface EventChange {
    group. */
 export interface SharedEvent {
   eventId: string;
+  token: string;
   title: string;
   date: string;
   start: string;

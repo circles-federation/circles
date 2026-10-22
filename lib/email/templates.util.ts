@@ -777,6 +777,22 @@ export function applicationCodeEmail(code: string, minutes: number): Body {
   };
 }
 
+// confirms a guest's email is really theirs, before their name joins an event's list
+export function guestRsvpCodeEmail(code: string, minutes: number, eventTitle: string): Body {
+  const expiry = `Enter it on the event page to RSVP to ${eventTitle}. It expires in ${minutes} minutes.`;
+  const ignore = `If you didn't ask to RSVP, you can ignore this email — nothing happens without this code.`;
+  return {
+    subject: `Confirm your RSVP to ${eventTitle}`,
+    text: `Confirm your RSVP\n\n    ${code}\n\n${expiry}\n\n${ignore}`,
+    html: shell(
+      applicationMasthead("Confirm your RSVP on") +
+        `<tr><td style="padding:28px 0 24px"><div style="border:2px solid ${INK};padding:26px 16px 26px 24px;text-align:center;font-family:${SANS};font-size:52px;font-weight:800;letter-spacing:0.16em;line-height:1;color:${INK}">${code}</div></td></tr>` +
+        paragraph(esc(expiry)) +
+        footnote(ignore)
+    ),
+  };
+}
+
 export function applicationApprovedEmail(d: { firstName: string; neighborhoodName: string; url: string }): Body {
   const body = `Your application has been approved, and you're now a member of ${d.neighborhoodName}. Sign in with this email address — we'll send you a code each time, with no password to remember.`;
   return {
