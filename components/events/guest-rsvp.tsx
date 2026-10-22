@@ -128,6 +128,13 @@ export function GuestRsvp({ token, guest }: GuestRsvpProps) {
             {step === "form" && (
               <form onSubmit={handleStart}>
                 <p className="mb-4 font-serif text-base leading-normal text-body">No account needed. We&apos;ll email you a code to check the address is yours.</p>
+                <p className="mb-4 font-serif text-sm leading-normal text-soft">
+                  Your first name will show on the list of who&apos;s going. Your email is shown to no one. See the{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">
+                    privacy notes
+                  </a>
+                  .
+                </p>
                 <Label htmlFor="guest-name">Your name</Label>
                 <Input id="guest-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={GUEST_NAME_MAX} autoComplete="name" autoFocus />
                 <Label htmlFor="guest-email" className="mt-4 block">

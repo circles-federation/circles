@@ -28,6 +28,7 @@ export function BetaTerms() {
       <LegalList>
         <li>Treat people with respect. No harassment, threats, hate or discrimination.</li>
         <li>What&apos;s shared in a circle stays in that circle. Don&apos;t copy members&apos; information, posts or photos out of Circles without their permission.</li>
+        <li>An event&apos;s share link is for sending to people you&apos;d invite to it. Anyone who has it can see the event&apos;s page.</li>
         <li>Don&apos;t pretend to be someone else, or post things you know are false.</li>
         <li>No spam or advertising.</li>
         <li>Don&apos;t try to see what you aren&apos;t allowed to, or to break Circles.</li>

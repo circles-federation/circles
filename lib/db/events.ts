@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, or, sql, type Column, type SQL } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
-import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
+import { circleMembers, circleRoles, circles, eventAgendaItems, eventGuestRsvps, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
 import { confirmedGuestCount, enqueueGuestCancellations, enqueueGuestUpdates } from "./guest-notifications";
 import { openEventProposal, withdrawEventProposal } from "./proposals";
@@ -57,7 +57,7 @@ function toRepeat(s: SeriesRow): EventRepeat {
   return { seriesId: s.id, frequency: s.frequency, startsOn: s.startsOn, ...(s.until !== null ? { until: s.until } : {}) };
 }
 
-function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, eventRoles: Role[] | undefined, series: SeriesRow | undefined, agenda: AgendaItem[] | undefined): Event {
+function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, eventRoles: Role[] | undefined, series: SeriesRow | undefined, agenda: AgendaItem[] | undefined, guests: string[] | undefined): Event {
   return {
     id: row.id,
     title: row.title,
@@ -77,6 +77,7 @@ function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, ev
     location: row.location,
     description: row.description,
     rsvps,
+    ...(guests && guests.length > 0 ? { guests } : {}),
     roles: eventRoles,
     votes,
     ...(agenda ? { agenda } : {}),
@@ -89,8 +90,14 @@ async function attachRelations(rows: EventRow[]): Promise<Event[]> {
   const ids = rows.map((r) => r.id);
   const seriesIds = [...new Set(rows.flatMap((r) => (r.seriesId !== null ? [r.seriesId] : [])))];
   const meetingIds = rows.filter((r) => r.kind === "meeting").map((r) => r.id);
-  const [rsvpRows, voteRows, roleRows, seriesRows, agendaRows] = await Promise.all([
+  const [rsvpRows, guestRows, voteRows, roleRows, seriesRows, agendaRows] = await Promise.all([
     db.select().from(eventRsvps).where(inArray(eventRsvps.eventId, ids)),
+    // first names only, in the order they confirmed: nothing that identifies a guest further
+    db
+      .select({ eventId: eventGuestRsvps.eventId, name: eventGuestRsvps.name })
+      .from(eventGuestRsvps)
+      .where(and(inArray(eventGuestRsvps.eventId, ids), isNotNull(eventGuestRsvps.confirmedAt)))
+      .orderBy(asc(eventGuestRsvps.confirmedAt)),
     db.select().from(eventVotes).where(inArray(eventVotes.eventId, ids)),
     db.select().from(roles).where(inArray(roles.eventId, ids)),
     seriesIds.length > 0 ? db.select().from(eventSeries).where(inArray(eventSeries.id, seriesIds)) : Promise.resolve([]),
@@ -106,6 +113,7 @@ async function attachRelations(rows: EventRow[]): Promise<Event[]> {
   const seriesById = new Map(seriesRows.map((s) => [s.id, s]));
   const roleMemberRows = roleRows.length > 0 ? await db.select().from(roleMembers).where(inArray(roleMembers.roleId, roleRows.map((r) => r.id))) : [];
   const rsvpsByEvent = groupBy(rsvpRows, (r) => r.eventId, (r) => r.memberId);
+  const guestsByEvent = groupBy(guestRows, (r) => r.eventId, (r) => r.name.trim().split(/\s+/)[0] ?? r.name);
   const votesByEvent = groupBy(voteRows, (r) => r.eventId, (r) => r.memberId);
   const membersByRole = groupBy(roleMemberRows, (r) => r.roleId, (r) => r.memberId);
   const rolesByEvent = new Map<string, Role[]>();
@@ -131,7 +139,8 @@ async function attachRelations(rows: EventRow[]): Promise<Event[]> {
       rolesByEvent.get(row.id),
       row.seriesId !== null ? seriesById.get(row.seriesId) : undefined,
       // every meeting has an agenda, even an empty one
-      row.kind === "meeting" ? agendaByEvent.get(row.id) || [] : undefined
+      row.kind === "meeting" ? agendaByEvent.get(row.id) || [] : undefined,
+      guestsByEvent.get(row.id)
     )
   );
 }

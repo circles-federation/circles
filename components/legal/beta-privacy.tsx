@@ -18,23 +18,26 @@ export function BetaPrivacy() {
         <li>What you add to your profile, all of it optional: pronouns, occupation, skills, interests and bio.</li>
         <li>When you can do meetings, if you choose to say (in Settings).</li>
         <li>What you do in Circles: the circles you belong to, events, RSVPs, your answers to proposals, bulletin posts and invitations.</li>
+        <li>If you RSVP to an event someone shared with you, without an account: your name and email address, and which member shared the link with you.</li>
         <li>Your sign-ins, including your IP address and browser type, to keep your account secure.</li>
       </LegalList>
 
       <LegalHeading>Who sees it</LegalHeading>
       <LegalList>
-        <li>Nothing is public on the web. Only signed-in members can see anything.</li>
+        <li>Only signed-in members can see anything, with one exception: a member can share an event by link. Anyone with the link, signed in or not, sees that event&apos;s page: its title, time, place and description, who is hosting it and the first names of the people going, with no photos and no way to open their profiles. That includes an event shown only to a private group, though the page never names the group. Search engines are asked not to list these pages.</li>
         <li>Every member can see your name, profile, email address (unless you hide it from your profile, when no one else is sent it), neighborhood, the circles you belong to and roles you hold. A private group, and who&apos;s in it, is seen only by its members.</li>
         <li>Your photo is seen by members who share a circle with you, including your neighborhood.</li>
         <li>When you can do meetings isn&apos;t shown to anyone as a schedule. When a member of one of your circles plans a meeting, they see whether you can make the time they pick, and until when you&apos;re free if you&apos;re free as it begins.</li>
         <li>Events, bulletin posts, a circle&apos;s tasks (and who they&apos;re assigned to), and who&apos;s going to something are seen by the members of the circle they belong to. A post a circle puts on its neighborhood&apos;s bulletin is seen by everyone who lives there. Answers to a proposal aren&apos;t secret: everyone with a say in it sees who answered what, and why anyone objected. For a proposal a neighborhood decides, like a new circle in it, that&apos;s everyone who lives there.</li>
+        <li>If you RSVP as a guest, your first name is shown on that event&apos;s page, to the members who can see the event and to anyone with the link. Your email address is shown to no one. It&apos;s used to check the address is yours, to confirm your RSVP, and to email you if the event is moved or cancelled. You can take your RSVP back from the event page, which deletes your name and email. Otherwise they&apos;re kept with the event until it&apos;s removed.</li>
+        <li>If you then apply to join, the admin reviewing your application sees which member invited you and through which event. Your guest RSVPs to events open to your neighborhood or the whole city become ordinary RSVPs once you&apos;re a member.</li>
         <li>Your application photo is seen only by the person reviewing it, and is no longer kept with the application once it&apos;s decided.</li>
         <li>When you change your photo, a Circles admin sees the new one, beside your current one, before anyone else does. Others keep seeing your current photo until it&apos;s approved, and a declined one is deleted.</li>
       </LegalList>
 
       <LegalHeading>What Circles never does</LegalHeading>
       <LegalParagraph>
-        Circles doesn&apos;t sell your information, show ads, use trackers or analytics, or use your information to train AI. Its one cookie keeps you signed in.
+        Circles doesn&apos;t sell your information, show ads, use trackers or analytics, or use your information to train AI. Its cookies keep you signed in and, if you RSVP as a guest, remember on that device that you did.
       </LegalParagraph>
 
       <LegalHeading>Who else handles it</LegalHeading>

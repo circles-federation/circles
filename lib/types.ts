@@ -188,6 +188,9 @@ export interface Event {
   location: string;
   description: string;
   rsvps: number[];
+  // first names of guests who RSVPed from a share link (no account, so no id,
+  // photo or profile); absent when there are none
+  guests?: string[];
   roles?: Role[];
   votes?: number[];
   // a meeting's agenda, in order; a meeting has this instead of a description

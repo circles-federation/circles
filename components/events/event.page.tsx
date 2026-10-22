@@ -56,7 +56,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
       <HostRsvpRow
         event={e}
         going={rsvpState[e.id]}
-        attendeeCount={e.rsvps.length}
+        attendeeCount={e.rsvps.length + (e.guests?.length ?? 0)}
         onOpenCircle={onOpenCircle}
         onOpenMember={onOpenMember}
         onToggleRsvp={() => toggleRsvp(e.id)}
