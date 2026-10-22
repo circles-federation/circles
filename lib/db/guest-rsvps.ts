@@ -3,6 +3,7 @@ import { and, count, eq, gt, inArray, isNotNull, max, sql } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { getEvent } from "./events";
+import { enqueueGuestConfirmation } from "./guest-notifications";
 import { getMemberByEmail } from "./members";
 import { eventGuestRsvps, eventShareLinks } from "./schema";
 import { hasEnded } from "@/lib/events.util";
@@ -113,6 +114,8 @@ export async function confirmGuestRsvp(id: string, code: string): Promise<void> 
       .update(eventGuestRsvps)
       .set({ confirmedAt: row.confirmedAt ?? new Date(), codeHash: null, codeExpiresAt: null })
       .where(eq(eventGuestRsvps.id, id));
+    // told once, the first time; getting back in with a new code isn't news
+    if (row.confirmedAt === null) await enqueueGuestConfirmation(tx, id);
   });
 }
 

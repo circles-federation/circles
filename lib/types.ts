@@ -358,6 +358,9 @@ export interface NeighborhoodPost {
 // required slot is still short an hour before it starts ("short"). Separate from *how* it's delivered
 // (an email of its own, or a line in the daily digest), and one member can be
 // owed more than one of these for the same event.
+// what a guest (someone who RSVPed from a share link) is emailed about
+export type GuestNoticeKind = "confirmed" | "updated" | "cancelled";
+
 export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "cancelled" | "reminder" | "short";
 
 // which way a queued notification goes out: each channel is its own queue

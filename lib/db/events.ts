@@ -4,6 +4,7 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleRoles, circles, eventAgendaItems, eventNotifications, eventRsvps, eventSeries, eventVotes, events, roleMembers, roles } from "./schema";
 import { groupBy } from "./util";
+import { confirmedGuestCount, enqueueGuestCancellations, enqueueGuestUpdates } from "./guest-notifications";
 import { openEventProposal, withdrawEventProposal } from "./proposals";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, enqueueSlotWarnings, wallClock, withdrawEventNotifications, withdrawReminders, withdrawSlotWarnings } from "./notifications";
 import { circleCanHoldMeetings, hostCanShowTo, isGroup } from "@/lib/circles.util";
@@ -647,6 +648,7 @@ export async function updateEventDetails(memberId: number, id: string, details: 
         tell.forEach((m) => told.add(m));
         const was = { date: before.date, start: before.start, end: before.end, location: before.location };
         await enqueueUpdateNotifications(tx, target, tell, { was, ...(andLater ? { andLater } : {}) });
+        await enqueueGuestUpdates(tx, target, { was, ...(andLater ? { andLater } : {}) });
       }
       // a new start time sets the reminder going again: due afresh when it's
       // moved further out, and skipped when it's moved to within a day, since
@@ -839,11 +841,13 @@ export async function discardEvent(tx: Tx, id: string): Promise<void> {
 async function cancelOne(tx: Tx, id: string, organizerId: number): Promise<{ deleted: boolean; going: number[] }> {
   const { going } = await goingTo(tx, id, organizerId);
   await withdrawEventNotifications(tx, id);
-  if (going.length === 0) {
+  // a guest who RSVPed from a share link is someone going too
+  if (going.length === 0 && (await confirmedGuestCount(tx, id)) === 0) {
     await discardEvent(tx, id);
     return { deleted: true, going };
   }
   await tx.update(events).set({ cancelledAt: new Date() }).where(eq(events.id, id));
+  await enqueueGuestCancellations(tx, id);
   return { deleted: false, going };
 }
 
@@ -934,6 +938,7 @@ export async function checkUnfilledSlots(now: Date = new Date()): Promise<string
         const { going } = await goingTo(tx, id, row.organizerId);
         await withdrawEventNotifications(tx, id);
         await tx.update(events).set({ cancelledAt: new Date(), cancelledAutomatically: true }).where(eq(events.id, id));
+        await enqueueGuestCancellations(tx, id);
         await enqueueCancellationNotifications(tx, id, [...new Set([...going, ...hosts])]);
         return true;
       }

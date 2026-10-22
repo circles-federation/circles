@@ -24,6 +24,7 @@ import type {
   ConsentResponse,
   EventChange,
   EventKindKey,
+  GuestNoticeKind,
   MemberLanguage,
   AvailabilityWindow,
   NotificationChannel,
@@ -593,6 +594,27 @@ export const eventGuestRsvps = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("event_guest_rsvps_event_email").on(t.eventId, sql`lower(${t.email})`), index("event_guest_rsvps_event_idx").on(t.eventId)]
+);
+
+/* An email owed to a guest about the event they RSVPed to: their
+   confirmation, or that it moved or was cancelled. The same kind of queue as
+   announcement_notifications (claimed, retried, drained by lib/notify.ts), email
+   only, since a guest has no device. Gone with the guest's RSVP, so one taken
+   back before it's sent never goes out. */
+export const guestNotifications = pgTable(
+  "guest_notifications",
+  {
+    guestId: text("guest_id").notNull().references(() => eventGuestRsvps.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<GuestNoticeKind>().notNull(),
+    // an "updated" notice's when and where from before the change
+    change: jsonb("change").$type<EventChange>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastError: text("last_error"),
+  },
+  (t) => [primaryKey({ columns: [t.guestId, t.kind] }), index("guest_notifications_pending_idx").on(t.createdAt).where(sql`${t.sentAt} is null`)]
 );
 
 /* A post to a neighborhood's bulletin by a Circle inside it (see

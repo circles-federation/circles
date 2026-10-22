@@ -14,13 +14,14 @@ import {
   markNotificationFailed,
   markNotificationSent,
 } from "@/lib/db/notifications";
+import { claimGuestNotifications, markGuestFailed, markGuestSent } from "@/lib/db/guest-notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
 import { closeDueProposals, withdrawLapsedEventProposals } from "@/lib/db/proposals";
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
 import { announcementPush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
-import { announcementEmail, digestEmail, eventChanges, eventNotificationEmail, proposalEmail } from "@/lib/email/templates.util";
+import { announcementEmail, digestEmail, eventChanges, eventNotificationEmail, guestEmail, proposalEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
@@ -161,9 +162,35 @@ const deliverEventPushes = drainer("Event push", async () => {
   }
 });
 
-// both channels side by side, so a slow mail relay never holds up a push
+// what a guest who RSVPed from a share link is owed: it opens their share
+// page, where the event can be seen again. Dropped unsent when it's no longer
+// true: an edit put back as it was, a confirmation for an event now over or
+// called off (its cancellation says so).
+const deliverGuestEmails = drainer("Guest email", async () => {
+  for (let batch = await claimGuestNotifications(BATCH); batch.length > 0; batch = await claimGuestNotifications(BATCH)) {
+    for (const n of batch) {
+      const moot =
+        (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) ||
+        (n.notice === "confirmed" && (n.cancelled || eventStartsAt(n) <= new Date()));
+      if (moot) {
+        await markGuestSent(n);
+        continue;
+      }
+      try {
+        await sendEmail({ to: n.email, ...guestEmail({ ...n, url: n.shareToken ? `${appUrl}/e/${n.shareToken}` : appUrl }) });
+        await markGuestSent(n);
+      } catch (err) {
+        console.error(`Couldn't email event ${n.eventId} to guest ${n.guestId}:`, err);
+        await markGuestFailed(n, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+});
+
+// both channels side by side, so a slow mail relay never holds up a push; a
+// guest's email goes with them
 export async function deliverEventNotifications(): Promise<void> {
-  await Promise.all([deliverEventEmails(), deliverEventPushes()]);
+  await Promise.all([deliverEventEmails(), deliverEventPushes(), deliverGuestEmails()]);
 }
 
 const deliverAnnouncementEmails = drainer("Announcement email", async () => {

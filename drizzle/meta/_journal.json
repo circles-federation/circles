@@ -351,6 +351,13 @@
       "when": 1792627311559,
       "tag": "0049_empty_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792628213158,
+      "tag": "0050_faithful_proteus",
+      "breakpoints": true
     }
   ]
 }

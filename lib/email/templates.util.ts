@@ -4,7 +4,7 @@ import { isEventProposal, proposalTitle } from "@/lib/proposals.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
-import type { AgendaItem, CircleType, EventChange, EventKindKey, EventRepeat, NotificationKind, ProposalChanges, ProposalKind, ProposalLine, ProposalNoticeKind } from "@/lib/types";
+import type { AgendaItem, CircleType, EventChange, EventKindKey, GuestNoticeKind, EventRepeat, NotificationKind, ProposalChanges, ProposalKind, ProposalLine, ProposalNoticeKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
    Each returns everything but the recipient, so the caller (which knows who
@@ -791,6 +791,41 @@ export function guestRsvpCodeEmail(code: string, minutes: number, eventTitle: st
         footnote(ignore)
     ),
   };
+}
+
+/* To someone who RSVPed from a share link: the facts they'd plan around, and
+   where to see the event again. Their updates and cancellation reuse the
+   member emails; only this one is theirs alone. */
+function guestConfirmedEmail(n: EventNotificationData & { guestName: string }): Body {
+  const noun = n.kind === "meeting" ? "meeting" : "event";
+  const when = fmtEventWhen(n);
+  const note = `You're going to this ${noun}, ${n.guestName.trim().split(/\s+/)[0]}. We've put your name on the list.`;
+  const why = `You're getting this because you RSVPed to it.`;
+  const detail = (label: string, value: string) =>
+    `<tr><td style="padding-bottom:14px">${eyebrow(label)}<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(value)}</div></td></tr>`;
+  return {
+    subject: `You're going: ${n.title}`,
+    text: `You're going\n\n${n.title}\n\n${note}\n\nWhen: ${when}\nWhere: ${n.location}\n\nSee it: ${n.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${LEAF};padding-top:18px">` +
+        eyebrow("You're going", LEAF) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:${INK}">${esc(n.title)}</div>` +
+        `</td></tr>` +
+        `<tr><td style="padding-top:20px"><div style="border-left:3px solid ${LEAF};padding-left:12px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${esc(note)}</div></td></tr>` +
+        `<tr><td style="padding:24px 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">` +
+        detail("When", when) +
+        detail("Where", n.location) +
+        `</table></td></tr>` +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(n.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">See the event</a></td></tr>` +
+        `<tr><td style="border-top:1px solid ${FAINT};padding-top:16px;font-family:${SERIF};font-size:14px;line-height:1.5;color:${SOFT}">${esc(why)}</td></tr>`
+    ),
+  };
+}
+
+// what a guest is emailed about the event they RSVPed to
+export function guestEmail(n: Omit<EventNotificationData, "notice"> & { notice: GuestNoticeKind; guestName: string }): Body {
+  if (n.notice === "confirmed") return guestConfirmedEmail({ ...n, notice: "new" });
+  return eventNotificationEmail({ ...n, notice: n.notice });
 }
 
 export function applicationApprovedEmail(d: { firstName: string; neighborhoodName: string; url: string }): Body {

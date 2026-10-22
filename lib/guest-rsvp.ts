@@ -1,10 +1,12 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { cancelGuestRsvp, confirmGuestRsvp, GUEST_CODE_MINUTES, GuestRsvpError, renewGuestCode, startGuestRsvp } from "@/lib/db/guest-rsvps";
 import { sendEmail } from "@/lib/email";
 import { guestRsvpCodeEmail } from "@/lib/email/templates.util";
 import { GUEST_COOKIE, guestIdsFrom } from "@/lib/guest-rsvp.util";
+import { deliverEventNotifications } from "@/lib/notify";
 
 /* The Server Actions the public event page (/e/[token]) calls to RSVP without
    an account — no session. Like lib/apply.ts, a result object rather than a
@@ -59,6 +61,8 @@ export async function confirmGuestRsvpAction(id: string, code: string): Promise<
     const jar = await cookies();
     const ids = [id, ...guestIdsFrom(jar.get(GUEST_COOKIE)?.value).filter((x) => x !== id)].slice(0, 20);
     jar.set(GUEST_COOKIE, ids.join(","), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 365, path: "/" });
+    // their confirmation email is queued; send it once the response is out
+    after(() => deliverEventNotifications());
     return { ok: true };
   } catch (err) {
     return failure(err, "confirm a guest RSVP");
