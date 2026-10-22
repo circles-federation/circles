@@ -372,3 +372,24 @@ export interface EventChange {
   was: { date: string; start: string; end: string; location: string };
   andLater?: boolean;
 }
+
+/* An event as a stranger with a share link sees it (lib/db/event-shares.ts):
+   first names only, no ids that lead to a member's profile, and no name for a
+   group. */
+export interface SharedEvent {
+  eventId: string;
+  title: string;
+  date: string;
+  start: string;
+  end: string;
+  location: string;
+  description: string;
+  cancelled: boolean;
+  ended: boolean;
+  hasRoles: boolean;
+  circleName: string | null;
+  hostCircleName: string | null;
+  hostName: string;
+  sharedBy: string;
+  going: string[];
+}

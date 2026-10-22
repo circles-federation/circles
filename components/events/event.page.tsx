@@ -9,6 +9,7 @@ import { EventMasthead } from "./event-masthead";
 import { HostRsvpRow } from "./host-rsvp-row";
 
 import { RoleSlotsSection } from "./role-slots-section";
+import { ShareButton } from "./share-button";
 import { ShiftStatusBanner } from "./shift-status-banner";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { isAttending } from "@/lib/events.util";
@@ -60,6 +61,14 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
         onOpenMember={onOpenMember}
         onToggleRsvp={() => toggleRsvp(e.id)}
       />
+
+      {/* anyone may send a live, decided event to someone without an account;
+          a meeting stays with its circle */}
+      {!e.cancelled && !ended && !awaitingConsent(e) && !isMeeting(e) && (
+        <div className="border-b border-faint py-4">
+          <ShareButton eventId={e.id} title={e.title} />
+        </div>
+      )}
 
       {/* once you're going, a copy for your own calendar: the phone offers to
           add the file (app/api/events/[id]/calendar). A link styled as a

@@ -6,6 +6,7 @@ import * as availability from "./availability";
 import { getAppStateForMember, type AppStateData } from "./app-state";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
+import * as eventShares from "./event-shares";
 import * as events from "./events";
 import * as invitations from "./invitations";
 import * as members from "./members";
@@ -173,6 +174,12 @@ export async function updateResourceAction(id: string, input: ResourceInput) {
 
 export async function deleteResourceAction(id: string) {
   return asMember((memberId) => resources.deleteResource(memberId, id));
+}
+
+// the address of this member's public link to an event, for sending to someone
+// without an account (lib/db/event-shares.ts says what a stranger then sees)
+export async function createShareLinkAction(eventId: string) {
+  return asMember((memberId) => eventShares.getOrCreateShareToken(memberId, eventId));
 }
 
 export async function createEventAction(draft: EventDraft) {

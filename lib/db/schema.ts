@@ -555,6 +555,21 @@ export const circleTasks = pgTable(
   (t) => [index("circle_tasks_circle_idx").on(t.circleId), index("circle_tasks_assignee_idx").on(t.assigneeId)]
 );
 
+/* A member's link to an event for someone without an account (see
+   lib/db/event-shares.ts): the token is the whole address of the public page
+   at /e/[token], one per (event, sharer) so who invited whom is known. Goes
+   with the event. */
+export const eventShareLinks = pgTable(
+  "event_share_links",
+  {
+    token: text("token").primaryKey(),
+    eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("event_share_links_event_member").on(t.eventId, t.memberId)]
+);
+
 /* A post to a neighborhood's bulletin by a Circle inside it (see
    lib/db/neighborhood-posts.ts): unpublished (published_at null) while its
    circle decides it by consent, then seen by the neighborhood's residents

@@ -18,8 +18,9 @@ import { getSessionCookie } from "better-auth/cookies";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // the welcome page, applying to join, and the beta terms and privacy notes
-  // an applicant agrees to — all for people without a session
-  if (pathname === "/" || pathname === "/apply" || pathname === "/terms" || pathname === "/privacy") return NextResponse.next();
+  // an applicant agrees to, and an event someone has shared (/e/[token]) — all
+  // for people without a session
+  if (pathname === "/" || pathname.startsWith("/e/") || pathname === "/apply" || pathname === "/terms" || pathname === "/privacy") return NextResponse.next();
   if (!getSessionCookie(request)) {
     return NextResponse.redirect(new URL("/", request.url));
   }
