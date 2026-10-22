@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon } from "@heroicons/react/24/outline";
-import { Button, ButtonLink, Input, Label, Modal } from "@/components/shared";
+import { Button, ButtonLink, ConfirmModal, Input, Label, Modal } from "@/components/shared";
 import { cancelGuestRsvpAction, confirmGuestRsvpAction, resendGuestRsvpCodeAction, startGuestRsvpAction } from "@/lib/guest-rsvp";
 import { GUEST_NAME_MAX } from "@/lib/guest-rsvp.util";
 
@@ -30,6 +30,7 @@ export function GuestRsvp({ token, guest }: GuestRsvpProps) {
   const [devCode, setDevCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   function close() {
     setOpen(false);
@@ -83,14 +84,16 @@ export function GuestRsvp({ token, guest }: GuestRsvpProps) {
   return (
     <div>
       {guest ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <span className="inline-flex items-center gap-2 border border-ink bg-ink px-6 py-3 font-sans text-xs font-bold tracking-caps text-paper uppercase">
-            <CheckIcon className="size-4" strokeWidth={3} aria-hidden />
-            Going
+        /* a status, not a control: plain green text with a check, so nothing
+           about it looks pressable; taking the RSVP back is the button beside it */
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="inline-flex items-center gap-2 font-sans text-base font-bold text-leaf">
+            <CheckIcon className="size-5" strokeWidth={3} aria-hidden />
+            You&apos;re going
           </span>
-          <button onClick={handleCancel} disabled={busy} className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2">
+          <Button variant="secondary" size="compact" onClick={() => setConfirmingCancel(true)} disabled={busy}>
             Cancel RSVP
-          </button>
+          </Button>
         </div>
       ) : (
         <Button
@@ -104,6 +107,20 @@ export function GuestRsvp({ token, guest }: GuestRsvpProps) {
         </Button>
       )}
       {error && !open && <p className="mt-2 font-sans text-xs font-bold text-danger">{error}</p>}
+
+      {confirmingCancel && (
+        <ConfirmModal
+          title="Cancel your RSVP?"
+          message="Your name will come off the list of who's going. You can RSVP again any time before the event."
+          confirmLabel="Cancel RSVP"
+          cancelLabel="Keep RSVP"
+          onCancel={() => setConfirmingCancel(false)}
+          onConfirm={() => {
+            setConfirmingCancel(false);
+            handleCancel();
+          }}
+        />
+      )}
 
       {open && (
         <Modal onClose={close} className="max-w-110" title={step === "done" ? "You're going" : "RSVP"}>
