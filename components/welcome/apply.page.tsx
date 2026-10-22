@@ -14,6 +14,9 @@ type Step = "form" | "agree" | "confirm" | "done";
 
 interface ApplyPageProps {
   neighborhoods: { id: string; name: string }[];
+  // someone who RSVPed to an event from its share link: their address is
+  // already proved, so there's no code to enter
+  guest?: { id: string; firstName: string; lastName: string; email: string };
 }
 
 /* Applying to join — there's no sign-up: every application is read by a
@@ -22,10 +25,10 @@ interface ApplyPageProps {
    address is theirs and sends the application for review; and a "thanks,
    we'll email you". Outside the signed-in app, so it's laid out like the
    welcome page rather than under a top bar. */
-export function ApplyPage({ neighborhoods }: ApplyPageProps) {
+export function ApplyPage({ neighborhoods, guest }: ApplyPageProps) {
   const { showToast } = useToast();
   const [step, setStep] = useState<Step>("form");
-  const [input, setInput] = useState<ApplicationInput>({ firstName: "", lastName: "", email: "", neighborhoodId: "" });
+  const [input, setInput] = useState<ApplicationInput>({ firstName: guest?.firstName ?? "", lastName: guest?.lastName ?? "", email: guest?.email ?? "", neighborhoodId: "" });
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [errors, setErrors] = useState<ApplicationErrors>({});
   const [applicationId, setApplicationId] = useState("");
@@ -52,6 +55,7 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
     for (const [key, value] of Object.entries(input)) form.set(key, value);
     form.set("photo", photo, "photo.jpg");
     form.set("agreementVersion", BETA_AGREEMENT_VERSION);
+    if (guest) form.set("guestId", guest.id);
     setBusy(true);
     const result = await submitApplication(form);
     setBusy(false);
@@ -61,7 +65,8 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
     }
     setApplicationId(result.id);
     setDevCode(result.code ?? null);
-    setStep("confirm");
+    // a guest's address is already proved: the application goes straight to review
+    setStep(result.confirmed ? "done" : "confirm");
   }
 
   async function handleConfirm(e: FormEvent) {
@@ -128,8 +133,11 @@ export function ApplyPage({ neighborhoods }: ApplyPageProps) {
 
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={input.email} onChange={(e) => set({ email: e.target.value })} placeholder="you@example.com" autoComplete="email" />
-              <FieldError message={errors.email} hint="We'll send a code here to confirm it's yours, and you'll sign in with it." />
+              <Input id="email" type="email" value={input.email} onChange={(e) => set({ email: e.target.value })} placeholder="you@example.com" autoComplete="email" disabled={!!guest} />
+              <FieldError
+                message={errors.email}
+                hint={guest ? "You confirmed this address when you RSVPed. You'll sign in with it." : "We'll send a code here to confirm it's yours, and you'll sign in with it."}
+              />
             </div>
 
             <div>

@@ -453,6 +453,10 @@ export const applications = pgTable(
     note: text("note"),
     // the member an approved application became
     memberId: integer("member_id").references(() => members.id),
+    // set when it came from an event's share link: the member who shared it
+    // and the event, so the reviewer can see who invited them
+    referredBy: integer("referred_by").references(() => members.id, { onDelete: "set null" }),
+    referredEventId: text("referred_event_id").references(() => events.id, { onDelete: "set null" }),
   },
   (t) => [
     // one open application per address at a time

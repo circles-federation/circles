@@ -1,9 +1,11 @@
 import { createHash, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
-import { and, asc, eq, inArray, lt, sql } from "drizzle-orm";
-import { db } from "./client";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { readPhoto } from "./members";
-import { applications, circleMembers, circles, memberPhotos, members, user } from "./schema";
+import { applications, circleMembers, circles, eventGuestRsvps, eventRsvps, events, memberPhotos, members, user } from "./schema";
+import { hasEnded } from "@/lib/events.util";
 import { APPLICATION_NOTE_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationInput } from "@/lib/applications.util";
 
 /* Applications to join (see the applications table in schema.ts). The public
@@ -35,8 +37,19 @@ export async function getNeighborhoodsForApplying(): Promise<{ id: string; name:
    an unconfirmed one (a typo, a lost email), but not one already waiting for
    review. `agreementVersion` is the version of the beta terms and privacy
    notes the applicant agreed to, which must be the current one. Returns the
-   new application's id and its code. */
-export async function startApplication(input: ApplicationInput, photo: Blob, agreementVersion: string): Promise<{ id: string; code: string }> {
+   new application's id and its code.
+
+   A guest who RSVPed from an event's share link (`guest`) has already proved
+   their address with a code, so their application goes straight to review,
+   with no code of its own (its `code` is null), and remembers who invited
+   them. The address must be the one they RSVPed with. */
+export interface VerifiedGuest {
+  email: string;
+  eventId: string;
+  invitedBy: number | null;
+}
+
+export async function startApplication(input: ApplicationInput, photo: Blob, agreementVersion: string, guest?: VerifiedGuest): Promise<{ id: string; code: string | null }> {
   const problems = validateApplication(input, photo.size > 0);
   const first = Object.values(problems)[0];
   if (first) throw new ApplicationError(first);
@@ -49,8 +62,9 @@ export async function startApplication(input: ApplicationInput, photo: Blob, agr
   const [member] = await db.select({ id: members.id }).from(members).where(sql`lower(${members.email}) = ${email}`);
   if (member) throw new ApplicationError("That email already belongs to a member — sign in instead.");
 
+  if (guest && normalizeEmail(guest.email) !== email) throw new ApplicationError("Use the email address you RSVPed with.");
   const id = randomUUID();
-  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const code = guest ? null : String(randomInt(0, 1_000_000)).padStart(6, "0");
   await db.transaction(async (tx) => {
     await tx.delete(applications).where(and(eq(applications.status, "unconfirmed"), lt(applications.createdAt, new Date(Date.now() - UNCONFIRMED_TTL_MS))));
     await tx.delete(applications).where(and(eq(applications.status, "unconfirmed"), sql`lower(${applications.email}) = ${email}`));
@@ -66,8 +80,9 @@ export async function startApplication(input: ApplicationInput, photo: Blob, agr
       photoType: contentType,
       agreementVersion,
       agreedAt: new Date(),
-      confirmCodeHash: hashCode(code),
-      confirmExpiresAt: new Date(Date.now() + CONFIRM_CODE_MINUTES * 60_000),
+      ...(code !== null
+        ? { confirmCodeHash: hashCode(code), confirmExpiresAt: new Date(Date.now() + CONFIRM_CODE_MINUTES * 60_000) }
+        : { status: "pending" as const, submittedAt: new Date(), referredBy: guest?.invitedBy ?? null, referredEventId: guest?.eventId ?? null }),
     });
   });
   return { id, code };
@@ -129,7 +144,12 @@ export interface PendingApplication {
   neighborhoodId: string;
   neighborhoodName: string;
   submittedAt: string;
+  // came from an event's share link: who shared it, and which event
+  invitedBy?: string;
+  invitedVia?: string;
 }
+
+const inviter = alias(members, "inviter");
 
 const pendingColumns = {
   id: applications.id,
@@ -139,10 +159,12 @@ const pendingColumns = {
   neighborhoodId: applications.neighborhoodId,
   neighborhoodName: circles.name,
   submittedAt: applications.submittedAt,
+  invitedBy: inviter.name,
+  invitedVia: events.title,
 };
 
-function toPending(r: { id: string; firstName: string; lastName: string; email: string; neighborhoodId: string; neighborhoodName: string; submittedAt: Date | null }): PendingApplication {
-  return { ...r, submittedAt: (r.submittedAt ?? new Date()).toISOString() };
+function toPending({ invitedBy, invitedVia, submittedAt, ...r }: { id: string; firstName: string; lastName: string; email: string; neighborhoodId: string; neighborhoodName: string; submittedAt: Date | null; invitedBy: string | null; invitedVia: string | null }): PendingApplication {
+  return { ...r, submittedAt: (submittedAt ?? new Date()).toISOString(), ...(invitedBy ? { invitedBy } : {}), ...(invitedVia ? { invitedVia } : {}) };
 }
 
 // what's waiting for review, oldest first — without the photos, which the
@@ -153,6 +175,8 @@ export async function getPendingApplications(adminId: number): Promise<PendingAp
     .select(pendingColumns)
     .from(applications)
     .innerJoin(circles, eq(circles.id, applications.neighborhoodId))
+    .leftJoin(inviter, eq(inviter.id, applications.referredBy))
+    .leftJoin(events, eq(events.id, applications.referredEventId))
     .where(eq(applications.status, "pending"))
     .orderBy(asc(applications.submittedAt));
   return rows.map(toPending);
@@ -171,6 +195,8 @@ export async function getPendingApplication(adminId: number, id: string): Promis
     .select(pendingColumns)
     .from(applications)
     .innerJoin(circles, eq(circles.id, applications.neighborhoodId))
+    .leftJoin(inviter, eq(inviter.id, applications.referredBy))
+    .leftJoin(events, eq(events.id, applications.referredEventId))
     .where(and(eq(applications.id, id), eq(applications.status, "pending")));
   return row ? toPending(row) : null;
 }
@@ -187,6 +213,29 @@ export interface Decision {
   firstName: string;
   neighborhoodName: string;
   note?: string;
+}
+
+/* A new member's RSVPs from before they had an account (lib/db/guest-rsvps.ts)
+   become real ones, for the events they can now see: a live, upcoming event
+   shown to the whole city or to their neighborhood, the one circle they start
+   in. Any other stays a guest RSVP, which still works from its share link. */
+async function adoptGuestRsvps(tx: Tx, email: string, memberId: number, neighborhoodId: string): Promise<void> {
+  const [root] = await tx.select({ id: circles.id }).from(circles).where(isNull(circles.parentId));
+  const guests = await tx
+    .select({ id: eventGuestRsvps.id, eventId: events.id, circleId: events.circleId, date: events.date, start: events.start, end: events.end, approvedAt: events.approvedAt, cancelledAt: events.cancelledAt })
+    .from(eventGuestRsvps)
+    .innerJoin(events, eq(events.id, eventGuestRsvps.eventId))
+    .where(and(sql`lower(${eventGuestRsvps.email}) = ${email}`, isNotNull(eventGuestRsvps.confirmedAt)));
+  const adopt = guests.filter(
+    (g) =>
+      g.approvedAt !== null &&
+      g.cancelledAt === null &&
+      !hasEnded({ date: g.date, start: g.start.slice(0, 5), end: g.end.slice(0, 5) }) &&
+      (g.circleId === neighborhoodId || g.circleId === root?.id)
+  );
+  if (adopt.length === 0) return;
+  await tx.insert(eventRsvps).values(adopt.map((g) => ({ eventId: g.eventId, memberId }))).onConflictDoNothing();
+  await tx.delete(eventGuestRsvps).where(inArray(eventGuestRsvps.id, adopt.map((g) => g.id)));
 }
 
 /* Approve: the applicant becomes a member of their neighborhood, with their
@@ -216,6 +265,7 @@ export async function approveApplication(adminId: number, id: string): Promise<D
       .insert(user)
       .values({ id: `user_${member.id}`, name: `${app.firstName} ${app.lastName}`, email: app.email, emailVerified: true })
       .onConflictDoNothing();
+    await adoptGuestRsvps(tx, app.email, member.id, hood.id);
     await tx
       .update(applications)
       .set({ status: "approved", decidedAt: new Date(), decidedBy: adminId, memberId: member.id, photo: null, photoType: null })

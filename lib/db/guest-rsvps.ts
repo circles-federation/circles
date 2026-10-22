@@ -143,3 +143,14 @@ export async function confirmedGuestNames(eventId: string): Promise<string[]> {
     .orderBy(eventGuestRsvps.confirmedAt);
   return rows.flatMap((r) => (r.confirmedAt ? (r.name.split(/\s+/)[0] ?? r.name) : []));
 }
+
+// the confirmed RSVP with this id, if this browser holds it (its id is in `ids`,
+// from the cookie): who's applying from it, and who invited them
+export async function getVerifiedGuest(ids: string[], id: string): Promise<{ id: string; name: string; email: string; eventId: string; invitedBy: number | null } | null> {
+  if (!ids.includes(id)) return null;
+  const [row] = await db
+    .select({ id: eventGuestRsvps.id, name: eventGuestRsvps.name, email: eventGuestRsvps.email, eventId: eventGuestRsvps.eventId, invitedBy: eventGuestRsvps.invitedBy })
+    .from(eventGuestRsvps)
+    .where(and(eq(eventGuestRsvps.id, id), isNotNull(eventGuestRsvps.confirmedAt)));
+  return row ?? null;
+}

@@ -1,5 +1,8 @@
 "use server";
 
+import { cookies } from "next/headers";
+import { getVerifiedGuest } from "@/lib/db/guest-rsvps";
+import { GUEST_COOKIE, guestIdsFrom } from "@/lib/guest-rsvp.util";
 import { ApplicationError, CONFIRM_CODE_MINUTES, confirmApplication, renewConfirmationCode, startApplication, unconfirmedApplicationEmail } from "@/lib/db/applications";
 import { sendEmail } from "@/lib/email";
 import { applicationCodeEmail } from "@/lib/email/templates.util";
@@ -37,18 +40,26 @@ async function sendCode(email: string, code: string): Promise<string | null> {
 const devCode = (code: string) => (process.env.NODE_ENV === "production" ? {} : { code });
 
 // the form, as FormData since that's how a Server Action takes the photo
-export async function submitApplication(form: FormData): Promise<Result<{ id: string; code?: string }>> {
+export async function submitApplication(form: FormData): Promise<Result<{ id: string; code?: string; confirmed?: true }>> {
   const field = (name: string) => String(form.get(name) ?? "");
   const photo = form.get("photo");
   const email = field("email");
-  const wait = cooldownError(email);
+  // someone who RSVPed from an event's share link has proved their address
+  // already, so there's no code to send. Only the browser that holds the RSVP
+  // (its cookie) can apply as it.
+  const guestId = field("guestId");
+  const guest = guestId ? await getVerifiedGuest(guestIdsFrom((await cookies()).get(GUEST_COOKIE)?.value), guestId) : null;
+  if (guestId && !guest) return { ok: false, error: "That RSVP isn't from this browser — apply without it, or RSVP again." };
+  const wait = guest ? null : cooldownError(email);
   if (wait) return { ok: false, error: wait };
   try {
     const { id, code } = await startApplication(
       { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId") },
       photo instanceof Blob ? photo : new Blob(),
-      field("agreementVersion")
+      field("agreementVersion"),
+      guest ? { email: guest.email, eventId: guest.eventId, invitedBy: guest.invitedBy } : undefined
     );
+    if (code === null) return { ok: true, id, confirmed: true };
     const failed = await sendCode(email, code);
     if (failed) return { ok: false, error: failed };
     return { ok: true, id, ...devCode(code) };

@@ -32,7 +32,7 @@ export function ReviewPage({ applications, photos }: { applications: PendingAppl
                     // eslint-disable-next-line @next/next/no-img-element -- served per admin by /api/applications/[id]/photo, never cached
                     image={<img src={`/api/applications/${a.id}/photo`} alt="" className="size-14 shrink-0 border border-ink object-cover" />}
                     title={`${a.firstName} ${a.lastName}`}
-                    detail={`${a.neighborhoodName} · applied ${fmtNumericDate(a.submittedAt)}`}
+                    detail={`${a.neighborhoodName} · applied ${fmtNumericDate(a.submittedAt)}${a.invitedBy ? ` · invited by ${a.invitedBy}` : ""}`}
                   />
                 ))}
               </div>

@@ -67,6 +67,12 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
           <EyebrowGroup label="Email">
             <p className="font-serif text-lg break-all">{a.email}</p>
           </EyebrowGroup>
+          {a.invitedBy && (
+            <EyebrowGroup label="Invited by">
+              <p className="font-sans text-lg font-bold">{a.invitedBy}</p>
+              {a.invitedVia && <p className="font-serif text-base text-soft">through the event {a.invitedVia}</p>}
+            </EyebrowGroup>
+          )}
         </Section>
         <Section>
           <p className="mb-4 font-serif text-base leading-normal text-soft">
