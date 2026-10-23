@@ -3,12 +3,13 @@
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftIcon, Cog6ToothIcon, HomeIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, Cog6ToothIcon, EllipsisHorizontalIcon, HomeIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
 import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { indexCircles, isCircleMember } from "@/lib/circles.util";
+import { indexCircles, isCircleMember, postingCirclesFor } from "@/lib/circles.util";
 import { isPastEvent } from "@/lib/format.util";
 import { awaitingConsent, canManageEvent } from "@/lib/governance.util";
 import { useHomeNeedsAttention } from "@/lib/hooks";
@@ -19,6 +20,8 @@ import { AttentionDot } from "./attention-dot";
 import { GhostIconButton } from "./ghost-icon-button";
 import { OfflineBanner } from "./offline-banner";
 import { ProfileMenu } from "./profile-menu";
+import { RingIcon } from "./ring-icon";
+import { MenuIconFace, TopBarMenu, type TopBarMenuItem } from "./top-bar-menu";
 
 const TABS: [string, string][] = [
   ["/home", "Home"],
@@ -70,9 +73,6 @@ interface PageAction {
 // button on the right, on every screen size
 function pageAction(pathname: string, circles: Circle[], events: Event[], profile: Profile): PageAction | null {
   if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon };
-  // creating a circle starts it wherever Create was pressed: the city here,
-  // or the neighborhood whose page it's pressed on (below)
-  if (pathname === "/circles") return { href: "/circles/new", label: "Create circle", icon: PlusIcon };
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section === "events" && id && id !== "new" && !sub) {
     // an event's own page, which its organizer can edit (and for one a circle
@@ -89,12 +89,30 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
     // a circle's own page, which only its members can manage (a
     // neighborhood's folder view has nothing to manage)
     const circle = circles.find((c) => c.id === id);
-    if (circle?.type === "neighborhood") return { href: `/circles/new?parent=${id}`, label: "Create circle", icon: PlusIcon };
     if (circle && isCircleMember(circle, profile.id)) {
       return { href: `/circles/${id}/manage`, label: "Manage circle", icon: Cog6ToothIcon };
     }
   }
   return null;
+}
+
+/* The Circles browser's own menu, in place of a single action: what can be
+   done from where you are. New circle starts it wherever it was chosen (the
+   city at the root, or the neighborhood whose page it's on); a neighborhood
+   adds posting on its bulletin, for a member of a Circle in it, and on your
+   own, once someone else lives there, the name game. */
+function pageMenu(pathname: string, circles: Circle[], profile: Profile): TopBarMenuItem[] | null {
+  if (pathname === "/circles") return [{ label: "New circle", href: "/circles/new", icon: RingIcon }];
+  const [section, id, sub] = pathname.split("/").slice(1);
+  if (section !== "circles" || !id || sub) return null;
+  const circle = circles.find((c) => c.id === id);
+  if (circle?.type !== "neighborhood") return null;
+  const items: TopBarMenuItem[] = [{ label: "New circle", href: `/circles/new?parent=${id}`, icon: RingIcon }];
+  if (postingCirclesFor(profile.id, circle, circles).length > 0) items.push({ label: "Post on bulletin", href: `/circles/${id}/bulletin/new`, icon: PlusIcon });
+  if (circle.id === profile.homeCircleId && circle.members.some((m) => m !== profile.id)) {
+    items.push({ label: "Learn names", href: "/game", icon: PlayIcon, iconClassName: "text-teal" });
+  }
+  return items;
 }
 
 // the title for every route under app/(app)/. A circle or event page is titled
@@ -141,6 +159,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // goes back without ever leaving the app (see useGoBack).
   const isTabRoot = TABS.some(([href]) => pathname === href);
   const action = pageAction(pathname, circles, events, profile);
+  const menu = pageMenu(pathname, circles, profile);
   const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
   const runBackHandler = useRunBackHandler();
   // the name game is played from your neighborhood's page, which its URL can't say
@@ -215,6 +234,8 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         ) : pathname === "/home" ? (
           // Home's is the member's own photo, opening their profile and Settings
           <ProfileMenu />
+        ) : menu ? (
+          <TopBarMenu label="Circle actions" face={<MenuIconFace icon={EllipsisHorizontalIcon} />} items={menu} />
         ) : action && (
           <Link href={action.href} aria-label={action.label} className={ICON_BUTTON_SLOT}>
             <IconButtonCircle icon={action.icon} variant="secondary" />

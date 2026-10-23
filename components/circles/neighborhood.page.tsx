@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { EmptyState, FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
-import { LearnNamesCard } from "./learn-names-card";
 import { MemberCard } from "./member-card";
 import { NeighborhoodBulletin } from "./neighborhood-bulletin";
 import { ParentCircle } from "./parent-circle";
@@ -28,8 +27,6 @@ interface NeighborhoodPageProps {
   onOpenMember: (m: Member) => void;
   // its bulletin's form, to propose a post (for a member of a Circle in it)
   onProposePost: () => void;
-  // the name game, on your own neighborhood
-  onPlayGame: () => void;
   // seeds the Type filter (?types=People), so a link can land here
   // pre-filtered rather than on the unfiltered folder view.
   // Invalid/unrecognized values (a hand-edited URL, say) are dropped rather
@@ -50,7 +47,7 @@ interface NeighborhoodPageProps {
    browsed), so CircleCard/MemberCard's neighborhood chips remain off throughout —
    unlike CirclesRootPage, where cards span multiple neighborhoods and the
    chip is what tells them apart. */
-export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenMember, onProposePost, onPlayGame, initialTypeFilter }: NeighborhoodPageProps) {
+export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenMember, onProposePost, initialTypeFilter }: NeighborhoodPageProps) {
   // only a circle's members are ever sent its proposals
   const { proposals } = useAppState();
   const openProposals = proposals.filter((p) => p.circleId === circle.id && p.status === "open");
@@ -102,10 +99,6 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
   const groupFolders = showGroups ? folders.filter(isGroup) : [];
   const otherFolders = showOrgs ? folders.filter((c) => c.type !== "circle" && !isGroup(c)) : [];
   const peopleFiles = showPeople ? files : [];
-  // the name game quizzes you on everyone here but you: offered on your own
-  // neighborhood, as the first card among its people, once there's someone
-  // else to learn (and not among search results, being no one)
-  const toMeet = circle.id === profile.homeCircleId ? circle.members.filter((id) => id !== profile.id).length : 0;
   const anySections = circleFolders.length > 0 || groupFolders.length > 0 || otherFolders.length > 0 || peopleFiles.length > 0;
 
   return (
@@ -162,15 +155,9 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
             {peopleFiles.length > 0 && (
               <FolderGrid
                 label="People"
-                items={[...(toMeet > 0 && !searching ? (["game"] as const) : []), ...peopleFiles]}
+                items={peopleFiles}
                 minWidth={230}
-                renderItem={(m) =>
-                  m === "game" ? (
-                    <LearnNamesCard key="game" toMeet={toMeet} onPlay={onPlayGame} />
-                  ) : (
-                    <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showNeighborhoodChip={false} />
-                  )
-                }
+                renderItem={(m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showNeighborhoodChip={false} />}
               />
             )}
           </>

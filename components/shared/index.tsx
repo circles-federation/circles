@@ -21,6 +21,8 @@ export { ForwardLink } from "./forward-link";
 export { DISABLED_FIELD, FIELD, FIELD_ROW, FIELD_ROW_DISABLED, Input, ROW_INPUT } from "./input";
 export { Label } from "./label";
 export { LinkRow } from "./link-row";
+export { RingIcon } from "./ring-icon";
+export { TopBarMenu, MenuIconFace, type TopBarMenuItem } from "./top-bar-menu";
 export { MenuRow } from "./menu-row";
 export { InstallStepsModal } from "./install-steps-modal";
 export { Modal } from "./modal";
