@@ -251,7 +251,7 @@ export async function openEventProposal(tx: Tx, proposerId: number, event: Event
   const id = randomUUID();
   const [row] = await tx
     .insert(circleProposals)
-    .values({ id, circleId, proposerId, eventId: event.id, changes: {}, lines: describeEventProposal(event, slots), closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS) })
+    .values({ id, kind: "event", circleId, proposerId, eventId: event.id, changes: {}, lines: describeEventProposal(event, slots), closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS) })
     .returning();
   const memberIds = await memberIdsOf(tx, circleId);
   // the proposer, and anyone else who has already said yes (an old vote, when
