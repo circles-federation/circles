@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PlayIcon } from "@heroicons/react/24/solid";
 import { EmptyState, FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
+import { LearnNamesCard } from "./learn-names-card";
 import { MemberCard } from "./member-card";
 import { NeighborhoodBulletin } from "./neighborhood-bulletin";
 import { ParentCircle } from "./parent-circle";
@@ -103,8 +103,9 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
   const otherFolders = showOrgs ? folders.filter((c) => c.type !== "circle" && !isGroup(c)) : [];
   const peopleFiles = showPeople ? files : [];
   // the name game quizzes you on everyone here but you: offered on your own
-  // neighborhood once there's someone else to learn
-  const canPlay = circle.id === profile.homeCircleId && circle.members.some((id) => id !== profile.id);
+  // neighborhood, as the first card among its people, once there's someone
+  // else to learn (and not among search results, being no one)
+  const toMeet = circle.id === profile.homeCircleId ? circle.members.filter((id) => id !== profile.id).length : 0;
   const anySections = circleFolders.length > 0 || groupFolders.length > 0 || otherFolders.length > 0 || peopleFiles.length > 0;
 
   return (
@@ -161,27 +162,15 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
             {peopleFiles.length > 0 && (
               <FolderGrid
                 label="People"
-                items={peopleFiles}
+                items={[...(toMeet > 0 && !searching ? (["game"] as const) : []), ...peopleFiles]}
                 minWidth={230}
-                {...(canPlay
-                  ? {
-                      action: (
-                        // the round button inverts while pressed, its label staying put
-                        <button
-                          type="button"
-                          onClick={onPlayGame}
-                          title="Learn your neighbors' names"
-                          className="fill-press flex shrink-0 cursor-pointer items-center gap-3 border-none bg-transparent p-0 font-sans text-xs font-bold tracking-caps text-teal uppercase"
-                        >
-                          <span>Learn names</span>
-                          <span className="fill-press-square flex size-11 items-center justify-center rounded-full border-2 border-teal bg-teal text-paper [--press-color:var(--color-teal)]">
-                            <PlayIcon className="ml-0.5 size-5" />
-                          </span>
-                        </button>
-                      ),
-                    }
-                  : {})}
-                renderItem={(m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showNeighborhoodChip={false} />}
+                renderItem={(m) =>
+                  m === "game" ? (
+                    <LearnNamesCard key="game" toMeet={toMeet} onPlay={onPlayGame} />
+                  ) : (
+                    <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showNeighborhoodChip={false} />
+                  )
+                }
               />
             )}
           </>
