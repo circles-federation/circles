@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import { Eyebrow, Section } from "@/components/shared";
+import { Eyebrow } from "@/components/shared";
 import { eventStartsAt, isAttending, meetingLink } from "@/lib/events.util";
 import { fmtTime } from "@/lib/format.util";
 import { eventDateTime } from "@/lib/roles.util";
@@ -20,7 +19,7 @@ function countdown(msToStart: number): string {
 }
 
 /* Home's hero for an event you're going to: it appears 15 minutes before the
-   start, counting down on a big tilted sticker (the same playful type as a
+   start, counting down on a tilted paper sticker (the same playful type as a
    profile's "Born in the" decade), says "Now" once it's begun, and stays
    until it ends. One at a time, never a cancelled one: the next to start if
    one's coming up, since that's the one to set off for, and otherwise the
@@ -44,30 +43,23 @@ export function StartingSoon({ events, memberId, rsvpState }: { events: Event[];
   const { e, ms } = shown;
 
   return (
-    // pt-12: room above the card for the sticker hanging off its top edge
-    <Section className="pt-12">
-      {/* the whole card inverts while pressed, sticker and all */}
-      <Link href={`/events/${e.id}`} aria-label={`${e.title}, ${ms > 0 ? `starting ${countdown(ms).toLowerCase()}` : "happening now"}`} className="press-invert block text-paper no-underline">
-        <div className="relative bg-ink px-5 pt-14 pb-5 min-[720px]:px-7">
-          <span
-            aria-hidden
-            className="absolute -top-6 left-3 -rotate-4 border-[3px] border-ink bg-paper px-4 pt-2 pb-1.5 font-sans text-title leading-none font-extrabold tracking-[-0.04em] text-ink"
-          >
-            {countdown(ms)}
-          </span>
+    // the whole card inverts while pressed, sticker and all
+    <Link href={`/events/${e.id}`} aria-label={`${e.title}, ${ms > 0 ? `starting ${countdown(ms).toLowerCase()}` : "happening now"}`} className="press-invert block text-paper no-underline">
+      <div className="flex items-center gap-4 bg-ink px-5 py-4">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-flame motion-safe:animate-pulse" />
+            <span aria-hidden className="size-2 shrink-0 rounded-full bg-flame motion-safe:animate-pulse" />
             <Eyebrow className="text-paper/70">{ms > 0 ? "Starting soon" : "Happening now"}</Eyebrow>
           </div>
-          <div className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">{e.title}</div>
-          <div className="mt-3 flex items-end justify-between gap-4">
-            <div className="min-w-0 font-serif text-lg leading-snug text-paper/85">
-              {fmtTime(e.start)} · {meetingLink(e.location) ? "Online" : e.location}
-            </div>
-            <ArrowRightIcon className="size-6 shrink-0" strokeWidth={2.5} />
+          <div className="mt-1.5 font-sans text-lg leading-tight font-extrabold tracking-[-0.02em] wrap-break-word">{e.title}</div>
+          <div className="mt-0.5 truncate font-serif text-sm text-paper/75">
+            {meetingLink(e.location) ? "Online" : e.location} · {fmtTime(e.start)}
           </div>
         </div>
-      </Link>
-    </Section>
+        <span aria-hidden className="shrink-0 -rotate-4 bg-paper px-3 py-1.5 font-sans text-base leading-none font-extrabold tracking-[-0.02em] whitespace-nowrap text-ink">
+          {countdown(ms)}
+        </span>
+      </div>
+    </Link>
   );
 }

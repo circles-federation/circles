@@ -74,7 +74,7 @@ export function pushPrompt(prompt: PushPromptState): Prompt {
     id: "push",
     icon: BellIcon,
     title: "Turn on notifications",
-    body: "Get notified on this device when your circles need you: proposals to answer, invitations, and changes to events you’re going to. You can change this anytime in Settings.",
+    body: "So your circles can reach you on this device.",
     actions: (
       <>
         <Button size="compact" onClick={prompt.turnOn} disabled={prompt.busy}>Turn on</Button>

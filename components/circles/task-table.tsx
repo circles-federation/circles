@@ -18,12 +18,8 @@ const CELL = "px-2";
 interface TaskTableProps {
   tasks: CircleTask[];
   onOpen: (task: CircleTask) => void;
-  // each task's circle, where tasks from several are listed together (Home)
-  circleName?: (task: CircleTask) => string | undefined;
-  // a table's name for screen readers ("To do", "Done")
+  // the table's name for screen readers
   label: string;
-  // left out where every task is the viewer's own (My tasks)
-  showAssignee?: boolean;
 }
 
 /* Tasks as one table, whatever their status (what's live, then the back
@@ -31,12 +27,12 @@ interface TaskTableProps {
    row in ink, its rows alternately white and grey: a round button that marks
    each done (or not), then its title, status, priority (a column with no
    heading, since each row's mark says what it is), when it's due and who has
-   it, and on Home its circle. A phone keeps the title, priority and due date,
+   it. A phone keeps the title, priority and due date,
    with "In progress" under the title in place of the Status column. Within
    each part, the soonest due comes first, undated last, then the most
    pressing, then by name. A row opens its task; it doesn't invert when
    pressed, being a row, but its round button does. */
-export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = true }: TaskTableProps) {
+export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
   const { setTaskStatus } = useAppState();
   // what each task ticked done here was before, so ticking it again (a slip of
   // the thumb, say) puts it back as it was rather than always to To do
@@ -74,14 +70,13 @@ export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = tru
             <span className="sr-only">Done</span>
           </th>
           <th scope="col" className={heading}>Task</th>
-          {circleName && <th scope="col" className={clsx(heading, "w-36", WIDE)}>Circle</th>}
           <th scope="col" className={clsx(heading, "w-28", WIDE)}>Status</th>
           {/* no label: each row's mark says what this column is */}
           <th scope="col" className={clsx(heading, "w-12 min-[720px]:w-16")}>
             <span className="sr-only">Priority</span>
           </th>
           <th scope="col" className={clsx(heading, "w-20 min-[720px]:w-28")}>Due</th>
-          {showAssignee && <th scope="col" className={clsx(heading, "w-40", WIDE)}>Assigned to</th>}
+          <th scope="col" className={clsx(heading, "w-40", WIDE)}>Assigned to</th>
         </tr>
       </thead>
       <tbody>
@@ -119,15 +114,10 @@ export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = tru
                 >
                   {t.title}
                 </button>
-                {/* a phone has no Status or Circle column: what they'd say, here
-                    (Done shows in the round button and the struck title) */}
-                {(t.status === "doing" || circleName) && (
-                  <span className="mt-0.5 block font-serif text-sm text-soft min-[720px]:hidden">
-                    {[circleName?.(t), t.status === "doing" ? "In progress" : null].filter(Boolean).join(" · ")}
-                  </span>
-                )}
+                {/* a phone has no Status column: In progress here instead (Done
+                    shows in the round button and the struck title) */}
+                {t.status === "doing" && <span className="mt-0.5 block font-serif text-sm text-soft min-[720px]:hidden">In progress</span>}
               </td>
-              {circleName && <td className={clsx(CELL, "py-3 font-serif text-sm text-soft", WIDE)}>{circleName(t)}</td>}
               <td className={clsx(CELL, "py-3 font-serif text-sm whitespace-nowrap", t.status === "doing" ? "text-ink" : "text-soft", WIDE)}>
                 {TASK_STATUSES.find((s) => s.key === t.status)?.label}
               </td>
@@ -155,7 +145,7 @@ export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = tru
                   <span className="text-ghost">–</span>
                 )}
               </td>
-              {showAssignee && <td className={clsx(CELL, "py-3 pr-3", WIDE)}>
+              <td className={clsx(CELL, "py-3 pr-3", WIDE)}>
                 {assignee ? (
                   <span className="flex items-center gap-2 font-serif text-sm text-body">
                     <Avatar member={assignee} size={24} />
@@ -164,7 +154,7 @@ export function TaskTable({ tasks, onOpen, circleName, label, showAssignee = tru
                 ) : (
                   <span className="font-serif text-sm text-ghost">No one yet</span>
                 )}
-              </td>}
+              </td>
             </tr>
           );
         })}

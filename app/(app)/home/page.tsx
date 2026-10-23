@@ -2,13 +2,11 @@
 
 import { Home } from "@/components/home/home.page";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { useRouter } from "next/navigation";
 import { useAppNav } from "@/lib/hooks";
 
 export default function Page() {
   const { profile, events, circles, rsvpState } = useAppState();
   const nav = useAppNav();
-  const router = useRouter();
   // "Neighbors" and "Local circles" both just open the viewer's own
   // neighborhood folder — pre-filtered to the relevant Type(s) so there's
   // nothing left to click once they land.
@@ -20,13 +18,9 @@ export default function Page() {
       events={events}
       circles={circles}
       rsvpState={rsvpState}
-      onOpenEvent={(e) => nav.openEvent(e)}
       onOpenNeighbors={() => myNeighborhood && nav.openCircle(myNeighborhood, ["People"])}
       onOpenLocalCircles={() => myNeighborhood && nav.openCircle(myNeighborhood, ["Circles", "Organizations"])}
       onPlayGame={() => nav.setView("game")}
-      onOpenCircle={(c) => nav.openCircle(c)}
-      onOpenProfile={() => nav.openMember(profile)}
-      onOpenTask={(t) => router.push(`/circles/${t.circleId}/tasks/${t.id}`)}
     />
   );
 }

@@ -2,7 +2,6 @@
 
 import { useState, type ComponentType, type ReactNode, type SVGProps } from "react";
 import clsx from "clsx";
-import { Section } from "@/components/shared";
 import { PromptCard } from "./prompt-card";
 
 export interface Prompt {
@@ -55,33 +54,31 @@ export function PromptDeck({ prompts }: { prompts: Prompt[] }) {
   const position = total - prompts.length + 1;
 
   return (
-    <Section>
-      <div className={clsx("relative transition-[padding] duration-(--motion-small)", ROOM[Math.max(edges, 0)])}>
-        {/* deepest first, so each sheet lies under the one above it */}
-        {(EDGE[edges] ?? []).map((place, i) => ({ place, depth: i + 1 })).reverse().map(({ place, depth }) => (
-          <div key={depth} aria-hidden className={clsx("absolute border border-ink bg-paper", place)} />
-        ))}
-        {top && (
-          <div key={top.id} className={clsx("relative", dealt === top.id && "animate-deal-in")}>
-            <PromptCard icon={top.icon} title={top.title} actions={top.actions} corner={total > 1 ? `${position} of ${total}` : undefined}>
-              {top.body}
-            </PromptCard>
-          </div>
-        )}
-        {leaving && (
-          <div
-            key={`leaving-${leaving.id}`}
-            aria-hidden
-            inert
-            className="pointer-events-none absolute inset-x-0 top-0 z-10 animate-deal-out"
-            onAnimationEnd={() => setLeaving(null)}
-          >
-            <PromptCard icon={leaving.icon} title={leaving.title} actions={leaving.actions}>
-              {leaving.body}
-            </PromptCard>
-          </div>
-        )}
-      </div>
-    </Section>
+    <div className={clsx("relative transition-[padding] duration-(--motion-small)", ROOM[Math.max(edges, 0)])}>
+      {/* deepest first, so each sheet lies under the one above it */}
+      {(EDGE[edges] ?? []).map((place, i) => ({ place, depth: i + 1 })).reverse().map(({ place, depth }) => (
+        <div key={depth} aria-hidden className={clsx("absolute border border-ink bg-paper", place)} />
+      ))}
+      {top && (
+        <div key={top.id} className={clsx("relative", dealt === top.id && "animate-deal-in")}>
+          <PromptCard icon={top.icon} title={top.title} actions={top.actions} corner={total > 1 ? `${position} of ${total}` : undefined}>
+            {top.body}
+          </PromptCard>
+        </div>
+      )}
+      {leaving && (
+        <div
+          key={`leaving-${leaving.id}`}
+          aria-hidden
+          inert
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 animate-deal-out"
+          onAnimationEnd={() => setLeaving(null)}
+        >
+          <PromptCard icon={leaving.icon} title={leaving.title} actions={leaving.actions}>
+            {leaving.body}
+          </PromptCard>
+        </div>
+      )}
+    </div>
   );
 }

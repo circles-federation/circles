@@ -112,6 +112,16 @@
     }
   }
 
+  /* a menu dropping from the button that opened it (ProfileMenu), grown
+     from that corner like a context menu */
+  --animate-menu-in: menu-in var(--motion-small) var(--ease-enter) both;
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  }
+
   /* a page's content arriving (PageContainer): from blurred and clear to
      sharp. `backwards`, not `both`: the blur only applies while it runs —
      a filter left on the container would make it the frame a modal inside it

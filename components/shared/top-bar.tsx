@@ -18,6 +18,7 @@ import { resourceFormTitle } from "@/components/circles/resource-kinds";
 import { AttentionDot } from "./attention-dot";
 import { GhostIconButton } from "./ghost-icon-button";
 import { OfflineBanner } from "./offline-banner";
+import { ProfileMenu } from "./profile-menu";
 
 const TABS: [string, string][] = [
   ["/home", "Home"],
@@ -69,7 +70,6 @@ interface PageAction {
 // button on the right, on every screen size
 function pageAction(pathname: string, circles: Circle[], events: Event[], profile: Profile): PageAction | null {
   if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon };
-  if (pathname === "/home") return { href: "/settings", label: "Settings", icon: Cog6ToothIcon };
   // creating a circle starts it wherever Create was pressed: the city here,
   // or the neighborhood whose page it's pressed on (below)
   if (pathname === "/circles") return { href: "/circles/new", label: "Create circle", icon: PlusIcon };
@@ -211,6 +211,9 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
           >
             <pageOwn.icon className="size-6" strokeWidth={2} />
           </button>
+        ) : pathname === "/home" ? (
+          // Home's is the member's own photo, opening their profile and Settings
+          <ProfileMenu />
         ) : action && (
           <Link href={action.href} aria-label={action.label} className={ICON_BUTTON_SLOT}>
             <IconButtonCircle icon={action.icon} variant="secondary" />

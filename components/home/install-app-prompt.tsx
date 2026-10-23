@@ -45,8 +45,8 @@ export function useInstallPrompt() {
           title: "Install the app",
           body:
             way === "iphone"
-              ? "Add Circles to your home screen to open it like any other app. It’s also the only way an iPhone can get notifications from Circles."
-              : "Install Circles on this device to open it like any other app, in a window of its own.",
+              ? "Open it like any other app. It’s the only way an iPhone gets notifications."
+              : "Open it like any other app, in a window of its own.",
           actions: (
             <>
               <Button size="compact" onClick={install}>Install</Button>

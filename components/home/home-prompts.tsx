@@ -55,7 +55,7 @@ export function HomePrompts() {
       id: "profile",
       icon: UserCircleIcon,
       title: "Tell your neighbors about yourself",
-      body: "A few details, like what you do, the languages you speak and a line about yourself, help neighbors put a name to a face, find someone who can lend a hand, and start a conversation.",
+      body: "A few details help neighbors put a name to a face.",
       actions: (
         <>
           <Button size="compact" onClick={() => router.push("/profile/edit")}>Edit profile</Button>
@@ -73,7 +73,7 @@ export function HomePrompts() {
       id: "availability",
       icon: ClockIcon,
       title: "Say when you can meet",
-      body: "Set the times you’re usually free, and whoever plans a meeting in your circles can see who can make the time they pick. They see only whether you’re free around that time, never your whole schedule.",
+      body: "So whoever plans a meeting can see who can make it. No one sees your whole schedule.",
       actions: (
         <>
           <Button size="compact" onClick={() => router.push("/settings/availability")}>Set times</Button>
