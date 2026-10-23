@@ -21,6 +21,8 @@ function NewEventRoute() {
       initialHostCircleId={searchParams.get("host") ?? undefined}
       // ?circle= from a group's Events tab: shown to the group, since it can't host
       initialCircleId={searchParams.get("circle") ?? undefined}
+      // ?kind=meeting from the Events list's New meeting
+      initialKind={searchParams.get("kind") === "meeting" ? "meeting" : "ordinary"}
       // replace, not push: the form is done with, so its history entry should
       // be too — otherwise the new event's back button (router.back()) lands
       // back on the now-stale, already-submitted form instead of /events. The

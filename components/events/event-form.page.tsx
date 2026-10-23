@@ -47,6 +47,8 @@ interface CreateEventFormPageProps extends EventFormPageBaseProps {
   initialHostCircleId?: string;
   // start shown to this circle, hosted by the person (a group, which can't host)
   initialCircleId?: string;
+  // start on the Meeting tab (the Events list's New meeting)
+  initialKind?: EventKindKey;
   onCreate:(draft: EventDraft) => Promise<SaveResult>;
 }
 
@@ -90,6 +92,10 @@ export function EventFormPage(props: EventFormPageProps) {
   const initialHost = requestedHost && !isRootCircle(requestedHost) && isCircleMember(requestedHost, profile.id) ? requestedHost : undefined;
   // only a circle they could pick themselves
   const requestedCircle = mode === "create" && props.initialCircleId ? postable.find((c) => c.id === props.initialCircleId) : undefined;
+  // opened as a meeting: started as switching to the Meeting tab leaves it
+  // (see changeType), titled "Meeting", in a circle that can hold one
+  const startsAsMeeting = mode === "create" && props.initialKind === "meeting";
+  const firstMeetingCircle = postable.find((c) => !isRootCircle(c) && circleCanHoldMeetings(c));
 
   // the form's starting values — blank defaults for a new event, or the
   // event's own current values when editing. `dirty` (below) diffs live
@@ -115,10 +121,10 @@ export function EventFormPage(props: EventFormPageProps) {
         slots: (event.roles ?? []).map((r): SlotDraft => ({ label: r.label, description: r.description || "", min: String(r.min), max: r.max != null ? String(r.max) : "" })),
       }
     : {
-        type: "ordinary" as EventKindKey,
-        title: "",
-        circleId: initialHost?.id ?? requestedCircle?.id ?? postable[0]?.id ?? "",
-        hostCircleId: initialHost?.id ?? "",
+        type: (startsAsMeeting ? "meeting" : "ordinary") as EventKindKey,
+        title: startsAsMeeting ? DEFAULT_MEETING_TITLE : "",
+        circleId: startsAsMeeting ? (firstMeetingCircle?.id ?? "") : (initialHost?.id ?? requestedCircle?.id ?? postable[0]?.id ?? ""),
+        hostCircleId: startsAsMeeting ? "" : (initialHost?.id ?? ""),
         // the next quarter hour from now, for two hours; starting values, so
         // leaving the form untouched still has nothing to discard
         ...defaultTimes,

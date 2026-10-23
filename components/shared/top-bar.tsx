@@ -3,7 +3,7 @@
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftIcon, Cog6ToothIcon, EllipsisHorizontalIcon, HomeIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, CalendarIcon, Cog6ToothIcon, EllipsisHorizontalIcon, HomeIcon, PencilIcon, PlusIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -72,7 +72,6 @@ interface PageAction {
 // a page's own primary action, shown in the bar while that page is: an icon
 // button on the right, on every screen size
 function pageAction(pathname: string, circles: Circle[], events: Event[], profile: Profile): PageAction | null {
-  if (pathname === "/events") return { href: "/events/new", label: "Create Event", icon: PlusIcon };
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section === "events" && id && id !== "new" && !sub) {
     // an event's own page, which its organizer can edit (and for one a circle
@@ -96,12 +95,21 @@ function pageAction(pathname: string, circles: Circle[], events: Event[], profil
   return null;
 }
 
-/* The Circles browser's own menu, in place of a single action: what can be
-   done from where you are. New circle starts it wherever it was chosen (the
+/* The menu on a page with several things to offer, in place of a single
+   action: what can be done from where you are. The Events list's makes an
+   event or a meeting. New circle starts it wherever it was chosen (the
    city at the root, or the neighborhood whose page it's on); a neighborhood
    adds posting on its bulletin, for a member of a Circle in it, and on your
    own, once someone else lives there, the name game. */
 function pageMenu(pathname: string, circles: Circle[], profile: Profile): TopBarMenuItem[] | null {
+  // the event form still has its own Event/Meeting switch (a circle page's
+  // Events tab opens it too); these just start it on one or the other
+  if (pathname === "/events") {
+    return [
+      { label: "New event", href: "/events/new", icon: CalendarIcon },
+      { label: "New meeting", href: "/events/new?kind=meeting", icon: UserGroupIcon },
+    ];
+  }
   if (pathname === "/circles") return [{ label: "New circle", href: "/circles/new", icon: RingIcon }];
   const [section, id, sub] = pathname.split("/").slice(1);
   if (section !== "circles" || !id || sub) return null;
@@ -235,7 +243,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
           // Home's is the member's own photo, opening their profile and Settings
           <ProfileMenu />
         ) : menu ? (
-          <TopBarMenu label="Circle actions" face={<MenuIconFace icon={EllipsisHorizontalIcon} />} items={menu} />
+          <TopBarMenu label="More" face={<MenuIconFace icon={EllipsisHorizontalIcon} />} items={menu} />
         ) : action && (
           <Link href={action.href} aria-label={action.label} className={ICON_BUTTON_SLOT}>
             <IconButtonCircle icon={action.icon} variant="secondary" />
