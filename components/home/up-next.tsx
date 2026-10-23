@@ -1,39 +1,55 @@
 "use client";
 
+import Link from "next/link";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { EmptyState, LinkRow } from "@/components/shared";
 import { DateTile } from "@/components/events/date-tile";
+import { RsvpButton } from "@/components/events/rsvp-button";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending, meetingLink } from "@/lib/events.util";
 import { fmtTime, hasEnded, parseDay } from "@/lib/format.util";
 import { awaitingConsent } from "@/lib/governance.util";
-import { useClock } from "@/lib/hooks";
+import { useCirclesById, useClock } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 import { HomeSection } from "./home-section";
 
 // how many Home shows; the rest are on the Events tab, under Mine
 const SHOWN = 3;
+// how many it suggests while you're going to nothing
+const SUGGESTED = 2;
 
 // an event you're hosting is one you organized for no circle: a circle's is
 // the circle's, so its organizer is going like anyone else
 const hosting = (e: Event, memberId: number) => e.organizerId === memberId && !e.hostCircleId;
 
+const where = (e: Event) => (meetingLink(e.location) ? "Online" : e.location);
+
 /* What's next for you: the soonest few events you're going to or hosting,
    not merely everything in your circles (that's the Events tab), each saying
-   which. Its link goes to all of yours, past ones included. */
+   which. Its link goes to all of yours, past ones included. While you're
+   going to nothing, it's never a dead end: the next couple of events in
+   your circles, each with its RSVP, which moves it up into yours. */
 export function UpNext() {
-  const { events, profile, rsvpState } = useAppState();
+  const { events, profile, rsvpState, toggleRsvp } = useAppState();
+  const byId = useCirclesById();
   const now = useClock();
-  const mine = events
+  const upcoming = events
     .filter((e) => !awaitingConsent(e) && !hasEnded(e, now))
-    .filter((e) => hosting(e, profile.id) || isAttending(e, profile.id) || rsvpState[e.id])
-    .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime() || a.start.localeCompare(b.start))
-    .slice(0, SHOWN);
+    .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime() || a.start.localeCompare(b.start));
+  const isMine = (e: Event) => hosting(e, profile.id) || isAttending(e, profile.id) || !!rsvpState[e.id];
+  const mine = upcoming.filter(isMine).slice(0, SHOWN);
+  // one date of a repeating event, its soonest, rather than the same thing twice
+  const series = new Set<string>();
+  const suggested = mine.length === 0
+    ? upcoming
+        .filter((e) => !isMine(e) && !e.cancelled)
+        .filter((e) => !e.repeat || (!series.has(e.repeat.seriesId) && !!series.add(e.repeat.seriesId)))
+        .slice(0, SUGGESTED)
+    : [];
 
   return (
     <HomeSection label="Up next" more={{ label: "My events", href: "/events?show=mine" }}>
-      {mine.length === 0 ? (
-        <EmptyState action={{ label: "Browse events", href: "/events" }}>Nothing coming up. Events you’re going to or hosting show up here.</EmptyState>
-      ) : (
+      {mine.length > 0 ? (
         <div className="border-t border-ink">
           {mine.map((e) => (
             <LinkRow
@@ -41,10 +57,35 @@ export function UpNext() {
               href={`/events/${e.id}`}
               image={<DateTile iso={e.date} accent={e.cancelled ? "soft" : "ink"} />}
               title={e.cancelled ? <span className="text-soft line-through">{e.title}</span> : e.title}
-              detail={[e.cancelled ? "Cancelled" : hosting(e, profile.id) ? "Hosting" : "Going", fmtTime(e.start), meetingLink(e.location) ? "Online" : e.location].filter(Boolean).join(" · ")}
+              detail={[e.cancelled ? "Cancelled" : hosting(e, profile.id) ? "Hosting" : "Going", fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}
             />
           ))}
         </div>
+      ) : suggested.length > 0 ? (
+        <>
+          <p className="m-0 mb-3 font-serif text-base text-soft">You’re not going to anything yet. Coming up in your circles:</p>
+          <div className="border-t border-ink">
+            {suggested.map((e) => (
+              <div key={e.id} className="flex items-center gap-3 border-b border-faint last:border-b-ink">
+                <Link href={`/events/${e.id}`} className="flex min-w-0 flex-1 items-center gap-4 py-4 text-ink no-underline">
+                  <DateTile iso={e.date} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-sans text-base font-bold">{e.title}</div>
+                    <div className="mt-0.5 truncate font-serif text-sm text-soft">{[byId[e.circleId]?.name, fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}</div>
+                  </div>
+                </Link>
+                {/* one with roles is signed up for on its page, a role at a time */}
+                {e.roles && e.roles.length > 0 ? (
+                  <ChevronRightIcon className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <RsvpButton going={false} onToggle={() => toggleRsvp(e.id)} />
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <EmptyState action={{ label: "Browse events", href: "/events" }}>Nothing coming up. Events you’re going to or hosting show up here.</EmptyState>
       )}
     </HomeSection>
   );
