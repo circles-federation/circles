@@ -154,8 +154,8 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   const currentTab = activeTab(pathname);
 
   // Installed as an app, the bar lies over AppShell's scrolling <main> instead
-  // of above it, so the page scrolls up under its see-through lower edge as in
-  // a native app; <main> is padded down by the bar's height, published here
+  // of above it, so the page scrolls up under its lower edge, fading out as it
+  // reaches the title row (solid white behind it), as in a native app; <main> is padded down by the bar's height, published here
   // as --top-bar-height since it changes (the offline banner, a landscape
   // notch). In a browser tab it's sticky over the scrolling page to the same
   // effect, and the variable goes unused.
@@ -175,7 +175,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   return (
     <div
       ref={barRef}
-      className="app-chrome sticky top-0 z-50 bg-linear-to-t from-paper/85 to-paper pt-[env(safe-area-inset-top)] backdrop-blur-md shadow-raised standalone:absolute standalone:inset-x-0"
+      className="app-chrome sticky top-0 z-50 bg-linear-to-b from-paper from-55% via-paper/80 via-80% to-transparent pt-[env(safe-area-inset-top)] standalone:absolute standalone:inset-x-0"
     >
       {/* the title on the left, the page's action on the right, and on desktop the
           tabs centred on the bar itself (not between the two), so a long title
