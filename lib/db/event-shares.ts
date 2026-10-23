@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
-import { getEvent, getVisibleEvent } from "./events";
+import { getEvent, getVisibleEvent, memberManagesEvent } from "./events";
 import { confirmedGuestNames } from "./guest-rsvps";
 import { circles, eventShareLinks, members } from "./schema";
 import { hasEnded } from "@/lib/events.util";
@@ -23,11 +23,12 @@ async function findLink(memberId: number, eventId: string): Promise<string | nul
   const [row] = await db
     .select({ token: eventShareLinks.token })
     .from(eventShareLinks)
-    .where(and(eq(eventShareLinks.eventId, eventId), eq(eventShareLinks.memberId, memberId)));
+    .where(and(eq(eventShareLinks.eventId, eventId), eq(eventShareLinks.memberId, memberId), isNull(eventShareLinks.revokedAt)));
   return row?.token ?? null;
 }
 
-// the token for this member's link to the event, made on first use
+// the token for this member's live link to the event, made on first use (and
+// again after they've stopped the last one)
 export async function getOrCreateShareToken(memberId: number, eventId: string): Promise<string> {
   const event = await getVisibleEvent(memberId, eventId);
   if (!event) throw new ShareError("That event doesn't exist.");
@@ -51,7 +52,7 @@ export async function getOrCreateShareToken(memberId: number, eventId: string): 
 // what a stranger holding the link may see, or null for a token that isn't
 // one, or whose event is no longer one to share
 export async function getSharedEvent(token: string): Promise<SharedEvent | null> {
-  const [link] = await db.select().from(eventShareLinks).where(eq(eventShareLinks.token, token));
+  const [link] = await db.select().from(eventShareLinks).where(and(eq(eventShareLinks.token, token), isNull(eventShareLinks.revokedAt)));
   if (!link) return null;
   const event = await getEvent(link.eventId);
   if (!event || isMeeting(event) || awaitingConsent(event)) return null;
@@ -84,4 +85,42 @@ export async function getSharedEvent(token: string): Promise<SharedEvent | null>
     going: [...event.rsvps.flatMap((id) => names.get(id) ?? []), ...(await confirmedGuestNames(event.id))],
     eventId: event.id,
   };
+}
+
+export interface ShareStatus {
+  // they have a live link of their own
+  mine: boolean;
+  // they manage the event, so may stop every link to it
+  canRevokeAll: boolean;
+  // someone else has a live link too (only said to a manager)
+  othersLive: boolean;
+}
+
+export async function getShareStatus(memberId: number, eventId: string): Promise<ShareStatus> {
+  if (!(await getVisibleEvent(memberId, eventId))) throw new ShareError("That event doesn't exist.");
+  const canRevokeAll = await memberManagesEvent(memberId, eventId);
+  const [others] = canRevokeAll
+    ? await db
+        .select({ n: count() })
+        .from(eventShareLinks)
+        .where(and(eq(eventShareLinks.eventId, eventId), isNull(eventShareLinks.revokedAt), sql`${eventShareLinks.memberId} <> ${memberId}`))
+    : [];
+  return { mine: (await findLink(memberId, eventId)) !== null, canRevokeAll, othersLive: (others?.n ?? 0) > 0 };
+}
+
+/* Stop sharing: the sharer's own link ("mine"), or, for whoever manages the
+   event (its organizer, or any member of its host circle: memberManagesEvent),
+   every link to it ("all"). A stopped link opens nothing and takes no new
+   RSVPs, but the guests who already RSVPed through it stay on the list and keep
+   their emails: stopping is about letting no one else in. Returns how many
+   links it stopped. */
+export async function revokeShareLinks(memberId: number, eventId: string, scope: "mine" | "all"): Promise<number> {
+  if (scope === "all" && !(await memberManagesEvent(memberId, eventId))) throw new ShareError("Only whoever manages this event can stop every link to it.");
+  const mine = and(eq(eventShareLinks.eventId, eventId), eq(eventShareLinks.memberId, memberId));
+  const rows = await db
+    .update(eventShareLinks)
+    .set({ revokedAt: new Date() })
+    .where(and(scope === "all" ? eq(eventShareLinks.eventId, eventId) : mine, isNull(eventShareLinks.revokedAt)))
+    .returning({ token: eventShareLinks.token });
+  return rows.length;
 }

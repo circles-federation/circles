@@ -256,6 +256,17 @@ async function assertCanManage(row: EventRow, memberId: number, verb: "edit" | "
   throw new EventError(circleId !== null ? `Only members of the circle holding this can ${verb} it.` : `Only the person hosting this event can ${verb} it.`);
 }
 
+// whether this member manages the event (assertCanManage's rule, for one they
+// can see), for what only a manager may do besides editing and cancelling
+export async function memberManagesEvent(memberId: number, id: string): Promise<boolean> {
+  const [row] = await db.select().from(events).where(eq(events.id, id));
+  if (!row || !canSee(row, await viewerCircles(memberId))) return false;
+  return assertCanManage(row, memberId, "edit").then(
+    () => true,
+    () => false
+  );
+}
+
 // a meeting or circle-hosted event its circle hasn't consented to yet (see
 // lib/db/proposals.ts) — one a person hosts is approved from the start
 function awaitingConsent(row: EventRow): boolean {

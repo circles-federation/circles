@@ -69,7 +69,7 @@ export type PendingGuestNotification = Omit<EventNotificationData, "url" | "noti
     eventId: string;
     guestName: string;
     email: string;
-    // the page their share link opens, or null if the member who shared it is gone
+    // the page their share link opens, or null if the link was stopped or the member who shared it is gone
     shareToken: string | null;
     cancelled: boolean;
   };
@@ -131,7 +131,7 @@ export async function claimGuestNotifications(limit: number): Promise<PendingGue
       .innerJoin(organizer, eq(organizer.id, events.organizerId))
       .leftJoin(hostCircle, eq(hostCircle.id, events.hostCircleId))
       .leftJoin(eventSeries, eq(eventSeries.id, events.seriesId))
-      .leftJoin(eventShareLinks, and(eq(eventShareLinks.eventId, events.id), eq(eventShareLinks.memberId, eventGuestRsvps.invitedBy)))
+      .leftJoin(eventShareLinks, and(eq(eventShareLinks.eventId, events.id), eq(eventShareLinks.memberId, eventGuestRsvps.invitedBy), isNull(eventShareLinks.revokedAt)))
       .where(and(isDue, isNotNull(eventGuestRsvps.confirmedAt)));
     return rows.map(({ frequency, startsOn, until, change, hostCircleName, hostCircleType, circleName, circleType, ...r }) => {
       // a group is private: a stranger is never told its name

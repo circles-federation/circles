@@ -31,7 +31,7 @@ const newCode = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
 // the event a link opens, if it is still one a guest can say they're going to:
 // decided, not cancelled or over, and with plain RSVPs (a role is taken by a member)
 async function openEventFor(token: string) {
-  const [link] = await db.select().from(eventShareLinks).where(eq(eventShareLinks.token, token));
+  const [link] = await db.select().from(eventShareLinks).where(and(eq(eventShareLinks.token, token), isNull(eventShareLinks.revokedAt)));
   const event = link ? await getEvent(link.eventId) : null;
   if (!link || !event || isMeeting(event) || awaitingConsent(event)) throw new GuestRsvpError("That link doesn't lead to an event any more.");
   if (event.cancelled) throw new GuestRsvpError("This event has been cancelled.");
@@ -182,7 +182,7 @@ export async function getGuestForStopPage(id: string): Promise<{ title: string; 
     .select({ title: events.title, emailsOffAt: eventGuestRsvps.emailsOffAt, token: eventShareLinks.token })
     .from(eventGuestRsvps)
     .innerJoin(events, eq(events.id, eventGuestRsvps.eventId))
-    .leftJoin(eventShareLinks, and(eq(eventShareLinks.eventId, events.id), eq(eventShareLinks.memberId, eventGuestRsvps.invitedBy)))
+    .leftJoin(eventShareLinks, and(eq(eventShareLinks.eventId, events.id), eq(eventShareLinks.memberId, eventGuestRsvps.invitedBy), isNull(eventShareLinks.revokedAt)))
     .where(and(eq(eventGuestRsvps.id, id), isNotNull(eventGuestRsvps.confirmedAt)));
   return row ? { title: row.title, token: row.token, stopped: row.emailsOffAt !== null } : null;
 }

@@ -182,6 +182,14 @@ export async function createShareLinkAction(eventId: string) {
   return asMember((memberId) => eventShares.getOrCreateShareToken(memberId, eventId));
 }
 
+export async function getShareStatusAction(eventId: string) {
+  return asMember((memberId) => eventShares.getShareStatus(memberId, eventId));
+}
+
+export async function revokeShareLinksAction(eventId: string, scope: "mine" | "all") {
+  return asMember((memberId) => eventShares.revokeShareLinks(memberId, eventId, scope));
+}
+
 export async function createEventAction(draft: EventDraft) {
   // a group's event is proposed to it, so the app state comes back too, with
   // the proposal in it

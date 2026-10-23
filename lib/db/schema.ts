@@ -571,8 +571,13 @@ export const eventShareLinks = pgTable(
     eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
     memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // set when the link is stopped (by its sharer, or by whoever manages the
+    // event): it opens nothing and takes no new RSVPs. The row stays, so the
+    // guests who came by it still say who invited them.
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
   },
-  (t) => [unique("event_share_links_event_member").on(t.eventId, t.memberId)]
+  // one live link per sharer per event; sharing again after stopping makes a new one
+  (t) => [uniqueIndex("event_share_links_live").on(t.eventId, t.memberId).where(sql`${t.revokedAt} is null`)]
 );
 
 /* Someone without an account saying they're going to an event, from its share

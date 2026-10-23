@@ -181,7 +181,7 @@ const deliverGuestEmails = drainer("Guest email", async () => {
         const stopUrl = `${appUrl}/e/stop/${n.guestId}`;
         await sendEmail({
           to: n.email,
-          ...guestEmail({ ...n, url: n.shareToken ? `${appUrl}/e/${n.shareToken}` : appUrl, unsubscribeUrl: stopUrl }),
+          ...guestEmail({ ...n, url: n.shareToken ? `${appUrl}/e/${n.shareToken}` : stopUrl, unsubscribeUrl: stopUrl }),
           headers: { "List-Unsubscribe": `<${stopUrl}>` },
         });
         await markGuestSent(n);
