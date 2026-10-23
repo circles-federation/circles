@@ -23,10 +23,10 @@ interface HomeProps {
   onPlayGame: () => void;
 }
 
-/* The member's landing page, in the order they come back for things: what's
+/* The member's landing page: their circles first, the way into everything
+   else (a shelf, so joining more doesn't push the rest down), then what's
    starting now, the one-time prompts, what's waiting on them, what's next on
-   their calendar, their tasks, their circles (a shelf, so joining more
-   doesn't push the rest down), and their neighborhood. Who they are is the
+   their calendar, their tasks, and their neighborhood. Who they are is the
    top bar's photo, which opens their profile and Settings. */
 export function Home({ profile, events, circles, rsvpState, onOpenNeighbors, onOpenLocalCircles, onPlayGame }: HomeProps) {
   const members = useMembers();
@@ -53,12 +53,12 @@ export function Home({ profile, events, circles, rsvpState, onOpenNeighbors, onO
       {/* each section takes itself out when it has nothing to show, so the
           gap is the one rhythm between whatever's left */}
       <div className="flex flex-col gap-10">
+        <MyCircles />
         <StartingSoon events={events} memberId={profile.id} rsvpState={rsvpState} />
         <HomePrompts />
         <NeedsYou />
         <UpNext />
         <MyTasks />
-        <MyCircles />
 
         {/* my neighborhood, in one short row: its size as two links into
             it, and the name game */}

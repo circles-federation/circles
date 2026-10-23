@@ -26,7 +26,7 @@ export function MyCircles() {
         <ul className="-mx-6 flex snap-x snap-mandatory scroll-px-6 gap-3 overflow-x-auto px-6 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {mine.map((c) => (
             <li key={c.id} className="shrink-0 snap-start">
-              <button type="button" onClick={() => nav.openCircle(c)} className="ink-press flex h-30 w-40 cursor-pointer flex-col items-stretch border border-ink bg-paper p-3 text-left text-ink">
+              <button type="button" onClick={() => nav.openCircle(c)} className="ink-press flex h-30 w-44 cursor-pointer flex-col items-stretch border border-ink bg-paper p-3 text-left text-ink">
                 <Eyebrow className="block truncate text-soft">{isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
                 <span className="mt-1.5 line-clamp-2 font-sans text-base leading-tight font-extrabold tracking-[-0.01em]">
                   {c.name}
