@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PlayIcon } from "@heroicons/react/24/solid";
 import { EmptyState, FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
@@ -27,8 +28,10 @@ interface NeighborhoodPageProps {
   onOpenMember: (m: Member) => void;
   // its bulletin's form, to propose a post (for a member of a Circle in it)
   onProposePost: () => void;
-  // seeds the Type filter — e.g. Home's "Neighbors"/"Local circles" stat
-  // cards land here pre-filtered rather than on the unfiltered folder view.
+  // the name game, on your own neighborhood
+  onPlayGame: () => void;
+  // seeds the Type filter (?types=People), so a link can land here
+  // pre-filtered rather than on the unfiltered folder view.
   // Invalid/unrecognized values (a hand-edited URL, say) are dropped rather
   // than surfaced as an error, same as an unmatched search query just shows
   // "Nothing here yet."
@@ -47,7 +50,7 @@ interface NeighborhoodPageProps {
    browsed), so CircleCard/MemberCard's neighborhood chips remain off throughout —
    unlike CirclesRootPage, where cards span multiple neighborhoods and the
    chip is what tells them apart. */
-export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenMember, onProposePost, initialTypeFilter }: NeighborhoodPageProps) {
+export function NeighborhoodPage({ circle, circles, members, profile, onOpenCircle, onOpenMember, onProposePost, onPlayGame, initialTypeFilter }: NeighborhoodPageProps) {
   // only a circle's members are ever sent its proposals
   const { proposals } = useAppState();
   const openProposals = proposals.filter((p) => p.circleId === circle.id && p.status === "open");
@@ -99,6 +102,9 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
   const groupFolders = showGroups ? folders.filter(isGroup) : [];
   const otherFolders = showOrgs ? folders.filter((c) => c.type !== "circle" && !isGroup(c)) : [];
   const peopleFiles = showPeople ? files : [];
+  // the name game quizzes you on everyone here but you: offered on your own
+  // neighborhood once there's someone else to learn
+  const canPlay = circle.id === profile.homeCircleId && circle.members.some((id) => id !== profile.id);
   const anySections = circleFolders.length > 0 || groupFolders.length > 0 || otherFolders.length > 0 || peopleFiles.length > 0;
 
   return (
@@ -157,6 +163,24 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
                 label="People"
                 items={peopleFiles}
                 minWidth={230}
+                {...(canPlay
+                  ? {
+                      action: (
+                        // the round button inverts while pressed, its label staying put
+                        <button
+                          type="button"
+                          onClick={onPlayGame}
+                          title="Learn your neighbors' names"
+                          className="fill-press flex shrink-0 cursor-pointer items-center gap-3 border-none bg-transparent p-0 font-sans text-xs font-bold tracking-caps text-teal uppercase"
+                        >
+                          <span>Learn names</span>
+                          <span className="fill-press-square flex size-11 items-center justify-center rounded-full border-2 border-teal bg-teal text-paper [--press-color:var(--color-teal)]">
+                            <PlayIcon className="ml-0.5 size-5" />
+                          </span>
+                        </button>
+                      ),
+                    }
+                  : {})}
                 renderItem={(m) => <MemberCard key={m.id} m={m} profile={profile} onOpenMember={onOpenMember} showNeighborhoodChip={false} />}
               />
             )}

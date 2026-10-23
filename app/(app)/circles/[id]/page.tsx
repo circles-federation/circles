@@ -36,6 +36,7 @@ function CircleRoute() {
         onOpenCircle={(c) => nav.openCircle(c)}
         onOpenMember={nav.openMember}
         onProposePost={() => router.push(`/circles/${circle.id}/bulletin/new`)}
+        onPlayGame={() => router.push("/game")}
         initialTypeFilter={searchParams.get("types")?.split(",")}
       />
     );
