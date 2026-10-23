@@ -51,12 +51,12 @@ export function StartingSoon({ events, memberId, rsvpState }: { events: Event[];
             <span aria-hidden className="size-2 shrink-0 rounded-full bg-flame motion-safe:animate-pulse" />
             <Eyebrow className="text-paper/70">{ms > 0 ? "Starting soon" : "Happening now"}</Eyebrow>
           </div>
-          <div className="mt-1.5 font-sans text-lg leading-tight font-extrabold tracking-[-0.02em] wrap-break-word">{e.title}</div>
+          <div className="mt-1.5 font-sans text-lg leading-tight font-extrabold tracking-heading wrap-break-word">{e.title}</div>
           <div className="mt-0.5 truncate font-serif text-sm text-paper/75">
             {meetingLink(e.location) ? "Online" : e.location} · {fmtTime(e.start)}
           </div>
         </div>
-        <span aria-hidden className="shrink-0 -rotate-4 bg-paper px-3 py-1.5 font-sans text-base leading-none font-extrabold tracking-[-0.02em] whitespace-nowrap text-ink">
+        <span aria-hidden className="shrink-0 -rotate-4 bg-paper px-3 py-1.5 font-sans text-base leading-none font-extrabold tracking-heading whitespace-nowrap text-ink">
           {countdown(ms)}
         </span>
       </div>

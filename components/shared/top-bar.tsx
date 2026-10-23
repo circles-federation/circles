@@ -143,7 +143,8 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   const action = pageAction(pathname, circles, events, profile);
   const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
   const runBackHandler = useRunBackHandler();
-  const goBackInApp = useGoBack();
+  // the name game is played from your neighborhood's page, which its URL can't say
+  const goBackInApp = useGoBack(pathname === "/game" && profile.homeCircleId ? `/circles/${profile.homeCircleId}` : undefined);
 
   function goBack() {
     if (runBackHandler()) return;
@@ -183,7 +184,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
       <div className="relative mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1 min-[720px]:max-w-[calc(50%-9rem)]">
           {!isTabRoot && <GhostIconButton icon={ArrowLeftIcon} label="Back" onClick={goBack} className="-ml-3" />}
-          <span className="truncate font-sans text-lg font-extrabold tracking-[-0.02em]">
+          <span className="truncate font-sans text-lg font-extrabold tracking-heading">
             {pageTitle(pathname, circles, events, members, resources)}
           </span>
           {isHomeNeighborhood && <HomeIcon className="ml-1 size-5 shrink-0 text-teal" strokeWidth={2} aria-label="Your neighborhood" />}

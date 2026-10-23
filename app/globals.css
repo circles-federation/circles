@@ -72,6 +72,11 @@
 
   /* display headings share tight negative tracking; eyebrows share wide tracking */
   --tracking-tight: -0.03em;
+  /* tightened by size: a title (a page's, a masthead's, Home's greeting),
+     a heading (a card's or the top bar's name), and a name in a list */
+  --tracking-display: -0.035em;
+  --tracking-heading: -0.02em;
+  --tracking-snug: -0.01em;
   --tracking-wide: 0.1em;
   /* the two kinds of small caps: an eyebrow heads a section (and a fact, as
      the circle page shows them); caps is every other uppercase label, on a

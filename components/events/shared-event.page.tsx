@@ -23,7 +23,7 @@ export function SharedEventPage({ event: e, guest }: SharedEventPageProps) {
   return (
     <div className="min-h-dvh bg-paper px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-20">
       <div className="mx-auto w-full max-w-170">
-        <p className="font-sans text-sm font-extrabold tracking-[-0.02em]">Circles</p>
+        <p className="font-sans text-sm font-extrabold tracking-heading">Circles</p>
         <p className="mt-6 font-serif text-lg text-soft">{e.sharedBy} invited you to</p>
 
         <div className="mt-3 border-t-[3px] border-b border-t-ink border-b-ink pt-5 pb-6">
@@ -31,7 +31,7 @@ export function SharedEventPage({ event: e, guest }: SharedEventPageProps) {
           <div className="mt-0.5 font-sans text-base leading-snug font-semibold text-soft">
             {fmtTime(e.start)}–{fmtTime(e.end)}
           </div>
-          <h1 className="mt-4 font-sans text-heading leading-[0.95] font-extrabold tracking-[-0.035em] min-[720px]:text-title">{e.title}</h1>
+          <h1 className="mt-4 font-sans text-heading leading-[0.95] font-extrabold tracking-display min-[720px]:text-title">{e.title}</h1>
           <p className="mt-3 font-serif text-lg text-body">{e.location}</p>
         </div>
 

@@ -126,7 +126,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               </MastheadChip>
             )}
           </div>
-          <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{c.name}</h1>
+          <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display">{c.name}</h1>
           <p className="mt-4 font-serif text-xl text-body italic">{c.tagline}</p>
           {lastEditor && (
             <div className="mt-4 font-sans text-label tracking-[0.02em] text-soft">
@@ -179,7 +179,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
               {c.facts.map(([k, v]) => (
                 <div key={k} className="bg-paper px-4 py-4">
                   <Eyebrow className="text-soft">{k}</Eyebrow>
-                  <div className="mt-2 font-sans text-lg font-extrabold tracking-[-0.01em]">{v}</div>
+                  <div className="mt-2 font-sans text-lg font-extrabold tracking-snug">{v}</div>
                 </div>
               ))}
             </div>

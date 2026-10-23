@@ -46,7 +46,7 @@ export function PhotoReviewPage({ review: r }: { review: PhotoReview }) {
   return (
     <PageContainer size="normal">
       <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-5 pb-6">
-        <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{name}</h1>
+        <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display">{name}</h1>
         <p className="mt-3 font-serif text-base text-soft">
           {r.neighborhoodName ? `${r.neighborhoodName} · ` : ""}sent {fmtNumericDate(new Date(r.version).toISOString())}
         </p>

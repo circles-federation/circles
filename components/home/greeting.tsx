@@ -22,7 +22,7 @@ export function Greeting({ name }: { name: string }) {
   return (
     <header>
       <Eyebrow className="block text-soft">{today ? `${DAYS[today.getDay()]}, ${MONTHS[today.getMonth()]} ${today.getDate()}` : " "}</Eyebrow>
-      <h1 className="m-0 mt-1.5 font-sans text-title leading-[1.05] font-extrabold tracking-[-0.035em] wrap-break-word">
+      <h1 className="m-0 mt-1.5 font-sans text-title leading-[1.05] font-extrabold tracking-display wrap-break-word">
         {today ? partOfDay(today.getHours()) : "Hello"}, {name}
       </h1>
     </header>

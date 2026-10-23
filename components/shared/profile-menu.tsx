@@ -64,6 +64,11 @@ export function ProfileMenu() {
   function onButtonKey(e: KeyboardEvent) {
     if (e.key !== "ArrowDown" && e.key !== "Enter" && e.key !== " ") return;
     e.preventDefault();
+    // Enter and Space close it again, as a click would
+    if (open && e.key !== "ArrowDown") {
+      setOpen(false);
+      return;
+    }
     setOpen(true);
     // once it's drawn: from the keyboard, the first item takes focus
     requestAnimationFrame(() => items()[0]?.focus());

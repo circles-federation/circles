@@ -54,7 +54,7 @@ export function ApplicationReviewPage({ application: a }: { application: Pending
         {/* eslint-disable-next-line @next/next/no-img-element -- served per admin by /api/applications/[id]/photo, never cached */}
         <img src={`/api/applications/${a.id}/photo`} alt={`Photo of ${name}`} className="size-48 shrink-0 border border-ink object-cover" />
         <div className="min-w-0">
-          <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{name}</h1>
+          <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display">{name}</h1>
           <p className="mt-3 font-serif text-base text-soft">Applied {fmtNumericDate(a.submittedAt)}</p>
         </div>
       </div>

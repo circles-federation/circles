@@ -35,10 +35,10 @@ export function StopEmailsPage({ id, title, token, stopped }: StopEmailsPageProp
   return (
     <div className="min-h-dvh bg-paper px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-20">
       <div className="mx-auto w-full max-w-110">
-        <p className="font-sans text-sm font-extrabold tracking-[-0.02em]">Circles</p>
+        <p className="font-sans text-sm font-extrabold tracking-heading">Circles</p>
         <div className="mt-6 border-t-[3px] border-t-ink pt-5">
           <Eyebrow className="text-soft">Emails about</Eyebrow>
-          <h1 className="mt-2 font-sans text-heading leading-[0.95] font-extrabold tracking-[-0.035em]">{title}</h1>
+          <h1 className="mt-2 font-sans text-heading leading-[0.95] font-extrabold tracking-display">{title}</h1>
 
           {outcome === "removed" ? (
             <p className="mt-6 font-serif text-lg leading-normal text-body">You&apos;re off the list, and your name and email are deleted.</p>

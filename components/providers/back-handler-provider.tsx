@@ -93,13 +93,15 @@ const BACK_FALLBACK_MS = 400;
    app, and otherwise up to the page's parent, so it never leaves the app for
    whatever site linked here (or a blank tab, after a reload). TopBar's Back
    button, and a page that goes back once it's done (Manage circle, after
-   saving), both use this rather than router.back(). */
-export function useGoBack(): () => void {
+   saving), both use this rather than router.back(). A page whose parent
+   isn't one URL segment up, and can't be told from the URL alone (the name
+   game's is your own neighborhood), passes its own `up`. */
+export function useGoBack(up?: string): () => void {
   const router = useRouter();
   const pathname = usePathname();
   const navigationsRef = useContext(NavigationsContext);
   return () => {
-    const parent = parentRoute(pathname);
+    const parent = up ?? parentRoute(pathname);
     if (!navigationsRef || navigationsRef.current === 0) return router.push(parent);
     /* The count can say there's a page to go back to when the history has
        none: a page opened from a push notification, say, which the service

@@ -44,7 +44,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         <div className="mt-4 flex items-center gap-5">
           <Avatar member={m} size={96} showPending />
           <div className="min-w-0">
-            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{m.name}</h1>
+            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display">{m.name}</h1>
             {/* as a member card shows it, under the name in sentence case (it's
                 information, not a label), a size up for the larger name; a new
                 member may not have filled it in yet */}
@@ -76,7 +76,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
                   return (
                     <div key={l.code} className="flex items-center gap-4 border-b border-faint py-3 last:border-b-ink">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate font-sans text-lg leading-tight font-extrabold tracking-[-0.01em]">{endonym}</div>
+                        <div className="truncate font-sans text-lg leading-tight font-extrabold tracking-snug">{endonym}</div>
                         {/* always a second line, so every row is the same height: the
                             English name where it differs, and the level's word */}
                         <div className="truncate font-serif text-sm text-soft">

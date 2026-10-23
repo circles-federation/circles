@@ -87,7 +87,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
           <Eyebrow className="text-soft">Proposal</Eyebrow>
           <MastheadChip onClick={onOpenCircle}>{circle.name}</MastheadChip>
         </div>
-        <h1 className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-[-0.035em]">{proposalTitle(p)}</h1>
+        <h1 className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-display">{proposalTitle(p)}</h1>
         <p className="mt-3 font-serif text-sm text-soft">
           Proposed by{" "}
           {proposer ? (

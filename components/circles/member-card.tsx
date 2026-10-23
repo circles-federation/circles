@@ -28,7 +28,7 @@ export function MemberCard({ m, profile, onOpenMember, showNeighborhoodChip = tr
     >
       <Avatar member={m} size={56} />
       <div className="min-w-0">
-        <div className="font-sans text-base font-extrabold tracking-[-0.01em]">
+        <div className="font-sans text-base font-extrabold tracking-snug">
           {m.name}
           {m.id === profile.id && <span className="font-semibold text-soft"> (you)</span>}
         </div>

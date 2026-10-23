@@ -1,14 +1,12 @@
 "use client";
 
-import { useRef } from "react";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar } from "@/components/shared";
-import { useAppState } from "@/components/providers/app-state-provider";
-import { useMemberById } from "@/lib/hooks";
+import { useMemberById, useTaskTick } from "@/lib/hooks";
 import { localDay } from "@/lib/recurrence.util";
 import { TASK_STATUSES, dueCell, onBackBurner, sortTasks, taskPriority } from "@/lib/tasks.util";
-import type { CircleTask, TaskStatus } from "@/lib/types";
+import type { CircleTask } from "@/lib/types";
 
 // a column a phone leaves out
 const WIDE = "hidden min-[720px]:table-cell";
@@ -33,10 +31,8 @@ interface TaskTableProps {
    pressing, then by name. A row opens its task; it doesn't invert when
    pressed, being a row, but its round button does. */
 export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
-  const { setTaskStatus } = useAppState();
-  // what each task ticked done here was before, so ticking it again (a slip of
-  // the thumb, say) puts it back as it was rather than always to To do
-  const before = useRef(new Map<string, TaskStatus>());
+  // ticking one done, and again to put it back as it was
+  const { toggle: toggleDone } = useTaskTick();
   const memberById = useMemberById();
   // one table, whatever their status: what's live, then the back burner,
   // then what's done, each by when it's due
@@ -46,16 +42,6 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
     tasks.filter((t) => t.status === "done"),
   ].flatMap(sortTasks);
   const today = localDay();
-
-  function toggleDone(t: CircleTask) {
-    if (t.status === "done") {
-      void setTaskStatus(t.id, before.current.get(t.id) ?? "todo");
-      before.current.delete(t.id);
-    } else {
-      before.current.set(t.id, t.status);
-      void setTaskStatus(t.id, "done");
-    }
-  }
 
   // every heading centred on the header row's height, label or not
   const heading = clsx(CELL, "py-3 text-left align-middle font-sans text-label leading-none font-bold tracking-caps text-paper uppercase");

@@ -34,7 +34,7 @@ export function MyCircles() {
             <li key={c.id} className="shrink-0 snap-start">
               <button type="button" onClick={() => nav.openCircle(c)} className="ink-press flex h-32 w-52 cursor-pointer flex-col items-stretch border border-ink bg-paper p-3 text-left text-ink">
                 <Eyebrow className="block truncate text-soft">{isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
-                <span className="mt-1.5 line-clamp-2 font-sans text-base leading-tight font-extrabold tracking-[-0.01em]">
+                <span className="mt-1.5 line-clamp-2 font-sans text-base leading-tight font-extrabold tracking-snug">
                   {c.name}
                   {c.id === profile.homeCircleId && <HomeIcon className="ml-1 inline size-4 align-[-2px] text-teal" strokeWidth={2.5} aria-label="Your neighborhood" />}
                 </span>

@@ -66,10 +66,10 @@ export function InvitationPage({ invitation: inv, circle, onOpenCircle, onOpenMe
         <Eyebrow className="text-soft">Invitation to join</Eyebrow>
         {circle ? (
           <button type="button" onClick={() => onOpenCircle(circle)} className="mt-3 block cursor-pointer border-0 bg-transparent p-0 text-left">
-            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em] underline decoration-2 underline-offset-4">{inv.circleName}</h1>
+            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display underline decoration-2 underline-offset-4">{inv.circleName}</h1>
           </button>
         ) : (
-          <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-[-0.035em]">{inv.circleName}</h1>
+          <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display">{inv.circleName}</h1>
         )}
         {inv.circleTagline && <p className="mt-4 font-serif text-xl text-body italic">{inv.circleTagline}</p>}
       </div>

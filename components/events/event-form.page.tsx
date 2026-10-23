@@ -426,7 +426,7 @@ export function EventFormPage(props: EventFormPageProps) {
   if (view === "slots") {
     return (
       <PageContainer size="compact">
-        <h2 className="font-sans text-xl font-extrabold tracking-[-0.02em]">Roles</h2>
+        <h2 className="font-sans text-xl font-extrabold tracking-heading">Roles</h2>
         <p className="mt-2 mb-5 font-serif text-sm leading-normal text-soft">
           People sign up for these, like shift lead or greeter. Roles replace the normal RSVP. Leave none to keep it a simple RSVP.
         </p>
@@ -439,7 +439,7 @@ export function EventFormPage(props: EventFormPageProps) {
   if (view === "agenda") {
     return (
       <PageContainer size="compact">
-        <h2 className="font-sans text-xl font-extrabold tracking-[-0.02em]">Agenda</h2>
+        <h2 className="font-sans text-xl font-extrabold tracking-heading">Agenda</h2>
         <p className="mt-2 mb-5 font-serif text-sm leading-normal text-soft">
           Mark each topic with what the circle will do with it: hear a report, explore it together, or decide it.
         </p>

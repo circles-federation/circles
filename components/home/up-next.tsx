@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { EmptyState, LinkRow } from "@/components/shared";
 import { DateTile } from "@/components/events/date-tile";
 import { RsvpButton } from "@/components/events/rsvp-button";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { isAttending, meetingLink } from "@/lib/events.util";
+import { isAttending, isMyEvent, meetingLink } from "@/lib/events.util";
 import { fmtTime, hasEnded, parseDay } from "@/lib/format.util";
 import { awaitingConsent } from "@/lib/governance.util";
 import { useCirclesById, useClock } from "@/lib/hooks";
@@ -19,7 +17,8 @@ const SHOWN = 3;
 const SUGGESTED = 2;
 
 // an event you're hosting is one you organized for no circle: a circle's is
-// the circle's, so its organizer is going like anyone else
+// the circle's, so its organizer is Going like anyone else, or Organizing
+// if they aren't
 const hosting = (e: Event, memberId: number) => e.organizerId === memberId && !e.hostCircleId;
 
 const where = (e: Event) => (meetingLink(e.location) ? "Online" : e.location);
@@ -36,7 +35,7 @@ export function UpNext() {
   const upcoming = events
     .filter((e) => !awaitingConsent(e) && !hasEnded(e, now))
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime() || a.start.localeCompare(b.start));
-  const isMine = (e: Event) => hosting(e, profile.id) || isAttending(e, profile.id) || !!rsvpState[e.id];
+  const isMine = (e: Event) => isMyEvent(e, profile.id, !!rsvpState[e.id]);
   const mine = upcoming.filter(isMine).slice(0, SHOWN);
   // one date of a repeating event, its soonest, rather than the same thing twice
   const series = new Set<string>();
@@ -57,7 +56,7 @@ export function UpNext() {
               href={`/events/${e.id}`}
               image={<DateTile iso={e.date} accent={e.cancelled ? "soft" : "ink"} />}
               title={e.cancelled ? <span className="text-soft line-through">{e.title}</span> : e.title}
-              detail={[e.cancelled ? "Cancelled" : hosting(e, profile.id) ? "Hosting" : "Going", fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}
+              detail={[e.cancelled ? "Cancelled" : hosting(e, profile.id) ? "Hosting" : isAttending(e, profile.id) || rsvpState[e.id] ? "Going" : "Organizing", fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}
             />
           ))}
         </div>
@@ -66,21 +65,15 @@ export function UpNext() {
           <p className="m-0 mb-3 font-serif text-base text-soft">You’re not going to anything yet. Coming up in your circles:</p>
           <div className="border-t border-ink">
             {suggested.map((e) => (
-              <div key={e.id} className="flex items-center gap-3 border-b border-faint last:border-b-ink">
-                <Link href={`/events/${e.id}`} className="flex min-w-0 flex-1 items-center gap-4 py-4 text-ink no-underline">
-                  <DateTile iso={e.date} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-sans text-base font-bold">{e.title}</div>
-                    <div className="mt-0.5 truncate font-serif text-sm text-soft">{[byId[e.circleId]?.name, fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}</div>
-                  </div>
-                </Link>
-                {/* one with roles is signed up for on its page, a role at a time */}
-                {e.roles && e.roles.length > 0 ? (
-                  <ChevronRightIcon className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
-                ) : (
-                  <RsvpButton going={false} onToggle={() => toggleRsvp(e.id)} />
-                )}
-              </div>
+              <LinkRow
+                key={e.id}
+                href={`/events/${e.id}`}
+                image={<DateTile iso={e.date} />}
+                title={e.title}
+                detail={[byId[e.circleId]?.name, fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}
+                // one with roles is signed up for on its page, a role at a time
+                {...(e.roles && e.roles.length > 0 ? {} : { trailing: <RsvpButton going={false} onToggle={() => toggleRsvp(e.id)} /> })}
+              />
             ))}
           </div>
         </>

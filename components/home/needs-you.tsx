@@ -3,10 +3,9 @@
 import type { ReactNode } from "react";
 import { EnvelopeIcon, HandRaisedIcon, InboxIcon } from "@heroicons/react/24/outline";
 import { LinkRow } from "@/components/shared";
-import { useAppState } from "@/components/providers/app-state-provider";
 import { fmtDateTime } from "@/lib/format.util";
-import { useCirclesById, useMemberById } from "@/lib/hooks";
-import { awaitingResponse, proposalTitle } from "@/lib/proposals.util";
+import { useCirclesById, useMemberById, useNeedsYou } from "@/lib/hooks";
+import { proposalTitle } from "@/lib/proposals.util";
 import { HomeSection } from "./home-section";
 
 // a row's icon, in the room LinkRow keeps for a picture
@@ -20,16 +19,9 @@ function RowIcon({ children }: { children: ReactNode }) {
    quieter, since they wait on others (and are the way back to an undecided
    meeting, which is in no list). Nothing at all, and there's no section. */
 export function NeedsYou() {
-  const { pendingReviews, invitations, proposals, profile } = useAppState();
   const byId = useCirclesById();
   const memberById = useMemberById();
-  // soonest to close first
-  const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
-  const mineOpen = proposals.filter((p) => p.status === "open" && p.proposerId === profile.id).sort((a, b) => a.closesAt.localeCompare(b.closesAt));
-  const myInvitations = invitations.filter((i) => i.memberId === profile.id);
-  const reviews = pendingReviews ?? 0;
-
-  const needed = reviews + awaitingMe.length + myInvitations.length;
+  const { reviews, awaitingMe, myInvitations, mineOpen, count: needed } = useNeedsYou();
   if (needed === 0 && mineOpen.length === 0) return null;
 
   return (

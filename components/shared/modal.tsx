@@ -54,7 +54,7 @@ export function Modal({ onClose, className, title, centered, role = "dialog", ch
           // as the bar's Back is
           <div className="flex h-14.5 items-center gap-1 border-b border-faint px-5">
             <GhostIconButton icon={XMarkIcon} label="Close" onClick={onClose} className="-ml-3" />
-            <h2 className="m-0 truncate font-sans text-lg font-extrabold tracking-[-0.02em]">{title}</h2>
+            <h2 className="m-0 truncate font-sans text-lg font-extrabold tracking-heading">{title}</h2>
           </div>
         )}
         {children}

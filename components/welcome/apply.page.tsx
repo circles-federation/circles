@@ -162,9 +162,9 @@ export function ApplyPage({ neighborhoods, guest }: ApplyPageProps) {
             <p className="font-serif text-lg leading-normal text-body">
               Before you send your application, please read the short terms and privacy notes for the beta.
             </p>
-            <h2 className="mt-9 border-t border-t-ink pt-4 font-sans text-xl font-extrabold tracking-[-0.02em]">Beta terms</h2>
+            <h2 className="mt-9 border-t border-t-ink pt-4 font-sans text-xl font-extrabold tracking-heading">Beta terms</h2>
             <BetaTerms />
-            <h2 className="mt-9 border-t border-t-ink pt-4 font-sans text-xl font-extrabold tracking-[-0.02em]">Privacy</h2>
+            <h2 className="mt-9 border-t border-t-ink pt-4 font-sans text-xl font-extrabold tracking-heading">Privacy</h2>
             <BetaPrivacy />
             <Button type="button" onClick={handleAgree} disabled={busy} className="mt-9 w-full">
               {busy ? "Sending…" : "Agree and send"}

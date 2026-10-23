@@ -10,7 +10,7 @@ export function LearnNamesCard({ toMeet, onPlay }: { toMeet: number; onPlay: () 
         <PlayIcon className="ml-1 size-6" aria-hidden />
       </span>
       <div className="min-w-0">
-        <div className="font-sans text-base font-extrabold tracking-[-0.01em]">Learn names</div>
+        <div className="font-sans text-base font-extrabold tracking-snug">Learn names</div>
         <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{toMeet === 1 ? "1 neighbor to meet" : `${toMeet} neighbors to meet`}</span>
       </div>
     </button>

@@ -8,7 +8,7 @@ import { hasEnded } from "./events.util";
 import { isPastEvent } from "./format.util";
 import { awaitingResponse } from "./proposals.util";
 import { currentSubscription, pushPermission, pushSupported, subscribeThisDevice, unsubscribeThisDevice } from "./push-client";
-import type { Circle, CircleInvitation, CircleProposal, CircleResource, Event, Member, ProposalChanges } from "./types";
+import type { Circle, CircleInvitation, CircleProposal, CircleResource, CircleTask, Event, Member, ProposalChanges, TaskStatus } from "./types";
 
 /* The seam components reach live data through — a hook here rather than
    importing lib/data.ts's seed constants or threading props, so where the
@@ -39,12 +39,45 @@ export function useCirclesById(): CirclesById {
   return useMemo(() => indexCircles(circles), [circles]);
 }
 
-/* Whether Home has something waiting on the member — applications to review
-   (admins only) or invitations sent to them — for the dot on its nav tab.
-   Stands in for a notifications screen until there is one. */
-export function useHomeNeedsAttention(): boolean {
+/* What's waiting on the member, for Home's Needs you and the dot on its nav
+   tab, so the two can't disagree: an admin's reviews (applications and new
+   photos; 0 for everyone else), the proposals waiting on their answer and
+   the invitations sent to them (`count` is these three), and, waiting on
+   others, their own open proposals. Proposals soonest to close first. */
+export function useNeedsYou() {
   const { pendingReviews, invitations, proposals, profile } = useAppState();
-  return (pendingReviews ?? 0) > 0 || invitations.some((i) => i.memberId === profile.id) || proposals.some((p) => awaitingResponse(p, profile.id));
+  const byClosing = (a: CircleProposal, b: CircleProposal) => a.closesAt.localeCompare(b.closesAt);
+  const reviews = pendingReviews ?? 0;
+  const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort(byClosing);
+  const myInvitations = invitations.filter((i) => i.memberId === profile.id);
+  const mineOpen = proposals.filter((p) => p.status === "open" && p.proposerId === profile.id).sort(byClosing);
+  return { reviews, awaitingMe, myInvitations, mineOpen, count: reviews + awaitingMe.length + myInvitations.length };
+}
+
+// whether Home has something waiting on the member, for the dot on its nav
+// tab; stands in for a notifications screen until there is one
+export function useHomeNeedsAttention(): boolean {
+  return useNeedsYou().count > 0;
+}
+
+/* Ticking a task done from a list, and ticking it again (a slip of the
+   thumb, say) to put it back as it was (In progress stays In progress)
+   rather than always to To do. `tickedHere` says which tasks were ticked
+   done from this list, for a list that leaves done tasks out but keeps one
+   ticked here (Home's My tasks), so it can be put back, and stays put
+   whatever the server says. */
+export function useTaskTick() {
+  const { setTaskStatus } = useAppState();
+  const [before, setBefore] = useState<Record<string, TaskStatus>>({});
+  function toggle(t: CircleTask) {
+    if (t.status === "done") {
+      void setTaskStatus(t.id, before[t.id] ?? "todo");
+    } else {
+      setBefore((was) => ({ ...was, [t.id]: t.status }));
+      void setTaskStatus(t.id, "done");
+    }
+  }
+  return { toggle, tickedHere: (id: string) => id in before };
 }
 
 function subscribeToConnection(onChange: () => void) {

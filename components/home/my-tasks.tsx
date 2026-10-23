@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { CheckIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { useCirclesById } from "@/lib/hooks";
+import { useCirclesById, useTaskTick } from "@/lib/hooks";
 import { localDay } from "@/lib/recurrence.util";
 import { dueCell, onBackBurner, sortTasks, taskPriority } from "@/lib/tasks.util";
-import type { TaskStatus } from "@/lib/types";
 import { HomeSection } from "./home-section";
 
 /* What's yours to do across your circles, as rows rather than the Tasks
@@ -18,11 +16,10 @@ import { HomeSection } from "./home-section";
    through, until Home is left, so a slip of the thumb can be put back as it
    was (In progress stays In progress). */
 export function MyTasks() {
-  const { tasks, profile, setTaskStatus } = useAppState();
+  const { tasks, profile } = useAppState();
   const byId = useCirclesById();
-  // tasks ticked done here, and what each was before
-  const [ticked, setTicked] = useState<Record<string, TaskStatus>>({});
-  const mine = sortTasks(tasks.filter((t) => t.assigneeId === profile.id && ((t.status !== "done" && !onBackBurner(t)) || t.id in ticked)));
+  const { toggle, tickedHere } = useTaskTick();
+  const mine = sortTasks(tasks.filter((t) => t.assigneeId === profile.id && ((t.status !== "done" && !onBackBurner(t)) || tickedHere(t.id))));
   if (mine.length === 0) return null;
   const today = localDay();
 
@@ -37,19 +34,7 @@ export function MyTasks() {
             <div key={t.id} className="flex items-center gap-4 border-b border-faint last:border-b-ink">
               <button
                 type="button"
-                onClick={() => {
-                  if (done) {
-                    void setTaskStatus(t.id, ticked[t.id] ?? "todo");
-                    setTicked((was) => {
-                      const next = { ...was };
-                      delete next[t.id];
-                      return next;
-                    });
-                  } else {
-                    setTicked((was) => ({ ...was, [t.id]: t.status }));
-                    void setTaskStatus(t.id, "done");
-                  }
-                }}
+                onClick={() => toggle(t)}
                 aria-label={done ? `Mark “${t.title}” not done` : `Mark “${t.title}” done`}
                 aria-pressed={done}
                 className={clsx("hit flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-ink", done ? "btn-invert btn-ink bg-ink text-paper" : "ink-press bg-paper text-ink")}

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 // the few text styles the beta terms and privacy notes are written in
 export function LegalHeading({ children }: { children: ReactNode }) {
-  return <h2 className="mt-7 mb-2 font-sans text-base font-bold tracking-[-0.01em] text-ink">{children}</h2>;
+  return <h2 className="mt-7 mb-2 font-sans text-base font-bold tracking-snug text-ink">{children}</h2>;
 }
 
 export function LegalParagraph({ children }: { children: ReactNode }) {

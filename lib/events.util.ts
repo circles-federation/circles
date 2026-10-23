@@ -196,3 +196,11 @@ export function attendeeIds(e: Event): number[] {
 export function isAttending(e: Event, memberId: number): boolean {
   return e.rsvps.includes(memberId) || (e.roles ?? []).some((r) => r.members.includes(memberId));
 }
+
+// an event that's the member's own: one they're going to (`going`, their
+// RSVP as this browser has it, may be ahead of the server) or organized,
+// for a circle or not. Home's Up next and the Events tab's Mine both list
+// these.
+export function isMyEvent(e: Event, memberId: number, going = false): boolean {
+  return going || isAttending(e, memberId) || e.organizerId === memberId;
+}
