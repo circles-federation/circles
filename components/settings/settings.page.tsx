@@ -54,6 +54,8 @@ export function SettingsPage({ notifications, availability, onLogout }: Settings
             <ArrowRightStartOnRectangleIcon className="size-4" strokeWidth={2.5} />
             Log out
           </Button>
+          {/* which Circles this is, for a bug report */}
+          <p className="mt-8 text-center font-sans text-label tracking-wide text-soft select-none">Circles R1 Beta 1</p>
         </Section>
       </SectionGroup>
 
