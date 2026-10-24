@@ -8,8 +8,8 @@ import { FIELD } from "./input";
 export interface RichOption<T extends string> {
   value: T;
   label: string;
-  // a line on what it is, under its name
-  hint: string;
+  // a line on what it is, under its name (none where the name says it all)
+  hint?: string;
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
   // the icon's own colour, where it has one (a bulletin kind's)
   iconClassName?: string;
@@ -26,17 +26,21 @@ interface RichSelectProps<T extends string> {
   label: string;
 }
 
-/* A choice from a few options that each need a word of explanation (what
-   kind of circle, what kind of bulletin item): a field-styled button showing
-   the one chosen, opening a list under it of each option's icon, name and a
-   line on what it is, which a native select can't show. Arrow keys move
-   through it, Enter or Space picks, Escape or a tap elsewhere closes it, and
+/* A choice from options that each want a word more than their name (what
+   kind of circle, what kind of bulletin item, a language in its own name):
+   a field-styled button showing the one chosen, opening a list under it of
+   each option's icon, name and a line on what it is, which a native select
+   can't show. A long list scrolls in itself. Arrow keys move through it, Enter or Space picks, Escape or a tap elsewhere closes it, and
    focus stays on the button throughout. */
 export function RichSelect<T extends string>({ id, options, value, onChange, placeholder = "Choose one", label }: RichSelectProps<T>) {
   const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  // the room under the field as it opens, so a long list ends on the screen
+  // (never shorter than four rows or so, scrolling the page for the rest)
+  const [room, setRoom] = useState<number | null>(null);
   const chosen = options.find((o) => o.value === value);
 
   useEffect(() => {
@@ -48,7 +52,15 @@ export function RichSelect<T extends string>({ id, options, value, onChange, pla
     return () => document.removeEventListener("pointerdown", close);
   }, [open]);
 
+  // a long list scrolls in itself: keep the one the keys are on in view
+  useEffect(() => {
+    if (open && active >= 0) listRef.current?.querySelector(`#${CSS.escape(`${listId}-${active}`)}`)?.scrollIntoView({ block: "nearest" });
+  }, [open, active, listId]);
+
   function openList() {
+    const box = wrapRef.current?.getBoundingClientRect();
+    const viewport = window.visualViewport?.height ?? window.innerHeight;
+    setRoom(box ? Math.max(256, viewport - box.bottom - 24) : null);
     // the one chosen, if any: nothing's highlighted until there's a reason
     setActive(options.findIndex((o) => o.value === value));
     setOpen(true);
@@ -95,7 +107,7 @@ export function RichSelect<T extends string>({ id, options, value, onChange, pla
             {chosen.icon && <chosen.icon className={clsx("size-5 shrink-0", chosen.iconClassName)} strokeWidth={2} aria-hidden />}
             <span className="min-w-0 flex-1">
               <span className="block font-sans text-base font-bold text-ink">{chosen.label}</span>
-              <span className="block truncate font-serif text-sm text-soft">{chosen.hint}</span>
+              {chosen.hint && <span className="block truncate font-serif text-sm text-soft">{chosen.hint}</span>}
             </span>
           </>
         ) : (
@@ -107,7 +119,8 @@ export function RichSelect<T extends string>({ id, options, value, onChange, pla
       {open && (
         // dropped a little below the field like the top bar's menu (TopBarMenu):
         // no outline, its shadow, grown from the field as it opens
-        <ul id={listId} role="listbox" aria-label={label} className="absolute inset-x-0 top-full z-20 m-0 mt-2 origin-top animate-menu-in list-none bg-paper p-0 shadow-float">
+        <ul ref={listRef} id={listId} role="listbox" aria-label={label} style={room ? { maxHeight: Math.min(room, 384) } : undefined}
+          className="absolute inset-x-0 top-full z-20 m-0 mt-2 max-h-96 origin-top animate-menu-in list-none overflow-y-auto overscroll-contain bg-paper p-0 shadow-float">
           {options.map((o, i) => {
             const selected = o.value === value;
             return (
@@ -125,7 +138,7 @@ export function RichSelect<T extends string>({ id, options, value, onChange, pla
                 {o.icon && <o.icon className={clsx("size-5 shrink-0", o.iconClassName)} strokeWidth={2} aria-hidden />}
                 <span className="min-w-0 flex-1">
                   <span className="block font-sans text-base font-semibold text-ink">{o.label}</span>
-                  <span className="block font-serif text-sm text-soft">{o.hint}</span>
+                  {o.hint && <span className="block font-serif text-sm text-soft">{o.hint}</span>}
                 </span>
                 {selected && <CheckIcon className="size-4 shrink-0 text-ink" strokeWidth={3} aria-hidden />}
               </li>

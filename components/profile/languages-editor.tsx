@@ -1,7 +1,7 @@
 "use client";
 
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { Select } from "@/components/shared";
+import { RichSelect } from "@/components/shared";
 import { LANGUAGE_CODES, LANGUAGE_LEVELS, MAX_LANGUAGES, languageEndonym, languageName } from "@/lib/languages.util";
 import type { MemberLanguage } from "@/lib/types";
 import { LanguageLevelBar } from "./language-level";
@@ -45,21 +45,20 @@ export function LanguagesEditor({ value, onChange }: { value: MemberLanguage[]; 
         </div>
       )}
       {value.length < MAX_LANGUAGES && (
-        <Select
-          aria-label="Add a language"
-          value=""
-          onChange={(e) => {
-            if (e.target.value) onChange([...value, { code: e.target.value, level: STARTING_LEVEL }]);
-          }}
-          className="min-[720px]:max-w-90"
-        >
-          <option value="">Add a language…</option>
-          {remaining.map((code) => {
-            const english = languageName(code);
-            const endonym = languageEndonym(code);
-            return <option key={code} value={code}>{endonym === english ? english : `${english} — ${endonym}`}</option>;
-          })}
-        </Select>
+        // a pick adds it, and the field goes back to asking
+        <div className="min-[720px]:max-w-90">
+          <RichSelect
+            label="Add a language"
+            placeholder="Add a language…"
+            value={null}
+            onChange={(code) => onChange([...value, { code, level: STARTING_LEVEL }])}
+            options={remaining.map((code) => {
+              const english = languageName(code);
+              const endonym = languageEndonym(code);
+              return { value: code, label: english, ...(endonym !== english ? { hint: endonym } : {}) };
+            })}
+          />
+        </div>
       )}
     </div>
   );

@@ -10,6 +10,8 @@ import { canonicalTag, tagSuggestions } from "@/lib/members.util";
 // keyboard (or the screen's edge) by a little
 const MIN_LIST_PX = 96;
 const LIST_MARGIN_PX = 8;
+// how far below the field it drops (its mt-2)
+const LIST_GAP_PX = 8;
 // how long after a finger lifts its click still counts as a pick
 const PICK_GRACE_MS = 400;
 
@@ -47,7 +49,7 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
       const field = inputRef.current?.getBoundingClientRect();
       if (!field) return;
       const visibleBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
-      setRoom(Math.max(MIN_LIST_PX, Math.floor(visibleBottom - field.bottom - LIST_MARGIN_PX)));
+      setRoom(Math.max(MIN_LIST_PX, Math.floor(visibleBottom - field.bottom - LIST_GAP_PX - LIST_MARGIN_PX)));
     };
     measure();
     viewport?.addEventListener("resize", measure);
@@ -133,7 +135,8 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
               : {})}
           />
           {suggestions.length > 0 && (
-            // over what follows, like a select's menu, with its shadow
+            // dropped a little below the field like the top bar's menu (and
+            // RichSelect): no outline, its shadow, grown from the field
             <ul
               id={listId}
               role="listbox"
@@ -141,7 +144,7 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
               onPointerUp={() => setTimeout(() => (picking.current = false), PICK_GRACE_MS)}
               onPointerCancel={() => (picking.current = false)}
               style={room !== null ? { maxHeight: room } : undefined}
-              className="absolute inset-x-0 top-full z-20 m-0 list-none overflow-y-auto overscroll-contain border border-t-0 border-ink bg-paper p-0 shadow-float"
+              className="absolute inset-x-0 top-full z-20 m-0 mt-2 origin-top animate-menu-in list-none overflow-y-auto overscroll-contain bg-paper p-0 shadow-float"
             >
               {suggestions.map((s, i) => (
                 <li
@@ -154,7 +157,7 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(s)}
                   onMouseEnter={() => setActive(i)}
-                  className={clsx("cursor-pointer border-b border-faint px-3 py-3 font-serif text-base last:border-b-0", i === active && "bg-wash")}
+                  className={clsx("cursor-pointer px-4 py-3 font-sans text-base font-semibold text-ink", i > 0 && "border-t border-faint", i === active && "bg-wash")}
                 >
                   {s}
                 </li>
