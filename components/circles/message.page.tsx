@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { ArrowUturnLeftIcon, CheckCircleIcon, InboxArrowDownIcon } from "@heroicons/react/24/outline";
 import { Avatar, Button, ButtonLink, Eyebrow, PageContainer, RichSelect } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { rolesHeldBy } from "@/lib/circle-roles.util";
 import { fmtDateTime } from "@/lib/format.util";
 import { useMemberById } from "@/lib/hooks";
 import { messageHtml } from "@/lib/messages.util";
@@ -87,7 +88,7 @@ export function MessagePage({ message: m, circle, onOpenMember }: MessagePagePro
               value={handler ? String(handler.id) : null}
               onChange={(v) => void assignMessage(m.id, v === "none" ? null : Number(v))}
               options={[
-                ...circleMembers.map((x) => ({ value: String(x.id), label: x.id === profile.id ? `${x.name} (you)` : x.name, ...(x.role ? { hint: x.role } : {}) })),
+                ...circleMembers.map((x) => ({ value: String(x.id), label: x.id === profile.id ? `${x.name} (you)` : x.name, badges: rolesHeldBy(circle, x.id) })),
                 ...(handler ? [{ value: "none", label: "No one", hint: "Put it back for anyone to take" }] : []),
               ]}
             />

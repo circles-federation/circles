@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { CalendarIcon, CheckCircleIcon, Cog6ToothIcon, EnvelopeIcon, GlobeAltIcon, MapIcon, PhoneIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, Tag } from "@/components/shared";
+import { Avatar, Badge, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
@@ -294,13 +294,9 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
                       {rolesHeldBy(c, m.id).length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {rolesHeldBy(c, m.id).map((role) => (
-                            <span
-                              key={role}
-                              title={`Role in ${c.name}`}
-                              className="ink-press-badge inline-flex items-center whitespace-nowrap border border-ink bg-paper px-2 py-1 font-sans text-label font-bold uppercase tracking-caps text-ink"
-                            >
+                            <Badge key={role} title={`Role in ${c.name}`}>
                               {role}
-                            </span>
+                            </Badge>
                           ))}
                         </div>
                       )}

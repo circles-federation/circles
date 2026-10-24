@@ -21,6 +21,7 @@ export { ForwardLink } from "./forward-link";
 export { DISABLED_FIELD, FIELD, FIELD_ROW, FIELD_ROW_DISABLED, Input, ROW_INPUT } from "./input";
 export { Label } from "./label";
 export { LinkRow } from "./link-row";
+export { Badge } from "./badge";
 export { RingIcon } from "./ring-icon";
 export { RichSelect, type RichOption } from "./rich-select";
 export { TopBarMenu, MenuIconFace, type TopBarMenuItem } from "./top-bar-menu";

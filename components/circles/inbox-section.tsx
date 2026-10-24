@@ -52,7 +52,7 @@ export function InboxSection({ circle }: { circle: Circle }) {
             const sender = m.senderId !== undefined ? memberById(m.senderId) : undefined;
             const handler = m.assigneeId !== undefined ? memberById(m.assigneeId) : undefined;
             return (
-              <Link key={m.id} href={`/circles/${circle.id}/inbox/${m.id}`} className="relative flex gap-3 border-b border-faint py-4 pr-1 text-ink no-underline">
+              <Link key={m.id} href={`/circles/${circle.id}/inbox/${m.id}`} className="relative flex gap-3 border-b border-faint py-4 pr-1 text-ink no-underline last:border-b-ink">
                 {!m.read && <span aria-label="New" className="absolute top-1/2 -left-3.5 size-2 -translate-y-1/2 rounded-full bg-action" />}
                 {sender ? <Avatar member={sender} size={44} /> : <span className="size-11 shrink-0 border border-ink bg-faint" />}
                 <span className="min-w-0 flex-1">

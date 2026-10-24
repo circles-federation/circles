@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent, type SVGProps } from "react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { Badge } from "./badge";
 import { FIELD } from "./input";
 
 export interface RichOption<T extends string> {
@@ -13,6 +14,8 @@ export interface RichOption<T extends string> {
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
   // the icon's own colour, where it has one (a bulletin kind's)
   iconClassName?: string;
+  // short labels beside the name, as outlined badges (a member's roles)
+  badges?: string[];
 }
 
 interface RichSelectProps<T extends string> {
@@ -106,7 +109,7 @@ export function RichSelect<T extends string>({ id, options, value, onChange, pla
           <>
             {chosen.icon && <chosen.icon className={clsx("size-5 shrink-0", chosen.iconClassName)} strokeWidth={2} aria-hidden />}
             <span className="min-w-0 flex-1">
-              <span className="block font-sans text-base font-bold text-ink">{chosen.label}</span>
+              <OptionName label={chosen.label} badges={chosen.badges} className="font-bold" />
               {chosen.hint && <span className="block truncate font-serif text-sm text-soft">{chosen.hint}</span>}
             </span>
           </>
@@ -137,7 +140,7 @@ export function RichSelect<T extends string>({ id, options, value, onChange, pla
               >
                 {o.icon && <o.icon className={clsx("size-5 shrink-0", o.iconClassName)} strokeWidth={2} aria-hidden />}
                 <span className="min-w-0 flex-1">
-                  <span className="block font-sans text-base font-semibold text-ink">{o.label}</span>
+                  <OptionName label={o.label} badges={o.badges} className="font-semibold" />
                   {o.hint && <span className="block font-serif text-sm text-soft">{o.hint}</span>}
                 </span>
                 {selected && <CheckIcon className="size-4 shrink-0 text-ink" strokeWidth={3} aria-hidden />}
@@ -147,5 +150,20 @@ export function RichSelect<T extends string>({ id, options, value, onChange, pla
         </ul>
       )}
     </div>
+  );
+}
+
+// an option's name, with its badges (if any) after it, wrapping under it
+// when there isn't room
+function OptionName({ label, badges, className }: { label: string; badges: string[] | undefined; className: string }) {
+  return (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className={clsx("font-sans text-base text-ink", className)}>{label}</span>
+      {badges?.map((b) => (
+        <Badge key={b} variant="subtle">
+          {b}
+        </Badge>
+      ))}
+    </span>
   );
 }
