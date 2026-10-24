@@ -39,7 +39,7 @@ export function Modal({ onClose, className, title, centered, role = "dialog", ch
     <div
       onClick={onClose}
       className={clsx(
-        "fixed inset-0 z-100 flex justify-center overflow-y-auto overscroll-contain bg-ink/40 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
+        "fixed inset-0 z-100 flex justify-center overflow-y-auto overscroll-contain bg-scrim/40 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
         centered ? "items-center pt-[calc(1.25rem+env(safe-area-inset-top))]" : "items-start pt-[calc(3.75rem+env(safe-area-inset-top))]",
       )}
     >
@@ -47,7 +47,7 @@ export function Modal({ onClose, className, title, centered, role = "dialog", ch
         role={role}
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className={clsx("w-full bg-paper shadow-overlay", className)}
+        className={clsx("w-full bg-raised shadow-overlay", className)}
       >
         {title && (
           // laid out like the top bar: -ml-3 lines the X up with the edge,

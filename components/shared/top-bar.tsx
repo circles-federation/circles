@@ -42,7 +42,7 @@ const ICON_BUTTON_FILL = {
   primary: "bg-action text-paper group-active:brightness-90",
   // a Save that proposes, for its circle's consent: the governance orange
   propose: "bg-flame text-paper group-active:brightness-90",
-  secondary: "bg-ink text-paper",
+  secondary: "bg-chrome text-on-chrome",
 };
 
 /* The circle of an icon button, for ICON_BUTTON_SLOT's button or link to put
@@ -131,7 +131,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     return members.find((m) => String(m.id) === id)?.name ?? "Profile";
   }
   if (section === "game") return "Hi, neighbor";
-  if (section === "settings") return id === "notifications" ? "Notifications" : id === "availability" ? "Meeting availability" : "Settings";
+  if (section === "settings") return id === "notifications" ? "Notifications" : id === "availability" ? "Meeting availability" : id === "appearance" ? "Appearance" : "Settings";
   if (section === "admin") return id === "photos" ? "New photo" : id === "applications" && sub ? "Application" : "Review";
   if (section === "invitations") return "Invitation";
   if (section === "proposals") return "Proposal";

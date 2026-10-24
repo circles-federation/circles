@@ -153,7 +153,7 @@ function FilterGroup({ group: g, isLast }: { group: FilterGroupData; isLast: boo
    below the search row. */
 function FilterMenu({ groups }: { groups: FilterGroupData[] }) {
   return (
-    <div className="absolute top-[calc(100%+4px)] right-0 z-40 max-h-100 min-w-55 max-w-full overflow-y-auto border border-ink bg-paper shadow-float">
+    <div className="absolute top-[calc(100%+4px)] right-0 z-40 max-h-100 min-w-55 max-w-full overflow-y-auto border border-ink bg-raised shadow-float">
       {groups.map((g, gi) => (
         <FilterGroup key={g.label || gi} group={g} isLast={gi === groups.length - 1} />
       ))}

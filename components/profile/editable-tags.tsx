@@ -144,7 +144,7 @@ export function EditableTags({ values, onChange, placeholder, pool }: EditableTa
               onPointerUp={() => setTimeout(() => (picking.current = false), PICK_GRACE_MS)}
               onPointerCancel={() => (picking.current = false)}
               style={room !== null ? { maxHeight: room } : undefined}
-              className="absolute inset-x-0 top-full z-20 m-0 mt-2 origin-top animate-menu-in list-none overflow-y-auto overscroll-contain bg-paper p-0 shadow-float"
+              className="absolute inset-x-0 top-full z-20 m-0 mt-2 origin-top animate-menu-in list-none overflow-y-auto overscroll-contain bg-raised p-0 shadow-float"
             >
               {suggestions.map((s, i) => (
                 <li

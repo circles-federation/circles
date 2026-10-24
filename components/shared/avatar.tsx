@@ -49,7 +49,7 @@ export function Avatar({ member: m, size = 44, sizeClassName, className, showPen
       <div style={style} title="Waiting for review. Until it's approved, others see your current photo." className={clsx("relative shrink-0 border border-ink", sizeClassName, className)}>
         {/* eslint-disable-next-line @next/next/no-img-element -- served only to the member and admins, by version */}
         <img src={pendingPhotoFor(m.id, profile.pendingPhotoVersion)} alt="" className="size-full object-cover" />
-        <span className="absolute inset-x-0 bottom-0 bg-ink/80 py-1 text-center font-sans text-label font-bold tracking-caps text-paper uppercase">In review</span>
+        <span className="absolute inset-x-0 bottom-0 bg-scrim/80 py-1 text-center font-sans text-label font-bold tracking-caps text-on-chrome uppercase">In review</span>
       </div>
     );
   }

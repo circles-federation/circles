@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./themes/luna.css";
 
 /* ============================================================
    Design tokens — the single source of truth for the app's colors,
@@ -45,6 +46,17 @@
   --color-email: #3b8fd9; /* a circle's email address: its square, a sky blue lighter than the website's (action) beside it, still 3.4:1 against its white icon */
   --color-action: #1f5fbf; /* a primary icon button, like the top bar's Save (the same blue as file, for a different job) */
   --color-accept: #f0b400; /* a proposal's yellow answer, "Accept this": between leaf ("Like this") and danger ("Object"), with ink text on it */
+  /* three roles a theme can set apart from ink and paper, all equal to them in
+     Sol: chrome, the app's own strong surface (the bottom nav, the top bar's
+     circles, a table's header row), and what's set on it; and raised, the
+     ground of what floats over the page (menus, dialogs, toasts, dropdown
+     lists), which a dark theme lightens, since a shadow doesn't show there */
+  --color-chrome: #0a0a0a;
+  --color-on-chrome: #ffffff;
+  --color-raised: #ffffff;
+  /* and scrim, what dims or darkens, whatever the theme: behind a dialog, a
+     band over a photo */
+  --color-scrim: #0a0a0a;
   --color-warning: #f0b400; /* a heads-up that something may not go ahead (a slot still short): yellow, kept apart from flame, which means a decision is waiting. Too light for text on white, so it fills, rules and tints, with ink on it */
 
   /* elevation: two levels, for what sits above the page. Float hovers over
@@ -255,7 +267,7 @@ body {
   /* Where keyboard focus is, in the house style: a square ink outline set
      off the element, only for the keyboard (a tap or a click shows none).
      Fields show theirs with their own ink bottom rule (FIELD) instead, and
-     on the ink bottom nav (.on-ink) it's paper. In the base layer, so an
+     on chrome (.on-chrome: the bottom nav, a table's header) it's chrome's own. In the base layer, so an
      element can still set its own outline. */
   :focus-visible {
     outline: 2px solid var(--color-ink);
@@ -266,8 +278,8 @@ body {
   select:focus-visible {
     outline: none;
   }
-  .on-ink :focus-visible {
-    outline-color: var(--color-paper);
+  .on-chrome :focus-visible {
+    outline-color: var(--color-on-chrome);
   }
 
   /* iOS draws date and time fields as native controls with a minimum width

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { PressFeedback, ToastProvider } from "@/components/shared";
+import { LIGHT_THEME, themeByKey, themeScript } from "@/lib/themes.util";
 
 export const metadata: Metadata = {
   title: "Circles",
@@ -18,7 +19,8 @@ export const metadata: Metadata = {
 // stays put as in a native app; Safari doesn't support it yet, which is what
 // AppShell's useIosKeyboard stands in for until it does.
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  // the light theme's, until the theme script (below) sets this device's
+  themeColor: themeByKey(LIGHT_THEME).browserColor,
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
 };
@@ -33,8 +35,12 @@ const INSTALL_OFFER_CATCHER = `addEventListener("beforeinstallprompt", function 
 // useToast() for free.
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the theme script sets data-theme on <html>
+    // before React gets to it, which is meant
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* this device's theme, before anything draws (lib/themes.util.ts) */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript() }} />
         {/* the browser's offer to install the app can come before any of the
             app's own code has loaded, so it's held here for lib/install.ts */}
         <script dangerouslySetInnerHTML={{ __html: INSTALL_OFFER_CATCHER }} />

@@ -1,8 +1,10 @@
 "use client";
 
-import { BellIcon, ClockIcon, UserCircleIcon } from "@heroicons/react/24/outline";
+import { BellIcon, ClockIcon, SwatchIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { usePushSubscription } from "@/lib/hooks";
+import { useTheme } from "@/lib/theme";
+import { themeByKey } from "@/lib/themes.util";
 import type { AvailabilityWindow, NotificationSettings } from "@/lib/types";
 
 interface SettingsPageProps {
@@ -33,6 +35,9 @@ export function SettingsPage({ notifications, availability }: SettingsPageProps)
   const device = usePushSubscription();
   // left blank until this device's push has been read, rather than changing
   // under the reader a moment later
+  const theme = useTheme();
+  // what this device looks like: Automatic says which it's come to
+  const appearance = theme && (theme.choice === "auto" ? `Automatic · ${themeByKey(theme.theme).label} now` : themeByKey(theme.theme).label);
   const summary = device.status === "unknown" ? undefined : notificationsSummary(notifications.email, notifications.push && device.status === "on");
 
   return (
@@ -44,6 +49,7 @@ export function SettingsPage({ notifications, availability }: SettingsPageProps)
             <MenuRow href="/profile/edit" icon={UserCircleIcon} label="Edit profile" detail="Your photo, bio, and more" />
             <MenuRow href="/settings/notifications" icon={BellIcon} label="Notifications" detail={summary} />
             <MenuRow href="/settings/availability" icon={ClockIcon} label="Meeting availability" detail={availabilitySummary(availability)} />
+            <MenuRow href="/settings/appearance" icon={SwatchIcon} label="Appearance" detail={appearance ?? undefined} />
           </div>
         </Section>
 

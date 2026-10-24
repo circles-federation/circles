@@ -90,7 +90,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               className={clsx(
                 // floating chrome, like a dialog: no outline, the bottom nav's
                 // soft shadow, and its tone as a rule down the left
-                "pointer-events-auto flex items-start gap-1 border-l-[5px] bg-paper py-4 pr-1.5 pl-4 text-ink shadow-overlay animate-[toastIn_var(--motion-screen)_var(--ease-enter)]",
+                "pointer-events-auto flex items-start gap-1 border-l-[5px] bg-raised py-4 pr-1.5 pl-4 text-ink shadow-overlay animate-[toastIn_var(--motion-screen)_var(--ease-enter)]",
                 tone.border,
               )}
             >

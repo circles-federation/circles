@@ -46,7 +46,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
 
   return (
     // floats over the page, like iOS's tab bar (a pill, an exception to
-    // the app's square corners) but ink: the same gap from the screen's bottom
+    // the app's square corners) but chrome (ink, in Sol): the same gap from the screen's bottom
     // and sides (--bottom-nav-gap, clear of the home indicator), and clear of a
     // landscape notch, with the page scrolling
     // on underneath it (AppShell's bottom padding clears it at the end). The
@@ -54,7 +54,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
     <nav
       inert={away}
       className={clsx(
-        "app-chrome on-ink flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-ink/85 px-3 backdrop-blur-md shadow-overlay",
+        "app-chrome on-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-chrome/85 px-3 backdrop-blur-md shadow-overlay",
         "transition-[translate,opacity] duration-(--motion-screen) ease-(--ease-enter) motion-reduce:transition-none",
         away && "pointer-events-none translate-y-[calc(100%+var(--bottom-nav-gap))] opacity-0"
       )}
@@ -62,7 +62,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
         const active = currentTab === href;
         const Icon = active ? Solid : Outline;
-        const color = active ? "text-paper" : "text-paper/60";
+        const color = active ? "text-on-chrome" : "text-on-chrome/60";
         return (
           <Link
             key={href}

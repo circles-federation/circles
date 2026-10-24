@@ -142,11 +142,11 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
               aria-label={label}
               onKeyDown={onMenuKey}
               style={{ top: place.top, right: place.right }}
-              className="fixed z-60 w-56 origin-top-right animate-menu-in bg-paper shadow-float"
+              className="fixed z-60 w-56 origin-top-right animate-menu-in bg-raised shadow-float"
             >
               {items.map(({ label: itemLabel, href, file, onSelect, disabled, danger, icon: Icon, iconClassName }, i) => {
                 const className = clsx(
-                  "flex w-full items-center gap-3 border-0 bg-paper px-4 py-3 text-left font-sans text-base font-semibold no-underline outline-offset-[-2px]",
+                  "flex w-full items-center gap-3 border-0 bg-raised px-4 py-3 text-left font-sans text-base font-semibold no-underline outline-offset-[-2px]",
                   disabled ? "cursor-default text-ghost" : clsx("cursor-pointer hover:bg-wash focus-visible:bg-wash active:bg-wash", danger ? "text-danger" : "text-ink"),
                   i > 0 && "border-t border-solid border-faint",
                 );
@@ -179,11 +179,11 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
   );
 }
 
-// a menu button's face when it's an icon: white on ink, like the bar's other
+// a menu button's face when it's an icon: on chrome (white on ink, in Sol), like the bar's other
 // secondary actions
 export function MenuIconFace({ icon: Icon }: { icon: ComponentType<SVGProps<SVGSVGElement>> }) {
   return (
-    <span className="flex size-full items-center justify-center bg-ink text-paper">
+    <span className="flex size-full items-center justify-center bg-chrome text-on-chrome">
       <Icon className="size-5" strokeWidth={2.5} />
     </span>
   );

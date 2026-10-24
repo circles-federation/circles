@@ -120,7 +120,7 @@ export function RichSelect<T extends string>({ id, options, value, onChange, pla
         // dropped a little below the field like the top bar's menu (TopBarMenu):
         // no outline, its shadow, grown from the field as it opens
         <ul ref={listRef} id={listId} role="listbox" aria-label={label} style={room ? { maxHeight: Math.min(room, 384) } : undefined}
-          className="absolute inset-x-0 top-full z-20 m-0 mt-2 max-h-96 origin-top animate-menu-in list-none overflow-y-auto overscroll-contain bg-paper p-0 shadow-float">
+          className="absolute inset-x-0 top-full z-20 m-0 mt-2 max-h-96 origin-top animate-menu-in list-none overflow-y-auto overscroll-contain bg-raised p-0 shadow-float">
           {options.map((o, i) => {
             const selected = o.value === value;
             return (

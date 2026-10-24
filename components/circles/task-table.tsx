@@ -44,13 +44,13 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
   const today = localDay();
 
   // every heading centred on the header row's height, label or not
-  const heading = clsx(CELL, "py-3 text-left align-middle font-sans text-label leading-none font-bold tracking-caps text-paper uppercase");
+  const heading = clsx(CELL, "py-3 text-left align-middle font-sans text-label leading-none font-bold tracking-caps text-on-chrome uppercase");
 
   return (
     // fixed widths, so a long title wraps rather than squeezing the rest
     <table className="w-full table-fixed border-collapse" aria-label={label}>
-      {/* the header row in ink; on-ink makes keyboard focus paper there */}
-      <thead className="on-ink bg-ink">
+      {/* the header row in chrome (ink, in Sol); on-chrome sets keyboard focus to match */}
+      <thead className="on-chrome bg-chrome">
         <tr>
           <th scope="col" className="w-11 py-3 pl-3 align-middle">
             <span className="sr-only">Done</span>
