@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -33,11 +34,16 @@ interface TopBarMenuProps {
    raised circle as every other top bar action. The menu drops from the
    button like a context menu, with no arrow back to it, and the button sits
    pressed in (its shadow gone) while it's open. A tap outside, Escape or
-   choosing an item closes it; arrow keys move between its items, and Enter
+   choosing an item closes it. Outside, that tap does nothing else: while it's
+   open, a clear layer covers the screen, bars included, so what's under the
+   finger isn't pressed too (the menu sits over that layer, so both are laid
+   on the page itself rather than in the top bar, placed from the button); arrow keys move between its items, and Enter
    or Space on the button opens or closes it. */
 export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // where the menu hangs, under the button's right edge, read as it opens
+  const [place, setPlace] = useState({ top: 0, right: 0 });
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -49,21 +55,25 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
     setOpen(false);
   }
 
+  function show() {
+    const box = button.current?.getBoundingClientRect();
+    if (box) setPlace({ top: box.bottom + 8, right: window.innerWidth - box.right });
+    setOpen(true);
+  }
+
   useEffect(() => {
     if (!open) return;
-    const away = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (!menu.current?.contains(target) && !button.current?.contains(target)) setOpen(false);
-    };
+    // placed from where the button was: a resize (a phone turned) moves it
+    const away = () => setOpen(false);
     const escape = (e: globalThis.KeyboardEvent) => {
       if (e.key !== "Escape") return;
       setOpen(false);
       button.current?.focus();
     };
-    document.addEventListener("pointerdown", away);
+    window.addEventListener("resize", away);
     document.addEventListener("keydown", escape);
     return () => {
-      document.removeEventListener("pointerdown", away);
+      window.removeEventListener("resize", away);
       document.removeEventListener("keydown", escape);
     };
   }, [open]);
@@ -89,7 +99,7 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
       setOpen(false);
       return;
     }
-    setOpen(true);
+    show();
     // once it's drawn: from the keyboard, the first item takes focus
     requestAnimationFrame(() => menuItems()[0]?.focus());
   }
@@ -99,7 +109,7 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
       <button
         ref={button}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? setOpen(false) : show())}
         onKeyDown={onButtonKey}
         aria-label={label}
         aria-haspopup="menu"
@@ -118,44 +128,51 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
         </span>
       </button>
 
-      {open && (
-        <div
-          ref={menu}
-          id={menuId}
-          role="menu"
-          aria-label={label}
-          onKeyDown={onMenuKey}
-          className="absolute top-full right-0 z-10 mt-2 w-56 origin-top-right animate-menu-in bg-paper shadow-float"
-        >
-          {items.map(({ label: itemLabel, href, file, onSelect, disabled, icon: Icon, iconClassName }, i) => {
-            const className = clsx(
-              "flex w-full items-center gap-3 border-0 bg-paper px-4 py-3 text-left font-sans text-base font-semibold no-underline outline-offset-[-2px]",
-              disabled ? "cursor-default text-ghost" : "cursor-pointer text-ink hover:bg-wash focus-visible:bg-wash active:bg-wash",
-              i > 0 && "border-t border-solid border-faint",
-            );
-            const content = (
-              <>
-                <Icon className={clsx("size-5 shrink-0", iconClassName)} strokeWidth={2} aria-hidden />
-                {itemLabel}
-              </>
-            );
-            const choose = () => {
-              setOpen(false);
-              onSelect?.();
-            };
-            if (disabled) {
-              return (
-                <button key={itemLabel} type="button" role="menuitem" aria-disabled disabled className={className}>
-                  {content}
-                </button>
-              );
-            }
-            if (!href) return <button key={itemLabel} type="button" role="menuitem" onClick={choose} className={className}>{content}</button>;
-            if (file) return <a key={itemLabel} role="menuitem" href={href} onClick={choose} className={className}>{content}</a>;
-            return <Link key={itemLabel} role="menuitem" href={href} onClick={choose} className={className}>{content}</Link>;
-          })}
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <>
+            {/* over everything but dialogs and toasts: a tap on it only closes the menu */}
+            <div aria-hidden className="fixed inset-0 z-60" onClick={() => setOpen(false)} />
+            <div
+              ref={menu}
+              id={menuId}
+              role="menu"
+              aria-label={label}
+              onKeyDown={onMenuKey}
+              style={{ top: place.top, right: place.right }}
+              className="fixed z-60 w-56 origin-top-right animate-menu-in bg-paper shadow-float"
+            >
+              {items.map(({ label: itemLabel, href, file, onSelect, disabled, icon: Icon, iconClassName }, i) => {
+                const className = clsx(
+                  "flex w-full items-center gap-3 border-0 bg-paper px-4 py-3 text-left font-sans text-base font-semibold no-underline outline-offset-[-2px]",
+                  disabled ? "cursor-default text-ghost" : "cursor-pointer text-ink hover:bg-wash focus-visible:bg-wash active:bg-wash",
+                  i > 0 && "border-t border-solid border-faint",
+                );
+                const content = (
+                  <>
+                    <Icon className={clsx("size-5 shrink-0", iconClassName)} strokeWidth={2} aria-hidden />
+                    {itemLabel}
+                  </>
+                );
+                const choose = () => {
+                  setOpen(false);
+                  onSelect?.();
+                };
+                if (disabled) {
+                  return (
+                    <button key={itemLabel} type="button" role="menuitem" aria-disabled disabled className={className}>
+                      {content}
+                    </button>
+                  );
+                }
+                if (!href) return <button key={itemLabel} type="button" role="menuitem" onClick={choose} className={className}>{content}</button>;
+                if (file) return <a key={itemLabel} role="menuitem" href={href} onClick={choose} className={className}>{content}</a>;
+                return <Link key={itemLabel} role="menuitem" href={href} onClick={choose} className={className}>{content}</Link>;
+              })}
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }
