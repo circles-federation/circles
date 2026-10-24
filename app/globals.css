@@ -48,7 +48,7 @@
   --color-warning: #f0b400; /* a heads-up that something may not go ahead (a slot still short): yellow, kept apart from flame, which means a decision is waiting. Too light for text on white, so it fills, rules and tints, with ink on it */
 
   /* elevation: two levels, for what sits above the page. Float hovers over
-     the page (the floating button, the top bar's filled circles, menus); overlay is over everything (dialogs,
+     the page (the top bar's filled circles, its menus, the welcome page's floating button); overlay is over everything (dialogs,
      toasts, the bottom nav). Anything on the page itself has none. */
   --shadow-float: 0 4px 14px rgba(10, 10, 10, 0.18);
   --shadow-overlay: 0 6px 20px rgba(10, 10, 10, 0.28);

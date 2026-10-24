@@ -19,7 +19,8 @@ function NewEventRoute() {
       // ?host= comes from a circle page's Events tab; the form ignores a
       // circle the person can't host from
       initialHostCircleId={searchParams.get("host") ?? undefined}
-      // ?circle= from a group's Events tab: shown to the group, since it can't host
+      // ?circle= from a group's page: shown to the group, since it can't host;
+      // or, with ?kind=meeting, a circle page's New meeting
       initialCircleId={searchParams.get("circle") ?? undefined}
       // ?kind=meeting from the Events list's New meeting
       initialKind={searchParams.get("kind") === "meeting" ? "meeting" : "ordinary"}

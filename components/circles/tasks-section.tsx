@@ -11,7 +11,7 @@ import { TaskTable } from "./task-table";
 
 interface TasksSectionProps {
   circle: Circle;
-  // the page's floating + opens the add form, so the page owns that
+  // the top bar's menu opens the add form, so the page owns that
   adding: boolean;
   onAdd: () => void;
   onAddingDone: () => void;

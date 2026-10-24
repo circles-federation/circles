@@ -45,7 +45,8 @@ interface CreateEventFormPageProps extends EventFormPageBaseProps {
   mode: "create";
   // start as a proposal hosted by this circle, shown to it
   initialHostCircleId?: string;
-  // start shown to this circle, hosted by the person (a group, which can't host)
+  // start shown to this circle, hosted by the person (a group, which can't
+  // host), or as its meeting
   initialCircleId?: string;
   // start on the Meeting tab (the Events list's New meeting)
   initialKind?: EventKindKey;
@@ -93,9 +94,11 @@ export function EventFormPage(props: EventFormPageProps) {
   // only a circle they could pick themselves
   const requestedCircle = mode === "create" && props.initialCircleId ? postable.find((c) => c.id === props.initialCircleId) : undefined;
   // opened as a meeting: started as switching to the Meeting tab leaves it
-  // (see changeType), titled "Meeting", in a circle that can hold one
+  // (see changeType), titled "Meeting", in a circle that can hold one: the
+  // one it was opened from (a circle page's New meeting), or the first
+  const holdsMeetings = (c: Circle) => !isRootCircle(c) && circleCanHoldMeetings(c);
   const startsAsMeeting = mode === "create" && props.initialKind === "meeting";
-  const firstMeetingCircle = postable.find((c) => !isRootCircle(c) && circleCanHoldMeetings(c));
+  const firstMeetingCircle = requestedCircle && holdsMeetings(requestedCircle) ? requestedCircle : postable.find(holdsMeetings);
 
   // the form's starting values — blank defaults for a new event, or the
   // event's own current values when editing. `dirty` (below) diffs live

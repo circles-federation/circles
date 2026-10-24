@@ -8,9 +8,7 @@ import { activeTab } from "@/lib/nav.util";
 import "@/lib/install";
 import { registerServiceWorker } from "@/lib/push-client";
 import { isInstalledApp } from "@/lib/viewport";
-import { useCurrentFloatingAction } from "@/components/providers/floating-action-provider";
 import { BottomNav } from "./bottom-nav";
-import { FloatingActionButton } from "./floating-action-button";
 import { TopBar } from "./top-bar";
 
 /* The chrome every authenticated route shares: the sticky top nav and the
@@ -35,7 +33,6 @@ import { TopBar } from "./top-bar";
 export function AppShell({ children }: { children: ReactNode }) {
   const mainRef = useRef<HTMLElement>(null);
   const showNav = activeTab(usePathname()) !== null;
-  const fab = useCurrentFloatingAction();
   const onScroll = useScrollRestoration(mainRef);
   useBlockEdgeSwipe();
   useBlockPinchZoom();
@@ -57,15 +54,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         ref={mainRef}
         onScroll={onScroll}
         className={clsx(
-          // room at the end of the page to scroll clear of the bottom nav, and
-          // of a floating action button above it
-          showNav
-            ? fab.shown
-              ? "max-[719px]:pb-[calc(var(--bottom-nav-gap)+9rem)]"
-              : "max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.75rem)]"
-            : fab.shown
-              ? "max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.5rem)]"
-              : "max-[719px]:pb-[env(safe-area-inset-bottom)]",
+          // room at the end of the page to scroll clear of the bottom nav
+          showNav ? "max-[719px]:pb-[calc(var(--bottom-nav-gap)+4.75rem)]" : "max-[719px]:pb-[env(safe-area-inset-bottom)]",
           "standalone:flex-1 standalone:overflow-y-auto standalone:overflow-x-hidden standalone:pt-(--top-bar-height) standalone:scroll-pt-(--top-bar-height)"
         )}
       >
@@ -74,21 +64,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <BottomNav onReselect={scrollToTop} away={!showNav} />
-
-      {/* a phone: the page's floating action, above the right end of the
-          bottom nav, dropping to where the nav was while it's away; wider,
-          TopBar has it beside its own action instead */}
-      {fab.shown && (
-        <FloatingActionButton
-          icon={fab.shown.icon}
-          label={fab.shown.label}
-          onClick={fab.run}
-          className={clsx(
-            "fixed right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-40 transition-[bottom] duration-(--motion-screen) ease-(--ease-enter) motion-reduce:transition-none min-[720px]:hidden",
-            showNav ? "bottom-[calc(var(--bottom-nav-gap)+4.5rem)]" : "bottom-(--bottom-nav-gap)"
-          )}
-        />
-      )}
     </div>
   );
 }

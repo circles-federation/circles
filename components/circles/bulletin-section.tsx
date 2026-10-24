@@ -19,7 +19,7 @@ import { RESOURCE_ICONS, RESOURCE_ICON_TEXT, resourceOption } from "./resource-k
    AppState's `resources` only ever holds the viewer's own circles' (see
    lib/db/resources.ts), so this never has to filter anyone out. Adding,
    editing, and removing save immediately, each as its own change rather than
-   part of the Manage form. Its + sits in the circle page's tab row, so that
+   part of the Manage form. Posting is in the circle page's top bar menu, so that
    page owns whether the add dialog is open (`adding`). On a phone the form is
    a page instead (ResourceFormPage): `onAdd` goes there, and so does editing,
    through `onEditPage`. */
@@ -41,7 +41,7 @@ export function BulletinSection({ circleId, adding, onAdd, onAddingDone, onEditP
     <div>
       {mine.length === 0 ? (
         // an empty board is where adding the first item is offered, as a blank
-        // card to fill in; once something's pinned, the tab row's + is enough
+        // card to fill in; once something's pinned, the top bar's menu is enough
         <button
           type="button"
           onClick={onAdd}

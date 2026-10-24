@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
-import { EnvelopeIcon, GlobeAltIcon, MapIcon, PhoneIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { CalendarIcon, CheckCircleIcon, Cog6ToothIcon, EnvelopeIcon, GlobeAltIcon, MapIcon, PhoneIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
@@ -8,10 +8,10 @@ import { BulletinSection } from "./bulletin-section";
 import { TasksSection } from "./tasks-section";
 import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { useFloatingAction } from "@/components/providers/floating-action-provider";
+import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { CIRCLE_TYPE_LABEL, circleChildren, circleContact, circleHasTasks, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleCanHoldMeetings, circleChildren, circleContact, circleHasTasks, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
@@ -86,7 +86,7 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   ];
   const websiteUrl = c.website ? circleWebsiteUrl(c.website) : null;
   const contact = c.contact ? circleContact(c.contact) : null;
-  // the bulletin's + lives in the tab row, so opening its add dialog is kept here
+  // posting on the bulletin is in the top bar's menu, so opening its add dialog is kept here
   const [adding, setAdding] = useState(false);
   const startAdding = () => (isPhoneWidth() ? onAddResourcePage() : setAdding(true));
   // so is the tasks' +
@@ -97,18 +97,40 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   // this circle's invitations not yet accepted
   const invited = invitations.filter((i) => i.circleId === c.id);
 
-  // the active tab's floating action: add to the bulletin, invite someone,
-  // or host an event (only a member can); none on the wiki
-  useFloatingAction(
-    activeTab === "bulletin"
-      ? { label: "Add to bulletin", icon: PlusIcon, onAction: startAdding }
-      : activeTab === "tasks"
-        ? { label: "New task", icon: PlusIcon, onAction: startAddingTask }
-      : activeTab === "members" && isMember
-        ? { label: "Invite", icon: UserPlusIcon, onAction: startInviting }
-        : activeTab === "events" && isMember
-          ? { label: "New event", icon: PlusIcon, onAction: onNewEvent }
-          : null
+  /* The top bar's menu, for a member: managing it, and what the tabs' own
+     buttons do, from whichever tab is showing. Posting and adding a task
+     open where they're listed, so they go to that tab first. Nothing to
+     anyone else, who has nothing here to do. */
+  useTopBarMenu(
+    isMember
+      ? [
+          { label: "Manage circle", href: `/circles/${c.id}/manage`, icon: Cog6ToothIcon },
+          {
+            label: "Post on bulletin",
+            icon: PlusIcon,
+            onSelect: () => {
+              changeTab("bulletin");
+              startAdding();
+            },
+          },
+          ...(hasTasks
+            ? [
+                {
+                  label: "New task",
+                  icon: CheckCircleIcon,
+                  onSelect: () => {
+                    changeTab("tasks");
+                    startAddingTask();
+                  },
+                },
+              ]
+            : []),
+          { label: "Invite", icon: UserPlusIcon, onSelect: startInviting },
+          { label: "New event", icon: CalendarIcon, onSelect: onNewEvent },
+          // a meeting of this circle, where it can hold one (not a group)
+          ...(circleCanHoldMeetings(c) ? [{ label: "New meeting", href: `/events/new?kind=meeting&circle=${c.id}`, icon: UserGroupIcon }] : []),
+        ]
+      : null,
   );
 
   return (
