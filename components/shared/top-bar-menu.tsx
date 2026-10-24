@@ -9,7 +9,7 @@ import clsx from "clsx";
 export interface TopBarMenuItem {
   label: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
-  // the icon's own colour, where it has one (Learn names' teal)
+  // the icon's own colour, where it has one (Hi, neighbor's teal)
   iconClassName?: string;
   // where it goes, or what it does (Share); `file` for a link the browser
   // opens itself rather than the app's router (Add to calendar's .ics)

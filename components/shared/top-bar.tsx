@@ -82,7 +82,7 @@ function pageAction(pathname: string, profile: Profile): PageAction | null {
    event or a meeting. New circle starts it wherever it was chosen (the
    city at the root, or the neighborhood whose page it's on); a neighborhood
    adds posting on its bulletin, for a member of a Circle in it, and on your
-   own, once someone else lives there, the name game. */
+   own, once someone else lives there, Hi, neighbor (learning their names). */
 function pageMenu(pathname: string, circles: Circle[], profile: Profile): TopBarMenuItem[] | null {
   // the event form still has its own Event/Meeting switch (a circle page's
   // Events tab opens it too); these just start it on one or the other
@@ -100,7 +100,7 @@ function pageMenu(pathname: string, circles: Circle[], profile: Profile): TopBar
   const items: TopBarMenuItem[] = [{ label: "New circle", href: `/circles/new?parent=${id}`, icon: RingIcon }];
   if (postingCirclesFor(profile.id, circle, circles).length > 0) items.push({ label: "Post on bulletin", href: `/circles/${id}/bulletin/new`, icon: PlusIcon });
   if (circle.id === profile.homeCircleId && circle.members.some((m) => m !== profile.id)) {
-    items.push({ label: "Learn names", href: "/game", icon: PlayIcon, iconClassName: "text-teal" });
+    items.push({ label: "Hi, neighbor", href: "/game", icon: PlayIcon, iconClassName: "text-teal" });
   }
   return items;
 }
@@ -130,7 +130,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     if (id === "edit") return "Edit profile";
     return members.find((m) => String(m.id) === id)?.name ?? "Profile";
   }
-  if (section === "game") return "Name game";
+  if (section === "game") return "Hi, neighbor";
   if (section === "settings") return id === "notifications" ? "Notifications" : id === "availability" ? "Meeting availability" : "Settings";
   if (section === "admin") return id === "photos" ? "New photo" : id === "applications" && sub ? "Application" : "Review";
   if (section === "invitations") return "Invitation";
@@ -177,7 +177,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
   const ownMenu = useCurrentTopBarMenu();
   const runBackHandler = useRunBackHandler();
-  // the name game is played from your neighborhood's page, which its URL can't say
+  // Hi, neighbor is played from your neighborhood's page, which its URL can't say
   const goBackInApp = useGoBack(pathname === "/game" && profile.homeCircleId ? `/circles/${profile.homeCircleId}` : undefined);
 
   function goBack() {

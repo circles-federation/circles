@@ -12,7 +12,7 @@ interface AlertModalProps {
 
 /* A dialog that only tells you something — ConfirmModal's one-button
    sibling, in the same shape, for when there's nothing to choose between
-   (why the name game can't start, say). OK, a tap outside it, or Escape all
+   (why something can't start, say). OK, a tap outside it, or Escape all
    close it. */
 export function AlertModal({ title, message, onClose }: AlertModalProps) {
   const { pressed, act } = useActAfterPress<"ok">();

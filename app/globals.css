@@ -118,6 +118,15 @@
     }
   }
 
+  /* Hi, neighbor's moment after a right answer, a line filling as it runs
+     out; its length is the game's, set where it's used */
+  --animate-countdown: countdown 1s linear both;
+  @keyframes countdown {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
   /* a menu dropping from the button that opened it (ProfileMenu), grown
      from that corner like a context menu */
   --animate-menu-in: menu-in var(--motion-small) var(--ease-enter) both;

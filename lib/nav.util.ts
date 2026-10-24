@@ -6,21 +6,18 @@ export type Tab = "/home" | "/circles" | "/events";
    desktop, BottomNav on a phone) — one rule, so they can't disagree.
 
    A page you browse to belongs to its tab: every circle page (however deep,
-   since all live under /circles, and the name game, played from your
-   neighborhood's), every event page, and Home along with the pages only it
-   leads to (profiles). A page for doing
-   something belongs to none, however it was reached, from the top bar's
-   action or a button in the page: Settings and its pages, Edit profile, a
-   new circle, a new or edited event, a circle's Manage, Invite and bulletin
-   forms, an invitation (to accept or decline), and an admin's applications
-   (to review). */
+   since all live under /circles), every event page, and Home along with the
+   pages only it leads to (profiles). A page for doing something belongs to
+   none, however it was reached, from the top bar's action or a button in the
+   page: Settings and its pages, Edit profile, a new circle, a new or edited
+   event, a circle's Manage, Invite and bulletin forms, an invitation (to
+   accept or decline), an admin's applications (to review), and Hi, neighbor,
+   a game that wants the whole screen. */
 export function activeTab(pathname: string): Tab | null {
   const [section, id, sub] = pathname.split("/").slice(1);
   switch (section) {
     case "home":
       return "/home";
-    case "game":
-      return "/circles";
     case "profile":
       return id === "edit" ? null : "/home";
     case "circles":

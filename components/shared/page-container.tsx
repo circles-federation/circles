@@ -7,7 +7,7 @@ export type PageSize = "wide" | "normal" | "compact";
 // through a template-interpolated class name like `max-w-${n}`. Three
 // widths cover every page: wide (270) for dashboards/lists (Home, Circles,
 // Events list), normal (220) for detail pages (Event, Circle), compact (170)
-// for forms and the name game.
+// for forms.
 const MAX_WIDTH: Record<PageSize, string> = {
   wide: "max-w-270",
   normal: "max-w-220",
