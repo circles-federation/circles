@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { CheckIcon, HandRaisedIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
-import clsx from "clsx";
+import { useState, type ComponentType, type SVGProps } from "react";
+import { BuildingStorefrontIcon, CheckIcon, HandRaisedIcon, LockClosedIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { ConfirmModal, Input, Label, PageContainer, Section, SectionGroup, Select } from "@/components/shared";
+import { ConfirmModal, Input, Label, PageContainer, RichSelect, RingIcon, Section, SectionGroup } from "@/components/shared";
 import {
   CIRCLE_NAME_MAX,
   CIRCLE_TAGLINE_MAX,
@@ -21,6 +20,14 @@ import { newCircleNeighborhood } from "@/lib/proposals.util";
 import type { Circle, CircleType } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
 import { ParentCircleSelect } from "./parent-circle-select";
+
+// each kind's icon in the Type list: a ring for a Circle, as on every chip
+const CIRCLE_TYPE_ICON: Partial<Record<CircleType, ComponentType<SVGProps<SVGSVGElement>>>> = {
+  circle: RingIcon,
+  collective: UserGroupIcon,
+  cooperative: BuildingStorefrontIcon,
+  group: LockClosedIcon,
+};
 
 interface CreateCirclePageProps {
   circles: Circle[];
@@ -42,7 +49,7 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
   const parents = parentCircleOptions(circles);
   const root = circles.find((c) => c.parentId === null);
   const startingParent = parents.find((c) => c.id === initialParentId)?.id ?? root?.id ?? "";
-  // no type to start with: choosing one is the point of the info box
+  // no type to start with: what kind of circle it is is a choice to make, not a default
   const [type, setType] = useState<CircleType | "">("");
   const [name, setName] = useState("");
   const [tagline, setTagline] = useState("");
@@ -85,17 +92,16 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
         {/* pt-0: the top bar's title (New circle) is the page's only heading */}
         <Section className="pt-0">
           <Label htmlFor="circle-type">Type</Label>
-          <Select id="circle-type" value={type} onChange={(e) => setType(e.target.value as CircleType)} className="min-[720px]:max-w-90">
-            <option value="" disabled>
-              Choose a kind of circle
-            </option>
-            {CREATABLE_CIRCLE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {CIRCLE_TYPE_LABEL[t]}
-              </option>
-            ))}
-          </Select>
-          <TypeInfo chosen={type} />
+          <div className="min-[720px]:max-w-120">
+            <RichSelect
+              id="circle-type"
+              label="What kind of circle?"
+              placeholder="Choose a kind of circle"
+              value={type || null}
+              onChange={setType}
+              options={CREATABLE_CIRCLE_TYPES.map((t) => ({ value: t, label: CIRCLE_TYPE_LABEL[t], hint: CIRCLE_TYPE_DESCRIPTION[t] ?? "", icon: CIRCLE_TYPE_ICON[t] }))}
+            />
+          </div>
         </Section>
 
         <Section>
@@ -157,31 +163,5 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
         />
       )}
     </PageContainer>
-  );
-}
-
-/* What each kind of circle is, beside the Type field: every kind, with the
-   one chosen picked out, so they can be compared before choosing. */
-function TypeInfo({ chosen }: { chosen: CircleType | "" }) {
-  return (
-    <div className="mt-4 border border-ink border-l-4 px-5 py-4">
-      <div className="flex items-center gap-2">
-        <InformationCircleIcon className="size-5 shrink-0" strokeWidth={2} />
-        <span className="font-sans text-sm font-extrabold tracking-open">What kind of circle?</span>
-      </div>
-      <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">
-        Every kind but a group has a public page, can host events and hold meetings, and can give its members roles like Leader.
-      </p>
-      <dl className="mt-3 flex flex-col gap-3">
-        {CREATABLE_CIRCLE_TYPES.map((t) => (
-          <div key={t} className={clsx("border-l-2 pl-3", t === chosen ? "border-ink" : "border-transparent")}>
-            <dt className={clsx("font-sans text-sm font-extrabold", t === chosen || chosen === "" ? "text-ink" : "text-soft")}>{CIRCLE_TYPE_LABEL[t]}</dt>
-            <dd className={clsx("mt-0.5 font-serif text-sm leading-snug", t === chosen || chosen === "" ? "text-body" : "text-soft")}>
-              {CIRCLE_TYPE_DESCRIPTION[t]}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
   );
 }

@@ -24,12 +24,12 @@ export const CIRCLE_TYPE_LABEL: Record<CircleType, string> = {
    circle offers it only to them. */
 export const CREATABLE_CIRCLE_TYPES: CircleType[] = ["circle", "collective", "cooperative", "group"];
 
-// what each creatable type is, for the info box beside Create circle's Type
+// what each creatable type is, in a line under its name in Create circle's Type list
 export const CIRCLE_TYPE_DESCRIPTION: Partial<Record<CircleType, string>> = {
-  circle: "A council or working group whose members decide things together, like a neighborhood council or a finance committee. It can post to its neighborhood's bulletin, so the neighborhood consents to a new one.",
-  collective: "People organized around a shared project or service, run by its members, like a tool library or a community garden.",
-  cooperative: "An enterprise its members own and run together, like a food co-op or a worker co-op.",
-  group: "A private circle: only its members know it exists. It has a bulletin and its members' events, but it can't host events or hold meetings.",
+  circle: "Decides things together, like a council.",
+  collective: "Runs a shared project, like a tool library.",
+  cooperative: "One person, one share, one vote.",
+  group: "Private. Only its members know it exists.",
 };
 
 export const CIRCLE_NAME_MAX = 80;
