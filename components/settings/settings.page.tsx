@@ -49,7 +49,7 @@ export function SettingsPage({ notifications, availability }: SettingsPageProps)
 
         <Section>
           {/* which Circles this is, for a bug report */}
-          <p className="text-center font-sans text-label tracking-wide text-soft select-none">Circles R1 Beta 1</p>
+          <p className="text-center font-sans text-label tracking-wide text-soft select-none">Circles R1 Beta 2</p>
         </Section>
       </SectionGroup>
     </PageContainer>
