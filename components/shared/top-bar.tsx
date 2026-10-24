@@ -3,7 +3,7 @@
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeftIcon, CalendarIcon, EllipsisHorizontalIcon, HomeIcon, PencilIcon, PlusIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, CheckCircleIcon, EllipsisHorizontalIcon, HomeIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -137,6 +137,15 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
   if (section === "proposals") return "Proposal";
   return "Home";
 }
+
+// each section's icon, beside its tab's label on desktop
+const CIRCLE_SECTION_ICON: Record<CircleSection, ComponentType<SVGProps<SVGSVGElement>>> = {
+  bulletin: MegaphoneIcon,
+  tasks: CheckCircleIcon,
+  wiki: BookOpenIcon,
+  members: UsersIcon,
+  events: CalendarIcon,
+};
 
 /* A circle's page has its sections as a tab row, the bar's second line, so it
    stays put as the page scrolls: on /circles/[id] (its default section) and
@@ -284,7 +293,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         // Back to retrace; the section showing goes back to its top.
         <div className="mx-auto max-w-220 px-6">
           <SimpleTabs
-            tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key] }))}
+            tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key], icon: CIRCLE_SECTION_ICON[key] }))}
             active={tabs.active}
             onChange={(key) => (key === tabs.active ? onReselect() : router.replace(`/circles/${tabs.circle.id}/${key}`))}
           />

@@ -77,6 +77,9 @@
   --tracking-display: -0.035em;
   --tracking-heading: -0.02em;
   --tracking-snug: -0.01em;
+  /* and opened a touch: small sans set bold (a banner's heading, a masthead's
+     last-edited line) */
+  --tracking-open: 0.02em;
   --tracking-wide: 0.1em;
   /* the two kinds of small caps: an eyebrow heads a section (and a fact, as
      the circle page shows them); caps is every other uppercase label, on a

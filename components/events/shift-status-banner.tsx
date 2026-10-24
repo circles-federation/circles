@@ -31,7 +31,7 @@ export function ShiftStatusBanner({ event: e }: { event: Event }) {
       <div className="mt-6 flex items-start gap-3 border border-ink border-l-4 border-l-warning bg-warning/10 px-5 py-4">
         <ExclamationTriangleIcon className="mt-px size-5 shrink-0" strokeWidth={2} aria-hidden />
         <div>
-          <div className="font-sans text-sm font-extrabold tracking-[0.02em]">Still needs {needed(e)}</div>
+          <div className="font-sans text-sm font-extrabold tracking-open">Still needs {needed(e)}</div>
           <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">
             {e.noAutoCancel
               ? "Sign up below so it can run."
@@ -48,7 +48,7 @@ export function ShiftStatusBanner({ event: e }: { event: Event }) {
       <div role="status" className="mt-6 flex items-start gap-3 border-2 border-warning bg-warning px-5 py-4 text-ink">
         <ExclamationTriangleIcon className="mt-px size-5 shrink-0" strokeWidth={2} aria-hidden />
         <div>
-          <div className="font-sans text-sm font-extrabold tracking-[0.02em]">
+          <div className="font-sans text-sm font-extrabold tracking-open">
             {cancelAt && cancelAt.getTime() > now ? `Cancels at ${clock(cancelAt)} without ${needed(e)}` : `Still needs ${needed(e)}`}
           </div>
           <p className="mt-1.5 font-serif text-sm leading-relaxed text-ink">

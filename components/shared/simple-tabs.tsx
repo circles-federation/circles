@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import clsx from "clsx";
 
 interface SimpleTab {
   key: string;
   label: string;
+  // shown before the label on a tablet or wider (600px on), where there's room
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
 interface SimpleTabsProps {
@@ -60,10 +62,11 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
               className={clsx(
                 // z-10: over the tab's content, which would otherwise cover the
                 // bottom of its tap area (hit)
-                "hit z-10 shrink-0 cursor-pointer border-0 border-b-2 bg-transparent pb-3 font-sans text-base whitespace-nowrap",
+                "hit z-10 flex shrink-0 cursor-pointer items-center gap-2 border-0 border-b-2 bg-transparent pb-3 font-sans text-base whitespace-nowrap",
                 on ? "border-b-ink font-bold text-ink" : "border-b-transparent font-normal text-soft hover:text-ink",
               )}
             >
+              {t.icon && <t.icon className="hidden size-4 shrink-0 min-[600px]:block" strokeWidth={on ? 2.5 : 2} aria-hidden />}
               {t.label}
             </button>
           );

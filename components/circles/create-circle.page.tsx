@@ -167,7 +167,7 @@ function TypeInfo({ chosen }: { chosen: CircleType | "" }) {
     <div className="mt-4 border border-ink border-l-4 px-5 py-4">
       <div className="flex items-center gap-2">
         <InformationCircleIcon className="size-5 shrink-0" strokeWidth={2} />
-        <span className="font-sans text-sm font-extrabold tracking-[0.02em]">What kind of circle?</span>
+        <span className="font-sans text-sm font-extrabold tracking-open">What kind of circle?</span>
       </div>
       <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">
         Every kind but a group has a public page, can host events and hold meetings, and can give its members roles like Leader.

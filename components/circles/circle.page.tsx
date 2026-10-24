@@ -198,7 +198,7 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
                     // so shown as typed rather than dropped
                     <div className="min-w-0">
                       <Eyebrow className="text-soft">Website</Eyebrow>
-                      <div className="mt-1 font-serif text-base leading-[1.35] break-words text-body">{c.website}</div>
+                      <div className="mt-1 font-serif text-base leading-[1.35] wrap-break-word text-body">{c.website}</div>
                     </div>
                   ) : null}
                   {c.address && <MapsLink address={c.address} />}
@@ -215,7 +215,7 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
                     // not an email or a number, so shown as typed
                     <div className="min-w-0">
                       <Eyebrow className="text-soft">Get in touch</Eyebrow>
-                      <div className="mt-1 font-serif text-base leading-[1.35] break-words text-body">{c.contact}</div>
+                      <div className="mt-1 font-serif text-base leading-[1.35] wrap-break-word text-body">{c.contact}</div>
                     </div>
                   ) : null}
                 </div>
@@ -359,11 +359,11 @@ function CircleMasthead({ circle: c, parent, lastEditor, lastEditedAt, onOpenMem
       <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display">{c.name}</h1>
       <p className="mt-4 font-serif text-xl text-body italic">{c.tagline}</p>
       {lastEditor && (
-        <div className="mt-4 font-sans text-label tracking-[0.02em] text-soft">
+        <div className="mt-4 font-sans text-label tracking-open text-soft">
           Last edited by{" "}
           <button
             onClick={() => onOpenMember(lastEditor)}
-            className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-[0.02em] text-ink underline underline-offset-2"
+            className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-open text-ink underline underline-offset-2"
           >
             {lastEditor.name}
           </button>

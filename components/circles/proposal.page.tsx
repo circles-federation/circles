@@ -154,7 +154,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                         aria-pressed={r === "object" ? undefined : chosen}
                         aria-expanded={r === "object" ? objecting : undefined}
                         className={clsx(
-                          "inline-flex cursor-pointer items-center justify-center gap-2 border-2 px-4 py-4 font-sans text-sm font-extrabold tracking-[0.02em] disabled:cursor-default disabled:opacity-60",
+                          "inline-flex cursor-pointer items-center justify-center gap-2 border-2 px-4 py-4 font-sans text-sm font-extrabold tracking-open disabled:cursor-default disabled:opacity-60",
                           drafting ? "danger-press border-danger bg-paper text-danger" : ANSWER_STYLE[r].button,
                           chosen && "outline-3 outline-offset-2 outline-ink"
                         )}
@@ -273,7 +273,7 @@ function Outcome({ proposal: p, objectorName }: { proposal: CircleProposal; obje
     <div role="status" className={clsx("mt-6 flex items-start gap-3 border border-ink border-l-4 px-5 py-4", tone)}>
       <Icon className="mt-px size-5 shrink-0" strokeWidth={2} />
       <div>
-        <div className="font-sans text-sm font-extrabold tracking-[0.02em]">{heading}</div>
+        <div className="font-sans text-sm font-extrabold tracking-open">{heading}</div>
         <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">{text}</p>
       </div>
     </div>
