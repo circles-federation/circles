@@ -19,6 +19,8 @@ export interface TopBarMenuItem {
   // shown, so it's plain it exists, but not yet to be chosen (Add to
   // calendar before you've RSVPed)
   disabled?: boolean;
+  // red, icon and label, for one that ends something (Log out)
+  danger?: boolean;
 }
 
 interface TopBarMenuProps {
@@ -142,10 +144,10 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
               style={{ top: place.top, right: place.right }}
               className="fixed z-60 w-56 origin-top-right animate-menu-in bg-paper shadow-float"
             >
-              {items.map(({ label: itemLabel, href, file, onSelect, disabled, icon: Icon, iconClassName }, i) => {
+              {items.map(({ label: itemLabel, href, file, onSelect, disabled, danger, icon: Icon, iconClassName }, i) => {
                 const className = clsx(
                   "flex w-full items-center gap-3 border-0 bg-paper px-4 py-3 text-left font-sans text-base font-semibold no-underline outline-offset-[-2px]",
-                  disabled ? "cursor-default text-ghost" : "cursor-pointer text-ink hover:bg-wash focus-visible:bg-wash active:bg-wash",
+                  disabled ? "cursor-default text-ghost" : clsx("cursor-pointer hover:bg-wash focus-visible:bg-wash active:bg-wash", danger ? "text-danger" : "text-ink"),
                   i > 0 && "border-t border-solid border-faint",
                 );
                 const content = (

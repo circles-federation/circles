@@ -92,7 +92,7 @@ export function useTopBarMenu(items: TopBarMenuItem[] | null) {
   });
 
   // what the menu shows, as a key that only changes when that does
-  const key = items && items.length > 0 ? items.map((i) => [i.label, i.href ?? "", i.file ? 1 : 0, i.disabled ? 1 : 0, i.iconClassName ?? ""].join("|")).join("\n") : "";
+  const key = items && items.length > 0 ? items.map((i) => [i.label, i.href ?? "", i.file ? 1 : 0, i.disabled ? 1 : 0, i.danger ? 1 : 0, i.iconClassName ?? ""].join("|")).join("\n") : "";
   const itemsRef = useRef(items);
   useEffect(() => {
     itemsRef.current = items;

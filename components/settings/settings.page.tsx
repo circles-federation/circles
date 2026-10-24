@@ -1,15 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRightStartOnRectangleIcon, BellIcon, ClockIcon, UserCircleIcon } from "@heroicons/react/24/outline";
-import { Button, ConfirmModal, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
+import { BellIcon, ClockIcon, UserCircleIcon } from "@heroicons/react/24/outline";
+import { MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { usePushSubscription } from "@/lib/hooks";
 import type { AvailabilityWindow, NotificationSettings } from "@/lib/types";
 
 interface SettingsPageProps {
   notifications: NotificationSettings;
   availability: AvailabilityWindow[] | null;
-  onLogout: () => void;
 }
 
 // what Notifications is set to, under its row: email for the member, push
@@ -28,10 +26,10 @@ function availabilitySummary(windows: AvailabilityWindow[] | null): string {
   return windows.length === 1 ? "1 window" : `${windows.length} windows`;
 }
 
-/* Settings, reached from Home's top bar: a menu like iOS's Settings, each row
-   opening a page of its own, with logging out at the foot. */
-export function SettingsPage({ notifications, availability, onLogout }: SettingsPageProps) {
-  const [confirmingLogout, setConfirmingLogout] = useState(false);
+/* Settings, reached from Home's top bar menu (which also logs out): a menu
+   like iOS's Settings, each row opening a page of its own, with which version
+   this is at the foot. */
+export function SettingsPage({ notifications, availability }: SettingsPageProps) {
   const device = usePushSubscription();
   // left blank until this device's push has been read, rather than changing
   // under the reader a moment later
@@ -50,25 +48,10 @@ export function SettingsPage({ notifications, availability, onLogout }: Settings
         </Section>
 
         <Section>
-          <Button variant="danger" onClick={() => setConfirmingLogout(true)} className="w-full">
-            <ArrowRightStartOnRectangleIcon className="size-4" strokeWidth={2.5} />
-            Log out
-          </Button>
           {/* which Circles this is, for a bug report */}
-          <p className="mt-8 text-center font-sans text-label tracking-wide text-soft select-none">Circles R1 Beta 1</p>
+          <p className="text-center font-sans text-label tracking-wide text-soft select-none">Circles R1 Beta 1</p>
         </Section>
       </SectionGroup>
-
-      {confirmingLogout && (
-        <ConfirmModal
-          title="Log out?"
-          message="You'll need a new code from your email to sign back in."
-          confirmLabel="Log out"
-          cancelLabel="Stay"
-          onConfirm={onLogout}
-          onCancel={() => setConfirmingLogout(false)}
-        />
-      )}
     </PageContainer>
   );
 }
