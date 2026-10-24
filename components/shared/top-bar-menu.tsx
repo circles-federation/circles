@@ -7,10 +7,17 @@ import clsx from "clsx";
 
 export interface TopBarMenuItem {
   label: string;
-  href: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   // the icon's own colour, where it has one (Learn names' teal)
   iconClassName?: string;
+  // where it goes, or what it does (Share); `file` for a link the browser
+  // opens itself rather than the app's router (Add to calendar's .ics)
+  href?: string;
+  file?: boolean;
+  onSelect?: () => void;
+  // shown, so it's plain it exists, but not yet to be chosen (Add to
+  // calendar before you've RSVPed)
+  disabled?: boolean;
 }
 
 interface TopBarMenuProps {
@@ -61,7 +68,7 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
     };
   }, [open]);
 
-  const menuItems = () => Array.from(menu.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
+  const menuItems = () => Array.from(menu.current?.querySelectorAll<HTMLElement>("[role=menuitem]:not([disabled])") ?? []);
 
   function onMenuKey(e: KeyboardEvent) {
     const all = menuItems();
@@ -120,21 +127,33 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
           onKeyDown={onMenuKey}
           className="absolute top-full right-0 z-10 mt-2 w-56 origin-top-right animate-menu-in bg-paper shadow-float"
         >
-          {items.map(({ label: itemLabel, href, icon: Icon, iconClassName }, i) => (
-            <Link
-              key={href}
-              role="menuitem"
-              href={href}
-              onClick={() => setOpen(false)}
-              className={clsx(
-                "flex items-center gap-3 px-4 py-3 font-sans text-base font-semibold text-ink no-underline outline-offset-[-2px] hover:bg-wash focus-visible:bg-wash active:bg-wash",
-                i > 0 && "border-t border-faint",
-              )}
-            >
-              <Icon className={clsx("size-5 shrink-0", iconClassName)} strokeWidth={2} aria-hidden />
-              {itemLabel}
-            </Link>
-          ))}
+          {items.map(({ label: itemLabel, href, file, onSelect, disabled, icon: Icon, iconClassName }, i) => {
+            const className = clsx(
+              "flex w-full items-center gap-3 border-0 bg-paper px-4 py-3 text-left font-sans text-base font-semibold no-underline outline-offset-[-2px]",
+              disabled ? "cursor-default text-ghost" : "cursor-pointer text-ink hover:bg-wash focus-visible:bg-wash active:bg-wash",
+              i > 0 && "border-t border-solid border-faint",
+            );
+            const content = (
+              <>
+                <Icon className={clsx("size-5 shrink-0", iconClassName)} strokeWidth={2} aria-hidden />
+                {itemLabel}
+              </>
+            );
+            const choose = () => {
+              setOpen(false);
+              onSelect?.();
+            };
+            if (disabled) {
+              return (
+                <button key={itemLabel} type="button" role="menuitem" aria-disabled disabled className={className}>
+                  {content}
+                </button>
+              );
+            }
+            if (!href) return <button key={itemLabel} type="button" role="menuitem" onClick={choose} className={className}>{content}</button>;
+            if (file) return <a key={itemLabel} role="menuitem" href={href} onClick={choose} className={className}>{content}</a>;
+            return <Link key={itemLabel} role="menuitem" href={href} onClick={choose} className={className}>{content}</Link>;
+          })}
         </div>
       )}
     </div>

@@ -9,12 +9,16 @@ import { EventMasthead } from "./event-masthead";
 import { HostRsvpRow } from "./host-rsvp-row";
 
 import { RoleSlotsSection } from "./role-slots-section";
-import { ShareButton } from "./share-button";
+import { useEventSharing } from "./event-sharing";
 import { ShiftStatusBanner } from "./shift-status-banner";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, CalendarDaysIcon, LinkSlashIcon, PencilIcon } from "@heroicons/react/24/outline";
+import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
+import type { TopBarMenuItem } from "@/components/shared";
+import { indexCircles } from "@/lib/circles.util";
+import { isPastEvent } from "@/lib/format.util";
 import { isAttending } from "@/lib/events.util";
 import { useEventEnded } from "@/lib/hooks";
-import { awaitingConsent, isMeeting } from "@/lib/governance.util";
+import { awaitingConsent, canManageEvent, isMeeting } from "@/lib/governance.util";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { ProposalBanner } from "@/components/circles/proposal-banner";
 import type { Circle, Event, Member, Profile } from "@/lib/types";
@@ -39,8 +43,28 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
   // no calendar copy of an event that's already over
   const ended = useEventEnded(e);
   // a meeting or circle-hosted event its circle is still deciding: its proposal
-  const { proposals } = useAppState();
+  const { proposals, circles } = useAppState();
   const proposal = awaitingConsent(e) ? proposals.find((p) => p.eventId === e.id && p.status === "open") : undefined;
+
+  /* The top bar's menu. Edit, for whoever manages it, until it's cancelled
+     or over, or while its circle is still deciding it (what's proposed is
+     what's consented to). Share: anyone may send a live, decided event to
+     someone without an account; a meeting stays with its circle. Add to
+     calendar, which can be chosen once you're going: the phone offers to add the file
+     (app/api/events/[id]/calendar), but not while its circle is deciding it,
+     since consenting marks you going and it may never be held. */
+  const live = !e.cancelled && !ended && !awaitingConsent(e);
+  const canEdit = canManageEvent(e, profile, indexCircles(circles)) && !e.cancelled && !isPastEvent(e) && !awaitingConsent(e);
+  const sharing = useEventSharing(e.id, e.title, live && !isMeeting(e));
+  const menu: TopBarMenuItem[] = [];
+  if (canEdit) menu.push({ label: "Edit", href: `/events/${e.id}/edit`, icon: PencilIcon });
+  if (live && !isMeeting(e)) {
+    menu.push({ label: "Share", icon: ArrowUpTrayIcon, onSelect: sharing.share });
+    if (sharing.stop) menu.push({ label: "Stop sharing", icon: LinkSlashIcon, onSelect: sharing.stop });
+  }
+  // shown before you're going, but only to be chosen once you are
+  if (live) menu.push({ label: "Add to calendar", href: `/api/events/${e.id}/calendar`, file: true, icon: CalendarDaysIcon, disabled: !(isAttending(e, profile.id) || rsvpState[e.id]) });
+  useTopBarMenu(menu);
 
   return (
     <PageContainer size="normal">
@@ -62,30 +86,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
         onToggleRsvp={() => toggleRsvp(e.id)}
       />
 
-      {/* anyone may send a live, decided event to someone without an account;
-          a meeting stays with its circle */}
-      {!e.cancelled && !ended && !awaitingConsent(e) && !isMeeting(e) && (
-        <div className="border-b border-faint py-4">
-          <ShareButton eventId={e.id} title={e.title} />
-        </div>
-      )}
-
-      {/* once you're going, a copy for your own calendar: the phone offers to
-          add the file (app/api/events/[id]/calendar). A link styled as a
-          secondary Button, since it opens a file rather than running code. Not
-          while its circle is still deciding it: consenting marks you going,
-          but it may never be held */}
-      {!e.cancelled && !ended && !awaitingConsent(e) && isAttending(e, profile.id) && (
-        <div className="border-b border-faint py-4">
-          <a
-            href={`/api/events/${e.id}/calendar`}
-            className="ink-press inline-flex items-center justify-center gap-1.5 border border-ink bg-paper px-4 py-3 font-sans text-xs font-bold tracking-caps whitespace-nowrap text-ink uppercase no-underline"
-          >
-            <CalendarDaysIcon className="size-4" strokeWidth={2} />
-            Add to calendar
-          </a>
-        </div>
-      )}
+      {sharing.dialogs}
 
       {/* a meeting has its agenda where another event has its description */}
       {isMeeting(e) ? <AgendaSection event={e} /> : <EventDetailsSection event={e} />}

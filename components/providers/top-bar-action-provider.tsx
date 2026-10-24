@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode, type RefObject, type SVGProps } from "react";
+import type { TopBarMenuItem } from "@/components/shared/top-bar-menu";
 
 export interface TopBarAction {
   label: string;
@@ -29,13 +30,23 @@ type Shown = Omit<TopBarAction, "onAction">;
    accept writing to it, as in useBackHandler. */
 const ShownContext = createContext<{ shown: Shown | null; setShown: (shown: Shown | null) => void } | null>(null);
 const HandlerContext = createContext<RefObject<(() => void) | null> | null>(null);
+// a page's own menu (see useTopBarMenu): what's in it as state, and its
+// items' current handlers in a ref, as for the action above
+const MenuShownContext = createContext<{ items: TopBarMenuItem[] | null; setItems: (items: TopBarMenuItem[] | null) => void } | null>(null);
+const MenuHandlersContext = createContext<RefObject<TopBarMenuItem[]> | null>(null);
 
 export function TopBarActionProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState<Shown | null>(null);
   const handler = useRef<(() => void) | null>(null);
+  const [items, setItems] = useState<TopBarMenuItem[] | null>(null);
+  const menuHandlers = useRef<TopBarMenuItem[]>([]);
   return (
     <ShownContext.Provider value={{ shown, setShown }}>
-      <HandlerContext.Provider value={handler}>{children}</HandlerContext.Provider>
+      <HandlerContext.Provider value={handler}>
+        <MenuShownContext.Provider value={{ items, setItems }}>
+          <MenuHandlersContext.Provider value={menuHandlers}>{children}</MenuHandlersContext.Provider>
+        </MenuShownContext.Provider>
+      </HandlerContext.Provider>
     </ShownContext.Provider>
   );
 }
@@ -63,6 +74,44 @@ export function useTopBarAction(action: TopBarAction | null) {
     setShown({ label, icon, disabled, variant });
     return () => setShown(null);
   }, [setShown, label, icon, disabled, variant]);
+}
+
+/* A page's own menu for TopBar's right-hand slot, where what it offers runs
+   the page's code (an event's Share) as well as linking somewhere, and
+   depends on the page's state (Stop sharing once there's a link). Built like
+   useTopBarAction: the items shown are state, changing only when what's in
+   the menu does; each item's handler is read from a ref when it's chosen, so
+   it always sees the page as it is. It takes the slot over pageAction and
+   pageMenu; null (or an empty list) shows nothing. */
+export function useTopBarMenu(items: TopBarMenuItem[] | null) {
+  const handlersRef = useContext(MenuHandlersContext);
+  const setItems = useContext(MenuShownContext)?.setItems;
+
+  useEffect(() => {
+    if (handlersRef) handlersRef.current = items ?? [];
+  });
+
+  // what the menu shows, as a key that only changes when that does
+  const key = items && items.length > 0 ? items.map((i) => [i.label, i.href ?? "", i.file ? 1 : 0, i.disabled ? 1 : 0, i.iconClassName ?? ""].join("|")).join("\n") : "";
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  });
+  useEffect(() => {
+    if (!setItems || !key) return;
+    // an item that runs code calls whatever handler it has now, by its label
+    setItems(
+      (itemsRef.current ?? []).map((i) =>
+        i.onSelect ? { ...i, onSelect: () => handlersRef?.current.find((h) => h.label === i.label)?.onSelect?.() } : i,
+      ),
+    );
+    return () => setItems(null);
+  }, [setItems, key, handlersRef]);
+}
+
+// for TopBar: the current page's own menu, if it registered one
+export function useCurrentTopBarMenu(): TopBarMenuItem[] | null {
+  return useContext(MenuShownContext)?.items ?? null;
 }
 
 // for TopBar: the current page's action, if it registered one, and a way to run it

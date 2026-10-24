@@ -8,10 +8,8 @@ import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
-import { useCurrentTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { indexCircles, isCircleMember, postingCirclesFor } from "@/lib/circles.util";
-import { isPastEvent } from "@/lib/format.util";
-import { awaitingConsent, canManageEvent } from "@/lib/governance.util";
+import { useCurrentTopBarAction, useCurrentTopBarMenu } from "@/components/providers/top-bar-action-provider";
+import { isCircleMember, postingCirclesFor } from "@/lib/circles.util";
 import { useHomeNeedsAttention } from "@/lib/hooks";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
 import { activeTab } from "@/lib/nav.util";
@@ -71,17 +69,8 @@ interface PageAction {
 
 // a page's own primary action, shown in the bar while that page is: an icon
 // button on the right, on every screen size
-function pageAction(pathname: string, circles: Circle[], events: Event[], profile: Profile): PageAction | null {
+function pageAction(pathname: string, circles: Circle[], profile: Profile): PageAction | null {
   const [section, id, sub] = pathname.split("/").slice(1);
-  if (section === "events" && id && id !== "new" && !sub) {
-    // an event's own page, which its organizer can edit (and for one a circle
-    // hosts, its members), until it's cancelled or over — or while a group is
-    // still deciding it, since what's proposed is what's consented to
-    const event = events.find((e) => e.id === id);
-    if (event && canManageEvent(event, profile, indexCircles(circles)) && !event.cancelled && !isPastEvent(event) && !awaitingConsent(event)) {
-      return { href: `/events/${id}/edit`, label: "Edit event", icon: PencilIcon };
-    }
-  }
   // your own profile page is where you edit it
   if (section === "profile" && id === String(profile.id)) return { href: "/profile/edit", label: "Edit profile", icon: PencilIcon };
   if (section === "circles" && id && !sub) {
@@ -166,9 +155,10 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // the tab roots. A page with unsaved changes can intercept it; otherwise it
   // goes back without ever leaving the app (see useGoBack).
   const isTabRoot = TABS.some(([href]) => pathname === href);
-  const action = pageAction(pathname, circles, events, profile);
+  const action = pageAction(pathname, circles, profile);
   const menu = pageMenu(pathname, circles, profile);
   const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
+  const ownMenu = useCurrentTopBarMenu();
   const runBackHandler = useRunBackHandler();
   // the name game is played from your neighborhood's page, which its URL can't say
   const goBackInApp = useGoBack(pathname === "/game" && profile.homeCircleId ? `/circles/${profile.homeCircleId}` : undefined);
@@ -239,6 +229,9 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
           >
             <pageOwn.icon className="size-6" strokeWidth={2} />
           </button>
+        ) : ownMenu && ownMenu.length > 0 ? (
+          // a page's own menu (an event's: Edit, Share, Add to calendar)
+          <TopBarMenu label="More" face={<MenuIconFace icon={EllipsisHorizontalIcon} />} items={ownMenu} />
         ) : pathname === "/home" ? (
           // Home's is the member's own photo, opening their profile and Settings
           <ProfileMenu />

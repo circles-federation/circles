@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState, type ReactNode } from "react";
 import { ConfirmModal, Modal, Button, useToast } from "@/components/shared";
 import { createShareLinkAction, getShareStatusAction, revokeShareLinksAction } from "@/lib/db/actions";
 import type { ShareStatus } from "@/lib/db/event-shares";
 import { isPhoneWidth } from "@/lib/viewport";
 
-interface ShareButtonProps {
-  eventId: string;
-  title: string;
+interface EventSharing {
+  // send the member's own link: the share sheet on a phone, copied elsewhere
+  share: () => void;
+  // stop sharing (asking first, and which links when both are on offer),
+  // once there's a link to stop
+  stop: (() => void) | null;
+  // its dialogs, for the page to render
+  dialogs: ReactNode;
 }
 
 type Scope = "mine" | "all";
@@ -29,14 +33,15 @@ const CONFIRM: Record<Scope, { title: string; message: string; confirmLabel: str
   },
 };
 
-/* Sends someone without an account this event's public page (/e/[token]):
-   the phone's share sheet on a phone, otherwise (desktop browsers included,
-   some of which have a share sheet of their own) the link is copied.
-   The link is this member's own, so whoever it's sent to can be traced back
-   to them if they apply. Beside it, once there's a link to stop, "Stop
-   sharing": the member's own, and for whoever manages the event every link to
-   it. Either asks first, and leaves those already going on the list. */
-export function ShareButton({ eventId, title }: ShareButtonProps) {
+/* Sending someone without an account this event's public page (/e/[token]),
+   for the event page's menu: the phone's share sheet on a phone, otherwise
+   (desktop browsers included, some of which have a share sheet of their own)
+   the link is copied. The link is this member's own, so whoever it's sent to
+   can be traced back to them if they apply. Once there's a link to stop,
+   stopping it: the member's own, and for whoever manages the event every
+   link to it. Either asks first, and leaves those already going on the list.
+   Asks the server about links only where sharing is `enabled`. */
+export function useEventSharing(eventId: string, title: string, enabled: boolean): EventSharing {
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<ShareStatus | null>(null);
@@ -44,6 +49,7 @@ export function ShareButton({ eventId, title }: ShareButtonProps) {
   const [step, setStep] = useState<"choose" | Scope | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let current = true;
     getShareStatusAction(eventId).then((r) => {
       if (current && r.ok) setStatus(r.value);
@@ -51,7 +57,7 @@ export function ShareButton({ eventId, title }: ShareButtonProps) {
     return () => {
       current = false;
     };
-  }, [eventId]);
+  }, [eventId, enabled]);
 
   const canStopMine = !!status?.mine;
   const canStopAll = !!status?.canRevokeAll && (status.othersLive || status.mine);
@@ -99,26 +105,8 @@ export function ShareButton({ eventId, title }: ShareButtonProps) {
     showToast(scope === "all" ? "All links stopped" : "Link stopped");
   }
 
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <button
-        onClick={handleShare}
-        disabled={busy}
-        className="ink-press inline-flex cursor-pointer items-center justify-center gap-1.5 border border-ink bg-paper px-4 py-3 font-sans text-xs font-bold tracking-caps whitespace-nowrap text-ink uppercase"
-      >
-        <ArrowUpTrayIcon className="size-4" strokeWidth={2} />
-        Share
-      </button>
-      {(canStopMine || canStopAll) && (
-        <button
-          onClick={() => setStep(canStopMine && canStopAll ? "choose" : canStopAll ? "all" : "mine")}
-          disabled={busy}
-          className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2"
-        >
-          Stop sharing
-        </button>
-      )}
-
+  const dialogs = (
+    <>
       {step === "choose" && (
         <Modal onClose={() => setStep(null)} className="max-w-105" title="Stop sharing">
           <div className="px-6 pt-2 pb-6">
@@ -135,6 +123,12 @@ export function ShareButton({ eventId, title }: ShareButtonProps) {
       {(step === "mine" || step === "all") && (
         <ConfirmModal {...CONFIRM[step]} onCancel={() => setStep(null)} onConfirm={() => handleStop(step)} />
       )}
-    </div>
+    </>
   );
+
+  return {
+    share: () => void handleShare(),
+    stop: (canStopMine || canStopAll) && !busy ? () => setStep(canStopMine && canStopAll ? "choose" : canStopAll ? "all" : "mine") : null,
+    dialogs,
+  };
 }
