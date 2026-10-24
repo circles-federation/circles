@@ -146,6 +146,36 @@ export function circleHasTasks(circle: Pick<Circle, "type" | "parentId">): boole
   return circleHasPage(circle) && !isGroup(circle);
 }
 
+/* A circle page's sections, in the order its tab row shows them, each at
+   /circles/[id]/[section]. The bulletin and tasks are its members' alone,
+   with no hint to anyone else; a group has no wiki or tasks, its bulletin
+   standing in for them. */
+export const CIRCLE_SECTIONS = ["bulletin", "tasks", "wiki", "members", "events"] as const;
+export type CircleSection = (typeof CIRCLE_SECTIONS)[number];
+export const CIRCLE_SECTION_LABEL: Record<CircleSection, string> = { bulletin: "Bulletin", tasks: "Tasks", wiki: "Wiki", members: "Members", events: "Events" };
+
+export function isCircleSection(value: string | undefined): value is CircleSection {
+  return (CIRCLE_SECTIONS as readonly string[]).includes(value ?? "");
+}
+
+// the sections someone sees on a circle's page (one with a page: not a
+// neighborhood or the city)
+export function circleSections(circle: Pick<Circle, "type" | "parentId">, isMember: boolean): CircleSection[] {
+  return CIRCLE_SECTIONS.filter((s) => {
+    if (s === "bulletin") return isMember;
+    if (s === "tasks") return isMember && circleHasTasks(circle);
+    if (s === "wiki") return circleHasWiki(circle);
+    return true;
+  });
+}
+
+// where its page opens, at /circles/[id] itself: a member on the bulletin,
+// anyone else on the wiki (a group's members have no wiki, and no one else
+// sees a group)
+export function defaultCircleSection(circle: Pick<Circle, "type" | "parentId">, isMember: boolean): CircleSection {
+  return circleSections(circle, isMember)[0] ?? "members";
+}
+
 // a meeting is its circle's members voting, which a group doesn't do (any
 // circle but the city can host an event, a group included, by consent: see
 // lib/db/proposals.ts)

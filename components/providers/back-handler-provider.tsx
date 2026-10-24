@@ -76,12 +76,12 @@ function parentRoute(pathname: string): string {
   if (parent === "" || parent === "/profile" || parent === "/admin" || parent === "/invitations" || parent === "/proposals") return "/home";
   // an application or a photo is reviewed from the admin's one list of both
   if (parent === "/admin/applications" || parent === "/admin/photos") return "/admin/review";
-  // a bulletin item's form is reached from its circle's Bulletin tab
+  // a section of a circle's page is the circle, so up from it is up from the circle
+  if (/^\/circles\/[^/]+\/(bulletin|tasks|wiki|members|events)$/.test(pathname)) return "/circles";
+  // a bulletin item's form is reached from its circle's page, a neighborhood's
+  // included (which has no sections of its own)
   const bulletin = parent.match(/^(\/circles\/[^/]+)\/bulletin$/);
-  if (bulletin) return `${bulletin[1]}?tab=bulletin`;
-  // and a task's from its circle's Tasks tab
-  const tasks = parent.match(/^(\/circles\/[^/]+)\/tasks$/);
-  if (tasks) return `${tasks[1]}?tab=tasks`;
+  if (bulletin) return bulletin[1]!;
   return parent;
 }
 

@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeftIcon, CalendarIcon, EllipsisHorizontalIcon, HomeIcon, PencilIcon, PlusIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
 import { useCurrentTopBarAction, useCurrentTopBarMenu } from "@/components/providers/top-bar-action-provider";
-import { postingCirclesFor } from "@/lib/circles.util";
+import { CIRCLE_SECTION_LABEL, circleHasPage, circleSections, defaultCircleSection, isCircleMember, isCircleSection, postingCirclesFor, type CircleSection } from "@/lib/circles.util";
 import { useHomeNeedsAttention } from "@/lib/hooks";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
 import { activeTab } from "@/lib/nav.util";
@@ -18,6 +18,7 @@ import { AttentionDot } from "./attention-dot";
 import { GhostIconButton } from "./ghost-icon-button";
 import { OfflineBanner } from "./offline-banner";
 import { ProfileMenu } from "./profile-menu";
+import { SimpleTabs } from "./simple-tabs";
 import { RingIcon } from "./ring-icon";
 import { MenuIconFace, TopBarMenu, type TopBarMenuItem } from "./top-bar-menu";
 
@@ -114,9 +115,9 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     if (id === "new") return "New circle";
     if (sub === "manage") return item === "details" ? "Details" : item === "roles" ? "Roles" : item === "wiki" ? "Wiki" : "Manage circle";
     // a neighborhood's bulletin takes posts, proposed by the Circles in it
-    if (sub === "bulletin") return circles.find((c) => c.id === id)?.type === "neighborhood" ? "New post" : resourceFormTitle(resources.find((r) => r.id === item)?.icon);
+    if (sub === "bulletin" && item) return circles.find((c) => c.id === id)?.type === "neighborhood" ? "New post" : resourceFormTitle(resources.find((r) => r.id === item)?.icon);
     if (sub === "invite") return "Invite";
-    if (sub === "tasks") return item === "new" ? "New task" : "Task";
+    if (sub === "tasks" && item) return item === "new" ? "New task" : "Task";
     return circles.find((c) => c.id === id)?.name ?? "Circles";
   }
   if (section === "events") {
@@ -137,8 +138,22 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
   return "Home";
 }
 
+/* A circle's page has its sections as a tab row, the bar's second line, so it
+   stays put as the page scrolls: on /circles/[id] (its default section) and
+   /circles/[id]/[section], for a circle with a page. */
+function circleTabs(pathname: string, circles: Circle[], profile: Profile): { circle: Circle; sections: CircleSection[]; active: CircleSection } | null {
+  const [section, id, sub, item] = pathname.split("/").slice(1);
+  if (section !== "circles" || !id || id === "new" || item || (sub && !isCircleSection(sub))) return null;
+  const circle = circles.find((c) => c.id === id);
+  if (!circle || !circleHasPage(circle)) return null;
+  const isMember = isCircleMember(circle, profile.id);
+  const sections = circleSections(circle, isMember);
+  return { circle, sections, active: isCircleSection(sub) ? sub : defaultCircleSection(circle, isMember) };
+}
+
 export function TopBar({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { circles, events, members, resources, profile } = useAppState();
   const needsAttention = useHomeNeedsAttention();
   const isHomeNeighborhood =profile.homeCircleId !== null && pathname === `/circles/${profile.homeCircleId}`;
@@ -149,6 +164,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   const isTabRoot = TABS.some(([href]) => pathname === href);
   const action = pageAction(pathname, profile);
   const menu = pageMenu(pathname, circles, profile);
+  const tabs = circleTabs(pathname, circles, profile);
   const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
   const ownMenu = useCurrentTopBarMenu();
   const runBackHandler = useRunBackHandler();
@@ -185,7 +201,12 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   return (
     <div
       ref={barRef}
-      className="app-chrome sticky top-0 z-50 bg-linear-to-b from-paper from-55% via-paper/80 via-80% to-transparent pt-[env(safe-area-inset-top)] standalone:absolute standalone:inset-x-0"
+      className={clsx(
+        "app-chrome sticky top-0 z-50 pt-[env(safe-area-inset-top)] standalone:absolute standalone:inset-x-0",
+        // with a tab row it's solid, the row's hairline its edge; otherwise it
+        // fades from white behind the title to clear at its foot
+        tabs ? "bg-paper" : "bg-linear-to-b from-paper from-55% via-paper/80 via-80% to-transparent",
+      )}
     >
       {/* the title on the left, the page's action on the right, and on desktop the
           tabs centred on the bar itself (not between the two), so a long title
@@ -257,6 +278,18 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
           ))}
         </nav>
       </div>
+      {tabs && (
+        // its sections, in line with the page beneath (PageContainer's normal
+        // width). Switching replaces the URL rather than adding a step for
+        // Back to retrace; the section showing goes back to its top.
+        <div className="mx-auto max-w-220 px-6">
+          <SimpleTabs
+            tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key] }))}
+            active={tabs.active}
+            onChange={(key) => (key === tabs.active ? onReselect() : router.replace(`/circles/${tabs.circle.id}/${key}`))}
+          />
+        </div>
+      )}
       <OfflineBanner />
     </div>
   );

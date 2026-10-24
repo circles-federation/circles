@@ -1,7 +1,7 @@
-import { useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
+import { useEffect, useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { CalendarIcon, CheckCircleIcon, Cog6ToothIcon, EnvelopeIcon, GlobeAltIcon, MapIcon, PhoneIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Avatar, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, SimpleTabs, Tag } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
@@ -11,18 +11,17 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { CIRCLE_TYPE_LABEL, circleCanHoldMeetings, circleChildren, circleContact, circleHasTasks, circleHasWiki, circleWebsiteUrl, isCircleAudience, isGroup } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleCanHoldMeetings, circleChildren, circleContact, circleHasTasks, circleWebsiteUrl, isCircleAudience, isGroup, type CircleSection } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
 import { isPhoneWidth } from "@/lib/viewport";
 import { ProposalBanner } from "./proposal-banner";
 
-const CIRCLE_TABS = ["bulletin", "tasks", "wiki", "members", "events"] as const;
-type CircleTab = (typeof CIRCLE_TABS)[number];
-
 interface CirclePageProps {
   circle: Circle;
+  // which of its sections this is (the top bar's tab row switches them)
+  section: CircleSection;
   isMember: boolean;
   lastEditor: Member | null;
   lastEditedAt?: string;
@@ -42,13 +41,17 @@ interface CirclePageProps {
   // inviting people as a page (a phone; desktop gets a dialog), and an invitation's own page
   onInvitePage: () => void;
   onOpenInvitation: (invitation: CircleInvitation) => void;
-  // the tab to open on (e.g. restored on Back), and a note of each change so
-  // the route can remember it
-  initialTab?: string | null;
-  onTabChange: (tab: string) => void;
+  // open this section's form as it shows (asked for from another section),
+  // and going to another section, to open its form there
+  startNew: boolean;
+  onGoToSection: (section: CircleSection, opts?: { startNew?: boolean }) => void;
 }
 
-export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, onAddTaskPage, onOpenTaskPage, onInvitePage, onOpenInvitation, initialTab, onTabChange }: CirclePageProps) {
+/* One section of a circle's page, the top bar's tab row switching between
+   them: its bulletin, tasks, wiki (where its masthead is: what it is, where
+   it sits and who last edited it, over its quick facts), members or events.
+   Its open proposals head every section. */
+export function CirclePage({ circle: c, section, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, onAddTaskPage, onOpenTaskPage, onInvitePage, onOpenInvitation, startNew, onGoToSection }: CirclePageProps) {
   const { profile, circles, invitations, proposals } = useAppState();
   // its open proposals: a change to the circle, and any events it's deciding
   const openProposals = proposals.filter((p) => p.circleId === c.id && p.status === "open");
@@ -61,70 +64,36 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
   const circleEvents = [...events]
     .filter((e) => e.circleId === c.id || e.hostCircleId === c.id)
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
-  // a member lands on the bulletin, the members-only tab; anyone else on the
-  // wiki, with no hint a bulletin exists
-  const [tab, setTab] = useState<CircleTab>(
-    initialTab && CIRCLE_TABS.includes(initialTab as CircleTab) ? (initialTab as CircleTab) : isMember ? "bulletin" : "wiki",
-  );
-  function changeTab(key: CircleTab) {
-    setTab(key);
-    onTabChange(key);
-  }
-  // a group has no wiki (see circleHasWiki), and only its members ever see it
-  const hasWiki = circleHasWiki(c);
-  // the bulletin and tasks are members' only, with no hint to anyone else;
-  // a group has neither a wiki nor tasks, so its bulletin stands in for them
   const hasTasks = circleHasTasks(c);
-  const activeTab =
-    !isMember && (tab === "bulletin" || tab === "tasks") ? "wiki" : (!hasWiki && tab === "wiki") || (!hasTasks && tab === "tasks") ? "bulletin" : tab;
-  const tabs: { key: CircleTab; label: string }[] = [
-    ...(isMember ? [{ key: "bulletin" as const, label: "Bulletin" }] : []),
-    ...(isMember && hasTasks ? [{ key: "tasks" as const, label: "Tasks" }] : []),
-    ...(hasWiki ? [{ key: "wiki" as const, label: "Wiki" }] : []),
-    { key: "members", label: "Members" },
-    { key: "events", label: "Events" },
-  ];
   const websiteUrl = c.website ? circleWebsiteUrl(c.website) : null;
   const contact = c.contact ? circleContact(c.contact) : null;
-  // posting on the bulletin is in the top bar's menu, so opening its add dialog is kept here
-  const [adding, setAdding] = useState(false);
-  const startAdding = () => (isPhoneWidth() ? onAddResourcePage() : setAdding(true));
-  // so is the tasks' +
-  const [addingTask, setAddingTask] = useState(false);
-  const startAddingTask = () => (isPhoneWidth() ? onAddTaskPage() : setAddingTask(true));
+  /* Posting on the bulletin and adding a task are in the top bar's menu, so
+     whether their dialogs are open is kept here. On a phone each is a page
+     of its own; on desktop a dialog over its section, so from another one it
+     goes there first, which opens it as it shows (startNew). */
+  const [adding, setAdding] = useState(section === "bulletin" && startNew);
+  const startAdding = () => (isPhoneWidth() ? onAddResourcePage() : section === "bulletin" ? setAdding(true) : onGoToSection("bulletin", { startNew: true }));
+  const [addingTask, setAddingTask] = useState(section === "tasks" && startNew);
+  const startAddingTask = () => (isPhoneWidth() ? onAddTaskPage() : section === "tasks" ? setAddingTask(true) : onGoToSection("tasks", { startNew: true }));
+  // the ?new=1 that asked for it goes once it's open, so Back or a reload
+  // doesn't open it again
+  useEffect(() => {
+    if (startNew) window.history.replaceState(window.history.state, "", window.location.pathname);
+  }, [startNew]);
   const [inviting, setInviting] = useState(false);
   const startInviting = () => (isPhoneWidth() ? onInvitePage() : setInviting(true));
   // this circle's invitations not yet accepted
   const invited = invitations.filter((i) => i.circleId === c.id);
 
-  /* The top bar's menu, for a member: managing it, and what the tabs' own
-     buttons do, from whichever tab is showing. Posting and adding a task
-     open where they're listed, so they go to that tab first. Nothing to
-     anyone else, who has nothing here to do. */
+  /* The top bar's menu, for a member: managing it, and adding to it, from
+     whichever section is showing. Nothing to anyone else, who has nothing
+     here to do. */
   useTopBarMenu(
     isMember
       ? [
           { label: "Manage circle", href: `/circles/${c.id}/manage`, icon: Cog6ToothIcon },
-          {
-            label: "Post on bulletin",
-            icon: PlusIcon,
-            onSelect: () => {
-              changeTab("bulletin");
-              startAdding();
-            },
-          },
-          ...(hasTasks
-            ? [
-                {
-                  label: "New task",
-                  icon: CheckCircleIcon,
-                  onSelect: () => {
-                    changeTab("tasks");
-                    startAddingTask();
-                  },
-                },
-              ]
-            : []),
+          { label: "Post on bulletin", icon: PlusIcon, onSelect: startAdding },
+          ...(hasTasks ? [{ label: "New task", icon: CheckCircleIcon, onSelect: startAddingTask }] : []),
           { label: "Invite", icon: UserPlusIcon, onSelect: startInviting },
           { label: "New event", icon: CalendarIcon, onSelect: onNewEvent },
           // a meeting of this circle, where it can hold one (not a group)
@@ -135,69 +104,37 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
 
   return (
     <PageContainer size="normal">
-      <div className="flex flex-col items-stretch gap-5 border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-6 min-[720px]:flex-row min-[720px]:items-start min-[720px]:gap-5">
-        <div className="min-w-0 flex-1">
-          {/* where it sits in the tree: its parent, as a chip opposite the type */}
-          <div className="flex items-center justify-between gap-3">
-            <Eyebrow className="shrink-0 text-soft">
-              {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
-            </Eyebrow>
-            {parent && (
-              <MastheadChip title={`Part of ${parent.name}`} onClick={() => onOpenCircle(parent)}>
-                {parent.name}
-              </MastheadChip>
-            )}
-          </div>
-          <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display">{c.name}</h1>
-          <p className="mt-4 font-serif text-xl text-body italic">{c.tagline}</p>
-          {lastEditor && (
-            <div className="mt-4 font-sans text-label tracking-[0.02em] text-soft">
-              Last edited by{" "}
-              <button
-                onClick={() => onOpenMember(lastEditor)}
-                className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-[0.02em] text-ink underline underline-offset-2"
-              >
-                {lastEditor.name}
-              </button>
-              {lastEditedAt ? ` · ${fmtEditDate(lastEditedAt)}` : ""}
-            </div>
-          )}
+      {openProposals.length > 0 && (
+        <div className="mb-2 flex flex-col gap-3">
+          {openProposals.map((p) => <ProposalBanner key={p.id} proposal={p} memberId={profile.id} />)}
         </div>
-      </div>
+      )}
 
-      {openProposals.map((p) => <ProposalBanner key={p.id} proposal={p} memberId={profile.id} className="mt-6" />)}
-
-      <SimpleTabs
-        className="mt-6"
-        tabs={tabs}
-        active={activeTab}
-        onChange={(key) => changeTab(key as CircleTab)}
-      />
-
-      {activeTab === "bulletin" && (
+      {section === "bulletin" && (
         <SectionGroup>
-          <Section>
+          <Section className="pt-0">
             <BulletinSection circleId={c.id} adding={adding} onAdd={startAdding} onAddingDone={() => setAdding(false)} onEditPage={onEditResourcePage} />
           </Section>
         </SectionGroup>
       )}
 
-      {activeTab === "tasks" && (
+      {section === "tasks" && (
         <SectionGroup>
-          <Section>
+          <Section className="pt-0">
             <TasksSection circle={c} adding={addingTask} onAdd={startAddingTask} onAddingDone={() => setAddingTask(false)} onOpenPage={onOpenTaskPage} />
           </Section>
         </SectionGroup>
       )}
 
-      {activeTab === "wiki" && (
+      {section === "wiki" && (
         <>
-          {/* the circle's quick facts open its wiki, as a small table: each
-              fact's own label is its heading. Before the sections rather than
-              one of them, since it ends on its own ink rule and needs no
-              hairline after it */}
+          <CircleMasthead circle={c} parent={parent} lastEditor={lastEditor} lastEditedAt={lastEditedAt} onOpenMember={onOpenMember} onOpenCircle={onOpenCircle} ruled={c.facts.length === 0} />
+          {/* its quick facts right under it, as a small table: each fact's
+              own label is its heading. Before the sections rather than one of
+              them, since it ends on its own ink rule and needs no hairline
+              after it */}
           {c.facts.length > 0 && (
-            <div className="mt-8 grid grid-cols-1 gap-px border-y border-ink bg-faint min-[480px]:grid-cols-2 min-[720px]:grid-cols-4">
+            <div className="grid grid-cols-2 gap-px border-y border-ink bg-faint min-[720px]:grid-cols-4">
               {c.facts.map(([k, v]) => (
                 <div key={k} className="bg-paper px-4 py-4">
                   <Eyebrow className="text-soft">{k}</Eyebrow>
@@ -311,9 +248,9 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         </>
       )}
 
-      {activeTab === "members" && (
+      {section === "members" && (
         <SectionGroup>
-          <Section>
+          <Section className="pt-0">
             {members.length > 0 ? (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
                 {members.map((m) => (
@@ -380,9 +317,9 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
         </SectionGroup>
       )}
 
-      {activeTab === "events" && (
+      {section === "events" && (
         <SectionGroup>
-          <Section>
+          <Section className="pt-0">
             <EventFeed
               events={circleEvents}
               onOpenEvent={onOpenEvent}
@@ -399,6 +336,41 @@ export function CirclePage({ circle: c, isMember, lastEditor, lastEditedAt, even
       )}
       {inviting && <InviteModal circle={c} onClose={() => setInviting(false)} />}
     </PageContainer>
+  );
+}
+
+/* What the circle is, heading its wiki: its type, opposite its parent as a
+   chip; its name and tagline; and who last edited it. Its quick facts follow
+   right under it, their ink rule closing it; without any, it draws its own. */
+function CircleMasthead({ circle: c, parent, lastEditor, lastEditedAt, onOpenMember, onOpenCircle, ruled }: { circle: Circle; parent: Circle | undefined; lastEditor: Member | null; lastEditedAt: string | undefined; onOpenMember: (m: Member) => void; onOpenCircle: (c: Circle) => void; ruled: boolean }) {
+  return (
+    <div className={clsx("pb-6", ruled && "border-b border-ink")}>
+      {/* where it sits in the tree: its parent, as a chip opposite the type */}
+      <div className="flex items-center justify-between gap-3">
+        <Eyebrow className="shrink-0 text-soft">
+          {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
+        </Eyebrow>
+        {parent && (
+          <MastheadChip title={`Part of ${parent.name}`} onClick={() => onOpenCircle(parent)}>
+            {parent.name}
+          </MastheadChip>
+        )}
+      </div>
+      <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display">{c.name}</h1>
+      <p className="mt-4 font-serif text-xl text-body italic">{c.tagline}</p>
+      {lastEditor && (
+        <div className="mt-4 font-sans text-label tracking-[0.02em] text-soft">
+          Last edited by{" "}
+          <button
+            onClick={() => onOpenMember(lastEditor)}
+            className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-[0.02em] text-ink underline underline-offset-2"
+          >
+            {lastEditor.name}
+          </button>
+          {lastEditedAt ? ` · ${fmtEditDate(lastEditedAt)}` : ""}
+        </div>
+      )}
+    </div>
   );
 }
 

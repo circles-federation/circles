@@ -1,3 +1,5 @@
+import { isCircleSection } from "./circles.util";
+
 export type Tab = "/home" | "/circles" | "/events";
 
 /* Which tab a page belongs to, for both navs to highlight (TopBar's tabs on
@@ -22,7 +24,8 @@ export function activeTab(pathname: string): Tab | null {
     case "profile":
       return id === "edit" ? null : "/home";
     case "circles":
-      return id === "new" || sub ? null : "/circles";
+      // a circle's sections (/circles/[id]/members…) are its page, not something to do
+      return id === "new" || (sub && !isCircleSection(sub)) || pathname.split("/").length > 4 ? null : "/circles";
     case "events":
       return id === "new" || sub ? null : "/events";
     default:
