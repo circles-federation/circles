@@ -6,12 +6,14 @@ import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
 import { TasksSection } from "./tasks-section";
+import { InboxSection } from "./inbox-section";
+import { WriteToCircle } from "./write-to-circle";
 import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { CIRCLE_TYPE_LABEL, circleCanHoldMeetings, circleChildren, circleContact, circleHasTasks, circleWebsiteUrl, isCircleAudience, isGroup, type CircleSection } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleCanHoldMeetings, circleChildren, circleContact, circleHasInbox, circleHasTasks, circleWebsiteUrl, isCircleAudience, isGroup, type CircleSection } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
@@ -122,6 +124,14 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
         <SectionGroup>
           <Section className="pt-0">
             <TasksSection circle={c} adding={addingTask} onAdd={startAddingTask} onAddingDone={() => setAddingTask(false)} onOpenPage={onOpenTaskPage} />
+          </Section>
+        </SectionGroup>
+      )}
+
+      {section === "inbox" && (
+        <SectionGroup>
+          <Section className="pt-0">
+            <InboxSection circle={c} />
           </Section>
         </SectionGroup>
       )}
@@ -242,6 +252,22 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
                 <EyebrowGroup label="How to join">
                   <p className="max-w-[40em] font-serif text-base leading-normal text-body">{c.join}</p>
                 </EyebrowGroup>
+              </Section>
+            )}
+
+            {/* its Inbox, from outside: anyone else may write to it here; its
+                members read what's written in the Inbox itself */}
+            {circleHasInbox(c) && (
+              <Section>
+                {isMember ? (
+                  <EyebrowGroup label={`Write to ${c.name}`}>
+                    <p className="max-w-[40em] font-serif text-base leading-normal text-soft">Anyone on Circles can write to {c.name} here. What they write arrives in its Inbox.</p>
+                  </EyebrowGroup>
+                ) : (
+                  <div className="max-w-[40em]">
+                    <WriteToCircle circle={c} />
+                  </div>
+                )}
               </Section>
             )}
           </SectionGroup>

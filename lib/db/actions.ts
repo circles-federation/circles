@@ -9,6 +9,7 @@ import { UserFacingError } from "./errors";
 import * as eventShares from "./event-shares";
 import * as events from "./events";
 import * as invitations from "./invitations";
+import * as messages from "./messages";
 import * as members from "./members";
 import * as neighborhoodPosts from "./neighborhood-posts";
 import * as photoReviews from "./photo-reviews";
@@ -17,10 +18,10 @@ import * as push from "./push";
 import * as resources from "./resources";
 import * as tasks from "./tasks";
 import { sendEmail } from "@/lib/email";
-import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail, photoDecisionEmail, taskAssignedEmail } from "@/lib/email/templates.util";
+import { applicationApprovedEmail, applicationDeclinedEmail, circleMessageEmail, invitationEmail, photoDecisionEmail, taskAssignedEmail } from "@/lib/email/templates.util";
 import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
-import { invitationPush, photoDecisionPush, taskAssignedPush } from "@/lib/push/messages.util";
+import { circleMessagePush, invitationPush, photoDecisionPush, taskAssignedPush } from "@/lib/push/messages.util";
 import { dueLabel, type TaskInput } from "@/lib/tasks.util";
 import { localDay } from "@/lib/recurrence.util";
 import { getCurrentUserId } from "@/lib/session";
@@ -29,6 +30,7 @@ import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { newCircleNeighborhood } from "@/lib/proposals.util";
 import { indexCircles } from "@/lib/circles.util";
 import type { ResourceInput } from "@/lib/resources.util";
+import type { MessageInput } from "@/lib/messages.util";
 import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges, TaskStatus } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
@@ -325,6 +327,44 @@ async function tellAssignee(taskId: string, assigneeId: number, assignerId: numb
       sendEmail({ to: data.email, ...taskAssignedEmail({ ...notice, url: `${base}/circles/${data.circleId}/tasks/${taskId}` }) }).catch((err) => console.error("Couldn't email an assignee:", err)),
     pushToMember(data.memberId, taskAssignedPush({ ...notice, taskId })).catch((err) => console.error("Couldn't push to an assignee:", err)),
   ]);
+}
+
+/* A circle's Inbox (lib/db/messages.ts checks who may do each). Writing to
+   it tells the circle's members, by email and push, right after the
+   response; like an invitation, a failed send isn't retried, since the
+   message waits in the Inbox either way. */
+export async function sendCircleMessageAction(circleId: string, input: MessageInput) {
+  const result = await asMember((memberId) => messages.sendMessage(memberId, circleId, input));
+  if (result.ok) after(() => tellCircle(result.value.id));
+  return result;
+}
+
+export async function markMessageReadAction(id: string) {
+  return asMember((memberId) => messages.markMessageRead(memberId, id));
+}
+
+export async function assignMessageAction(id: string, assigneeId: number | null) {
+  return asMember((memberId) => messages.assignMessage(memberId, id, assigneeId));
+}
+
+export async function setMessageDoneAction(id: string, done: boolean) {
+  return asMember((memberId) => messages.setMessageDone(memberId, id, done));
+}
+
+async function tellCircle(id: string) {
+  const data = await messages.getMessageNoticeData(id).catch((err) => {
+    console.error("Couldn't read a message to tell its circle of:", err);
+    return null;
+  });
+  if (!data) return;
+  const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const url = `${base}/circles/${data.circleId}/inbox/${id}`;
+  await Promise.all(
+    data.recipients.flatMap((r) => [
+      r.email && sendEmail({ to: r.email, ...circleMessageEmail({ ...data, name: r.name, url }) }).catch((err) => console.error("Couldn't email a circle of a message:", err)),
+      pushToMember(r.memberId, circleMessagePush({ ...data, messageId: id })).catch((err) => console.error("Couldn't push a circle a message:", err)),
+    ]),
+  );
 }
 
 /* Invitations to a circle (lib/db/invitations.ts checks who may do each).

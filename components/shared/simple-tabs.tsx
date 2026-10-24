@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import clsx from "clsx";
+import { AttentionDot } from "./attention-dot";
 
 interface SimpleTab {
   key: string;
   label: string;
   // shown before the label on a tablet or wider (600px on), where there's room
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
+  // the attention dot, for something new in it (an Inbox's unread)
+  attention?: boolean;
 }
 
 interface SimpleTabsProps {
@@ -67,7 +70,10 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
               )}
             >
               {t.icon && <t.icon className="hidden size-4 shrink-0 min-[600px]:block" strokeWidth={on ? 2.5 : 2} aria-hidden />}
-              {t.label}
+              <span className="relative">
+                {t.label}
+                {t.attention && <AttentionDot className="-top-0.5 -right-2.5" />}
+              </span>
             </button>
           );
         })}

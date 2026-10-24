@@ -148,3 +148,8 @@ export function taskAssignedPush(d: { taskId: string; circleId: string; circleNa
 export function digestPush(): PushMessage {
   return message("Your daily digest is in your inbox", "There's news from your circles. Check your email for the details.", "/events", "digest");
 }
+
+// someone wrote to a circle you're a member of: who, and what about; opens it
+export function circleMessagePush(d: { messageId: string; circleId: string; circleName: string; senderName: string; subject: string }): PushMessage {
+  return message(`${d.senderName} wrote to ${d.circleName}`, d.subject, `/circles/${d.circleId}/inbox/${d.messageId}`, `message-${d.messageId}`);
+}

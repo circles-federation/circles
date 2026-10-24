@@ -31,6 +31,10 @@ import {
   updateTaskAction as dbUpdateTask,
   deleteTaskAction as dbDeleteTask,
   setTaskStatusAction as dbSetTaskStatus,
+  sendCircleMessageAction as dbSendMessage,
+  markMessageReadAction as dbMarkMessageRead,
+  assignMessageAction as dbAssignMessage,
+  setMessageDoneAction as dbSetMessageDone,
 } from "@/lib/db/actions";
 import type { AppStateData } from "@/lib/db/app-state";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
@@ -40,7 +44,8 @@ import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { repeatSummary } from "@/lib/recurrence.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { TaskInput } from "@/lib/tasks.util";
-import type { AvailabilityWindow, Circle, CircleInvitation, CircleProposal, CircleResource, CircleTask, ConsentResponse, Event, Member, NeighborhoodPost, NotificationSettings, Profile, ProposalChanges, TaskStatus } from "@/lib/types";
+import type { MessageInput } from "@/lib/messages.util";
+import type { AvailabilityWindow, Circle, CircleInvitation, CircleMessage, CircleProposal, CircleResource, CircleTask, ConsentResponse, Event, Member, NeighborhoodPost, NotificationSettings, Profile, ProposalChanges, TaskStatus } from "@/lib/types";
 
 // what an awaited mutator hands back: the form stays open and shows `error`
 // when the server refused it
@@ -57,6 +62,8 @@ export interface AppStateValue {
   neighborhoodPosts: NeighborhoodPost[];
   // the tasks of every circle they belong to (only members are sent them)
   tasks: CircleTask[];
+  // what's been written to their circles' Inboxes (only members are sent them)
+  messages: CircleMessage[];
   // their own invitations to circles, and those to the circles they're in
   invitations: CircleInvitation[];
   // the proposals of their circles: open ones, and those decided lately
@@ -100,6 +107,12 @@ export interface AppStateValue {
   // only its status (the table's round button), saying so in a toast if refused
   setTaskStatus(id: string, status: TaskStatus): Promise<MutationResult>;
   removeTask(id: string): Promise<MutationResult>;
+  // a circle's Inbox: writing to it (the form shows a refusal itself), and a
+  // member opening a message, handling it, or filing it as Done
+  sendMessage(circleId: string, input: MessageInput): Promise<MutationResult>;
+  markMessageRead(id: string): void;
+  assignMessage(id: string, assigneeId: number | null): Promise<MutationResult>;
+  setMessageDone(id: string, done: boolean): Promise<MutationResult>;
   // an admin decided one, so there's one fewer waiting (until the next refresh)
   reviewDecided(): void;
   inviteToCircle(circleId: string, memberId: number): Promise<MutationResult>;
@@ -169,13 +182,14 @@ interface AppStateProviderProps {
   initialResources: CircleResource[];
   initialNeighborhoodPosts: NeighborhoodPost[];
   initialTasks: CircleTask[];
+  initialMessages: CircleMessage[];
   initialPendingReviews: number | null;
   initialInvitations: CircleInvitation[];
   initialProposals: CircleProposal[];
   initialProfile: Profile;
 }
 
-export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialNeighborhoodPosts, initialTasks, initialProfile, initialPendingReviews, initialInvitations, initialProposals }: AppStateProviderProps) {
+export function AppStateProvider({ children, currentUserId, initialEvents, initialCircles, initialMembers, initialResources, initialNeighborhoodPosts, initialTasks, initialMessages, initialProfile, initialPendingReviews, initialInvitations, initialProposals }: AppStateProviderProps) {
   const { showToast } = useToast();
   // events live in state so newly created ones appear instantly
   const [events, setEvents] = useState<Event[]>(() => initialEvents.map((e) => ({ ...e, rsvps: [...e.rsvps], ...(e.votes ? { votes: [...e.votes] } : {}) })));
@@ -187,6 +201,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   const [resources, setResources] = useState<CircleResource[]>(initialResources);
   const [neighborhoodPosts, setNeighborhoodPosts] = useState<NeighborhoodPost[]>(initialNeighborhoodPosts);
   const [tasks, setTasks] = useState<CircleTask[]>(initialTasks);
+  const [messages, setMessages] = useState<CircleMessage[]>(initialMessages);
   const [pendingReviews, setPendingReviews] = useState(initialPendingReviews);
   const [invitations, setInvitations] = useState<CircleInvitation[]>(initialInvitations);
   const [proposals, setProposals] = useState<CircleProposal[]>(initialProposals);
@@ -233,6 +248,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setResources(fresh.resources);
     setNeighborhoodPosts(fresh.neighborhoodPosts);
     setTasks(fresh.tasks);
+    setMessages(fresh.messages);
     setInvitations(fresh.invitations);
     setProposals(fresh.proposals);
     setPendingReviews(fresh.pendingReviews);
@@ -542,6 +558,39 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  // the message isn't the sender's to see afterwards (only the circle's
+  // members are sent it), so there's nothing to add here
+  async function sendMessage(circleId: string, input: MessageInput): Promise<MutationResult> {
+    const result = await dbSendMessage(circleId, input).catch(unreachable);
+    return result.ok ? { ok: true } : result;
+  }
+
+  // opening a message reads it at once; the server's word follows quietly
+  function markMessageRead(id: string) {
+    const message = messages.find((m) => m.id === id);
+    if (!message || message.read) return;
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, read: true } : m)));
+    void dbMarkMessageRead(id).catch(() => undefined);
+  }
+
+  // await-then-update, as for tasks: a refusal has only a toast to show it
+  function messageUpdated(title: string) {
+    return (result: { ok: true; value: CircleMessage } | { ok: false; error: string }): MutationResult => {
+      if (!result.ok) {
+        showToast({ tone: "error", title, message: result.error });
+        return result;
+      }
+      setMessages((prev) => prev.map((m) => (m.id === result.value.id ? result.value : m)));
+      return { ok: true };
+    };
+  }
+  async function assignMessage(id: string, assigneeId: number | null): Promise<MutationResult> {
+    return messageUpdated("Couldn't change who's handling it")(await dbAssignMessage(id, assigneeId).catch(unreachable));
+  }
+  async function setMessageDone(id: string, done: boolean): Promise<MutationResult> {
+    return messageUpdated(done ? "Couldn't file it as done" : "Couldn't reopen it")(await dbSetMessageDone(id, done).catch(unreachable));
+  }
+
   async function removeNeighborhoodPost(id: string): Promise<MutationResult> {
     const result = await dbRemoveNeighborhoodPost(id).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) {
@@ -722,7 +771,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
   return (
     <AppStateContext.Provider
       value={{
-        events, circles, members, resources, neighborhoodPosts, tasks, invitations, proposals, pendingReviews, rsvpState, profile,
+        events, circles, members, resources, neighborhoodPosts, tasks, messages, invitations, proposals, pendingReviews, rsvpState, profile,
         inviteToCircle: tracked(inviteToCircle),
         acceptInvitation: tracked(acceptInvitation),
         leaveCircle: tracked(leaveCircle),
@@ -750,6 +799,10 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         updateTask: tracked(updateTask),
         setTaskStatus: tracked(setTaskStatus),
         removeTask: tracked(removeTask),
+        sendMessage: tracked(sendMessage),
+        markMessageRead: tracked(markMessageRead),
+        assignMessage: tracked(assignMessage),
+        setMessageDone: tracked(setMessageDone),
       }}
     >
       {children}

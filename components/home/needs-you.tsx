@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { EnvelopeIcon, HandRaisedIcon, InboxIcon } from "@heroicons/react/24/outline";
+import { EnvelopeIcon, HandRaisedIcon, InboxIcon, InboxStackIcon } from "@heroicons/react/24/outline";
 import { LinkRow } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
 import { useCirclesById, useMemberById, useNeedsYou } from "@/lib/hooks";
@@ -14,14 +14,15 @@ function RowIcon({ children }: { children: ReactNode }) {
 }
 
 /* Everything on Home that's waiting on someone, as one list: first what's
-   waiting on you (an admin's reviews, proposals to answer, invitations),
+   waiting on you (an admin's reviews, proposals to answer, messages to
+   your circles' Inboxes not yet opened, invitations),
    which lights the Home tab's dot, then your own proposals still open,
    quieter, since they wait on others (and are the way back to an undecided
    meeting, which is in no list). Nothing at all, and there's no section. */
 export function NeedsYou() {
   const byId = useCirclesById();
   const memberById = useMemberById();
-  const { reviews, awaitingMe, myInvitations, mineOpen, count: needed } = useNeedsYou();
+  const { reviews, awaitingMe, myInvitations, mineOpen, unreadMessages, count: needed } = useNeedsYou();
   if (needed === 0 && mineOpen.length === 0) return null;
 
   return (
@@ -42,6 +43,15 @@ export function NeedsYou() {
             image={<RowIcon><HandRaisedIcon className="size-5 text-flame" strokeWidth={2} aria-hidden /></RowIcon>}
             title={proposalTitle(p)}
             detail={`${byId[p.circleId]?.name ?? "A circle"} · answer by ${fmtDateTime(new Date(p.closesAt))}`}
+          />
+        ))}
+        {unreadMessages.map(({ circleId, count }) => (
+          <LinkRow
+            key={`inbox-${circleId}`}
+            href={`/circles/${circleId}/inbox`}
+            image={<RowIcon><InboxStackIcon className="size-5 text-action" strokeWidth={2} aria-hidden /></RowIcon>}
+            title={count === 1 ? "1 new message" : `${count} new messages`}
+            detail={`To ${byId[circleId]?.name ?? "your circle"}`}
           />
         ))}
         {myInvitations.map((inv) => {

@@ -2,12 +2,13 @@ import { countPendingReviews } from "./photo-reviews";
 import { getCirclesForMember } from "./circles";
 import { getEventsForMember } from "./events";
 import { getInvitationsForMember } from "./invitations";
+import { getMessagesForMember } from "./messages";
 import { getMembersForViewer, getOwnSettings } from "./members";
 import { getNeighborhoodPostsForMember } from "./neighborhood-posts";
 import { getProposalsForMember } from "./proposals";
 import { getResourcesForMember } from "./resources";
 import { getTasksForMember } from "./tasks";
-import type { Circle, CircleInvitation, CircleProposal, CircleResource, CircleTask, Event, Member, NeighborhoodPost, Profile } from "@/lib/types";
+import type { Circle, CircleInvitation, CircleMessage, CircleProposal, CircleResource, CircleTask, Event, Member, NeighborhoodPost, Profile } from "@/lib/types";
 
 export interface AppStateData {
   events: Event[];
@@ -18,6 +19,8 @@ export interface AppStateData {
   neighborhoodPosts: NeighborhoodPost[];
   // the tasks of every circle they belong to
   tasks: CircleTask[];
+  // what's been written to the Inboxes of the circles they belong to
+  messages: CircleMessage[];
   // their own invitations, and those to the circles they're in
   invitations: CircleInvitation[];
   // the proposals of their circles: open ones, and those decided lately
@@ -36,7 +39,7 @@ export interface AppStateData {
    scoped to circles: only the ones the member may see are fetched, so nothing
    else reaches their browser. Null if the member no longer exists. */
 export async function getAppStateForMember(memberId: number): Promise<AppStateData | null> {
-  const [events, circles, members, resources, invitations, proposals, pendingReviews, neighborhoodPosts, tasks] = await Promise.all([
+  const [events, circles, members, resources, invitations, proposals, pendingReviews, neighborhoodPosts, tasks, messages] = await Promise.all([
     getEventsForMember(memberId),
     getCirclesForMember(memberId),
     getMembersForViewer(memberId),
@@ -46,9 +49,10 @@ export async function getAppStateForMember(memberId: number): Promise<AppStateDa
     countPendingReviews(memberId),
     getNeighborhoodPostsForMember(memberId),
     getTasksForMember(memberId),
+    getMessagesForMember(memberId),
   ]);
   const me = members.find((m) => m.id === memberId);
   if (!me) return null;
   const profile: Profile = { ...me, ...(await getOwnSettings(memberId)) };
-  return { events, circles, members, resources, neighborhoodPosts, tasks, invitations, proposals, profile, pendingReviews };
+  return { events, circles, members, resources, neighborhoodPosts, tasks, messages, invitations, proposals, profile, pendingReviews };
 }

@@ -172,6 +172,8 @@ export const circles = pgTable(
     // from everyone — sent to no one, so its page 404s and it's in no list —
     // until there's a way to revive or delete it
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    // its Inbox is on (decided by consent): see circle_messages
+    inbox: boolean("inbox_enabled").notNull().default(false),
   },
   (t) => [
     // target of circle_members' composite FK, which is what lets that table
@@ -558,6 +560,43 @@ export const circleTasks = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (t) => [index("circle_tasks_circle_idx").on(t.circleId), index("circle_tasks_assignee_idx").on(t.assigneeId)]
+);
+
+/* Messages written to a circle from its wiki (lib/db/messages.ts), read in
+   its Inbox by its members alone. The sender agreed to be replied to by
+   email, at reply_email: their address as it was when they wrote, so it's
+   kept whatever they later do with their profile. The body is Markdown. Goes
+   with the circle; a sender who leaves the platform leaves their message,
+   signed with the name it was sent under. */
+export const circleMessages = pgTable(
+  "circle_messages",
+  {
+    id: text("id").primaryKey(),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    senderId: integer("sender_id").references(() => members.id, { onDelete: "set null" }),
+    senderName: text("sender_name").notNull(),
+    replyEmail: text("reply_email").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // the member handling it (writing back to the sender), if anyone is
+    assigneeId: integer("assignee_id").references(() => members.id, { onDelete: "set null" }),
+    // filed away as dealt with, and by whom
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    doneBy: integer("done_by").references(() => members.id, { onDelete: "set null" }),
+  },
+  (t) => [index("circle_messages_circle_idx").on(t.circleId, t.createdAt), index("circle_messages_sender_idx").on(t.senderId, t.createdAt)]
+);
+
+// which of a circle's members have opened which of its messages
+export const circleMessageReads = pgTable(
+  "circle_message_reads",
+  {
+    messageId: text("message_id").notNull().references(() => circleMessages.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.messageId, t.memberId] })]
 );
 
 /* A member's link to an event for someone without an account (see

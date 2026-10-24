@@ -2,6 +2,7 @@ import type { EmailMessage } from "./index";
 import { MONTHS, WEEKDAYS, fmtDateTime, fmtEventWhen, fmtNumericDate, fmtTime, parseDay, withArticle } from "@/lib/format.util";
 import { isEventProposal, proposalTitle } from "@/lib/proposals.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
+import { messageHtml, messageText } from "@/lib/messages.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
 import type { AgendaItem, CircleType, EventChange, EventKindKey, GuestNoticeKind, EventRepeat, NotificationKind, ProposalChanges, ProposalKind, ProposalLine, ProposalNoticeKind } from "@/lib/types";
@@ -928,6 +929,29 @@ export function invitationEmail(d: { name: string; inviterName?: string; circleN
         `<tr><td style="padding-top:24px"></td></tr>` +
         paragraph(`${esc(d.name)}, ${esc(lead)} ${esc(after)}`) +
         `<tr><td style="padding-bottom:28px"><a href="${esc(d.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">View invitation</a></td></tr>` +
+        footnote(esc(why))
+    ),
+  };
+}
+
+/* Someone wrote to a circle you're a member of (its Inbox): the whole
+   message, as a letter, signed; the way to answer them is from the Inbox, so
+   whoever's handling it does, rather than everyone replying to this email. */
+export function circleMessageEmail(d: { name: string; circleName: string; senderName: string; subject: string; body: string; url: string }): Body {
+  const why = `You're getting this because you're a member of ${d.circleName}, and its Inbox is on.`;
+  const lead = `${d.senderName} wrote to ${d.circleName}.`;
+  return {
+    subject: `${d.senderName} wrote to ${d.circleName}: ${d.subject}`,
+    text: `${d.name},\n\n${lead}\n\n${d.subject}\n\n${messageText(d.body)}\n\n— ${d.senderName}\n\nRead it, and reply, from the Inbox: ${d.url}\n\n${why}`,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
+        eyebrow(`A message to ${esc(d.circleName)}`) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1.05;color:${INK}">${esc(d.subject)}</div>` +
+        `</td></tr>` +
+        // its body is HTML already made safe by messageHtml: typed HTML shown as text, only web and mail links
+        `<tr><td style="padding-top:20px;font-family:${SERIF};font-size:18px;line-height:1.55;color:#222222">${messageHtml(d.body)}</td></tr>` +
+        `<tr><td style="padding:6px 0 28px;font-family:${SERIF};font-size:17px;font-style:italic;color:${INK}">— ${esc(d.senderName)}</td></tr>` +
+        `<tr><td style="padding-bottom:28px"><a href="${esc(d.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">Open the Inbox</a></td></tr>` +
         footnote(esc(why))
     ),
   };

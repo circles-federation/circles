@@ -18,6 +18,7 @@ export function BetaPrivacy() {
         <li>What you add to your profile, all of it optional: pronouns, occupation, skills, interests and bio.</li>
         <li>When you can do meetings, if you choose to say (in Settings).</li>
         <li>What you do in Circles: the circles you belong to, events, RSVPs, your answers to proposals, bulletin posts and invitations.</li>
+        <li>Messages you write to a circle&apos;s Inbox, with the email address you agree to be answered at.</li>
         <li>If you RSVP to an event someone shared with you, without an account: your name and email address, and which member shared the link with you. To limit abuse, a scrambled (hashed) form of your IP address is kept for a day, only to count how many codes one connection asks for.</li>
         <li>Your sign-ins, including your IP address and browser type, to keep your account secure.</li>
       </LegalList>
@@ -29,6 +30,7 @@ export function BetaPrivacy() {
         <li>Your photo is seen by members who share a circle with you, including your neighborhood.</li>
         <li>When you can do meetings isn&apos;t shown to anyone as a schedule. When a member of one of your circles plans a meeting, they see whether you can make the time they pick, and until when you&apos;re free if you&apos;re free as it begins.</li>
         <li>Events, bulletin posts, a circle&apos;s tasks (and who they&apos;re assigned to), and who&apos;s going to something are seen by the members of the circle they belong to. A post a circle puts on its neighborhood&apos;s bulletin is seen by everyone who lives there. Answers to a proposal aren&apos;t secret: everyone with a say in it sees who answered what, and why anyone objected. For a proposal a neighborhood decides, like a new circle in it, that&apos;s everyone who lives there.</li>
+        <li>A message you write to a circle&apos;s Inbox is seen only by that circle&apos;s members, with your name and email address (even if you hide your email from your profile), since you agree to be answered there when you send it. Its members see who among them is handling it.</li>
         <li>If you RSVP as a guest, your first name is shown on that event&apos;s page, to the members who can see the event and to anyone with the link. Your email address is shown to no one. It&apos;s used to check the address is yours, to confirm your RSVP, and to email you if the event is moved or cancelled. Every email to you has a link to stop them, or to come off the list and have your name and email deleted. You can also take your RSVP back from the event page. Otherwise your name and email are deleted 30 days after the event.</li>
         <li>If you then apply to join, the admin reviewing your application sees which member invited you and through which event. Your guest RSVPs to events open to your neighborhood or the whole city become ordinary RSVPs once you&apos;re a member.</li>
         <li>Your application photo is seen only by the person reviewing it, and is no longer kept with the application once it&apos;s decided.</li>

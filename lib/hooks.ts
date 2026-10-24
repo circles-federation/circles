@@ -41,17 +41,22 @@ export function useCirclesById(): CirclesById {
 
 /* What's waiting on the member, for Home's Needs you and the dot on its nav
    tab, so the two can't disagree: an admin's reviews (applications and new
-   photos; 0 for everyone else), the proposals waiting on their answer and
-   the invitations sent to them (`count` is these three), and, waiting on
-   others, their own open proposals. Proposals soonest to close first. */
+   photos; 0 for everyone else), the proposals waiting on their answer, the
+   invitations sent to them, and the circles whose Inbox has messages they
+   haven't opened (`count` is these four), and, waiting on others, their own
+   open proposals. Proposals soonest to close first. */
 export function useNeedsYou() {
-  const { pendingReviews, invitations, proposals, profile } = useAppState();
+  const { pendingReviews, invitations, proposals, profile, messages } = useAppState();
   const byClosing = (a: CircleProposal, b: CircleProposal) => a.closesAt.localeCompare(b.closesAt);
   const reviews = pendingReviews ?? 0;
   const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort(byClosing);
   const myInvitations = invitations.filter((i) => i.memberId === profile.id);
   const mineOpen = proposals.filter((p) => p.status === "open" && p.proposerId === profile.id).sort(byClosing);
-  return { reviews, awaitingMe, myInvitations, mineOpen, count: reviews + awaitingMe.length + myInvitations.length };
+  // each circle with open messages they haven't read, and how many
+  const unread = new Map<string, number>();
+  for (const m of messages) if (!m.read && !m.doneAt) unread.set(m.circleId, (unread.get(m.circleId) ?? 0) + 1);
+  const unreadMessages = [...unread].map(([circleId, n]) => ({ circleId, count: n }));
+  return { reviews, awaitingMe, myInvitations, mineOpen, unreadMessages, count: reviews + awaitingMe.length + myInvitations.length + unreadMessages.length };
 }
 
 // whether Home has something waiting on the member, for the dot on its nav

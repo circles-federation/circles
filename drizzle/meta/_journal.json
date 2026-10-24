@@ -379,6 +379,13 @@
       "when": 1792633309670,
       "tag": "0053_easy_marvel_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792875730519,
+      "tag": "0054_cloudy_zuras",
+      "breakpoints": true
     }
   ]
 }

@@ -23,10 +23,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // (see lib/session.ts).
   const state = await getAppStateForMember(currentUserId);
   if (!state) redirect("/");
-  const { events, circles, members, resources, neighborhoodPosts, tasks, invitations, proposals, profile, pendingReviews } = state;
+  const { events, circles, members, resources, neighborhoodPosts, tasks, messages, invitations, proposals, profile, pendingReviews } = state;
 
   return (
-    <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialCircles={circles} initialMembers={members} initialResources={resources} initialNeighborhoodPosts={neighborhoodPosts} initialTasks={tasks} initialProfile={profile} initialPendingReviews={pendingReviews} initialInvitations={invitations} initialProposals={proposals}>
+    <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialCircles={circles} initialMembers={members} initialResources={resources} initialNeighborhoodPosts={neighborhoodPosts} initialTasks={tasks} initialMessages={messages} initialProfile={profile} initialPendingReviews={pendingReviews} initialInvitations={invitations} initialProposals={proposals}>
       <BackHandlerProvider>
         <TopBarActionProvider>
           <AppShell>{children}</AppShell>

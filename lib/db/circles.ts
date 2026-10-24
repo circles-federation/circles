@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, like, or } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleInvitations, circleMembers, circleRoles, circles } from "./schema";
+import { unassignMessagesFromCircle } from "./messages";
 import { unassignFromCircle } from "./tasks";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
@@ -23,6 +24,7 @@ function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDra
     offers: row.offers,
     needs: row.needs,
     ...(row.domain ? { domain: row.domain } : {}),
+    ...(row.inbox ? { inbox: true } : {}),
     aims: row.aims,
     members: memberIds,
     ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds, row.type) } : {}),
@@ -101,7 +103,7 @@ export async function updateCircle(memberId: number, id: string, patch: Partial<
   const consentNeeded = (["name", "tagline", "type", "parentId"] as const).find((k) => patch[k] !== undefined && patch[k] !== circle[k]);
   if (consentNeeded) throw new CircleError("That change needs the circle's consent: propose it from Manage circle.");
   // and a Circle's domain and aims too, which are only ever proposed, so dropped here
-  const { members: _members, roles: _roles, lastEditedAt, name: _name, tagline: _tagline, type: _type, parentId: _parentId, domain: _domain, aims: _aims, ...columnPatch } = patch;
+  const { members: _members, roles: _roles, lastEditedAt, name: _name, tagline: _tagline, type: _type, parentId: _parentId, domain: _domain, aims: _aims, inbox: _inbox, ...columnPatch } = patch;
   if (Object.keys(columnPatch).length > 0 || lastEditedAt !== undefined) {
     await db
       .update(circles)
@@ -195,6 +197,7 @@ export async function leaveCircle(memberId: number, circleId: string): Promise<{
     if (left.length === 0) throw new CircleError(`You're not a member of ${circle.name}.`);
     await tx.update(circleRoles).set({ memberId: null }).where(and(eq(circleRoles.circleId, circleId), eq(circleRoles.memberId, memberId)));
     await unassignFromCircle(tx, memberId, circleId);
+    await unassignMessagesFromCircle(tx, memberId, circleId);
     const [remaining] = await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId)).limit(1);
     if (remaining) return { archived: false };
     await tx.update(circles).set({ archivedAt: new Date() }).where(eq(circles.id, circleId));

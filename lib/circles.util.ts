@@ -146,13 +146,25 @@ export function circleHasTasks(circle: Pick<Circle, "type" | "parentId">): boole
   return circleHasPage(circle) && !isGroup(circle);
 }
 
+// an Inbox: anyone may write to it from its wiki (lib/db/messages.ts). A
+// Circle, a collective or a co-op may have one, once its members consent to
+// it; not a group, whose page only its members see, nor a neighborhood or
+// the city, too many members to answer as one
+export function circleCanHaveInbox(circle: Pick<Circle, "type" | "parentId">): boolean {
+  return circleHasPage(circle) && (circle.type === "circle" || circle.type === "collective" || circle.type === "cooperative");
+}
+
+export function circleHasInbox(circle: Pick<Circle, "type" | "parentId" | "inbox">): boolean {
+  return circleCanHaveInbox(circle) && !!circle.inbox;
+}
+
 /* A circle page's sections, in the order its tab row shows them, each at
-   /circles/[id]/[section]. The bulletin and tasks are its members' alone,
-   with no hint to anyone else; a group has no wiki or tasks, its bulletin
-   standing in for them. */
-export const CIRCLE_SECTIONS = ["bulletin", "tasks", "wiki", "members", "events"] as const;
+   /circles/[id]/[section]. The bulletin, tasks and inbox are its members'
+   alone, with no hint to anyone else; a group has no wiki or tasks, its
+   bulletin standing in for them. */
+export const CIRCLE_SECTIONS = ["bulletin", "tasks", "inbox", "wiki", "members", "events"] as const;
 export type CircleSection = (typeof CIRCLE_SECTIONS)[number];
-export const CIRCLE_SECTION_LABEL: Record<CircleSection, string> = { bulletin: "Bulletin", tasks: "Tasks", wiki: "Wiki", members: "Members", events: "Events" };
+export const CIRCLE_SECTION_LABEL: Record<CircleSection, string> = { bulletin: "Bulletin", tasks: "Tasks", inbox: "Inbox", wiki: "Wiki", members: "Members", events: "Events" };
 
 export function isCircleSection(value: string | undefined): value is CircleSection {
   return (CIRCLE_SECTIONS as readonly string[]).includes(value ?? "");
@@ -160,10 +172,11 @@ export function isCircleSection(value: string | undefined): value is CircleSecti
 
 // the sections someone sees on a circle's page (one with a page: not a
 // neighborhood or the city)
-export function circleSections(circle: Pick<Circle, "type" | "parentId">, isMember: boolean): CircleSection[] {
+export function circleSections(circle: Pick<Circle, "type" | "parentId" | "inbox">, isMember: boolean): CircleSection[] {
   return CIRCLE_SECTIONS.filter((s) => {
     if (s === "bulletin") return isMember;
     if (s === "tasks") return isMember && circleHasTasks(circle);
+    if (s === "inbox") return isMember && circleHasInbox(circle);
     if (s === "wiki") return circleHasWiki(circle);
     return true;
   });
@@ -172,7 +185,7 @@ export function circleSections(circle: Pick<Circle, "type" | "parentId">, isMemb
 // where its page opens, at /circles/[id] itself: a member on the bulletin,
 // anyone else on the wiki (a group's members have no wiki, and no one else
 // sees a group)
-export function defaultCircleSection(circle: Pick<Circle, "type" | "parentId">, isMember: boolean): CircleSection {
+export function defaultCircleSection(circle: Pick<Circle, "type" | "parentId" | "inbox">, isMember: boolean): CircleSection {
   return circleSections(circle, isMember)[0] ?? "members";
 }
 

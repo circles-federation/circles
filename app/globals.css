@@ -354,6 +354,46 @@ body {
    changing how it looks: an invisible layer centred on it. Only where nothing
    else tappable sits within it, or taps would land on the wrong one. */
 @layer components {
+  /* A message's text (a circle's Inbox), as it's written in the editor and as
+     it's read: paragraphs, lists and links, which Tailwind's reset strips
+     the look of. The editor's placeholder shows while it's empty. */
+  .message-text p {
+    margin: 0 0 0.75em;
+  }
+  .message-text > :last-child {
+    margin-bottom: 0;
+  }
+  .message-text ul,
+  .message-text ol {
+    margin: 0 0 0.75em;
+    padding-left: 1.4em;
+  }
+  .message-text ul {
+    list-style: disc;
+  }
+  .message-text ol {
+    list-style: decimal;
+  }
+  .message-text li > p {
+    margin: 0;
+  }
+  .message-text a {
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .message-text strong {
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  .message-text p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: var(--color-soft);
+    pointer-events: none;
+  }
+
   /* in a layer, so a positioning class on the same element (absolute,
      fixed) still wins over its relative */
   .hit { position: relative; }

@@ -85,6 +85,9 @@ export interface CircleRole {
 export interface Circle {
   id: string;
   type: CircleType;
+  // its Inbox is on: anyone may write to it from its wiki, and its members
+  // read what's written (decided by consent; lib/circles.util's circleHasInbox)
+  inbox?: boolean;
   name: string;
   // null only for the root circle (the city)
   parentId: string | null;
@@ -226,6 +229,8 @@ export interface ProposalChanges {
   domain?: string;
   aims?: string[];
   roles?: { label: string; memberId: number | null }[];
+  // turning its Inbox on or off
+  inbox?: boolean;
 }
 
 // one line of what it changes, as it read when proposed ("Name": "Ona
@@ -315,6 +320,29 @@ export interface CircleResource {
 /* A circle's task, on its members' shared backlog (lib/tasks.util.ts holds
    the rules). Back burner isn't a status: it's a to-do of priority "someday"
    (zzz). */
+/* A message written to a circle from its wiki, read in its Inbox (lib/db/
+   messages.ts): sent only to the circle's members. The sender agreed to be
+   replied to at `replyEmail` (their address when they wrote, kept with the
+   message), which is how they're answered: there's no replying in the app. */
+export interface CircleMessage {
+  id: string;
+  circleId: string;
+  // who wrote it (gone if they've since left the platform)
+  senderId?: number;
+  senderName: string;
+  replyEmail: string;
+  subject: string;
+  // Markdown, as the editor wrote it; rendered by lib/messages.util.ts
+  body: string;
+  createdAt: string;
+  // whether the viewer has opened it
+  read: boolean;
+  // the member handling it, and who gave it to them
+  assigneeId?: number;
+  // filed away as dealt with
+  doneAt?: string;
+}
+
 export type TaskStatus = "todo" | "doing" | "done";
 // Critical, High, Medium, Normal and the back burner (see TASK_PRIORITIES)
 export type TaskPriority = "urgent" | "high" | "normal" | "none" | "someday";
