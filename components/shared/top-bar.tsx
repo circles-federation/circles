@@ -296,7 +296,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         // Back to retrace; the section showing goes back to its top.
         <div className="mx-auto max-w-220 px-6">
           <SimpleTabs
-            tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key], icon: CIRCLE_SECTION_ICON[key], attention: key === "inbox" && messages.some((m) => m.circleId === tabs.circle.id && !m.read && !m.doneAt) }))}
+            tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key], icon: CIRCLE_SECTION_ICON[key], count: key === "inbox" ? messages.filter((m) => m.circleId === tabs.circle.id && !m.read && !m.doneAt).length : 0 }))}
             active={tabs.active}
             onChange={(key) => (key === tabs.active ? onReselect() : router.replace(`/circles/${tabs.circle.id}/${key}`))}
           />

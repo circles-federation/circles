@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import clsx from "clsx";
-import { AttentionDot } from "./attention-dot";
 
 interface SimpleTab {
   key: string;
   label: string;
   // shown before the label on a tablet or wider (600px on), where there's room
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
-  // the attention dot, for something new in it (an Inbox's unread)
-  attention?: boolean;
+  // how many new things are in it (an Inbox's unread messages), a grey number
+  // after the label; none at 0
+  count?: number;
 }
 
 interface SimpleTabsProps {
@@ -70,10 +70,15 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
               )}
             >
               {t.icon && <t.icon className="hidden size-4 shrink-0 min-[600px]:block" strokeWidth={on ? 2.5 : 2} aria-hidden />}
-              <span className="relative">
-                {t.label}
-                {t.attention && <AttentionDot className="-top-0.5 -right-2.5" />}
-              </span>
+              {t.label}
+              {/* a bare grey number after the label, as the app counts things
+                  ("Open · 3"): read as part of it, not something calling out */}
+              {!!t.count && (
+                <span className="font-normal text-soft tabular-nums">
+                  {t.count > 99 ? "99+" : t.count}
+                  <span className="sr-only"> new</span>
+                </span>
+              )}
             </button>
           );
         })}
