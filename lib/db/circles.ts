@@ -6,8 +6,8 @@ import { unassignMessagesFromCircle } from "./messages";
 import { unassignFromCircle } from "./tasks";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { cleanAims, validateNewCircle, type NewCircleInput, circleHasPage } from "@/lib/circles.util";
-import type { Circle } from "@/lib/types";
+import { cleanAims, validateNewCircle, type NewCircleInput, circleHasPage, circleHasWiki } from "@/lib/circles.util";
+import type { Circle, PublicWiki } from "@/lib/types";
 
 type CircleRow = typeof circles.$inferSelect;
 
@@ -66,6 +66,39 @@ export async function getCircleById(id: string): Promise<Circle | null> {
   if (!row) return null;
   const [full] = await attachMembers([row]);
   return full ?? null;
+}
+
+// a circle whose wiki anyone may read: one with a page and a wiki (not a
+// neighborhood, the city or a group, which only its members know exists),
+// and not archived
+const hasPublicWiki = (c: { type: Circle["type"]; parentId: string | null; archivedAt: Date | null }) => !c.archivedAt && circleHasPage(c) && circleHasWiki(c);
+
+/* A circle's wiki for anyone, signed in or not (its public page): the one
+   place what a stranger sees of a circle is decided, so it reads only what
+   the Wiki tab shows, never its members, roles or editors. Null for a circle
+   with no public wiki. */
+export async function getPublicWiki(id: string): Promise<PublicWiki | null> {
+  const [row] = await db.select().from(circles).where(eq(circles.id, id));
+  if (!row || !hasPublicWiki(row)) return null;
+  const [parent] = row.parentId ? await db.select({ name: circles.name, parentId: circles.parentId }).from(circles).where(eq(circles.id, row.parentId)) : [];
+  const children = (await db.select().from(circles).where(eq(circles.parentId, id))).filter(hasPublicWiki).sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    tagline: row.tagline,
+    facts: row.facts,
+    about: row.about,
+    offers: row.offers,
+    needs: row.needs,
+    ...(row.website ? { website: row.website } : {}),
+    ...(row.address ? { address: row.address } : {}),
+    ...(row.contact ? { contact: row.contact } : {}),
+    ...(row.hours && row.hours.length > 0 ? { hours: row.hours } : {}),
+    ...(row.join ? { join: row.join } : {}),
+    ...(parent ? { parent: { name: parent.name, isCity: parent.parentId === null } } : {}),
+    subCircles: children.map((c) => ({ id: c.id, name: c.name, tagline: c.tagline })),
+  };
 }
 
 export async function getCirclesByMember(memberId: number): Promise<Circle[]> {

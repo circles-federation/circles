@@ -94,7 +94,7 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
   return (
     <PageContainer size="normal">
       <p className="max-w-[42em] font-serif text-sm leading-normal text-soft">
-        You&rsquo;re editing {o.name}&rsquo;s wiki as a member. Changes are visible to everyone, and your name will show as the last editor.
+        You&rsquo;re editing {o.name}&rsquo;s wiki as a member. It&rsquo;s public: anyone can read it, on Circles or not, and it can turn up in search results, so only put here what you&rsquo;d put on a flyer. Your name will show to members as the last editor.
       </p>
 
       {/* the quick facts open the wiki, as they do on the circle's page:

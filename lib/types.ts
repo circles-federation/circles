@@ -320,6 +320,29 @@ export interface CircleResource {
 /* A circle's task, on its members' shared backlog (lib/tasks.util.ts holds
    the rules). Back burner isn't a status: it's a to-do of priority "someday"
    (zzz). */
+/* A circle's wiki as anyone may read it, signed in or not (its public page,
+   /wiki/[id]; lib/db/circles.ts's getPublicWiki): what its Wiki tab shows,
+   and nothing about its members, who edited it, or anything else in the
+   app. Its sub-circles are those with a public wiki of their own. */
+export interface PublicWiki {
+  id: string;
+  name: string;
+  type: CircleType;
+  tagline: string;
+  facts: [string, string][];
+  about: string;
+  offers: string[];
+  needs: string[];
+  website?: string;
+  address?: string;
+  contact?: string;
+  hours?: [string, string][];
+  join?: string;
+  // where it sits; the city's is told apart, as its chip is coloured
+  parent?: { name: string; isCity: boolean };
+  subCircles: { id: string; name: string; tagline: string }[];
+}
+
 /* A message written to a circle from its wiki, read in its Inbox (lib/db/
    messages.ts): sent only to the circle's members. The sender agreed to be
    replied to at `replyEmail` (their address when they wrote, kept with the

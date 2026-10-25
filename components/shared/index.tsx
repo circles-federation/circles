@@ -9,7 +9,7 @@ export { AttentionDot } from "./attention-dot";
 export { Avatar } from "./avatar";
 export { BottomNav } from "./bottom-nav";
 export { Button, ButtonLink } from "./button";
-export { Chip, MastheadChip } from "./chip";
+export { Chip, ChipView, MastheadChip, type ChipTone } from "./chip";
 export { ConfirmModal } from "./confirm-modal";
 export { EmptyState } from "./empty-state";
 export { Eyebrow } from "./eyebrow";

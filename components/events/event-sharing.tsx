@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ConfirmModal, Modal, Button, useToast } from "@/components/shared";
 import { createShareLinkAction, getShareStatusAction, revokeShareLinksAction } from "@/lib/db/actions";
 import type { ShareStatus } from "@/lib/db/event-shares";
-import { isPhoneWidth } from "@/lib/viewport";
+import { shareOrCopy } from "@/lib/share";
 
 interface EventSharing {
   // send the member's own link: the share sheet on a phone, copied elsewhere
@@ -72,21 +72,9 @@ export function useEventSharing(eventId: string, title: string, enabled: boolean
         return;
       }
       setStatus((prev) => (prev ? { ...prev, mine: true } : prev));
-      const url = `${window.location.origin}/e/${result.value}`;
-      if (isPhoneWidth() && navigator.share) {
-        try {
-          await navigator.share({ title, url });
-        } catch {
-          // closing the share sheet isn't a failure
-        }
-        return;
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        showToast("Link copied");
-      } catch {
-        showToast({ message: "Couldn't copy the link. Your browser blocked it.", tone: "error" });
-      }
+      const how = await shareOrCopy({ title, url: `${window.location.origin}/e/${result.value}` });
+      if (how === "copied") showToast("Link copied");
+      if (how === "failed") showToast({ message: "Couldn't copy the link. Your browser blocked it.", tone: "error" });
     } finally {
       setBusy(false);
     }

@@ -21,9 +21,13 @@ interface ChipProps {
   onClick?: () => void;
 }
 
+// teal for the viewer's own neighborhood, ink for the city, a white outline
+// for anywhere else
+export type ChipTone = "local" | "federation" | "plain";
+
 /* A small place badge. Solid ink = elsewhere/federation-level (the noteworthy
    case); hollow = local to this neighborhood (the quiet default).            */
-export function Chip({ children, title, onClick }: ChipProps) {
+export function Chip(props: ChipProps) {
   // color is derived from the place: the CURRENT USER's own neighborhood is
   // teal, the city federation is black, any other neighborhood is a white
   // outline. Compared against the signed-in member's own neighborhood, not a
@@ -31,10 +35,19 @@ export function Chip({ children, title, onClick }: ChipProps) {
   // see their own home highlighted, not always "The 903".
   const { profile, circles } = useAppState();
   const byId = useCirclesById();
-  const place = typeof children === "string" ? children : "";
+  const place = typeof props.children === "string" ? props.children : "";
   const local = !!profile.homeCircleId && place === byId[profile.homeCircleId]?.name;
   // the city (root circle) is the federation-level place
   const federation = place === circles.find((c) => c.parentId === null)?.name;
+  return <ChipView {...props} tone={local ? "local" : federation ? "federation" : "plain"} />;
+}
+
+/* The chip as given its tone, where there's no member to work it out from
+   (a circle's public wiki) */
+export function ChipView({ children, title, onClick, tone }: ChipProps & { tone: ChipTone }) {
+  const place = typeof children === "string" ? children : "";
+  const local = tone === "local";
+  const federation = tone === "federation";
 
   const className = clsx(
     // max-w-full + the truncating label: a long name ends in "…" rather than
@@ -69,10 +82,10 @@ export function Chip({ children, title, onClick }: ChipProps) {
    a profile's neighborhood, a proposal's or event's circle): capped at part
    of the row, so a long name ends in "…" instead of running off the screen
    or crowding out the eyebrow. `max` is that cap. */
-export function MastheadChip({ max = "max-w-[60%]", ...chip }: ChipProps & { max?: string }) {
+export function MastheadChip({ max = "max-w-[60%]", tone, ...chip }: ChipProps & { max?: string; tone?: ChipTone }) {
   return (
     <span className={clsx("flex min-w-0 shrink justify-end", max)}>
-      <Chip {...chip} />
+      {tone ? <ChipView {...chip} tone={tone} /> : <Chip {...chip} />}
     </span>
   );
 }
