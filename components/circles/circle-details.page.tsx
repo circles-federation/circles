@@ -4,8 +4,8 @@ import { useState } from "react";
 import { HandRaisedIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { ConfirmModal, Input, Label, PageContainer, Select, Switch } from "@/components/shared";
-import { CIRCLE_TYPE_LABEL, circleCanHaveInbox, circleTypeNoun, indexCircles } from "@/lib/circles.util";
+import { ConfirmModal, Input, Label, PageContainer, Select } from "@/components/shared";
+import { CIRCLE_TYPE_LABEL, circleTypeNoun, indexCircles } from "@/lib/circles.util";
 import { changedFields, checkChanges, checkCircleBasics, hasChanges, neighborhoodConsentFor } from "@/lib/proposals.util";
 import type { Circle, CircleProposal, CircleType, ProposalChanges } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
@@ -49,9 +49,6 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
   const [domain, setDomain] = useState(o.domain ?? "");
   const [aims, setAims] = useState<string[]>(() => (o.aims && o.aims.length > 0 ? [...o.aims] : [""]));
   const isCircleType = type === "circle";
-  // its Inbox, while it's a kind that can have one
-  const [inbox, setInbox] = useState(!!o.inbox);
-  const canHaveInbox = circleCanHaveInbox({ type, parentId: o.parentId });
   const { consentError, setConsentError, clearError, fieldError } = useConsentError();
   const locked = !!openProposal;
   const [saving, setSaving] = useState(false);
@@ -65,8 +62,6 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
     type,
     ...(o.parentId !== null && parentId !== null ? { parentId } : {}),
     ...(isCircleType ? { domain, aims } : {}),
-    // becoming a kind that can't have one turns it off
-    inbox: canHaveInbox && inbox,
   });
   const dirty = hasChanges(proposed);
   // the neighborhood that would decide this with the circle's members, if any
@@ -169,29 +164,6 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
           />
           {fieldError("tagline")}
         </div>
-
-        {canHaveInbox && (
-          <div>
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <Label id="circle-inbox-label">Inbox</Label>
-                <p className="mt-1 font-serif text-sm leading-normal text-soft">
-                  Anyone on Circles can write to {o.name} from its Wiki, and its members read and answer what&rsquo;s written in an Inbox tab.
-                </p>
-              </div>
-              <Switch
-                checked={inbox}
-                onChange={(on) => {
-                  clearError("inbox");
-                  setInbox(on);
-                }}
-                labelledBy="circle-inbox-label"
-                disabled={locked}
-              />
-            </div>
-            {fieldError("inbox")}
-          </div>
-        )}
 
         {/* what makes it a circle, in sociocracy's terms */}
         {isCircleType && (

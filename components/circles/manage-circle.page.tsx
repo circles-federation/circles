@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightStartOnRectangleIcon, BookOpenIcon, IdentificationIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { ArrowRightStartOnRectangleIcon, BookOpenIcon, IdentificationIcon, InboxIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { Button, ConfirmModal, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
 import { circleHasRoles } from "@/lib/circle-roles.util";
-import { circleHasWiki } from "@/lib/circles.util";
+import { circleCanHaveInbox, circleHasWiki } from "@/lib/circles.util";
 import type { Circle, CircleProposal } from "@/lib/types";
 import { ProposalBanner } from "./proposal-banner";
 
@@ -24,7 +24,7 @@ function detailsSummary(c: Circle): string {
   return c.type === "circle" ? `${parts.join(", ")}, domain and aims` : list;
 }
 
-// under Details and Roles while a change to the circle is open for consent
+// under Details, Roles and Inbox while a change to the circle is open for consent
 const LOCKED = "Locked while a proposal is open";
 
 // how many of its roles are held, under its row
@@ -36,7 +36,8 @@ function rolesSummary(c: Circle): string {
 
 /* Manage circle, reached from a circle page's cog: a menu like Settings,
    each row opening a page of its own — Details (name, type and the rest
-   that its members decide by consent), Roles (also by consent), and Wiki
+   that its members decide by consent), Roles and Inbox (also by consent),
+   and Wiki
    (what its page's Wiki tab shows, edited freely) — with leaving the
    circle at the foot. */
 export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }: ManageCirclePageProps) {
@@ -46,6 +47,8 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
   // a neighborhood, a group and the city have no roles; a group has no wiki
   const showRoles = circleHasRoles(o);
   const showWiki = circleHasWiki(o);
+  // a Circle, a collective or a co-op may have an Inbox
+  const showInbox = circleCanHaveInbox(o);
   const base = `/circles/${o.id}/manage`;
 
   // what leaving means for them: what they lose, the roles they'd leave
@@ -70,10 +73,11 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
           <div className="flex flex-col gap-3">
             <MenuRow href={`${base}/details`} icon={IdentificationIcon} label="Details" detail={openProposal ? LOCKED : detailsSummary(o)} />
             {showRoles && <MenuRow href={`${base}/roles`} icon={UserGroupIcon} label="Roles" detail={openProposal ? LOCKED : rolesSummary(o)} />}
+            {showInbox && <MenuRow href={`${base}/inbox`} icon={InboxIcon} label="Inbox" detail={openProposal ? LOCKED : o.inbox ? "On: anyone can write to it" : "Off"} />}
             {showWiki && <MenuRow href={`${base}/wiki`} icon={BookOpenIcon} label="Wiki" detail="Quick facts, about, offers and needs, visiting and joining" />}
           </div>
           <p className="mt-4 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-            Changes to its details{showRoles && " and roles"} are proposed to its members, who decide them by consent.
+            Changes to its details{showRoles && ", roles"}{showInbox && " and Inbox"} are proposed to its members, who decide them by consent.
           </p>
         </Section>
 
