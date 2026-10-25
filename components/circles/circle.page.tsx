@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
-import { CalendarIcon, CheckCircleIcon, Cog6ToothIcon, EnvelopeIcon, GlobeAltIcon, MapIcon, PhoneIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import Link from "next/link";
+import { CalendarIcon, CheckCircleIcon, Cog6ToothIcon, EnvelopeIcon, GlobeAltIcon, MapIcon, PencilSquareIcon, PhoneIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, Badge, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, PrivateLabel, Section, SectionGroup, Tag } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
@@ -7,7 +8,6 @@ import { CircleCard } from "./circle-card";
 import { BulletinSection } from "./bulletin-section";
 import { TasksSection } from "./tasks-section";
 import { InboxSection } from "./inbox-section";
-import { WriteToCircle } from "./write-to-circle";
 import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
@@ -67,6 +67,8 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
     .filter((e) => e.circleId === c.id || e.hostCircleId === c.id)
     .sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime());
   const hasTasks = circleHasTasks(c);
+  // writing to it in the app: while its Inbox is on, for anyone outside it
+  const canWrite = circleHasInbox(c) && !isMember;
   const websiteUrl = c.website ? circleWebsiteUrl(c.website) : null;
   const contact = c.contact ? circleContact(c.contact) : null;
   /* Posting on the bulletin and adding a task are in the top bar's menu, so
@@ -190,8 +192,9 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
 
             {/* where to find it online, in person and to get in touch: a
                 square each, opening its website, its address in the visitor's
-                maps app, or an email or a call to it */}
-            {(c.website || c.address || c.contact) && (
+                maps app, or an email or a call to it, and while its Inbox is
+                on, to anyone outside it, writing to it in the app */}
+            {(c.website || c.address || c.contact || canWrite) && (
               <Section>
                 <div className="flex flex-wrap gap-3 min-[720px]:gap-x-10 min-[720px]:gap-y-4">
                   {websiteUrl ? (
@@ -228,6 +231,7 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
                       <div className="mt-1 font-serif text-base leading-[1.35] wrap-break-word text-body">{c.contact}</div>
                     </div>
                   ) : null}
+                  {canWrite && <VisitLink href={`/circles/${c.id}/write`} internal icon={PencilSquareIcon} tone="ink" label="Message" value={`Write to ${c.name}`} />}
                 </div>
               </Section>
             )}
@@ -252,22 +256,6 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
                 <EyebrowGroup label="How to join">
                   <p className="max-w-[40em] font-serif text-base leading-normal text-body">{c.join}</p>
                 </EyebrowGroup>
-              </Section>
-            )}
-
-            {/* its Inbox, from outside: anyone else may write to it here; its
-                members read what's written in the Inbox itself */}
-            {circleHasInbox(c) && (
-              <Section>
-                {isMember ? (
-                  <EyebrowGroup label={`Write to ${c.name}`}>
-                    <p className="max-w-[40em] font-serif text-base leading-normal text-soft">Anyone on Circles can write to {c.name} here. What they write arrives in its Inbox.</p>
-                  </EyebrowGroup>
-                ) : (
-                  <div className="max-w-[40em]">
-                    <WriteToCircle circle={c} />
-                  </div>
-                )}
               </Section>
             )}
           </SectionGroup>
@@ -430,6 +418,7 @@ function MapsLink({ address }: { address: string }) {
 }
 
 const VISIT_TONE = {
+  ink: "border-ink bg-ink [--press-color:var(--color-ink)]",
   action: "border-action bg-action [--press-color:var(--color-action)]",
   leaf: "border-leaf bg-leaf [--press-color:var(--color-leaf)]",
   phone: "border-phone bg-phone [--press-color:var(--color-phone)]",
@@ -440,10 +429,12 @@ const VISIT_TONE = {
    its address), opening it. On a phone just the square; from the desktop
    breakpoint, what it opens beside it, all one link. Pressed, the square
    inverts (fill-press). */
-function VisitLink({ href, newTab, icon: Icon, tone, label, value, name }: { href: string; newTab: boolean; icon: ComponentType<SVGProps<SVGSVGElement>>; tone: keyof typeof VISIT_TONE; label: string; value: ReactNode; name?: string }) {
+function VisitLink({ href, newTab, internal, icon: Icon, tone, label, value, name }: { href: string; newTab?: boolean; internal?: boolean; icon: ComponentType<SVGProps<SVGSVGElement>>; tone: keyof typeof VISIT_TONE; label: string; value: ReactNode; name?: string }) {
   const plain = typeof value === "string" ? value : undefined;
+  // a page of the app's own (writing to it) goes by the router
+  const Anchor = internal ? Link : "a";
   return (
-    <a
+    <Anchor
       href={href}
       {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       aria-label={name ?? `${label}: ${plain}`}
@@ -457,6 +448,6 @@ function VisitLink({ href, newTab, icon: Icon, tone, label, value, name }: { hre
         <Eyebrow className="text-soft">{label}</Eyebrow>
         <div className="mt-1 font-serif text-base leading-[1.35] text-body">{value}</div>
       </div>
-    </a>
+    </Anchor>
   );
 }

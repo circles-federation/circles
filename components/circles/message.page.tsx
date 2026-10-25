@@ -9,6 +9,7 @@ import { fmtDateTime } from "@/lib/format.util";
 import { useMemberById } from "@/lib/hooks";
 import { messageHtml } from "@/lib/messages.util";
 import type { Circle, CircleMessage, Member } from "@/lib/types";
+import { Letter } from "./letter";
 
 interface MessagePageProps {
   message: CircleMessage;
@@ -16,9 +17,9 @@ interface MessagePageProps {
   onOpenMember: (m: Member) => void;
 }
 
-/* One message to a circle, as a letter: a sheet of paper (another peeking
-   out under it) with the circle's name as a tilted postmark, who it's from
-   and to and when, the subject, what they wrote, and their signature. Under
+/* One message to a circle, as a letter (Letter: a sheet of paper with the
+   circle's name as its postmark, who it's from and to and when), the
+   subject, what they wrote, and their signature. Under
    it, who's handling it (writing back), taken with "I'll handle it" or given
    to any member; Reply by email, which opens the reader's own mail to the
    address the sender agreed to be answered at (there's no replying in the
@@ -39,43 +40,34 @@ export function MessagePage({ message: m, circle, onOpenMember }: MessagePagePro
 
   return (
     <PageContainer size="compact">
-      <div className="relative">
-        {/* the sheet under it */}
-        <span aria-hidden className="absolute inset-0 translate-x-2 translate-y-2 border border-faint bg-wash" />
-        <article className="relative border border-ink bg-paper px-5 pt-6 pb-7 min-[720px]:px-8">
-          <span aria-hidden className="absolute top-4 right-4 max-w-28 rotate-6 border-2 border-dashed border-ink px-2 py-1 text-center font-sans text-label leading-tight font-extrabold tracking-caps uppercase">
-            {circle.name}
-          </span>
-          <div className="pr-28 font-sans text-sm leading-relaxed text-soft">
-            <div>
-              From{" "}
-              {sender ? (
-                <button type="button" onClick={() => onOpenMember(sender)} className="hit cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2">
-                  {m.senderName}
-                </button>
-              ) : (
-                <span className="font-bold text-ink">{m.senderName}</span>
-              )}
-              {sender?.role && <> · {sender.role}</>}
-            </div>
-            <div>
-              To <span className="font-bold text-ink">{circle.name}</span>
-            </div>
-            <div>{fmtDateTime(new Date(m.createdAt))}</div>
-          </div>
+      <Letter
+        circleName={circle.name}
+        from={
+          <>
+            {sender ? (
+              <button type="button" onClick={() => onOpenMember(sender)} className="hit cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2">
+                {m.senderName}
+              </button>
+            ) : (
+              <span className="font-bold text-ink">{m.senderName}</span>
+            )}
+            {sender?.role && <> · {sender.role}</>}
+          </>
+        }
+        to={<span className="font-bold text-ink">{circle.name}</span>}
+        date={fmtDateTime(new Date(m.createdAt))}
+      >
+        <h1 className="mt-5 font-sans text-title leading-[1.05] font-extrabold tracking-display wrap-break-word">{m.subject}</h1>
 
-          <h1 className="mt-5 font-sans text-title leading-[1.05] font-extrabold tracking-display wrap-break-word">{m.subject}</h1>
+        {/* HTML made safe by messageHtml: anything typed as HTML is shown as
+            text, and only web and mail links are links */}
+        <div className="message-text mt-4 font-serif text-lg leading-relaxed text-body wrap-break-word" dangerouslySetInnerHTML={{ __html: messageHtml(m.body) }} />
 
-          {/* HTML made safe by messageHtml: anything typed as HTML is shown as
-              text, and only web and mail links are links */}
-          <div className="message-text mt-4 font-serif text-lg leading-relaxed text-body wrap-break-word" dangerouslySetInnerHTML={{ __html: messageHtml(m.body) }} />
-
-          <div className="mt-6 flex items-center gap-3">
-            {sender ? <Avatar member={sender} size={36} /> : null}
-            <span className="font-serif text-xl text-ink italic">{m.senderName}</span>
-          </div>
-        </article>
-      </div>
+        <div className="mt-6 flex items-center gap-3">
+          {sender ? <Avatar member={sender} size={36} /> : null}
+          <span className="font-serif text-xl text-ink italic">{m.senderName}</span>
+        </div>
+      </Letter>
 
       {/* who's writing back to them */}
       <section className="mt-8 border-y border-faint py-4">

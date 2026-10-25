@@ -17,6 +17,9 @@ interface MessageEditorProps {
   value: string;
   onChange: (markdown: string) => void;
   placeholder?: string;
+  // written straight onto the page (the letter being written), rather than
+  // in a field: no ground or rule, and set a size up
+  bare?: boolean;
 }
 
 /* What a message to a circle says, written in Markdown and shown as it will
@@ -32,7 +35,7 @@ interface MessageEditorProps {
    What's kept is the Markdown itself (lib/messages.util.ts reads it).
    CodeMirror, since it edits the text itself rather than a model of it,
    which is what lets the symbols be shown and edited at all. */
-export function MessageEditor({ id, value, onChange, placeholder }: MessageEditorProps) {
+export function MessageEditor({ id, value, onChange, placeholder, bare }: MessageEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<EditorView | null>(null);
   const [bar, setBar] = useState<{ top: number; left: number; on: Formats } | null>(null);
@@ -67,6 +70,8 @@ export function MessageEditor({ id, value, onChange, placeholder }: MessageEdito
           EditorView.lineWrapping,
           placeholderText(placeholder ?? ""),
           EditorView.contentAttributes.of({ ...(id ? { id } : {}), "aria-multiline": "true", "aria-label": "Message" }),
+          // earlier extensions win in CodeMirror, so the page's own look first
+          ...(bare ? [bareTheme] : []),
           editorTheme,
           EditorView.updateListener.of((u) => {
             if (u.docChanged) onChangeRef.current(u.state.doc.toString());
@@ -83,7 +88,7 @@ export function MessageEditor({ id, value, onChange, placeholder }: MessageEdito
 
   return (
     <div className="relative">
-      <div ref={host} className={clsx(FIELD_ROW, "block has-[.cm-focused]:border-ink has-[.cm-focused]:shadow-[inset_0_-1px_0_var(--color-ink)]")} />
+      <div ref={host} className={bare ? "block" : clsx(FIELD_ROW, "block has-[.cm-focused]:border-ink has-[.cm-focused]:shadow-[inset_0_-1px_0_var(--color-ink)]")} />
       {view && bar && (
         <FormatBar
           view={view}
@@ -354,4 +359,10 @@ const editorTheme = EditorView.theme({
   ".cm-md-em": { fontStyle: "italic" },
   ".cm-md-link": { color: "var(--color-ink)", textDecoration: "underline", textUnderlineOffset: "2px" },
   ".cm-md-symbol": { color: "var(--color-soft)", fontWeight: "400", fontStyle: "normal", textDecoration: "none" },
+});
+
+// written onto the page: the letter's own size, and its edge for the field's
+const bareTheme = EditorView.theme({
+  ".cm-scroller": { fontSize: "1.125rem", lineHeight: "1.6" },
+  ".cm-content": { minHeight: "14rem", padding: "0" },
 });

@@ -119,6 +119,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     if (sub === "invite") return "Invite";
     if (sub === "tasks" && item) return item === "new" ? "New task" : "Task";
     if (sub === "inbox" && item) return "Message";
+    if (sub === "write") return "New message";
     return circles.find((c) => c.id === id)?.name ?? "Circles";
   }
   if (section === "events") {
