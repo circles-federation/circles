@@ -15,7 +15,8 @@ import type { SharedEvent } from "@/lib/types";
    Making one needs only that the member can see the event; what the public
    page then shows is decided here, in getSharedEvent, and is a deliberately
    short list: nothing in it can be traced to a member's profile, photo or
-   email, and a group's name is never given out. */
+   email. The circles it's for and hosted by are named, a group's included:
+   whoever holds the link has been told of the event by one of its members. */
 
 export class ShareError extends UserFacingError {}
 
@@ -58,11 +59,8 @@ export async function getSharedEvent(token: string): Promise<SharedEvent | null>
   if (!event || isMeeting(event) || awaitingConsent(event)) return null;
 
   const circleIds = [event.circleId, ...(event.hostCircleId ? [event.hostCircleId] : [])];
-  const circleRows = await db.select({ id: circles.id, name: circles.name, type: circles.type }).from(circles).where(inArray(circles.id, circleIds));
-  const publicName = (id: string | undefined) => {
-    const c = circleRows.find((r) => r.id === id);
-    return c && c.type !== "group" ? c.name : null;
-  };
+  const circleRows = await db.select({ id: circles.id, name: circles.name }).from(circles).where(inArray(circles.id, circleIds));
+  const nameOf = (id: string | undefined) => circleRows.find((r) => r.id === id)?.name ?? null;
 
   const memberIds = [...new Set([link.memberId, event.organizerId, ...event.rsvps])];
   const names = new Map((await db.select({ id: members.id, name: members.name }).from(members).where(inArray(members.id, memberIds))).map((m) => [m.id, m.name]));
@@ -78,8 +76,8 @@ export async function getSharedEvent(token: string): Promise<SharedEvent | null>
     ended: hasEnded(event),
     hasRoles: (event.roles ?? []).length > 0,
     token,
-    circleName: publicName(event.circleId),
-    hostCircleName: publicName(event.hostCircleId),
+    circleName: nameOf(event.circleId),
+    hostCircleName: nameOf(event.hostCircleId),
     hostName: names.get(event.organizerId) ?? "A neighbor",
     sharedBy: names.get(link.memberId) ?? "A neighbor",
     going: [...event.rsvps.flatMap((id) => names.get(id) ?? []), ...(await confirmedGuestNames(event.id))],

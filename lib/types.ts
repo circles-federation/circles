@@ -431,8 +431,7 @@ export interface EventChange {
 }
 
 /* An event as a stranger with a share link sees it (lib/db/event-shares.ts):
-   first names only, no ids that lead to a member's profile, and no name for a
-   group. */
+   first names only, and no ids that lead to a member's profile. */
 export interface SharedEvent {
   eventId: string;
   token: string;

@@ -7,7 +7,7 @@ export const APPLICATION_NOTE_MAX = 1000;
 /* The beta terms and privacy notes an applicant agrees to (components/legal/),
    named by the date they last changed. Each application records the version
    agreed to, so bump this whenever either one says something new. */
-export const BETA_AGREEMENT_VERSION = "2026-10-25.1";
+export const BETA_AGREEMENT_VERSION = "2026-10-26.1";
 
 // just the shape — name@domain.tld, no spaces. Whether it can be used is the server's call.
 export const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -117,7 +117,6 @@ export async function claimGuestNotifications(limit: number): Promise<PendingGue
         circleName: circles.name,
         circleType: circles.type,
         hostCircleName: hostCircle.name,
-        hostCircleType: hostCircle.type,
         organizerName: organizer.name,
         shareToken: eventShareLinks.token,
         frequency: eventSeries.frequency,
@@ -133,18 +132,14 @@ export async function claimGuestNotifications(limit: number): Promise<PendingGue
       .leftJoin(eventSeries, eq(eventSeries.id, events.seriesId))
       .leftJoin(eventShareLinks, and(eq(eventShareLinks.eventId, events.id), eq(eventShareLinks.memberId, eventGuestRsvps.invitedBy), isNull(eventShareLinks.revokedAt)))
       .where(and(isDue, isNotNull(eventGuestRsvps.confirmedAt)));
-    return rows.map(({ frequency, startsOn, until, change, hostCircleName, hostCircleType, circleName, circleType, ...r }) => {
-      // a group is private: a stranger is never told its name
-      const hiddenCircle = circleType === "group";
+    return rows.map(({ frequency, startsOn, until, change, hostCircleName, ...r }) => {
       return {
         ...r,
         ...(change ? { change } : {}),
         kind: r.kind ?? "ordinary",
         start: r.start.slice(0, 5),
         end: r.end.slice(0, 5),
-        circleName: hiddenCircle ? "Circles" : circleName,
-        circleType: hiddenCircle ? ("other" as const) : circleType,
-        ...(hostCircleName && hostCircleType !== "group" ? { hostCircleName } : {}),
+        ...(hostCircleName ? { hostCircleName } : {}),
         proposed: false,
         votesNeeded: 0,
         ...(frequency !== null && startsOn !== null ? { repeat: { frequency, startsOn, ...(until !== null ? { until } : {}) } } : {}),
