@@ -35,23 +35,24 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-faint py-5">
-      <div className="flex items-center gap-3">
+      {/* a long name wraps beside the photo, which keeps its size */}
+      <div className="flex min-w-0 items-center gap-3">
         {host && (
-          <button onClick={() => onOpenMember(host)} aria-label={host.name} className="hit cursor-pointer border-none bg-transparent p-0">
+          <button onClick={() => onOpenMember(host)} aria-label={host.name} className="hit shrink-0 cursor-pointer border-none bg-transparent p-0">
             <Avatar member={host} size={40} />
           </button>
         )}
-        <div className="text-left">
+        <div className="min-w-0 text-left">
           <Eyebrow className="text-soft">
             {isScheduledMeeting(e) ? `Scheduled by the ${e.approvedByRole}` : hostCircle ? "Hosted by" : proposal ? "Proposed by" : "Hosted by"}
           </Eyebrow>
           {hostCircle ? (
             <button onClick={() => onOpenCircle(hostCircle)} className="hit block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
-              {hostCircle.name} →
+              {hostCircle.name}
             </button>
           ) : host && (
             <button onClick={() => onOpenMember(host)} className="hit block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
-              {host.name} →
+              {host.name}
             </button>
           )}
           {hostCircle && host && (
