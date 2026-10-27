@@ -11,13 +11,16 @@ import {
   CIRCLE_TYPE_DESCRIPTION,
   CIRCLE_TYPE_LABEL,
   CREATABLE_CIRCLE_TYPES,
+  circleCanHaveCircles,
   indexCircles,
   parentCircleOptions,
   validateNewCircle,
   type NewCircleInput,
 } from "@/lib/circles.util";
-import { newCircleNeighborhood } from "@/lib/proposals.util";
-import type { Circle, CircleType } from "@/lib/types";
+import { useMemberById } from "@/lib/hooks";
+import { newCircleDecider } from "@/lib/proposals.util";
+import { rolesHeldBy } from "@/lib/circle-roles.util";
+import type { Circle, CircleType, Member } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
 import { ParentCircleSelect } from "./parent-circle-select";
 
@@ -31,7 +34,8 @@ const CIRCLE_TYPE_ICON: Partial<Record<CircleType, ComponentType<SVGProps<SVGSVG
 
 interface CreateCirclePageProps {
   circles: Circle[];
-  // where Create was pressed: the neighborhood it was pressed in, or the city
+  // where Create was pressed: the neighborhood it was pressed in, a circle
+  // that can have circles of its own, or the city
   initialParentId?: string;
   onCreate: (input: NewCircleInput) => Promise<{ ok: true } | { ok: false; error: string }>;
   onBack: () => void;
@@ -44,13 +48,22 @@ interface CreateCirclePageProps {
    be changed. Created by the top bar's check, disabled until every required
    field has a value; Back asks before discarding. A Circle in a neighborhood
    can post to its bulletin, so it's proposed to the neighborhood instead: the
-   top bar's orange Propose, which asks first. */
+   top bar's orange Propose, which asks first. Pressed in a circle that can
+   have circles (circleCanHaveCircles), it's one of that circle's: a Circle,
+   always there, with a delegate chosen from its members as its first member,
+   and proposed to that circle's members. */
 export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }: CreateCirclePageProps) {
   const parents = parentCircleOptions(circles);
   const root = circles.find((c) => c.parentId === null);
-  const startingParent = parents.find((c) => c.id === initialParentId)?.id ?? root?.id ?? "";
-  // no type to start with: what kind of circle it is is a choice to make, not a default
-  const [type, setType] = useState<CircleType | "">("");
+  // started inside a circle: its place and kind are settled, and it needs a delegate
+  const inside = circles.find((c) => c.id === initialParentId && circleCanHaveCircles(c));
+  const startingParent = inside?.id ?? parents.find((c) => c.id === initialParentId)?.id ?? root?.id ?? "";
+  const memberById = useMemberById();
+  const insideMembers = (inside?.members ?? []).map(memberById).filter((m): m is Member => !!m);
+  const [delegateId, setDelegateId] = useState<number | null>(null);
+  // no type to start with: what kind of circle it is is a choice to make, not a
+  // default, except inside a circle, where it's a Circle
+  const [type, setType] = useState<CircleType | "">(inside ? "circle" : "");
   const [name, setName] = useState("");
   const [tagline, setTagline] = useState("");
   const [parentId, setParentId] = useState(startingParent);
@@ -62,11 +75,14 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [confirmingProposal, setConfirmingProposal] = useState(false);
 
-  const input: NewCircleInput | null = type ? { type, name, tagline, parentId, ...(type === "circle" ? { domain, aims } : {}) } : null;
-  // the neighborhood whose consent it needs, if it does
-  const neighborhood = input ? newCircleNeighborhood(input, indexCircles(circles)) : null;
+  const input: NewCircleInput | null = type
+    ? { type, name, tagline, parentId, ...(type === "circle" ? { domain, aims } : {}), ...(inside && delegateId !== null ? { delegateId } : {}) }
+    : null;
+  // whose consent it needs, if anyone's: the circle it's inside, or its neighborhood
+  const decider = input ? newCircleDecider(input, indexCircles(circles)) : null;
   const problem = input ? validateNewCircle(input, circles) : "Choose what kind of circle this is.";
-  const dirty = type !== "" || name !== "" || tagline !== "" || parentId !== startingParent || domain !== "" || aims.some((a) => a !== "");
+  const dirty = (!inside && type !== "") || name !== "" || tagline !== "" || parentId !== startingParent || domain !== "" || aims.some((a) => a !== "") || delegateId !== null;
+  const delegateName = delegateId !== null ? memberById(delegateId)?.name : undefined;
 
   async function create() {
     if (!input || problem || creating) return;
@@ -81,7 +97,7 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
 
   useBackHandler(dirty && !creating ? () => setConfirmingDiscard(true) : null);
   useTopBarAction(
-    neighborhood
+    decider
       ? { label: creating ? "Proposing" : "Propose circle", icon: HandRaisedIcon, onAction: () => setConfirmingProposal(true), disabled: !!problem || creating, variant: "propose" }
       : { label: creating ? "Creating" : "Create circle", icon: CheckIcon, onAction: create, disabled: !!problem || creating, variant: "primary" }
   );
@@ -90,6 +106,13 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
     <PageContainer size="normal">
       <SectionGroup>
         {/* pt-0: the top bar's title (New circle) is the page's only heading */}
+        {inside ? (
+          <Section className="pt-0">
+            <p className="font-serif text-base leading-normal text-body">
+              One of {inside.name}&rsquo;s circles: a Circle of its own that decides its own work, sending a delegate to decide with {inside.name}&rsquo;s members. {inside.name}&rsquo;s members consent to it starting.
+            </p>
+          </Section>
+        ) : (
         <Section className="pt-0">
           <Label htmlFor="circle-type">Type</Label>
           <div className="min-[720px]:max-w-120">
@@ -103,6 +126,7 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
             />
           </div>
         </Section>
+        )}
 
         <Section>
           <div className="flex flex-col gap-6">
@@ -128,19 +152,40 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
         </Section>
 
         <Section>
-          <ParentCircleSelect circles={circles} value={parentId} onChange={setParentId} />
+          {inside ? (
+            <div className="min-[720px]:max-w-120">
+              <Label htmlFor="circle-delegate">Delegate</Label>
+              <RichSelect
+                id="circle-delegate"
+                label="Its delegate"
+                placeholder={`Choose one of ${inside.name}'s members`}
+                value={delegateId !== null ? String(delegateId) : null}
+                onChange={(v) => setDelegateId(Number(v))}
+                options={insideMembers.map((m) => ({ value: String(m.id), label: m.name, badges: rolesHeldBy(inside, m.id) }))}
+              />
+              <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+                Its first member, who speaks for it in {inside.name} and decides alongside its members. Once it&rsquo;s started, its own members choose its delegate.
+              </p>
+            </div>
+          ) : (
+            <ParentCircleSelect circles={circles} value={parentId} onChange={setParentId} />
+          )}
         </Section>
       </SectionGroup>
 
       <p className="mt-2 font-serif text-sm leading-normal text-soft">
-        You&rsquo;ll be its first member. Add more about it, like what it does and how to join, from Manage circle once it&rsquo;s {neighborhood ? "started" : "created"}.
+        {inside ? `${delegateName ?? "Its delegate"} will be its first member` : "You'll be its first member"}. Add more about it, like what it does and how to join, from Manage circle once it&rsquo;s {decider ? "started" : "created"}.
       </p>
       {error && <p className="mt-3 font-sans text-sm font-bold text-danger">{error}</p>}
 
-      {confirmingProposal && neighborhood && (
+      {confirmingProposal && decider && (
         <ConfirmModal
           title="Propose this circle?"
-          message={`A Circle can post to ${neighborhood.name}'s bulletin, so it needs the consent of everyone who lives there. They're asked in their daily digest.`}
+          message={
+            decider.by === "parent"
+              ? `It's one of ${decider.circle.name}'s circles, so it needs the consent of ${decider.circle.name}'s members. They're asked straight away.`
+              : `A Circle can post to ${decider.circle.name}'s bulletin, so it needs the consent of everyone who lives there. They're asked in their daily digest.`
+          }
           confirmLabel="Propose circle"
           cancelLabel="Not yet"
           tone="flame"

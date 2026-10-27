@@ -5,7 +5,7 @@ import { HandRaisedIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { ConfirmModal, Input, Label, PageContainer, Select } from "@/components/shared";
-import { CIRCLE_TYPE_LABEL, circleTypeNoun, indexCircles } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleTypeNoun, indexCircles, startedInside } from "@/lib/circles.util";
 import { changedFields, checkChanges, checkCircleBasics, hasChanges, neighborhoodConsentFor } from "@/lib/proposals.util";
 import type { Circle, CircleProposal, CircleType, ProposalChanges } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
@@ -49,6 +49,8 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
   const [domain, setDomain] = useState(o.domain ?? "");
   const [aims, setAims] = useState<string[]>(() => (o.aims && o.aims.length > 0 ? [...o.aims] : [""]));
   const isCircleType = type === "circle";
+  // started inside a circle: it stays there, and stays a Circle, sending its delegate up
+  const inside = startedInside(o, indexCircles(circles));
   const { consentError, setConsentError, clearError, fieldError } = useConsentError();
   const locked = !!openProposal;
   const [saving, setSaving] = useState(false);
@@ -98,7 +100,14 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
     <PageContainer size="normal">
       <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
       <div className="flex flex-col gap-6">
-        {o.parentId !== null && (
+        {inside ? (
+          <div>
+            <Label>Parent Circle</Label>
+            <p className="font-serif text-base text-body">
+              Inside {inside.name}, which started it. It stays there, as a Circle, so it can send a delegate.
+            </p>
+          </div>
+        ) : o.parentId !== null && (
           <div id="field-parentId">
             <ParentCircleSelect
               circles={circles}
@@ -114,7 +123,7 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
           </div>
         )}
 
-        {o.type !== "neighborhood" && o.type !== "group" && (
+        {!inside && o.type !== "neighborhood" && o.type !== "group" && (
           <div id="field-type">
             <Label htmlFor="circle-type">Type</Label>
             <Select

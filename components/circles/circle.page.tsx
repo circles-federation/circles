@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUpTrayIcon, CalendarIcon, CheckCircleIcon, Cog6ToothIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
-import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, Section, SectionGroup, useToast } from "@/components/shared";
+import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, RingIcon, Section, SectionGroup, useToast } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { CircleWiki } from "./circle-wiki";
@@ -12,7 +12,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { circleCanHoldMeetings, circleChildren, circleHasInbox, circleHasTasks, circleHasWiki, isCircleAudience, type CircleSection } from "@/lib/circles.util";
+import { circleCanHaveCircles, circleCanHoldMeetings, circleChildren, circleHasInbox, circleHasTasks, circleHasWiki, isCircleAudience, type CircleSection } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
 import { isPhoneWidth } from "@/lib/viewport";
@@ -61,6 +61,8 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
+  // the circles inside this one whose delegate a member is
+  const delegateFor = (memberId: number) => childCircles.filter((child) => child.roles?.some((r) => r.label === "Delegate" && r.memberId === memberId));
   const byId = useCirclesById();
   const parent = c.parentId !== null ? byId[c.parentId] : undefined;
   // events in this circle — shown to it, or hosted by it — soonest first (location is irrelevant)
@@ -108,6 +110,8 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
           { label: "New event", icon: CalendarIcon, onSelect: onNewEvent },
           // a meeting of this circle, where it can hold one (not a group)
           ...(circleCanHoldMeetings(c) ? [{ label: "New meeting", href: `/events/new?kind=meeting&circle=${c.id}`, icon: UserGroupIcon }] : []),
+          // one of its own circles, for its members to consent to
+          ...(circleCanHaveCircles(c) ? [{ label: "New circle", href: `/circles/new?parent=${c.id}`, icon: RingIcon }] : []),
         ]
       : []),
     ...(circleHasWiki(c) ? [{ label: "Share wiki", icon: ArrowUpTrayIcon, onSelect: () => void shareWiki() }] : []),
@@ -173,7 +177,7 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
               </div>
             )
           }
-          {...(childCircles.length > 0 ? { subCircles: childCircles.map((child) => <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />) } : {})}
+          {...(childCircles.length > 0 ? { subCircles: childCircles.map((child) => <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />) } : {})}
           {...(canWrite ? { writeHref: `/circles/${c.id}/write` } : {})}
         />
       )}
@@ -194,12 +198,19 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
                       <div className="font-sans text-sm font-bold">{m.name}</div>
                       <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{m.role}</span>
                       {/* everyone here belongs to this circle, so no neighborhood chip —
-                          a role they hold in it takes that spot, as an outlined badge */}
-                      {rolesHeldBy(c, m.id).length > 0 && (
+                          a role they hold in it takes that spot, as an outlined badge,
+                          and being one of its circles' delegate, which is why
+                          they're here, a quieter one */}
+                      {(rolesHeldBy(c, m.id).length > 0 || delegateFor(m.id).length > 0) && (
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {rolesHeldBy(c, m.id).map((role) => (
                             <Badge key={role} title={`Role in ${c.name}`}>
                               {role}
+                            </Badge>
+                          ))}
+                          {delegateFor(m.id).map((child) => (
+                            <Badge key={child.id} variant="subtle" title={`${child.name}'s delegate to ${c.name}`}>
+                              {child.name} delegate
                             </Badge>
                           ))}
                         </div>

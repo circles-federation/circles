@@ -1,0 +1,2 @@
+ALTER TABLE "circle_members" ADD COLUMN "delegate_for" text;--> statement-breakpoint
+ALTER TABLE "circle_members" ADD CONSTRAINT "circle_members_delegate_for_circles_id_fk" FOREIGN KEY ("delegate_for") REFERENCES "public"."circles"("id") ON DELETE cascade ON UPDATE no action;

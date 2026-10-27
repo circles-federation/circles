@@ -195,6 +195,11 @@ export const circleMembers = pgTable(
     circleId: text("circle_id").notNull(),
     circleType: circleType("circle_type").notNull(),
     memberId: integer("member_id").notNull().references(() => members.id),
+    // set when they're a member only as the delegate of a circle started inside
+    // this one (that circle's id), so the row goes when they stop being its
+    // delegate (syncDelegate, lib/db/circle-roles.ts). A member who was already
+    // here, and is delegate too, has none: they stay after
+    delegateFor: text("delegate_for").references((): AnyPgColumn => circles.id, { onDelete: "cascade" }),
   },
   (t) => [
     primaryKey({ columns: [t.circleId, t.memberId] }),

@@ -49,10 +49,31 @@ export interface NewCircleInput {
   // a Circle's (type "circle"); ignored for any other type
   domain?: string;
   aims?: string[];
+  // a circle started inside another (see circleCanHaveCircles): the member of
+  // that circle who'll be its first member and its delegate
+  delegateId?: number;
 }
 
-/* Where a circle can sit: in a neighborhood, or citywide, under the root —
-   general nesting under any circle is future work. Neighborhoods first,
+/* A circle that has grown can break down into circles of its own: a Circle,
+   a collective or a co-op (not a group, a neighborhood or the city). Its
+   members consent to each, and each sends a delegate up, who becomes one of
+   its members (syncDelegate, lib/db/circle-roles.ts), so its decisions are
+   its own members' and its circles' delegates'. A circle started inside one
+   is always a Circle, since only a Circle has a Delegate. */
+export function circleCanHaveCircles(circle: Pick<Circle, "type" | "parentId">): boolean {
+  return circleHasPage(circle) && (circle.type === "circle" || circle.type === "collective" || circle.type === "cooperative");
+}
+
+// the circle this one was started inside, if it was (one that can have
+// circles: see above), rather than in a neighborhood or the city
+export function startedInside(circle: Pick<Circle, "parentId">, byId: CirclesById): Circle | null {
+  const parent = circle.parentId !== null ? byId[circle.parentId] : undefined;
+  return parent && circleCanHaveCircles(parent) ? parent : null;
+}
+
+/* Where a circle can be put: in a neighborhood, or citywide, under the root.
+   A circle inside another is started there by that circle's consent instead
+   (circleCanHaveCircles), and stays. Neighborhoods first,
    alphabetically, then the city; `except` leaves out the circle being edited.
    Shared by Create circle and Manage circle's Parent Circle field, and the
    server's check of either. */
@@ -79,7 +100,7 @@ export function circlesByKind(circles: Circle[]): { label: string; circles: Circ
   return kinds.map(([label, test]) => ({ label, circles: circles.filter(test) })).filter((g) => g.circles.length > 0);
 }
 
-export type NewCircleField = "type" | "name" | "tagline" | "parentId" | "domain" | "aims";
+export type NewCircleField = "type" | "name" | "tagline" | "parentId" | "domain" | "aims" | "delegateId";
 
 /* What's wrong with a new circle, and which field it's about, or null: the
    form shows it under that field, and lib/db/circles.ts's createCircle is the
@@ -99,6 +120,14 @@ export function checkNewCircle(input: NewCircleInput, circles: Circle[]): { fiel
     if (aims.length === 0) return { field: "aims", message: "Give the circle at least one aim." };
     if (aims.length > MAX_CIRCLE_AIMS) return { field: "aims", message: `Keep it to ${MAX_CIRCLE_AIMS} aims or fewer.` };
     if (aims.some((a) => a.length > CIRCLE_AIM_MAX)) return { field: "aims", message: `Keep each aim to ${CIRCLE_AIM_MAX} characters.` };
+  }
+  // inside a circle: a Circle, with a delegate from among its members
+  const inside = circles.find((c) => c.id === input.parentId);
+  if (inside && circleCanHaveCircles(inside)) {
+    if (input.type !== "circle") return { field: "type", message: `A circle inside ${inside.name} is a Circle, so it can send a delegate.` };
+    if (input.delegateId === undefined) return { field: "delegateId", message: "Choose its delegate." };
+    if (!inside.members.includes(input.delegateId)) return { field: "delegateId", message: `Its delegate has to be a member of ${inside.name}.` };
+    return null;
   }
   if (!parentCircleOptions(circles).some((c) => c.id === input.parentId)) return { field: "parentId", message: "Choose where this circle sits." };
   return null;
@@ -269,12 +298,19 @@ export function circleNeighborhood(circle: Circle, byId: CirclesById): Circle | 
   return null;
 }
 
-/* The circles `memberId` can post to `neighborhood`'s bulletin for: the
-   Circles (type "circle") they belong to inside it, however deep (see
+/* The neighborhood whose bulletin `circle` posts to, if any: only a Circle
+   (type "circle") placed directly in a neighborhood, since that's what its
+   residents consented to. A circle inside another posts through that one. */
+export function postsToNeighborhood(circle: Circle, byId: CirclesById): Circle | null {
+  const parent = circle.parentId !== null ? byId[circle.parentId] : undefined;
+  return circle.type === "circle" && parent?.type === "neighborhood" ? parent : null;
+}
+
+/* The circles `memberId` can post to `neighborhood`'s bulletin for (see
    lib/db/neighborhood-posts.ts, which holds the server to the same rule). */
 export function postingCirclesFor(memberId: number, neighborhood: Circle, circles: Circle[]): Circle[] {
   const byId = indexCircles(circles);
-  return circles.filter((c) => c.type === "circle" && c.id !== neighborhood.id && c.members.includes(memberId) && circleNeighborhood(c, byId)?.id === neighborhood.id);
+  return circles.filter((c) => c.members.includes(memberId) && postsToNeighborhood(c, byId)?.id === neighborhood.id);
 }
 
 // every circle anywhere below `circle` in the tree (not including itself),

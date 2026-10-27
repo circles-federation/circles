@@ -103,7 +103,7 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
 
         {subCircles && (
           <Section>
-            <Eyebrow className="text-soft">Sub-circles</Eyebrow>
+            <Eyebrow className="text-soft">Circles</Eyebrow>
             {/* the grid's own border-t is the header rule, as on the Members tab */}
             <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">{subCircles}</div>
           </Section>

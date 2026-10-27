@@ -34,7 +34,9 @@ export default function Page() {
     proposal.kind === "post"
       ? "Once its members consent, it goes on the neighborhood's bulletin for everyone who lives there."
       : proposal.kind === "new_circle"
-        ? `A Circle can post to ${circle.name}'s bulletin, so everyone who lives there decides whether it starts.`
+        ? circle.type === "neighborhood"
+          ? `A Circle can post to ${circle.name}'s bulletin, so everyone who lives there decides whether it starts.`
+          : `It would be one of ${circle.name}'s circles, deciding its own work and sending its delegate to decide with ${circle.name}'s members.`
         : proposal.kind === "change" && subject
           ? `A Circle in ${circle.name} can post to its bulletin, so everyone who lives there decides this with ${subject.name}'s members.`
           : undefined;
