@@ -639,6 +639,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "circle_members_delegate_for": {
+          "name": "circle_members_delegate_for",
+          "columns": [
+            {
+              "expression": "delegate_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {

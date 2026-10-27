@@ -15,7 +15,12 @@ type BuiltinRole = (typeof BUILTIN_CIRCLE_ROLES)[number];
 // that's accountable to its parent has one: a Circle (type "circle"), not a
 // collective or co-op, which govern themselves. Nor can any other circle give
 // one of its own roles that name.
-const DELEGATE: BuiltinRole = "Delegate";
+export const DELEGATE: BuiltinRole = "Delegate";
+// whether `memberId` is this circle's delegate
+export function isDelegateOf(circle: Pick<Circle, "roles">, memberId: number): boolean {
+  return (circle.roles ?? []).some((r) => r.builtin && r.label === DELEGATE && r.memberId === memberId);
+}
+
 export function circleIsAccountable(circle: { type: CircleType }): boolean {
   return circle.type === "circle";
 }

@@ -1,13 +1,11 @@
 import { and, eq, inArray, isNull, like, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
-import { syncDelegate } from "./circle-roles";
 import { UserFacingError } from "./errors";
 import { circleInvitations, circleMembers, circleRoles, circles } from "./schema";
-import { unassignMessagesFromCircle } from "./messages";
-import { unassignFromCircle } from "./tasks";
+import { dropMembership } from "./memberships";
 import { groupBy } from "./util";
-import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
+import { assembleCircleRoles, circleHasRoles, DELEGATE, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { cleanAims, validateNewCircle, type NewCircleInput, circleHasInbox, circleHasPage, circleHasWiki } from "@/lib/circles.util";
 import type { Circle, PublicWiki } from "@/lib/types";
 
@@ -234,25 +232,13 @@ export async function leaveCircle(memberId: number, circleId: string): Promise<{
       .select({ name: subcircles.name })
       .from(circleRoles)
       .innerJoin(subcircles, eq(subcircles.id, circleRoles.circleId))
-      .where(and(eq(subcircles.parentId, circleId), isNull(subcircles.archivedAt), eq(circleRoles.builtin, true), eq(circleRoles.label, "Delegate"), eq(circleRoles.memberId, memberId)));
+      .where(and(eq(subcircles.parentId, circleId), isNull(subcircles.archivedAt), eq(circleRoles.builtin, true), eq(circleRoles.label, DELEGATE), eq(circleRoles.memberId, memberId)));
     if (delegating) throw new CircleError(`You're ${delegating.name}'s delegate to ${circle.name}. ${delegating.name}'s members choose another delegate before you can leave.`);
-    const left = await tx
-      .delete(circleMembers)
-      .where(and(eq(circleMembers.circleId, circleId), eq(circleMembers.memberId, memberId)))
-      .returning({ id: circleMembers.memberId });
-    if (left.length === 0) throw new CircleError(`You're not a member of ${circle.name}.`);
-    await tx.update(circleRoles).set({ memberId: null }).where(and(eq(circleRoles.circleId, circleId), eq(circleRoles.memberId, memberId)));
-    await unassignFromCircle(tx, memberId, circleId);
-    await unassignMessagesFromCircle(tx, memberId, circleId);
-    const [remaining] = await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId)).limit(1);
-    if (remaining) {
-      // its delegate, if they were, no longer sits in the circle above for it
-      await syncDelegate(tx, circleId);
-      return { archived: false };
-    }
-    await tx.update(circles).set({ archivedAt: new Date() }).where(eq(circles.id, circleId));
-    await tx.delete(circleInvitations).where(eq(circleInvitations.circleId, circleId));
-    await syncDelegate(tx, circleId);
-    return { archived: true };
+    const [member] = await tx
+      .select({ id: circleMembers.memberId })
+      .from(circleMembers)
+      .where(and(eq(circleMembers.circleId, circleId), eq(circleMembers.memberId, memberId)));
+    if (!member) throw new CircleError(`You're not a member of ${circle.name}.`);
+    return dropMembership(tx, memberId, circleId);
   });
 }

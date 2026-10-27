@@ -57,7 +57,7 @@ export interface NewCircleInput {
 /* A circle that has grown can break down into circles of its own: a Circle,
    a collective or a co-op (not a group, a neighborhood or the city). Its
    members consent to each, and each sends a delegate up, who becomes one of
-   its members (syncDelegate, lib/db/circle-roles.ts), so its decisions are
+   its members (syncDelegate, lib/db/memberships.ts), so its decisions are
    its own members' and its circles' delegates'. A circle started inside one
    is always a Circle, since only a Circle has a Delegate. */
 export function circleCanHaveCircles(circle: Pick<Circle, "type" | "parentId">): boolean {

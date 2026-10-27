@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { getCircleById, getCirclesForMember, insertCircle } from "./circles";
-import { syncDelegate, writeCircleRoles } from "./circle-roles";
+import { writeCircleRoles } from "./circle-roles";
+import { syncDelegate } from "./memberships";
 import { UserFacingError } from "./errors";
 import { approveHostedEvent, discardEvent, getEvent } from "./events";
 import { discardPost, publishPost } from "./neighborhood-posts";
@@ -25,6 +26,7 @@ import {
   validateChanges,
 } from "@/lib/proposals.util";
 import { indexCircles, validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
+import { DELEGATE } from "@/lib/circle-roles.util";
 import { RESOURCE_KIND_LABEL } from "@/lib/resources.util";
 import { majority } from "@/lib/governance.util";
 import { localDay } from "@/lib/recurrence.util";
@@ -187,7 +189,7 @@ async function startCircle(tx: Tx, proposal: ProposalRow): Promise<void> {
   // one started inside a circle starts with its delegate, who needn't be its
   // proposer; any other with whoever proposed it
   const id = await insertCircle(tx, c.delegateId ?? proposal.proposerId, input);
-  if (c.delegateId !== undefined) await writeCircleRoles(tx, id, [{ label: "Delegate", memberId: c.delegateId }], [c.delegateId], input.type);
+  if (c.delegateId !== undefined) await writeCircleRoles(tx, id, [{ label: DELEGATE, memberId: c.delegateId }], [c.delegateId], input.type);
   await tx.update(circleProposals).set({ subjectCircleId: id }).where(eq(circleProposals.id, proposal.id));
 }
 
@@ -351,7 +353,10 @@ export async function proposeNewCircle(memberId: number, input: NewCircleInput):
   const deciding = decider.circle;
   // a circle's own members propose its circles
   if (decider.by === "parent" && !deciding.members.includes(memberId)) throw new ProposalError(`Only a member of ${deciding.name} can propose a circle inside it.`);
-  const delegateName = input.delegateId !== undefined ? (await memberNames([input.delegateId])).get(input.delegateId) : undefined;
+  // only a circle started inside another has a delegate; one in a
+  // neighborhood starts with its proposer, whatever the request says
+  const delegateId = decider.by === "parent" ? input.delegateId : undefined;
+  const delegateName = delegateId !== undefined ? (await memberNames([delegateId])).get(delegateId) : undefined;
   const changes: ProposalChanges = {
     type: input.type,
     name: input.name.trim(),
@@ -359,7 +364,7 @@ export async function proposeNewCircle(memberId: number, input: NewCircleInput):
     parentId: input.parentId,
     domain: (input.domain ?? "").trim(),
     aims: (input.aims ?? []).map((a) => a.trim()).filter(Boolean),
-    ...(decider.by === "parent" && input.delegateId !== undefined ? { delegateId: input.delegateId } : {}),
+    ...(delegateId !== undefined ? { delegateId } : {}),
   };
   const id = randomUUID();
   await db.transaction(async (tx) => {
