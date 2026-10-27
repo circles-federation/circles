@@ -29,9 +29,9 @@ interface CircleWikiProps {
 }
 
 /* A circle's wiki: its masthead (what it is, where it sits, its tagline),
-   its quick facts right under it, then about, what it offers and needs, its
-   sub-circles, where to find it (its website, address and contact as
-   coloured squares, opening each), its open hours and how to join. The
+   its quick facts right under it, then about, what it offers and needs,
+   where to find it (its website, address and contact as coloured squares,
+   opening each), its open hours, how to join, and last its circles. The
    circle page's Wiki section and its public page (/wiki/[id]) both draw it,
    the app adding who last edited it. Needs no member
    or app state, so it works for someone signed out. */
@@ -101,14 +101,6 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
           </Section>
         )}
 
-        {subCircles && (
-          <Section>
-            <Eyebrow className="text-soft">Circles</Eyebrow>
-            {/* the grid's own border-t is the header rule, as on the Members tab */}
-            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">{subCircles}</div>
-          </Section>
-        )}
-
         {/* where to find it online, in person and to get in touch: a square
             each, opening its website, its address in the visitor's maps app,
             or an email or a call to it, and in the app, writing to it */}
@@ -167,6 +159,16 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
             <EyebrowGroup label="How to join">
               <p className="max-w-[40em] font-serif text-base leading-normal text-body">{c.join}</p>
             </EyebrowGroup>
+          </Section>
+        )}
+
+        {/* last, since there may be many and they'd push how to reach and
+            join it down the page */}
+        {subCircles && (
+          <Section>
+            <Eyebrow className="text-soft">Circles</Eyebrow>
+            {/* the grid's own border-t is the header rule, as on the Members tab */}
+            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">{subCircles}</div>
           </Section>
         )}
       </SectionGroup>
