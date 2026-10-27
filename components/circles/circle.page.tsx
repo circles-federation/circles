@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUpTrayIcon, CalendarIcon, CheckCircleIcon, Cog6ToothIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
-import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, Section, SectionGroup, useToast } from "@/components/shared";
+import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, RingIcon, Section, SectionGroup, useToast } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { CircleWiki } from "./circle-wiki";
@@ -207,8 +207,12 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
                             </Badge>
                           ))}
                           {delegateFor(m.id).map((child) => (
+                            // the ring says it's a circle's delegate, so a long
+                            // name can be cut short without losing what it means
                             <Badge key={child.id} variant="subtle" title={`${child.name}'s delegate to ${c.name}`}>
-                              {child.name} delegate
+                              <RingIcon className="size-4 shrink-0" aria-hidden />
+                              <span className="sr-only">Delegate for </span>
+                              <span className="truncate">{child.name}</span>
                             </Badge>
                           ))}
                         </div>

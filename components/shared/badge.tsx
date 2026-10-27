@@ -11,7 +11,7 @@ export function Badge({ children, title, variant = "default" }: { children: Reac
     <span
       title={title}
       className={clsx(
-        "inline-flex items-center whitespace-nowrap border px-2 py-1 font-sans text-label font-bold uppercase tracking-caps",
+        "inline-flex max-w-full items-center gap-1 whitespace-nowrap border px-2 py-1 font-sans text-label font-bold uppercase tracking-caps",
         variant === "subtle" ? "border-faint text-soft" : "ink-press-badge border-ink bg-paper text-ink",
       )}
     >
