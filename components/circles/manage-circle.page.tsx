@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { ArrowRightStartOnRectangleIcon, BookOpenIcon, IdentificationIcon, InboxIcon, UserGroupIcon } from "@heroicons/react/24/outline";
-import { Button, ConfirmModal, MenuRow, PageContainer, Section, SectionGroup } from "@/components/shared";
+import { Button, ConfirmModal, MenuRow, PageContainer, RingIcon, Section, SectionGroup } from "@/components/shared";
 import { circleHasRoles } from "@/lib/circle-roles.util";
-import { circleCanHaveInbox, circleHasWiki } from "@/lib/circles.util";
+import { circleCanHaveCircles, circleCanHaveInbox, circleHasWiki } from "@/lib/circles.util";
 import type { Circle, CircleProposal } from "@/lib/types";
 import { ProposalBanner } from "./proposal-banner";
 
@@ -37,9 +37,8 @@ function rolesSummary(c: Circle): string {
 /* Manage circle, reached from a circle page's cog: a menu like Settings,
    each row opening a page of its own — Details (name, type and the rest
    that its members decide by consent), Roles and Inbox (also by consent),
-   and Wiki
-   (what its page's Wiki tab shows, edited freely) — with leaving the
-   circle at the foot. */
+   Wiki (what its page's Wiki tab shows, edited freely) and New circle (one
+   inside it, also by consent) — with leaving the circle at the foot. */
 export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }: ManageCirclePageProps) {
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -49,6 +48,7 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
   const showWiki = circleHasWiki(o);
   // a Circle, a collective or a co-op may have an Inbox
   const showInbox = circleCanHaveInbox(o);
+  const showNewCircle = circleCanHaveCircles(o);
   const base = `/circles/${o.id}/manage`;
 
   // what leaving means for them: what they lose, the roles they'd leave
@@ -74,7 +74,9 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
             <MenuRow href={`${base}/details`} icon={IdentificationIcon} label="Details" detail={openProposal ? LOCKED : detailsSummary(o)} />
             {showRoles && <MenuRow href={`${base}/roles`} icon={UserGroupIcon} label="Roles" detail={openProposal ? LOCKED : rolesSummary(o)} />}
             {showInbox && <MenuRow href={`${base}/inbox`} icon={InboxIcon} label="Inbox" detail={openProposal ? LOCKED : o.inbox ? "On: anyone can write to it" : "Off"} />}
-            {showWiki && <MenuRow href={`${base}/wiki`} icon={BookOpenIcon} label="Wiki" detail="Quick facts, about, offers and needs, visiting and joining" />}
+            {showWiki && <MenuRow href={`${base}/wiki`} icon={BookOpenIcon} label="Wiki" detail="A public page about this circle" />}
+            {/* seldom done, like starting a new team, so here rather than in the circle's menu */}
+            {showNewCircle && <MenuRow href={`/circles/new?parent=${o.id}`} icon={RingIcon} label="New circle" detail="Start a circle inside this one" />}
           </div>
           <p className="mt-4 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
             Changes to its details{showRoles && ", roles"}{showInbox && " and Inbox"} are proposed to its members, who decide them by consent.
@@ -87,7 +89,7 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
             <ArrowRightStartOnRectangleIcon className="size-4 shrink-0" strokeWidth={2.5} />
             {/* a long name wraps rather than running off the button (Button
                 doesn't wrap its label), breaking anywhere if it has to */}
-            <span className="min-w-0 whitespace-normal text-center [overflow-wrap:anywhere]">Leave {o.name}</span>
+            <span className="min-w-0 whitespace-normal text-center wrap-anywhere">Leave {o.name}</span>
           </Button>
           {leaveError && <p className="mt-3 font-sans text-sm font-bold text-danger">{leaveError}</p>}
         </Section>

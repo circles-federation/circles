@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUpTrayIcon, CalendarIcon, CheckCircleIcon, Cog6ToothIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
-import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, RingIcon, Section, SectionGroup, useToast } from "@/components/shared";
+import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, Section, SectionGroup, useToast } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { CircleWiki } from "./circle-wiki";
@@ -12,7 +12,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
-import { circleCanHaveCircles, circleCanHoldMeetings, circleChildren, circleHasInbox, circleHasTasks, circleHasWiki, isCircleAudience, type CircleSection } from "@/lib/circles.util";
+import { circleCanHoldMeetings, circleChildren, circleHasInbox, circleHasTasks, circleHasWiki, isCircleAudience, type CircleSection } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
 import { isPhoneWidth } from "@/lib/viewport";
@@ -110,8 +110,6 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
           { label: "New event", icon: CalendarIcon, onSelect: onNewEvent },
           // a meeting of this circle, where it can hold one (not a group)
           ...(circleCanHoldMeetings(c) ? [{ label: "New meeting", href: `/events/new?kind=meeting&circle=${c.id}`, icon: UserGroupIcon }] : []),
-          // one of its own circles, for its members to consent to
-          ...(circleCanHaveCircles(c) ? [{ label: "New circle", href: `/circles/new?parent=${c.id}`, icon: RingIcon }] : []),
         ]
       : []),
     ...(circleHasWiki(c) ? [{ label: "Share wiki", icon: ArrowUpTrayIcon, onSelect: () => void shareWiki() }] : []),
