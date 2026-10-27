@@ -4,7 +4,7 @@ import { useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps
 import Link from "next/link";
 import { EnvelopeIcon, GlobeAltIcon, MapIcon, PencilSquareIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Eyebrow, EyebrowGroup, MastheadChip, PrivateLabel, Section, SectionGroup, Tag, type ChipTone } from "@/components/shared";
+import { Eyebrow, EyebrowGroup, CappedChip, PrivateLabel, Section, SectionGroup, Tag, type ChipTone } from "@/components/shared";
 import { CIRCLE_TYPE_LABEL, circleContact, circleWebsiteUrl, isGroup } from "@/lib/circles.util";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
 import type { Circle } from "@/lib/types";
@@ -49,9 +49,9 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
             {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
           </Eyebrow>
           {parent && (
-            <MastheadChip title={`Part of ${parent.name}`} {...(parent.onOpen ? { onClick: parent.onOpen } : {})} {...(parent.tone ? { tone: parent.tone } : {})}>
+            <CappedChip title={`Part of ${parent.name}`} {...(parent.onOpen ? { onClick: parent.onOpen } : {})} {...(parent.tone ? { tone: parent.tone } : {})}>
               {parent.name}
-            </MastheadChip>
+            </CappedChip>
           )}
         </div>
         <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display">{c.name}</h1>

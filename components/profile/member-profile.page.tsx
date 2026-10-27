@@ -1,7 +1,7 @@
 "use client";
 
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, MastheadChip, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { circlesForMember } from "@/lib/circles.util";
@@ -36,9 +36,9 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
           {/* as they wrote them, not in small caps */}
           <span className="shrink-0 font-sans text-sm font-semibold text-soft">{m.pronouns}</span>
           {home && (
-            <MastheadChip title={m.homeCircleId === profile.homeCircleId ? "Your neighborhood" : "Their neighborhood"} onClick={() => onOpenCircle(home)}>
+            <CappedChip title={m.homeCircleId === profile.homeCircleId ? "Your neighborhood" : "Their neighborhood"} onClick={() => onOpenCircle(home)}>
               {home.name}
-            </MastheadChip>
+            </CappedChip>
           )}
         </div>
         <div className="mt-4 flex items-center gap-5">

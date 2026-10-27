@@ -78,11 +78,12 @@ export function ChipView({ children, title, onClick, tone }: ChipProps & { tone:
   );
 }
 
-/* A chip at the top of a masthead, opposite its eyebrow (a circle's parent,
-   a profile's neighborhood, a proposal's or event's circle): capped at part
-   of the row, so a long name ends in "…" instead of running off the screen
-   or crowding out the eyebrow. `max` is that cap. */
-export function MastheadChip({ max = "max-w-[60%]", tone, ...chip }: ChipProps & { max?: string; tone?: ChipTone }) {
+/* A chip sharing a row with an eyebrow, opposite it (at the top of a
+   masthead: a circle's parent, a profile's neighborhood, a proposal's or
+   event's circle; and on a CircleCard): capped at part of the row, so a long
+   name ends in "…" instead of running off the screen or crowding out the
+   eyebrow. `max` is that cap. */
+export function CappedChip({ max = "max-w-[60%]", tone, ...chip }: ChipProps & { max?: string; tone?: ChipTone }) {
   return (
     <span className={clsx("flex min-w-0 shrink justify-end", max)}>
       {tone ? <ChipView {...chip} tone={tone} /> : <Chip {...chip} />}
