@@ -8,7 +8,7 @@ import { useAppNav } from "@/lib/hooks";
 export default function Page() {
   const { id } = useParams<{ id: string }>();
   const nav = useAppNav();
-  const { proposals, circles, events, profile, respondToProposal, cancelEvent, removeNeighborhoodPost } = useAppState();
+  const { proposals, circles, events, profile, respondToProposal, withdrawProposal, cancelEvent, removeNeighborhoodPost } = useAppState();
 
   // only those with a say in it (and its proposer) are ever sent a proposal
   // (getProposalsForMember), so to anyone else it doesn't exist
@@ -56,7 +56,10 @@ export default function Page() {
         ? { onWithdraw: async () => { const r = await cancelEvent(event.id); return r.ok ? { ok: true as const } : r; } }
         : proposal.kind === "post" && proposal.postId && open
           ? { onWithdraw: () => removeNeighborhoodPost(proposal.postId!) }
-          : {})}
+          : // a change or a new Circle: its proposer's to take back
+            (proposal.kind === "change" || proposal.kind === "new_circle") && open && proposal.proposerId === profile.id
+            ? { onWithdraw: () => withdrawProposal(proposal.id) }
+            : {})}
     />
   );
 }

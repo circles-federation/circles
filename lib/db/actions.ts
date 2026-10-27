@@ -105,6 +105,11 @@ export async function createProposalAction(circleId: string, changes: ProposalCh
 
 // an answer to a group's event proposal may approve the event or discard it,
 // so it hands back the whole app state too, for both to show at once
+// its proposer takes back a change to a circle or a new Circle (lib/db/proposals.ts withdrawProposal)
+export async function withdrawProposalAction(id: string) {
+  return asMember((memberId) => proposals.withdrawProposal(memberId, id));
+}
+
 export async function respondToProposalAction(id: string, response: ConsentResponse, reason?: string) {
   const result = await asMember(async (memberId) => {
     const answered = await proposals.respondToProposal(memberId, id, response, reason);

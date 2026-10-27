@@ -7,7 +7,7 @@ import { UserFacingError } from "./errors";
 import { approveHostedEvent, discardEvent, getEvent } from "./events";
 import { discardPost, publishPost } from "./neighborhood-posts";
 import { enqueueNeighborhoodNotifications, enqueueProposalNotifications, wallClock } from "./notifications";
-import { circleMembers, circleProposals, circles, eventRsvps, eventVotes, events, members, proposalResponses, roles as eventRoles } from "./schema";
+import { circleMembers, circleProposals, circles, eventRsvps, eventVotes, events, members, proposalNotifications, proposalResponses, roles as eventRoles } from "./schema";
 import { groupBy } from "./util";
 import {
   OBJECTION_REASON_MAX,
@@ -294,10 +294,36 @@ export async function openPostProposal(tx: Tx, proposerId: number, post: Neighbo
 
 // a post taken down while it waited (removeNeighborhoodPost): closed, with no notices
 export async function withdrawPostProposal(tx: Tx, postId: string): Promise<void> {
-  await tx
+  const [row] = await tx
     .update(circleProposals)
     .set({ status: "withdrawn", decidedAt: new Date() })
-    .where(and(eq(circleProposals.postId, postId), eq(circleProposals.status, "open")));
+    .where(and(eq(circleProposals.postId, postId), eq(circleProposals.status, "open")))
+    .returning({ id: circleProposals.id });
+  if (row) await dropUnsentNotices(tx, row.id);
+}
+
+// a withdrawn proposal's notices not yet sent (its "opened", most likely) go
+// with it, so no one is asked to answer what's no longer open
+async function dropUnsentNotices(tx: Tx, proposalId: string): Promise<void> {
+  await tx.delete(proposalNotifications).where(and(eq(proposalNotifications.proposalId, proposalId), isNull(proposalNotifications.sentAt)));
+}
+
+/* Its proposer takes back a change to a circle, or a new Circle, while it's
+   open: closed as withdrawn, nothing made, with no notices (an event's or a
+   post's is withdrawn by cancelling or taking down what it proposes, which
+   any member of its circle may). Returns it as it now stands. */
+export async function withdrawProposal(memberId: number, id: string): Promise<CircleProposal> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx.select().from(circleProposals).where(eq(circleProposals.id, id)).for("update");
+    if (!row || !(await decidersOf(tx, row)).concat(row.proposerId).includes(memberId)) throw new ProposalError("That proposal doesn't exist.");
+    if (row.kind !== "change" && row.kind !== "new_circle") throw new ProposalError(row.kind === "event" ? "Withdraw it by cancelling its event." : "Withdraw it by taking down its post.");
+    if (row.proposerId !== memberId) throw new ProposalError("Only whoever proposed it can withdraw it.");
+    if (row.status !== "open") throw new ProposalError("This proposal has already been decided.");
+    const [updated] = await tx.update(circleProposals).set({ status: "withdrawn", decidedAt: new Date() }).where(eq(circleProposals.id, id)).returning();
+    await dropUnsentNotices(tx, id);
+    const [full] = await withResponses([updated!], tx);
+    return full!;
+  });
 }
 
 /* Propose starting a Circle in a neighborhood, which can then post to its
@@ -389,6 +415,7 @@ export async function withdrawEventProposal(tx: Tx, eventId: string): Promise<st
     .set({ status: "withdrawn", decidedAt: new Date() })
     .where(and(eq(circleProposals.eventId, eventId), eq(circleProposals.status, "open")))
     .returning({ id: circleProposals.id });
+  if (row) await dropUnsentNotices(tx, row.id);
   return row?.id ?? null;
 }
 

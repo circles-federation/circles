@@ -25,8 +25,9 @@ interface ProposalPageProps {
   onOpenCircle: () => void;
   onOpenMember: (m: Member) => void;
   onRespond: (response: ConsentResponse, reason?: string) => Promise<MutationResult>;
-  // an event proposal: its event's page, and withdrawing it while it's open (an
-  // event's or a post's)
+  // an event proposal: its event's page; and withdrawing it while it's open
+  // (an event's or a post's by any member, a change's or a new Circle's by its
+  // proposer)
   onOpenEvent?: () => void;
   // an event proposal where consenting is also an RSVP (one without signup roles)
   consentIsRsvp?: boolean;
@@ -219,7 +220,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
         </Section>
         {onWithdraw && (
           <Section>
-            <p className="mb-3 font-serif text-sm leading-snug text-soft">Withdrawing it means {p.kind === "post" ? "it won’t be posted" : "the event won’t be held"}, and closes this proposal.</p>
+            <p className="mb-3 font-serif text-sm leading-snug text-soft">Withdrawing it means {WITHDRAWN[p.kind]}, and closes this proposal.</p>
             <Button variant="danger" disabled={withdrawing} onClick={() => setWithdrawing(true)} className="w-full min-[480px]:w-auto">
               Withdraw
             </Button>
@@ -231,7 +232,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
       {withdrawing && onWithdraw && (
         <ConfirmModal
           title="Withdraw this proposal?"
-          message={`${p.kind === "post" ? "It won't be posted" : "The event won't be held"}, and the proposal closes. It can be proposed again.`}
+          message={`${WITHDRAWN[p.kind].replace(/^./, (ch) => ch.toUpperCase())}, and the proposal closes. It can be proposed again.`}
           confirmLabel="Withdraw"
           cancelLabel="Keep it"
           onCancel={() => setWithdrawing(false)}
@@ -246,6 +247,14 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
     </PageContainer>
   );
 }
+
+// what withdrawing each kind means
+const WITHDRAWN: Record<CircleProposal["kind"], string> = {
+  change: "the change won’t be made",
+  event: "the event won’t be held",
+  post: "it won’t be posted",
+  new_circle: "the circle won’t be started",
+};
 
 // what becomes of each kind: "it's {made}", "{done}", "it won't be {notDone}"
 const WORDS: Record<CircleProposal["kind"], { made: string; done: string; notDone: string }> = {

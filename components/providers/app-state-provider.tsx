@@ -13,6 +13,7 @@ import {
   toggleRoleSlotAction as dbToggleRoleSlot,
   createProposalAction as dbCreateProposal,
   respondToProposalAction as dbRespondToProposal,
+  withdrawProposalAction as dbWithdrawProposal,
   updateCircleAction as dbUpdateCircle,
   updateEventDetailsAction as dbUpdateEventDetails,
   updateMemberAction as dbUpdateMember,
@@ -87,6 +88,8 @@ export interface AppStateValue {
   // was decided at once (a circle of one)
   proposeCircleChanges(circleId: string, changes: ProposalChanges): Promise<{ ok: true; proposal: CircleProposal; passed: boolean } | { ok: false; error: string }>;
   respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult>;
+  // its proposer takes back a change to a circle or a new Circle
+  withdrawProposal(id: string): Promise<MutationResult>;
   // photoPending: a new photo saved with it is waiting for review, which the toast says
   saveProfile(next: Profile, options?: { photoPending?: boolean }): void;
   // pending: it waits for a system admin's review, so only they see it yet
@@ -486,6 +489,14 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true, proposal: result.value.proposal, passed: result.value.proposal.status === "passed" };
   }
 
+  async function withdrawProposal(id: string): Promise<MutationResult> {
+    const result = await dbWithdrawProposal(id).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    takeProposal(result.value, null);
+    showToast({ tone: "success", title: "Proposal withdrawn", message: "Nothing changes, and it's closed." });
+    return { ok: true };
+  }
+
   async function respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult> {
     const result = await dbRespondToProposal(id, response, reason).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
@@ -786,6 +797,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         saveCircle: tracked(saveCircle),
         proposeCircleChanges: tracked(proposeCircleChanges),
         respondToProposal: tracked(respondToProposal),
+        withdrawProposal: tracked(withdrawProposal),
         saveProfile: tracked(saveProfile),
         savePhoto: tracked(savePhoto),
         saveNotificationSettings: tracked(saveNotificationSettings),
