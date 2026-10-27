@@ -1,5 +1,5 @@
 import { isBuiltinRole, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
-import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, circleCanHaveInbox, circleNeighborhood, parentCircleOptions, type CirclesById, type NewCircleInput } from "./circles.util";
+import { CIRCLE_AIM_MAX, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, circleCanHaveCircles, circleCanHaveInbox, indexCircles, startedInside, circleNeighborhood, parentCircleOptions, type CirclesById, type NewCircleInput } from "./circles.util";
 import { AGENDA_CATEGORY } from "./agenda.util";
 import { fmtEventWhen } from "./format.util";
 import { repeatSummary } from "./recurrence.util";
@@ -81,11 +81,15 @@ export function checkChanges(circle: Circle, changes: ProposalChanges, circles: 
     if (changes.name.length > CIRCLE_NAME_MAX) return problem("name", `Keep the name to ${CIRCLE_NAME_MAX} characters.`);
   }
   if (changes.tagline !== undefined && changes.tagline.length > CIRCLE_TAGLINE_MAX) return problem("tagline", `Keep the tagline to ${CIRCLE_TAGLINE_MAX} characters.`);
+  // one started inside a circle stays a Circle there, sending its delegate up
+  const inside = startedInside(circle, indexCircles(circles));
+  if (inside && changes.type !== undefined && changes.type !== "circle") return problem("type", `A circle inside ${inside.name} stays a Circle, so it can send a delegate.`);
+  if (inside && changes.parentId !== undefined && changes.parentId !== circle.parentId) return problem("parentId", `It was started inside ${inside.name}, so it stays there.`);
   if (changes.type !== undefined) {
     const allowed: CircleType[] = ["circle", "collective", "cooperative"];
     if (circle.type === "group" || circle.type === "neighborhood" || !allowed.includes(changes.type)) return problem("type", "That circle can't become that kind of circle.");
   }
-  if (changes.parentId !== undefined) {
+  if (changes.parentId !== undefined && !inside) {
     if (circle.parentId === null || !parentCircleOptions(circles, circle.id).some((c) => c.id === changes.parentId)) return problem("parentId", "Choose where this circle sits.");
   }
   if (changes.domain !== undefined && changes.domain.length > CIRCLE_DOMAIN_MAX) return problem("domain", `Keep the domain to ${CIRCLE_DOMAIN_MAX} characters.`);
@@ -202,7 +206,7 @@ export function describePostProposal(post: Pick<NeighborhoodPost, "title" | "ico
 }
 
 // a new Circle, as its neighborhood reads it before consenting
-export function describeNewCircle(input: NewCircleInput, neighborhoodName: string): ProposalLine[] {
+export function describeNewCircle(input: NewCircleInput, whereName: string, delegateName?: string): ProposalLine[] {
   const aims = (input.aims ?? []).map((a) => a.trim()).filter(Boolean);
   return [
     { label: "Name", before: "", after: input.name.trim() },
@@ -210,7 +214,8 @@ export function describeNewCircle(input: NewCircleInput, neighborhoodName: strin
     ...(input.tagline.trim() ? [{ label: "Tagline", before: "", after: input.tagline.trim() }] : []),
     { label: "Domain", before: "", after: (input.domain ?? "").trim() },
     { label: "Aims", before: "", after: aims.join("; ") },
-    { label: "Where", before: "", after: neighborhoodName },
+    { label: "Where", before: "", after: whereName },
+    ...(delegateName ? [{ label: "Delegate", before: "", after: delegateName }] : []),
   ];
 }
 
@@ -236,6 +241,17 @@ export function neighborhoodConsentFor(circle: Circle, changes: ProposalChanges,
 
 export function newCircleNeighborhood(input: Pick<NewCircleInput, "type" | "parentId">, byId: CirclesById): Circle | null {
   return input.type === "circle" ? neighborhoodFor(input.parentId, byId) : null;
+}
+
+/* Whose consent a new circle needs before it starts, if anyone's: one
+   inside a circle that can have circles is that circle's to decide (its
+   members', and its circles' delegates'), and a Circle in a neighborhood the
+   neighborhood's (see newCircleNeighborhood). Anything else is just created. */
+export function newCircleDecider(input: Pick<NewCircleInput, "type" | "parentId">, byId: CirclesById): { circle: Circle; by: "parent" | "neighborhood" } | null {
+  const inside = byId[input.parentId];
+  if (inside && circleCanHaveCircles(inside)) return { circle: inside, by: "parent" };
+  const neighborhood = newCircleNeighborhood(input, byId);
+  return neighborhood ? { circle: neighborhood, by: "neighborhood" } : null;
 }
 
 // a short name for what it proposes: "Rename to Ona Community Garden",

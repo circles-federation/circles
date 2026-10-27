@@ -7,7 +7,7 @@ import { enqueueNeighborhoodNotifications } from "./notifications";
 import { openPostProposal, withdrawPostProposal } from "./proposals";
 import { cleanInput } from "./resources";
 import { circleMembers, neighborhoodPosts } from "./schema";
-import { circleNeighborhood, indexCircles } from "@/lib/circles.util";
+import { indexCircles, postsToNeighborhood } from "@/lib/circles.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { NeighborhoodPost } from "@/lib/types";
 
@@ -54,8 +54,9 @@ export async function getNeighborhoodPostsForMember(memberId: number): Promise<N
 }
 
 /* Propose a post to the bulletin of the neighborhood `circleId` sits in, as
-   `memberId`, one of its members: only a Circle (type "circle") inside a
-   neighborhood may, which is why a neighborhood consents to each new one. Saved
+   `memberId`, one of its members: only a Circle (type "circle") placed
+   directly in a neighborhood may (postsToNeighborhood), which is why a
+   neighborhood consents to each new one. Saved
    unpublished, with its proposal, in one transaction; a circle of one posts
    it at once. */
 export async function proposeNeighborhoodPost(memberId: number, circleId: string, input: ResourceInput): Promise<{ proposalId: string; published: boolean }> {
@@ -63,8 +64,8 @@ export async function proposeNeighborhoodPost(memberId: number, circleId: string
   const byId = indexCircles(circles);
   const circle = byId[circleId];
   if (!circle || !circle.members.includes(memberId)) throw new PostError("Only a circle's members can post for it.");
-  const neighborhood = circleNeighborhood(circle, byId);
-  if (circle.type !== "circle" || !neighborhood || neighborhood.id === circle.id) throw new PostError("Only a Circle inside a neighborhood can post to its bulletin.");
+  const neighborhood = postsToNeighborhood(circle, byId);
+  if (!neighborhood) throw new PostError("Only a Circle in a neighborhood can post to its bulletin.");
   const clean = cleanInput(input);
   return db.transaction(async (tx) => {
     const [post] = await tx

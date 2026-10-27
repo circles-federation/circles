@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUpTrayIcon, CalendarIcon, CheckCircleIcon, Cog6ToothIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
-import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, Section, SectionGroup, useToast } from "@/components/shared";
+import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, RingIcon, Section, SectionGroup, useToast } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { CircleWiki } from "./circle-wiki";
@@ -11,7 +11,7 @@ import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
-import { rolesHeldBy } from "@/lib/circle-roles.util";
+import { isDelegateOf, rolesHeldBy } from "@/lib/circle-roles.util";
 import { circleCanHoldMeetings, circleChildren, circleHasInbox, circleHasTasks, circleHasWiki, isCircleAudience, type CircleSection } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
@@ -61,6 +61,8 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
+  // the circles inside this one whose delegate a member is
+  const delegateFor = (memberId: number) => childCircles.filter((child) => isDelegateOf(child, memberId));
   const byId = useCirclesById();
   const parent = c.parentId !== null ? byId[c.parentId] : undefined;
   // events in this circle — shown to it, or hosted by it — soonest first (location is irrelevant)
@@ -173,7 +175,7 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
               </div>
             )
           }
-          {...(childCircles.length > 0 ? { subCircles: childCircles.map((child) => <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />) } : {})}
+          {...(childCircles.length > 0 ? { subCircles: childCircles.map((child) => <CircleCard key={child.id} c={child} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />) } : {})}
           {...(canWrite ? { writeHref: `/circles/${c.id}/write` } : {})}
         />
       )}
@@ -183,30 +185,45 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
           <Section className="pt-0">
             {members.length > 0 ? (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] border-t border-l border-ink">
-                {members.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => onOpenMember(m)}
-                    className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-4 text-left"
-                  >
-                    <Avatar member={m} size={44} />
-                    <div className="min-w-0">
-                      <div className="font-sans text-sm font-bold">{m.name}</div>
-                      <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{m.role}</span>
-                      {/* everyone here belongs to this circle, so no neighborhood chip —
-                          a role they hold in it takes that spot, as an outlined badge */}
-                      {rolesHeldBy(c, m.id).length > 0 && (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {rolesHeldBy(c, m.id).map((role) => (
-                            <Badge key={role} title={`Role in ${c.name}`}>
-                              {role}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                {members.map((m) => {
+                  const roles = rolesHeldBy(c, m.id);
+                  const delegating = delegateFor(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => onOpenMember(m)}
+                      className="ink-press flex cursor-pointer items-center gap-3 border-r border-b border-ink bg-paper p-4 text-left"
+                    >
+                      <Avatar member={m} size={44} />
+                      <div className="min-w-0">
+                        <div className="font-sans text-sm font-bold">{m.name}</div>
+                        <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{m.role}</span>
+                        {/* everyone here belongs to this circle, so no neighborhood chip —
+                            a role they hold in it takes that spot, as an outlined badge,
+                            and being one of its circles' delegate, which is why
+                            they're here, a quieter one */}
+                        {(roles.length > 0 || delegating.length > 0) && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {roles.map((role) => (
+                              <Badge key={role} title={`Role in ${c.name}`}>
+                                {role}
+                              </Badge>
+                            ))}
+                            {delegating.map((child) => (
+                              // the ring says it's a circle's delegate, so a long
+                              // name can be cut short without losing what it means
+                              <Badge key={child.id} variant="subtle" title={`${child.name}'s delegate to ${c.name}`}>
+                                <RingIcon className="size-4 shrink-0" aria-hidden />
+                                <span className="sr-only">Delegate for </span>
+                                <span className="truncate">{child.name}</span>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <p className="font-serif text-base text-soft">

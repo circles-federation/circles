@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
 import { VideoCameraIcon } from "@heroicons/react/24/outline";
-import { ButtonLink, Eyebrow, MastheadChip } from "@/components/shared";
+import { ButtonLink, Eyebrow, CappedChip } from "@/components/shared";
 import { meetingLink } from "@/lib/events.util";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
 import { awaitingConsent } from "@/lib/governance.util";
@@ -68,7 +68,7 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
           </div>
         </div>
         {/* capped, so a long circle name ends in "…" instead of squeezing the time */}
-        {circle ? <MastheadChip max="max-w-[45%]" title={`${circle.name}: who can see this event`}>{circle.name}</MastheadChip> : <span />}
+        {circle ? <CappedChip max="max-w-[45%]" title={`${circle.name}: who can see this event`}>{circle.name}</CappedChip> : <span />}
       </div>
       <h1 className="row-start-2 mt-4 min-[720px]:mt-3 font-sans text-heading leading-[0.95] font-extrabold tracking-display min-[720px]:col-start-2 min-[720px]:text-title">
         {e.title}

@@ -4,7 +4,7 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { CheckCircleIcon, CheckIcon, HandRaisedIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import type { MutationResult } from "@/components/providers/app-state-provider";
-import { Button, ConfirmModal, Eyebrow, EyebrowGroup, MastheadChip, PageContainer, Section, SectionGroup, TextArea, useToast } from "@/components/shared";
+import { Button, ConfirmModal, Eyebrow, EyebrowGroup, CappedChip, PageContainer, Section, SectionGroup, TextArea, useToast } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
 import { useMemberById } from "@/lib/hooks";
 import { OBJECTION_REASON_MAX, RESPONSE_LABEL, isEventProposal, proposalTitle, responseOf } from "@/lib/proposals.util";
@@ -86,7 +86,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
       <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5">
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="text-soft">Proposal</Eyebrow>
-          <MastheadChip onClick={onOpenCircle}>{circle.name}</MastheadChip>
+          <CappedChip onClick={onOpenCircle}>{circle.name}</CappedChip>
         </div>
         <h1 className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-display">{proposalTitle(p)}</h1>
         <p className="mt-3 font-serif text-sm text-soft">

@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { Avatar, Chip, Eyebrow, PrivateLabel } from "@/components/shared";
+import { Avatar, Eyebrow, CappedChip, PrivateLabel } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { CIRCLE_TYPE_LABEL, circleNeighborhood, isGroup } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleNeighborhood, isGroup, startedInside } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle } from "@/lib/types";
 
@@ -21,7 +21,8 @@ interface CircleCardProps {
    (matching NeighborhoodPage's page-title treatment when browsing inside
    that same folder).
 
-   showNeighborhoodChip defaults on for flat lists that mix neighborhoods (Home's "my circles"
+   The chip names where it sits: its neighborhood, or for a circle started
+   inside another, that circle. showNeighborhoodChip defaults on for flat lists that mix neighborhoods (Home's "my circles"
    speed dial, CirclesRootPage) but callers rendering a single circle's own
    children (NeighborhoodPage, CirclePage's Sub-circles) pass false — every
    card in such a list structurally shares that folder's own neighborhood, so
@@ -41,6 +42,9 @@ export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showK
   const isNeighborhood = c.type === "neighborhood";
   const isHome = c.id === profile.homeCircleId;
   const hood = circleNeighborhood(c, byId);
+  // one started inside another circle is placed by that circle, the one it
+  // answers to, rather than the neighborhood further up
+  const inside = startedInside(c, byId);
 
   return (
     // items-stretch: a <button>'s default is align-items: flex-start, which
@@ -52,12 +56,14 @@ export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showK
     >
       {showKindEyebrow && (
         <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
-          <Eyebrow className="text-soft">
+          <Eyebrow className="shrink-0 text-soft">
             {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
           </Eyebrow>
-          {!isNeighborhood && showNeighborhoodChip && hood !== null && (
-            <Chip title={hood.id === profile.homeCircleId ? "Local to this neighborhood" : "Across the federation"}>{hood.name}</Chip>
-          )}
+          {!isNeighborhood && showNeighborhoodChip && inside ? (
+            <CappedChip title={`Inside ${inside.name}`}>{inside.name}</CappedChip>
+          ) : !isNeighborhood && showNeighborhoodChip && hood !== null ? (
+            <CappedChip title={hood.id === profile.homeCircleId ? "Local to this neighborhood" : "Across the federation"}>{hood.name}</CappedChip>
+          ) : null}
         </div>
       )}
       <div className="flex items-center gap-2 font-sans text-xl leading-none font-extrabold tracking-[-0.025em]">

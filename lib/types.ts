@@ -238,6 +238,8 @@ export interface ProposalChanges {
   roles?: { label: string; memberId: number | null }[];
   // turning its Inbox on or off
   inbox?: boolean;
+  // a new circle started inside this one: its first member and delegate
+  delegateId?: number;
 }
 
 // one line of what it changes, as it read when proposed ("Name": "Ona

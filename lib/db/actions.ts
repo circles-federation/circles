@@ -27,7 +27,7 @@ import { localDay } from "@/lib/recurrence.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
-import { newCircleNeighborhood } from "@/lib/proposals.util";
+import { newCircleDecider } from "@/lib/proposals.util";
 import { indexCircles } from "@/lib/circles.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { MessageInput } from "@/lib/messages.util";
@@ -87,7 +87,8 @@ export async function loadAppStateAction(): Promise<{ ok: true; value: AppStateD
 export async function createCircleAction(input: NewCircleInput) {
   return asMember(async (memberId) => {
     const all = await circles.getCirclesForMember(memberId);
-    if (!newCircleNeighborhood(input, indexCircles(all))) return { circle: await circles.createCircle(memberId, input) };
+    // one inside a circle, or a Circle in a neighborhood, is proposed to whoever decides it
+    if (!newCircleDecider(input, indexCircles(all))) return { circle: await circles.createCircle(memberId, input) };
     const { proposal, circleId } = await proposals.proposeNewCircle(memberId, input);
     return { proposal, circleId, state: await stateFor(memberId) };
   });

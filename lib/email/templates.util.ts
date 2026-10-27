@@ -682,7 +682,15 @@ export function proposalEmail(d: ProposalEmailData): Body {
             "View proposal",
           ]
         : [`Passed: ${title}`, `Passed · ${d.circleName}`, LEAF, `No one objected to ${d.proposerName}'s proposal, so ${passed}.`, "View proposal"];
-  const why = `You're getting this because you're a member of ${d.subjectCircleName ?? d.circleName}${d.kind === "new_circle" ? ", or proposed it" : ""}.`;
+  // a new circle's subject is the circle it started, which no one was told as
+  // a member of: its own circle's members decide one started inside it, and
+  // only its proposer hears how a neighborhood's went
+  const why =
+    d.kind === "new_circle"
+      ? d.changes.delegateId !== undefined
+        ? `You're getting this because you're a member of ${d.circleName}.`
+        : "You're getting this because you proposed it."
+      : `You're getting this because you're a member of ${d.subjectCircleName ?? d.circleName}.`;
   const line = (l: ProposalLine) =>
     `<tr><td style="padding-bottom:14px">${eyebrow(esc(l.label))}` +
     (l.after ? `<div style="margin-top:4px;font-family:${SERIF};font-size:18px;line-height:1.4;color:${INK}">${esc(l.after).replace(/\n/g, "<br>")}</div>` : "") +
@@ -713,7 +721,10 @@ export function proposalWords(d: Pick<ProposalEmailData, "kind" | "circleName" |
   if (d.kind === "post") return { made: "posted", ask: `that ${d.circleName} post this to its neighborhood's bulletin, which needs its members' consent`, passed: "it's now on the neighborhood's bulletin" };
   if (d.kind === "new_circle") {
     const name = d.changes.name ?? "a new Circle";
-    return { made: "started", ask: `starting ${name}, a Circle in ${d.circleName}, which needs the consent of everyone who lives there`, passed: `${name} has been started` };
+    // one started inside a circle names its delegate; one in a neighborhood doesn't
+    const inside = d.changes.delegateId !== undefined;
+    const ask = inside ? `starting ${name}, one of ${d.circleName}'s circles, which needs its members' consent` : `starting ${name}, a Circle in ${d.circleName}, which needs the consent of everyone who lives there`;
+    return { made: "started", ask, passed: `${name} has been started` };
   }
   if (d.subjectCircleName) {
     return { made: "made", ask: `a change to ${d.subjectCircleName}, which needs the consent of its members and of everyone in ${d.circleName}`, passed: `the change has been made to ${d.subjectCircleName}` };

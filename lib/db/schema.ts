@@ -195,11 +195,18 @@ export const circleMembers = pgTable(
     circleId: text("circle_id").notNull(),
     circleType: circleType("circle_type").notNull(),
     memberId: integer("member_id").notNull().references(() => members.id),
+    // set when they're a member only as the delegate of a circle started inside
+    // this one (one such circle's id), so the row goes when they're no longer
+    // the delegate of any (syncDelegate, lib/db/memberships.ts). A member who
+    // was already here, and is delegate too, has none: they stay after
+    delegateFor: text("delegate_for").references((): AnyPgColumn => circles.id, { onDelete: "cascade" }),
   },
   (t) => [
     primaryKey({ columns: [t.circleId, t.memberId] }),
     foreignKey({ columns: [t.circleId, t.circleType], foreignColumns: [circles.id, circles.type] }).onUpdate("cascade"),
     uniqueIndex("circle_members_one_neighborhood").on(t.memberId).where(sql`${t.circleType} = 'neighborhood'`),
+    // syncDelegate finds a circle's delegates' seats by it
+    index("circle_members_delegate_for").on(t.delegateFor),
   ]
 );
 
