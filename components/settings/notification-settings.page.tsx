@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
@@ -11,6 +11,7 @@ import { usePushSubscription } from "@/lib/hooks";
 import { markPushPromptAnswered } from "@/lib/push-client";
 import type { NotificationSettings } from "@/lib/types";
 import { isIPhoneBrowserTab } from "@/lib/viewport";
+import { RowShell, SettingRow, SettingRows } from "@/components/shared/setting-row";
 
 interface NotificationSettingsPageProps {
   settings: NotificationSettings;
@@ -141,31 +142,6 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
         />
       )}
     </PageContainer>
-  );
-}
-
-// a list of settings: rows under an ink rule, hairlines between them, an ink
-// rule under the last (as LinkRow's lists are)
-function SettingRows({ children }: { children: ReactNode }) {
-  return <div className="border-t border-ink">{children}</div>;
-}
-
-function RowShell({ children }: { children: ReactNode }) {
-  return <div className="flex items-center gap-4 border-b border-faint py-4 last:border-b-ink">{children}</div>;
-}
-
-function SettingRow({ label, detail, checked, onChange, disabled }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
-  const id = useId();
-  return (
-    <RowShell>
-      <div className="min-w-0 flex-1">
-        <div id={id} className="font-sans text-base font-bold">
-          {label}
-        </div>
-        <div className="mt-0.5 font-serif text-sm leading-snug text-soft">{detail}</div>
-      </div>
-      <Switch checked={checked} onChange={onChange} labelledBy={id} disabled={disabled} />
-    </RowShell>
   );
 }
 

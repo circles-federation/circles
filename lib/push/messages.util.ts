@@ -5,6 +5,7 @@ import { isEventProposal, proposalTitle } from "@/lib/proposals.util";
 import type { ProposalChanges, ProposalKind, ProposalLine, ProposalNoticeKind } from "@/lib/types";
 import { endedBefore, relativeDayWord } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
+import { isReminder } from "@/lib/events.util";
 
 /* The app's push notifications, as pure functions from data to a message —
    the counterparts of lib/email/templates.util.ts's emails, saying the same
@@ -61,7 +62,7 @@ export function eventNotificationPush(n: EventPushData): PushMessage {
     return message(`Needs ${needs}: ${n.title}`, `Starts at ${fmtTime(n.start)}.${unless} Know someone who could cover it?`, url, tag);
   }
 
-  if (n.notice === "reminder") {
+  if (isReminder(n.notice)) {
     const day = relativeDayWord(n.date, n.today);
     const Day = day.charAt(0).toUpperCase() + day.slice(1);
     const mine = n.mySlots ?? [];

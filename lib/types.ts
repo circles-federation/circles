@@ -63,6 +63,10 @@ export interface NotificationSettings {
 // a given time, from the meeting form
 // pendingPhotoVersion: a new photo they've sent that a system admin hasn't
 // decided on yet, which only they (and admins) can see
+// how long before an event the people going are reminded of it, in hours:
+// the offered ones are lib/events.util.ts's REMINDERS
+export type ReminderHours = 24 | 2 | 1;
+
 export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings; availability: AvailabilityWindow[] | null; pendingPhotoVersion?: number };
 
 // who in a circle can make a meeting's date and time, as the meeting form
@@ -190,6 +194,9 @@ export interface Event {
   end: string;
   location: string;
   description: string;
+  // when the people going are reminded of it, in hours before it, as its
+  // organizer chose (lib/events.util.ts's REMINDERS); none is none
+  reminders?: ReminderHours[];
   rsvps: number[];
   // first names of guests who RSVPed from a share link (no account, so no id,
   // photo or profile); absent when there are none
@@ -412,14 +419,15 @@ export interface NeighborhoodPost {
 // ("proposed"), that a proposal or meeting was approved ("approved" — a
 // meeting when it reaches its vote threshold), or, to the people going, that
 // its organizer moved it ("updated") or cancelled it ("cancelled"), or that
-// it's coming up within a day ("reminder"), or, to its host, that a
+// it's coming up within a day, 2 hours or an hour ("reminder", "reminder_2h",
+// "reminder_1h", as each member chose), or, to its host, that a
 // required slot is still short an hour before it starts ("short"). Separate from *how* it's delivered
 // (an email of its own, or a line in the daily digest), and one member can be
 // owed more than one of these for the same event.
 // what a guest (someone who RSVPed from a share link) is emailed about
 export type GuestNoticeKind = "confirmed" | "updated" | "cancelled";
 
-export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "cancelled" | "reminder" | "short";
+export type NotificationKind = "new" | "proposed" | "approved" | "updated" | "cancelled" | "reminder" | "reminder_2h" | "reminder_1h" | "short";
 
 // which way a queued notification goes out: each channel is its own queue
 // row, sent and retried on its own, so a failed push never resends an email

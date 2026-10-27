@@ -1,24 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon, ClipboardDocumentListIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
+import { BellAlertIcon, CheckIcon, ClipboardDocumentListIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-editor";
 import { MeetingAvailability } from "./meeting-availability";
 import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, Section, SectionGroup, Select, TextArea } from "@/components/shared";
+import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, Section, SectionGroup, Select, SettingRow, SettingRows, TextArea } from "@/components/shared";
 import { audienceLabel, circleCanHoldMeetings, circlesByKind, circlesForAudience, circlesForMember, indexCircles, isCircleMember, hostCanShowTo, isGroup, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
-import { attendeeIds, defaultEventTimes, endAfterStartMoves, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
+import { DEFAULT_REMINDERS, REMINDERS, attendeeIds, availableReminders, defaultReminders, defaultEventTimes, endAfterStartMoves, remindersSummary, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
+import { useClock } from "@/lib/hooks";
 import { EVENT_KINDS, isProposal } from "@/lib/governance.util";
 import { REPEAT_FREQUENCIES, REPEAT_HORIZON_LABEL, localDay, repeatLabel, repeatSummary } from "@/lib/recurrence.util";
-import type { Circle, Event, EventKindKey, Profile, RepeatFrequency } from "@/lib/types";
+import type { Circle, Event, EventKindKey, Profile, ReminderHours, RepeatFrequency } from "@/lib/types";
 
 
 const DEFAULT_MEETING_TITLE = "Meeting";
+
+// the same reminders, whatever order they were switched on in
+const sameReminders = (a: ReminderHours[], b: ReminderHours[]) => a.length === b.length && a.every((h) => b.includes(h));
 
 // full literal class strings per key — Tailwind's static scan can't see
 // through a template-interpolated class name like `border-t-${accent}`.
@@ -122,6 +126,7 @@ export function EventFormPage(props: EventFormPageProps) {
           ? event.agenda.map((a): AgendaDraft => ({ category: a.category, title: a.title, details: a.details ?? "" }))
           : [BLANK_AGENDA_ITEM],
         slots: (event.roles ?? []).map((r): SlotDraft => ({ label: r.label, description: r.description || "", min: String(r.min), max: r.max != null ? String(r.max) : "" })),
+        reminders: event.reminders ?? DEFAULT_REMINDERS,
       }
     : {
         type: (startsAsMeeting ? "meeting" : "ordinary") as EventKindKey,
@@ -135,6 +140,7 @@ export function EventFormPage(props: EventFormPageProps) {
         description: "",
         agenda: [BLANK_AGENDA_ITEM],
         slots: [] as SlotDraft[],
+        reminders: DEFAULT_REMINDERS,
       };
 
   const [type, setType] = useState<EventKindKey>(initialValues.type);
@@ -151,15 +157,25 @@ export function EventFormPage(props: EventFormPageProps) {
   const [slots, setSlots] = useState<SlotDraft[]>(initialValues.slots);
   // a meeting's agenda, which it has instead of a description
   const [agenda, setAgenda] = useState<AgendaDraft[]>(initialValues.agenda);
-  // the form, or a part of it (slots, a meeting's agenda) on a view of its own:
-  // too much to fit among the other fields on a phone
-  const [view, setView] = useState<"form" | "slots" | "agenda">("form");
+  // when the people going are reminded of it, in hours before it
+  const [reminders, setReminders] = useState<ReminderHours[]>(initialValues.reminders);
+  // a new event's reminders follow its date and time (defaultReminders) until
+  // they're changed by hand; an edited event's are its own from the start
+  const [remindersSet, setRemindersSet] = useState(mode === "edit");
+  // only the ones that can still come before it starts are offered, as the
+  // clock and its date and time say (all of them until the clock is read)
+  const now = useClock();
+  const available = now === null ? REMINDERS.map((r) => r.hours) : availableReminders({ date, start }, new Date(now));
+  const chosen = remindersSet ? reminders : defaultReminders(available);
+  // the form, or a part of it (slots, a meeting's agenda, the reminders) on a
+  // view of its own: too much to fit among the other fields on a phone
+  const [view, setView] = useState<"form" | "slots" | "agenda" | "reminders">("form");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  // the roles and agenda as they were when their view opened: Done keeps
-  // what's changed since, Back puts these back (asking first if anything has)
-  const [viewStart, setViewStart] = useState<{ slots: SlotDraft[]; agenda: AgendaDraft[] } | null>(null);
+  // the roles, agenda and reminders as they were when their view opened: Done
+  // keeps what's changed since, Back puts these back (asking first if anything has)
+  const [viewStart, setViewStart] = useState<{ slots: SlotDraft[]; agenda: AgendaDraft[]; reminders: ReminderHours[]; remindersSet: boolean } | null>(null);
   const [confirmingViewDiscard, setConfirmingViewDiscard] = useState(false);
   // which dates cancelling applies to, while its confirmation is open
   const [confirmingProposal, setConfirmingProposal] = useState(false);
@@ -220,6 +236,7 @@ export function EventFormPage(props: EventFormPageProps) {
     location.trim() !== initialValues.location.trim() ||
     description.trim() !== initialValues.description.trim() ||
     JSON.stringify(slots) !== JSON.stringify(initialValues.slots) ||
+    (remindersSet && !sameReminders(reminders, initialValues.reminders)) ||
     (gov && JSON.stringify(agenda) !== JSON.stringify(initialValues.agenda)) ||
     repeat !== "" ||
     until !== "";
@@ -253,8 +270,8 @@ export function EventFormPage(props: EventFormPageProps) {
   }
 
   const hasRoles = slots.some((x) => x.label.trim());
-  function openView(next: "slots" | "agenda") {
-    setViewStart({ slots, agenda });
+  function openView(next: "slots" | "agenda" | "reminders") {
+    setViewStart({ slots, agenda, reminders: chosen, remindersSet });
     // a blank one to type into, if there's none yet
     if (next === "slots" && slots.length === 0) setSlots([{ ...BLANK_SLOT }]);
     setView(next);
@@ -269,6 +286,8 @@ export function EventFormPage(props: EventFormPageProps) {
     if (viewStart) {
       setSlots(viewStart.slots);
       setAgenda(viewStart.agenda);
+      setReminders(viewStart.reminders);
+      setRemindersSet(viewStart.remindersSet);
     }
     setConfirmingViewDiscard(false);
     setView("form");
@@ -280,7 +299,9 @@ export function EventFormPage(props: EventFormPageProps) {
     !!viewStart &&
     (view === "agenda"
       ? JSON.stringify(agenda) !== JSON.stringify(viewStart.agenda)
-      : view === "slots" && JSON.stringify(named(slots)) !== JSON.stringify(named(viewStart.slots)));
+      : view === "reminders"
+        ? !sameReminders(chosen, viewStart.reminders)
+        : view === "slots" && JSON.stringify(named(slots)) !== JSON.stringify(named(viewStart.slots)));
 
   // leaving is the top bar's Back, which asks before discarding changes; from
   // a view within the form it goes back to the form without that view's
@@ -317,6 +338,9 @@ export function EventFormPage(props: EventFormPageProps) {
           }
         : {}),
       roles,
+      // a new event's that can't come any more are left off; an edited one's
+      // are kept, since the server counts any already past as done
+      reminders: mode === "create" ? chosen.filter((h) => available.includes(h)) : chosen,
     };
     return {
       details,
@@ -424,7 +448,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const viewDiscardModal = confirmingViewDiscard && (
     <ConfirmModal
       title="Discard changes?"
-      message={`Your changes to the ${view === "agenda" ? "agenda" : "roles"} won't be kept. Tap Done to keep them.`}
+      message={`Your changes to the ${view === "agenda" ? "agenda" : view === "reminders" ? "reminders" : "roles"} won't be kept. Tap Done to keep them.`}
       confirmLabel="Discard"
       cancelLabel="Cancel"
       onConfirm={discardView}
@@ -440,6 +464,36 @@ export function EventFormPage(props: EventFormPageProps) {
           People sign up for these, like shift lead or greeter. Roles replace the normal RSVP. Leave none to keep it a simple RSVP.
         </p>
         <SlotsEditor slots={slots} onChange={setSlots} />
+        {viewDiscardModal}
+      </PageContainer>
+    );
+  }
+
+  if (view === "reminders") {
+    return (
+      <PageContainer size="compact">
+        <h2 className="font-sans text-xl font-extrabold tracking-heading">Reminders</h2>
+        <p className="mt-2 mb-5 font-serif text-sm leading-normal text-soft">
+          When to remind everyone going, by email and push. Something that needs setting up, or a shift, may want a day&rsquo;s notice; something casual, just the hour before.
+        </p>
+        <SettingRows>
+          {REMINDERS.map((r) => {
+            const open = available.includes(r.hours);
+            return (
+              <SettingRow
+                key={r.hours}
+                label={r.label}
+                {...(open ? {} : { detail: `It starts in less than ${r.hours === 24 ? "a day" : r.hours === 2 ? "2 hours" : "an hour"}.` })}
+                checked={open && chosen.includes(r.hours)}
+                disabled={!open}
+                onChange={(on) => {
+                  setReminders(on ? [...chosen, r.hours] : chosen.filter((h) => h !== r.hours));
+                  setRemindersSet(true);
+                }}
+              />
+            );
+          })}
+        </SettingRows>
         {viewDiscardModal}
       </PageContainer>
     );
@@ -633,6 +687,7 @@ export function EventFormPage(props: EventFormPageProps) {
               />
             </>
           )}
+          <MenuRow onClick={() => openView("reminders")} icon={BellAlertIcon} label="Reminders" detail={remindersSummary(chosen.filter((h) => available.includes(h)))} />
         </Section>
 
         <Section className="flex flex-col gap-5 py-6">

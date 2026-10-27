@@ -1,7 +1,7 @@
 import { validateAgenda } from "./agenda.util";
 import { isPastEvent } from "./format.util";
 import { REPEAT_FREQUENCIES, localDay } from "./recurrence.util";
-import type { AgendaItem, Event, EventKindKey, RepeatFrequency } from "./types";
+import type { AgendaItem, Event, EventKindKey, NotificationKind, ReminderHours, RepeatFrequency } from "./types";
 
 /* What a person submits to create an event, and the checks on it — shared by
    the event form (instant feedback) and lib/db/events.ts (the authoritative
@@ -40,14 +40,64 @@ export interface EventDraft {
   // a meeting's agenda, which it has instead of a description (an ordinary
   // event has none)
   agenda?: AgendaItem[];
+  // when to remind the people going, in hours before it (REMINDERS); a day
+  // before if it's left out
+  reminders?: ReminderHours[];
   // repeat on a weekly or monthly pattern read from `date`, until an optional
   // last date — only when creating, and not a meeting (yet); see
   // lib/recurrence.util.ts
   repeat?: { frequency: RepeatFrequency; until?: string };
 }
 
-// the people going are emailed a reminder once an event is this close
-export const REMINDER_HOURS = 24;
+/* How long before an event the people going may be reminded of it, its
+   organizer choosing which on the event form (`events.reminders`, in hours):
+   each its own notification kind, so someone can be reminded more than once,
+   and its own stamp on the event (`events.reminded_hours`), so each is queued
+   once. A day before is where a new event starts. */
+export const REMINDERS = [
+  { hours: 24, kind: "reminder", label: "1 day before" },
+  { hours: 2, kind: "reminder_2h", label: "2 hours before" },
+  { hours: 1, kind: "reminder_1h", label: "1 hour before" },
+] as const satisfies readonly { hours: ReminderHours; kind: NotificationKind; label: string }[];
+export type ReminderKind = (typeof REMINDERS)[number]["kind"];
+export const DEFAULT_REMINDERS: ReminderHours[] = [24];
+export const REMINDER_KINDS: ReminderKind[] = REMINDERS.map((r) => r.kind);
+
+/* The reminders that can still come before an event starts: those further
+   off than `now` is from its start. None once it's under an hour away, so
+   the form offers only these. Every one while its date or time isn't set. */
+export function availableReminders(e: Pick<Event, "date" | "start">, now: Date = new Date()): ReminderHours[] {
+  if (!isDay(e.date) || !isClock(e.start)) return REMINDERS.map((r) => r.hours);
+  const ms = eventStartsAt(e).getTime() - now.getTime();
+  return REMINDERS.map((r) => r.hours).filter((h) => ms > h * 60 * 60 * 1000);
+}
+
+// where a new event's reminders start: a day before, or for one sooner the
+// longest still to come, or none under an hour away
+export function defaultReminders(available: ReminderHours[]): ReminderHours[] {
+  const longest = REMINDERS.map((r) => r.hours).find((h) => available.includes(h));
+  return longest === undefined ? [] : [longest];
+}
+
+// an event's reminders in a few words, under the form's Reminders row:
+// "1 day and 1 hour before", or "None"
+export function remindersSummary(hours: ReminderHours[]): string {
+  const chosen = REMINDERS.filter((r) => hours.includes(r.hours)).map((r) => r.label.replace(/ before$/, ""));
+  const last = chosen.pop();
+  if (!last) return "None";
+  return `${chosen.length > 0 ? `${chosen.join(", ")} and ${last}` : last} before`;
+}
+
+export function isReminder(kind: NotificationKind): kind is ReminderKind {
+  return (REMINDER_KINDS as NotificationKind[]).includes(kind);
+}
+
+// an event's choice as saved: only the offered ones, each once, longest first
+// (null for anything that isn't a list of them, for the server to refuse)
+export function normalizeReminders(hours: unknown): ReminderHours[] | null {
+  if (!Array.isArray(hours) || !hours.every((h) => REMINDERS.some((r) => r.hours === h))) return null;
+  return REMINDERS.map((r) => r.hours).filter((h) => hours.includes(h));
+}
 
 // when an event starts, in this machine's timezone (the community's — see TZ)
 export function eventStartsAt(e: Pick<Event, "date" | "start">): Date {
@@ -71,10 +121,12 @@ export function hasEnded(e: Pick<Event, "date" | "start" | "end">, now: Date = n
   return now >= eventEndsAt(e);
 }
 
-// whether it starts after `now` but within REMINDER_HOURS of it
-export function startsWithinReminder(e: Pick<Event, "date" | "start">, now: Date = new Date()): boolean {
+/* The reminders an event is already inside of: it starts after `now`, and
+   within that many hours of it. An event created or moved this close is
+   stamped with them, since its people have only just heard of it. */
+export function remindersWithin(e: Pick<Event, "date" | "start">, now: Date = new Date()): ReminderHours[] {
   const ms = eventStartsAt(e).getTime() - now.getTime();
-  return ms > 0 && ms <= REMINDER_HOURS * 60 * 60 * 1000;
+  return ms > 0 ? REMINDERS.map((r) => r.hours).filter((h) => ms <= h * 60 * 60 * 1000) : [];
 }
 
 // which dates of a repeating event an edit or a cancellation applies to: the
@@ -86,6 +138,7 @@ export type SeriesScope = "one" | "upcoming";
 // organizer, rsvps or votes; `roles` is the slot definitions (empty removes them)
 export type EventDetails = Pick<EventDraft, "title" | "date" | "start" | "end" | "location" | "description" | "agenda"> & {
   roles: RoleDraft[];
+  reminders: ReminderHours[];
 };
 
 // the stable key a slot is stored under: its label, slugged (so re-saving an
@@ -162,6 +215,7 @@ export function validateEventDraft(d: EventDraft, { creating = false, now = new 
     if (problem) return problem;
   } else if (d.agenda && d.agenda.length > 0) return "Only a meeting has an agenda.";
   if (d.hostCircleId && d.kind === "meeting") return "A meeting is proposed by you, not hosted by a circle.";
+  if (d.reminders !== undefined && !normalizeReminders(d.reminders)) return "Pick when to remind people going.";
   if (d.repeat) {
     if (d.kind === "meeting") return "A meeting can't repeat yet — propose each one on its own.";
     if (!REPEAT_FREQUENCIES.includes(d.repeat.frequency)) return "Pick how often it repeats.";

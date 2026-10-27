@@ -39,6 +39,7 @@ export { SectionGroup } from "./section-group";
 export { Select } from "./select";
 export { SimpleTabs } from "./simple-tabs";
 export { Switch } from "./switch";
+export { RowShell, SettingRow, SettingRows } from "./setting-row";
 export { TabbedPanel } from "./tabbed-panel";
 export { Tag } from "./tag";
 export { TextArea } from "./text-area";

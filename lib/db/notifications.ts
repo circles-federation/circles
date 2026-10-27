@@ -25,7 +25,7 @@ import { groupBy } from "./util";
 import type { AnnouncementEmailData, DigestEventData, DigestPostData, DigestProposalData, EventNotificationData, ProposalEmailData } from "@/lib/email/templates.util";
 import { RESOURCE_KIND_LABEL } from "@/lib/resources.util";
 import { proposalTitle } from "@/lib/proposals.util";
-import { REMINDER_HOURS } from "@/lib/events.util";
+import { REMINDER_KINDS, REMINDERS, isReminder } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { majority } from "@/lib/governance.util";
 import { localDay } from "@/lib/recurrence.util";
@@ -204,55 +204,57 @@ async function going(tx: Tx, eventId: string): Promise<number[]> {
   return [...new Set([...rsvpRows, ...slotRows].map((r) => r.id))];
 }
 
-/* Queue a reminder for everyone going to each event that starts within the
-   next REMINDER_HOURS and hasn't had one — on its own, never a digest line. Run by the poller (lib/notify.ts), since an event comes into range
-   just by time passing. Who's going is read at that moment, so someone who
-   signs up later, already this close, isn't reminded of what they just chose.
-   A cancelled event, a proposal, and a meeting still short of its votes are
-   passed over; the last is looked at again until it's approved or has begun.
-   Each event is locked while it's done, so two servers can't both queue it.
-   Returns how many reminders were queued. */
+/* Queue the reminders now due: for each of REMINDERS, everyone going to an
+   event that starts within that many hours and whose organizer chose it (its
+   `reminders`, on the event form), on its own, never a digest line, the event
+   stamped with it so it's queued once. Run by the poller (lib/notify.ts), since an
+   event comes into range just by time passing. Who's going is read at that
+   moment, so someone who signs up later is reminded only at the times still
+   to come. A cancelled event, and one its circle hasn't consented to, are
+   passed over. Each event is locked while it's done, so two servers can't
+   both queue it. Returns how many reminders were queued. */
 export async function enqueueReminders(now: Date = new Date()): Promise<number> {
-  const later = new Date(now.getTime() + REMINDER_HOURS * 60 * 60 * 1000);
-  const startsAt = sql`(${events.date} + ${events.start})`;
-  const due = await db
-    .select({
-      id: events.id,
-    })
-    .from(events)
-    .where(
-      and(
-        isNull(events.remindedAt),
-        isNull(events.cancelledAt),
-        // a meeting or circle-hosted event its circle hasn't consented to yet isn't reminded
-        isNotNull(events.approvedAt),
-        // the dates it can fall on, so the date index narrows this to a day
-        // or two before the start time (which no index covers) is compared
-        gte(events.date, localDay(now)),
-        lte(events.date, localDay(later)),
-        sql`${startsAt} > ${wallClock(now)}::timestamp`,
-        sql`${startsAt} <= ${wallClock(later)}::timestamp`
-      )
-    );
   let queued = 0;
-  for (const { id } of due) {
-    queued += await db.transaction(async (tx) => {
-      const [row] = await tx.select({ remindedAt: events.remindedAt }).from(events).where(eq(events.id, id)).for("update", { skipLocked: true });
-      if (!row || row.remindedAt !== null) return 0;
-      await tx.update(events).set({ remindedAt: new Date() }).where(eq(events.id, id));
-      const goingIds = await going(tx, id);
-      const recipients = goingIds.length > 0 ? await channelsFor(tx, inArray(members.id, goingIds)) : [];
-      if (recipients.length === 0) return 0;
-      await tx
-        .insert(eventNotifications)
-        .values(recipients.map((r) => ({ eventId: id, ...r, kind: "reminder" as const, digest: false })))
-        // one sent before the event was moved further out is due again
-        .onConflictDoUpdate({
-          target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind, eventNotifications.channel],
-          set: { createdAt: sql`now()`, sentAt: null, attempts: 0, lastAttemptAt: null, lastError: null },
-        });
-      return membersIn(recipients);
-    });
+  for (const { hours, kind } of REMINDERS) {
+    const later = new Date(now.getTime() + hours * 60 * 60 * 1000);
+    const startsAt = sql`(${events.date} + ${events.start})`;
+    const due = await db
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(
+          sql`${hours} = any(${events.reminders})`,
+          sql`not (${hours} = any(${events.remindedHours}))`,
+          isNull(events.cancelledAt),
+          // a meeting or circle-hosted event its circle hasn't consented to yet isn't reminded
+          isNotNull(events.approvedAt),
+          // the dates it can fall on, so the date index narrows this to a day
+          // or two before the start time (which no index covers) is compared
+          gte(events.date, localDay(now)),
+          lte(events.date, localDay(later)),
+          sql`${startsAt} > ${wallClock(now)}::timestamp`,
+          sql`${startsAt} <= ${wallClock(later)}::timestamp`
+        )
+      );
+    for (const { id } of due) {
+      queued += await db.transaction(async (tx) => {
+        const [row] = await tx.select({ remindedHours: events.remindedHours }).from(events).where(eq(events.id, id)).for("update", { skipLocked: true });
+        if (!row || row.remindedHours.includes(hours)) return 0;
+        await tx.update(events).set({ remindedHours: [...row.remindedHours, hours] }).where(eq(events.id, id));
+        const goingIds = await going(tx, id);
+        const recipients = goingIds.length > 0 ? await channelsFor(tx, inArray(members.id, goingIds)) : [];
+        if (recipients.length === 0) return 0;
+        await tx
+          .insert(eventNotifications)
+          .values(recipients.map((r) => ({ eventId: id, ...r, kind, digest: false })))
+          // one sent before the event was moved is due again
+          .onConflictDoUpdate({
+            target: [eventNotifications.eventId, eventNotifications.memberId, eventNotifications.kind, eventNotifications.channel],
+            set: { createdAt: sql`now()`, sentAt: null, attempts: 0, lastAttemptAt: null, lastError: null },
+          });
+        return membersIn(recipients);
+      });
+    }
   }
   return queued;
 }
@@ -288,7 +290,7 @@ export async function withdrawSlotWarnings(tx: Tx, eventId: string): Promise<voi
 export async function withdrawReminders(tx: Tx, eventId: string): Promise<void> {
   await tx
     .delete(eventNotifications)
-    .where(and(eq(eventNotifications.eventId, eventId), eq(eventNotifications.kind, "reminder"), isNull(eventNotifications.sentAt)));
+    .where(and(eq(eventNotifications.eventId, eventId), inArray(eventNotifications.kind, REMINDER_KINDS), isNull(eventNotifications.sentAt)));
 }
 
 // one queue row: what it's about, who it's for, and which way it goes
@@ -377,7 +379,7 @@ export async function claimEventNotifications(limit: number, channel: Notificati
     const agendaByEvent = groupBy(agendaRows, (a) => a.eventId, (a): AgendaItem => ({ category: a.category, title: a.title, ...(a.details !== null ? { details: a.details } : {}) }));
     // a reminder names the reader's own slots and any still short of people
     // so does a host's warning of a short slot, and an automatic cancellation
-    const withSlots = (r: { notice: NotificationKind; cancelledAutomatically: boolean }) => r.notice === "reminder" || r.notice === "short" || (r.notice === "cancelled" && r.cancelledAutomatically);
+    const withSlots = (r: { notice: NotificationKind; cancelledAutomatically: boolean }) => isReminder(r.notice) || r.notice === "short" || (r.notice === "cancelled" && r.cancelledAutomatically);
     const reminderIds = [...new Set(rows.filter(withSlots).map((r) => r.eventId))];
     const slotRows = reminderIds.length > 0
       ? await tx

@@ -5,6 +5,7 @@ import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { messageHtml, messageText } from "@/lib/messages.util";
 import { endedBefore, relativeDayWord, repeatSummary } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
+import { isReminder } from "@/lib/events.util";
 import type { AgendaItem, CircleType, EventChange, EventKindKey, GuestNoticeKind, EventRepeat, NotificationKind, ProposalChanges, ProposalKind, ProposalLine, ProposalNoticeKind } from "@/lib/types";
 
 /* The app's outgoing emails, as pure functions from data to a message body.
@@ -130,7 +131,7 @@ const stopHtml = (n: Pick<EventNotificationData, "unsubscribeUrl">) =>
 export function eventNotificationEmail(n: EventNotificationData): Body {
   if (n.notice === "cancelled") return cancelledEventEmail(n);
   if (n.notice === "updated") return updatedEventEmail(n);
-  if (n.notice === "reminder") return reminderEmail(n);
+  if (isReminder(n.notice)) return reminderEmail(n);
   if (n.notice === "short") return shortSlotsEmail(n);
   const meeting = n.kind === "meeting";
   // five flavors:

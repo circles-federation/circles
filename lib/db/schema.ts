@@ -11,6 +11,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   time,
   timestamp,
@@ -26,6 +27,7 @@ import type {
   EventKindKey,
   GuestNoticeKind,
   MemberLanguage,
+  ReminderHours,
   AvailabilityWindow,
   NotificationChannel,
   NotificationKind,
@@ -231,6 +233,7 @@ export const eventSeries = pgTable(
     description: text("description").notNull(),
     // signup slot definitions, copied (empty) onto each new date
     roles: jsonb("roles").$type<RoleDraft[]>().notNull().default(sql`'[]'::jsonb`),
+    reminders: smallint("reminders").array().$type<ReminderHours[]>().notNull().default(sql`'{24}'::smallint[]`),
   },
   (t) => [check("event_series_frequency", sql`${t.frequency} in ('weekly', 'monthly')`)]
 );
@@ -282,11 +285,14 @@ export const events = pgTable(
     // within the hour: whoever did that knows the slot's empty, and an event
     // made at 9:40 shouldn't vanish at 9:45. Its host is still warned.
     autoCancel: boolean("auto_cancel").notNull().default(true),
-    // set once the people going have been queued a reminder, or when there's
-    // nothing to remind them of: it was created, or moved, already within a
-    // day of starting (see enqueueReminders in lib/db/notifications.ts).
-    // Cleared when it's moved further out, so they're reminded again.
-    remindedAt: timestamp("reminded_at", { withTimezone: true }),
+    // when the people going are reminded of it, in hours before it, any of
+    // lib/events.util.ts's REMINDERS, as its organizer chose; none is none
+    reminders: smallint("reminders").array().$type<ReminderHours[]>().notNull().default(sql`'{24}'::smallint[]`),
+    // the reminders (in hours before it) the people going have been queued,
+    // or that there was nothing to remind them of: it was created, or moved,
+    // already inside them (see enqueueReminders in lib/db/notifications.ts).
+    // Reset when it's moved, so they're reminded again of the new time.
+    remindedHours: smallint("reminded_hours").array().$type<ReminderHours[]>().notNull().default(sql`'{}'::smallint[]`),
     // set on each date of a repeating event
     seriesId: text("series_id").references(() => eventSeries.id),
   },

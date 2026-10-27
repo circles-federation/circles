@@ -8,7 +8,7 @@ import { confirmedGuestCount, enqueueGuestCancellations, enqueueGuestUpdates } f
 import { openEventProposal, withdrawEventProposal } from "./proposals";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, enqueueSlotWarnings, wallClock, withdrawEventNotifications, withdrawReminders, withdrawSlotWarnings } from "./notifications";
 import { circleCanHoldMeetings, hostCanShowTo, isGroup } from "@/lib/circles.util";
-import { eventStartsAt, hasEnded, roleKey, startsWithinReminder, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
+import { eventStartsAt, hasEnded, DEFAULT_REMINDERS, normalizeReminders, remindersWithin, roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { REPEAT_HORIZON_DAYS, addDays, datesBetween, localDay } from "@/lib/recurrence.util";
 import { AUTO_CANCEL_MS, SLOT_WARNING_MS } from "@/lib/roles.util";
@@ -76,6 +76,7 @@ function toEvent(row: EventRow, rsvps: number[], votes: number[] | undefined, ev
     end: toClockTime(row.end),
     location: row.location,
     description: row.description,
+    reminders: row.reminders,
     rsvps,
     ...(guests && guests.length > 0 ? { guests } : {}),
     roles: eventRoles,
@@ -374,8 +375,9 @@ async function writeEvent(tx: Tx, event: Event, options: { notifyMembers?: boole
     end: event.end,
     location: event.location,
     description: event.description,
-    // created less than a day out, its people have only just heard of it
-    remindedAt: startsWithinReminder(event) ? new Date() : null,
+    reminders: event.reminders ?? DEFAULT_REMINDERS,
+    // created this close, its people have only just heard of it
+    remindedHours: remindersWithin(event),
     autoCancel: !startsWithinTheHour(event),
     seriesId: event.repeat?.seriesId ?? null,
   });
@@ -430,6 +432,7 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
     // a meeting has its agenda instead
     description: draft.kind === "meeting" ? "" : draft.description.trim(),
     roles: draft.roles ?? [],
+    reminders: normalizeReminders(draft.reminders ?? DEFAULT_REMINDERS) ?? DEFAULT_REMINDERS,
   };
   // a consent proposal always starts open, even in a circle of one, which
   // openEventProposal then passes at once
@@ -525,7 +528,7 @@ async function roleHeldIn(memberId: number, circleId: string): Promise<string | 
 
 // what an event's fixed facts are made from — a draft being created, or a
 // series' saved template for its later dates
-type Template = Pick<SeriesRow, "title" | "kind" | "circleId" | "hostCircleId" | "organizerId" | "approvedByRole" | "start" | "end" | "location" | "description" | "roles">;
+type Template = Pick<SeriesRow, "title" | "kind" | "circleId" | "hostCircleId" | "organizerId" | "approvedByRole" | "start" | "end" | "location" | "description" | "roles" | "reminders">;
 
 /* A date's starting state. The organizer attends their own event — except a
    slotted one, where people sign up for slots instead, and a circle-hosted
@@ -553,6 +556,7 @@ function newDate(t: Template, date: string, { opening, proposed }: { opening: bo
     end: toClockTime(t.end),
     location: t.location,
     description: t.description,
+    reminders: t.reminders,
     rsvps: attends ? [t.organizerId] : [],
     // approved by its role holder, there's no vote to open with
     ...(isMeeting || (hosted && opening) ? { votes: t.approvedByRole !== null ? [] : [t.organizerId] } : {}),
@@ -630,6 +634,7 @@ export async function updateEventDetails(memberId: number, id: string, details: 
     end: details.end,
     location: details.location.trim(),
     description: kind === "meeting" ? "" : details.description.trim(),
+    reminders: normalizeReminders(details.reminders) ?? DEFAULT_REMINDERS,
   };
   const targets = await db.transaction(async (tx) => {
     // the event before its series, the order approval locks them in
@@ -678,6 +683,9 @@ export async function updateEventDetails(memberId: number, id: string, details: 
         await withdrawReminders(tx, target);
         await withdrawSlotWarnings(tx, target);
       }
+      // a reminder turned on once its time has come would arrive late, all at
+      // once, so it's counted as done
+      const lateReminders = !rescheduled && before ? fields.reminders.filter((h) => !(before.reminders ?? []).includes(h) && remindersWithin(before).includes(h)) : [];
       await tx
         .update(events)
         .set({
@@ -687,11 +695,13 @@ export async function updateEventDetails(memberId: number, id: string, details: 
           // afresh, and not cancelled automatically if it's now within the hour
           ...(rescheduled
             ? {
-                remindedAt: startsWithinReminder({ date, start: fields.start }) ? new Date() : null,
+                remindedHours: remindersWithin({ date, start: fields.start }),
                 slotsWarnedAt: null,
                 autoCancel: !startsWithinTheHour({ date, start: fields.start }),
               }
-            : {}),
+            : lateReminders.length > 0
+              ? { remindedHours: sql`${events.remindedHours} || ${`{${lateReminders.join(",")}}`}::smallint[]` }
+              : {}),
         })
         .where(eq(events.id, target));
       // a slot that keeps its name keeps the people already in it, per date

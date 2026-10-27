@@ -71,8 +71,8 @@ export function eventCalendarFile(e: Event, { tz, url }: { tz: string; url: stri
     `LOCATION:${text(e.location)}`,
     `DESCRIPTION:${text(description)}`,
     `URL:${url}`,
-    // the calendar's own alert an hour before, alongside the reminder email the
-    // day before (lib/db/notifications.ts's enqueueReminders)
+    // the calendar's own alert an hour before, alongside the reminders its
+    // organizer chose (lib/db/notifications.ts's enqueueReminders)
     "BEGIN:VALARM",
     "ACTION:DISPLAY",
     `DESCRIPTION:${text(e.title)}`,

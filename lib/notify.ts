@@ -25,7 +25,7 @@ import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
 import { announcementPush, circleMessagePush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
 import { announcementEmail, circleMessageEmail, digestEmail, eventChanges, eventNotificationEmail, guestEmail, proposalEmail } from "@/lib/email/templates.util";
-import { eventStartsAt } from "@/lib/events.util";
+import { eventStartsAt, isReminder } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
 
@@ -125,7 +125,7 @@ function drainer(name: string, drainOnce: () => Promise<void>): () => Promise<vo
 // filled since it was queued
 const isMoot = (n: PendingEventNotification) =>
   (n.notice === "updated" && !Object.values(eventChanges(n)).some(Boolean)) ||
-  ((n.notice === "reminder" || n.notice === "short") && eventStartsAt(n) <= new Date()) ||
+  ((isReminder(n.notice) || n.notice === "short") && eventStartsAt(n) <= new Date()) ||
   (n.notice === "short" && (n.openSlots ?? []).length === 0);
 
 const deliverEventEmails = drainer("Event email", async () => {
