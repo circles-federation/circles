@@ -584,8 +584,38 @@ export const circleMessages = pgTable(
     // filed away as dealt with, and by whom
     doneAt: timestamp("done_at", { withTimezone: true }),
     doneBy: integer("done_by").references(() => members.id, { onDelete: "set null" }),
+    // written from its public wiki by someone without an account, who proved
+    // the reply address theirs with an emailed code (lib/db/guest-messages.ts)
+    fromGuest: boolean("from_guest").notNull().default(false),
   },
-  (t) => [index("circle_messages_circle_idx").on(t.circleId, t.createdAt), index("circle_messages_sender_idx").on(t.senderId, t.createdAt)]
+  (t) => [
+    index("circle_messages_circle_idx").on(t.circleId, t.createdAt),
+    index("circle_messages_sender_idx").on(t.senderId, t.createdAt),
+    index("circle_messages_guest_idx").on(sql`lower(${t.replyEmail})`, t.createdAt).where(sql`${t.fromGuest}`),
+  ]
+);
+
+/* A message someone without an account has written to a circle from its
+   public wiki, waiting on the code emailed to the address they gave. It
+   reaches the Inbox (circle_messages) only once the code's entered, and is
+   deleted then, or after a day if it never is. */
+export const guestMessageDrafts = pgTable(
+  "guest_message_drafts",
+  {
+    id: text("id").primaryKey(),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    codeHash: text("code_hash").notNull(),
+    codeExpiresAt: timestamp("code_expires_at", { withTimezone: true }).notNull(),
+    codeAttempts: integer("code_attempts").notNull().default(0),
+    // when the last code went out, for the one-a-minute limit
+    codeSentAt: timestamp("code_sent_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("guest_message_drafts_email_idx").on(sql`lower(${t.email})`, t.codeSentAt), index("guest_message_drafts_circle_idx").on(t.circleId, t.createdAt)]
 );
 
 // which of a circle's members have opened which of its messages

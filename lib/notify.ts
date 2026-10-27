@@ -15,14 +15,16 @@ import {
   markNotificationSent,
 } from "@/lib/db/notifications";
 import { purgeGuestData } from "@/lib/db/guest-rsvps";
+import { purgeGuestMessageDrafts } from "@/lib/db/guest-messages";
+import { getMessageNoticeData } from "@/lib/db/messages";
 import { claimGuestNotifications, markGuestFailed, markGuestSent } from "@/lib/db/guest-notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
 import { closeDueProposals, withdrawLapsedEventProposals } from "@/lib/db/proposals";
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
-import { announcementPush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
-import { announcementEmail, digestEmail, eventChanges, eventNotificationEmail, guestEmail, proposalEmail } from "@/lib/email/templates.util";
+import { announcementPush, circleMessagePush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
+import { announcementEmail, circleMessageEmail, digestEmail, eventChanges, eventNotificationEmail, guestEmail, proposalEmail } from "@/lib/email/templates.util";
 import { eventStartsAt } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
@@ -365,6 +367,7 @@ export function startNotificationWorker(): void {
     if (Date.now() - lastPurge >= 3_600_000) {
       lastPurge = Date.now();
       void purgeGuestData().catch((err) => console.error("Purging old guest data failed:", err));
+      void purgeGuestMessageDrafts().catch((err) => console.error("Purging unconfirmed guest messages failed:", err));
     }
     void remindThenDeliver();
     void deliverAnnouncementNotifications();
@@ -374,4 +377,23 @@ export function startNotificationWorker(): void {
   g.__notificationPoller = setInterval(tick, POLL_MS);
   g.__notificationPoller.unref();
   tick();
+}
+
+/* A new message to a circle's Inbox, from a member or a guest: its members
+   but its sender are told once, by email and push, right after the response
+   that sent it; a failed send isn't retried, since it waits in the Inbox. */
+export async function tellCircleOfMessage(id: string) {
+  const data = await getMessageNoticeData(id).catch((err) => {
+    console.error("Couldn't read a message to tell its circle of:", err);
+    return null;
+  });
+  if (!data) return;
+  const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const url = `${base}/circles/${data.circleId}/inbox/${id}`;
+  await Promise.all(
+    data.recipients.flatMap((r) => [
+      r.email && sendEmail({ to: r.email, ...circleMessageEmail({ ...data, name: r.name, url }) }).catch((err) => console.error("Couldn't email a circle of a message:", err)),
+      pushToMember(r.memberId, circleMessagePush({ ...data, messageId: id })).catch((err) => console.error("Couldn't push a circle a message:", err)),
+    ]),
+  );
 }

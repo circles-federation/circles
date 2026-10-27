@@ -18,10 +18,10 @@ import * as push from "./push";
 import * as resources from "./resources";
 import * as tasks from "./tasks";
 import { sendEmail } from "@/lib/email";
-import { applicationApprovedEmail, applicationDeclinedEmail, circleMessageEmail, invitationEmail, photoDecisionEmail, taskAssignedEmail } from "@/lib/email/templates.util";
-import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember } from "@/lib/notify";
+import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail, photoDecisionEmail, taskAssignedEmail } from "@/lib/email/templates.util";
+import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember, tellCircleOfMessage } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
-import { circleMessagePush, invitationPush, photoDecisionPush, taskAssignedPush } from "@/lib/push/messages.util";
+import { invitationPush, photoDecisionPush, taskAssignedPush } from "@/lib/push/messages.util";
 import { dueLabel, type TaskInput } from "@/lib/tasks.util";
 import { localDay } from "@/lib/recurrence.util";
 import { getCurrentUserId } from "@/lib/session";
@@ -335,7 +335,7 @@ async function tellAssignee(taskId: string, assigneeId: number, assignerId: numb
    message waits in the Inbox either way. */
 export async function sendCircleMessageAction(circleId: string, input: MessageInput) {
   const result = await asMember((memberId) => messages.sendMessage(memberId, circleId, input));
-  if (result.ok) after(() => tellCircle(result.value.id));
+  if (result.ok) after(() => tellCircleOfMessage(result.value.id));
   return result;
 }
 
@@ -349,22 +349,6 @@ export async function assignMessageAction(id: string, assigneeId: number | null)
 
 export async function setMessageDoneAction(id: string, done: boolean) {
   return asMember((memberId) => messages.setMessageDone(memberId, id, done));
-}
-
-async function tellCircle(id: string) {
-  const data = await messages.getMessageNoticeData(id).catch((err) => {
-    console.error("Couldn't read a message to tell its circle of:", err);
-    return null;
-  });
-  if (!data) return;
-  const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
-  const url = `${base}/circles/${data.circleId}/inbox/${id}`;
-  await Promise.all(
-    data.recipients.flatMap((r) => [
-      r.email && sendEmail({ to: r.email, ...circleMessageEmail({ ...data, name: r.name, url }) }).catch((err) => console.error("Couldn't email a circle of a message:", err)),
-      pushToMember(r.memberId, circleMessagePush({ ...data, messageId: id })).catch((err) => console.error("Couldn't push a circle a message:", err)),
-    ]),
-  );
 }
 
 /* Invitations to a circle (lib/db/invitations.ts checks who may do each).

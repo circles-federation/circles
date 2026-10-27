@@ -24,7 +24,8 @@ interface MessagePageProps {
    to any member; Reply by email, which opens the reader's own mail to the
    address the sender agreed to be answered at (there's no replying in the
    app); and Done, which files it away (or Reopen). Opening it marks it read
-   for the reader. */
+   for the reader. One from someone without an account (a guest, writing
+   from its public wiki) says they're not on Circles. */
 export function MessagePage({ message: m, circle, onOpenMember }: MessagePageProps) {
   const { profile, markMessageRead, assignMessage, setMessageDone } = useAppState();
   const memberById = useMemberById();
@@ -52,6 +53,8 @@ export function MessagePage({ message: m, circle, onOpenMember }: MessagePagePro
               <span className="font-bold text-ink">{m.senderName}</span>
             )}
             {sender?.role && <> · {sender.role}</>}
+            {/* so it's plain they can only be answered by email */}
+            {m.guest && <> · not on Circles</>}
           </>
         }
         to={<span className="font-bold text-ink">{circle.name}</span>}

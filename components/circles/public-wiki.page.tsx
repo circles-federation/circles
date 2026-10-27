@@ -6,7 +6,8 @@ import { CircleWiki } from "./circle-wiki";
 
 /* A circle's wiki for anyone, signed in or not (/wiki/[id]): the Circles
    wordmark, then the wiki as members see it (CircleWiki), without who last
-   edited it or writing to it, its sub-circles linking to their own public
+   edited it, its Message square writing to it without an account while its
+   Inbox is on (/wiki/[id]/write), its sub-circles linking to their own public
    pages, and at the foot, how to join Circles or sign in. Built from
    PublicWiki alone, so nothing about the circle's members reaches it. */
 export function PublicWikiPage({ wiki }: { wiki: PublicWiki }) {
@@ -19,6 +20,7 @@ export function PublicWikiPage({ wiki }: { wiki: PublicWiki }) {
         <div className="mt-8">
           <CircleWiki
             circle={wiki}
+            {...(wiki.inbox ? { writeHref: `/wiki/${wiki.id}/write` } : {})}
             {...(wiki.parent ? { parent: { name: wiki.parent.name, tone: wiki.parent.isCity ? "federation" : "plain" } } : {})}
             {...(wiki.subCircles.length > 0
               ? {

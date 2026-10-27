@@ -6,7 +6,7 @@ import { unassignMessagesFromCircle } from "./messages";
 import { unassignFromCircle } from "./tasks";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { cleanAims, validateNewCircle, type NewCircleInput, circleHasPage, circleHasWiki } from "@/lib/circles.util";
+import { cleanAims, validateNewCircle, type NewCircleInput, circleHasInbox, circleHasPage, circleHasWiki } from "@/lib/circles.util";
 import type { Circle, PublicWiki } from "@/lib/types";
 
 type CircleRow = typeof circles.$inferSelect;
@@ -98,6 +98,7 @@ export async function getPublicWiki(id: string): Promise<PublicWiki | null> {
     ...(row.join ? { join: row.join } : {}),
     ...(parent ? { parent: { name: parent.name, isCity: parent.parentId === null } } : {}),
     subCircles: children.map((c) => ({ id: c.id, name: c.name, tagline: c.tagline })),
+    inbox: circleHasInbox(row),
   };
 }
 

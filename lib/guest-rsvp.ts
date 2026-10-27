@@ -1,9 +1,9 @@
 "use server";
 
-import { createHash } from "node:crypto";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { after } from "next/server";
-import { cancelGuestRsvp, confirmGuestRsvp, GUEST_CODE_MINUTES, GuestRsvpError, renewGuestCode, startGuestRsvp, stopGuestEmails, takeCodeAllowance } from "@/lib/db/guest-rsvps";
+import { cancelGuestRsvp, confirmGuestRsvp, GUEST_CODE_MINUTES, GuestRsvpError, renewGuestCode, startGuestRsvp, stopGuestEmails } from "@/lib/db/guest-rsvps";
+import { takeAllowance } from "@/lib/code-allowance";
 import { sendEmail } from "@/lib/email";
 import { guestRsvpCodeEmail } from "@/lib/email/templates.util";
 import { GUEST_COOKIE, guestIdsFrom, validateGuest } from "@/lib/guest-rsvp.util";
@@ -28,16 +28,6 @@ async function sendCode(to: string, code: string, eventTitle: string): Promise<s
     console.error("Couldn't send an RSVP code:", err);
     return "We couldn't email you a code — check the address, or try again in a moment.";
   }
-}
-
-/* Count this request against its connection's hourly allowance of codes (see
-   takeCodeAllowance). Keyed by a hash of the IP address the proxy reports, so
-   the address itself isn't kept. With none to go by (local development) there's
-   nothing to limit by. */
-async function takeAllowance(): Promise<void> {
-  const h = await headers();
-  const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim();
-  if (ip) await takeCodeAllowance(createHash("sha256").update(`${ip}|${process.env.BETTER_AUTH_SECRET ?? ""}`).digest("hex"));
 }
 
 function failure(err: unknown, what: string): { ok: false; error: string } {

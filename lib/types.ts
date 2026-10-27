@@ -341,6 +341,8 @@ export interface PublicWiki {
   // where it sits; the city's is told apart, as its chip is coloured
   parent?: { name: string; isCity: boolean };
   subCircles: { id: string; name: string; tagline: string }[];
+  // its Inbox is on, so anyone may write to it from here
+  inbox: boolean;
 }
 
 /* A message written to a circle from its wiki, read in its Inbox (lib/db/
@@ -352,6 +354,8 @@ export interface CircleMessage {
   circleId: string;
   // who wrote it (gone if they've since left the platform)
   senderId?: number;
+  // written by someone without an account, from its public wiki
+  guest?: true;
   senderName: string;
   replyEmail: string;
   subject: string;

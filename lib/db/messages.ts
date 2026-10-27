@@ -9,7 +9,8 @@ import { circleMembers, circleMessageReads, circleMessages, circles, members } f
 
 /* A circle's Inbox (lib/circles.util's circleHasInbox: a Circle, collective
    or co-op whose members have consented to one): anyone signed in may write
-   to it from its wiki, and only its members are ever sent what's written,
+   to it from its wiki (and anyone else from its public wiki, lib/db/
+   guest-messages.ts), and only its members are ever sent what's written,
    which is held to here. Writing needs the sender's consent to be replied to
    at their email address, which goes with the message. Any member can mark
    one as theirs to handle (or another member's), or Done. Like the rest of
@@ -29,6 +30,7 @@ function toMessage(row: MessageRow, read: boolean): CircleMessage {
     id: row.id,
     circleId: row.circleId,
     ...(row.senderId !== null ? { senderId: row.senderId } : {}),
+    ...(row.fromGuest ? { guest: true as const } : {}),
     senderName: row.senderName,
     replyEmail: row.replyEmail,
     subject: row.subject,

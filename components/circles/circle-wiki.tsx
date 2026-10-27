@@ -23,7 +23,8 @@ interface CircleWikiProps {
   // its sub-circles, as each place draws them (cards in the app, links on
   // the public page); none, and there's no section
   subCircles?: ReactNode;
-  // writing to it in the app, while its Inbox is on, for anyone outside it
+  // writing to it, while its Inbox is on: in the app for anyone outside it,
+  // and on its public page for anyone at all
   writeHref?: string;
 }
 
@@ -32,7 +33,7 @@ interface CircleWikiProps {
    sub-circles, where to find it (its website, address and contact as
    coloured squares, opening each), its open hours and how to join. The
    circle page's Wiki section and its public page (/wiki/[id]) both draw it,
-   the app adding who last edited it and the Message square. Needs no member
+   the app adding who last edited it. Needs no member
    or app state, so it works for someone signed out. */
 export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHref }: CircleWikiProps) {
   const websiteUrl = c.website ? circleWebsiteUrl(c.website) : null;

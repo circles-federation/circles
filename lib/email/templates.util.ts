@@ -801,6 +801,21 @@ export function guestRsvpCodeEmail(code: string, minutes: number, eventTitle: st
   };
 }
 
+export function guestMessageCodeEmail(code: string, minutes: number, circleName: string): Body {
+  const expiry = `Enter it where you wrote your message to send it to ${circleName}. It expires in ${minutes} minutes.`;
+  const ignore = `If you didn't write to ${circleName}, you can ignore this email — nothing is sent without this code.`;
+  return {
+    subject: `Send your message to ${circleName}`,
+    text: `Send your message\n\n    ${code}\n\n${expiry}\n\n${ignore}`,
+    html: shell(
+      applicationMasthead("Send your message on") +
+        `<tr><td style="padding:28px 0 24px"><div style="border:2px solid ${INK};padding:26px 16px 26px 24px;text-align:center;font-family:${SANS};font-size:52px;font-weight:800;letter-spacing:0.16em;line-height:1;color:${INK}">${code}</div></td></tr>` +
+        paragraph(esc(expiry)) +
+        footnote(esc(ignore))
+    ),
+  };
+}
+
 /* To someone who RSVPed from a share link: the facts they'd plan around, and
    where to see the event again. Their updates and cancellation reuse the
    member emails; only this one is theirs alone. */
