@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUpTrayIcon, CalendarIcon, CheckCircleIcon, Cog6ToothIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from "@heroicons/react/24/outline";
-import { Avatar, Badge, Eyebrow, PageContainer, Section, SectionGroup, useToast } from "@/components/shared";
+import { Avatar, Badge, EmptyState, Eyebrow, PageContainer, Section, SectionGroup, useToast } from "@/components/shared";
 import { EventFeed } from "@/components/events/event-feed";
 import { CircleCard } from "./circle-card";
 import { CircleWiki } from "./circle-wiki";
@@ -18,6 +18,7 @@ import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Membe
 import { isPhoneWidth } from "@/lib/viewport";
 import { shareOrCopy } from "@/lib/share";
 import { ProposalBanner } from "./proposal-banner";
+import { openProposalsFor } from "@/lib/proposals.util";
 
 interface CirclePageProps {
   circle: Circle;
@@ -49,14 +50,14 @@ interface CirclePageProps {
 }
 
 /* One section of a circle's page, the top bar's tab row switching between
-   them: its bulletin, tasks, wiki (where its masthead is: what it is, where
-   it sits and who last edited it, over its quick facts), members or events.
-   Its open proposals head every section. */
+   them: its bulletin, tasks, inbox, decisions (its open proposals), wiki
+   (where its masthead is: what it is, where it sits and who last edited it,
+   over its quick facts), members or events. */
 export function CirclePage({ circle: c, section, isMember, lastEditor, lastEditedAt, events, onOpenMember, onOpenCircle, onOpenEvent, onNewEvent, onAddResourcePage, onEditResourcePage, onAddTaskPage, onOpenTaskPage, onInvitePage, onOpenInvitation, startNew, onGoToSection }: CirclePageProps) {
   const { profile, circles, invitations, proposals } = useAppState();
   const { showToast } = useToast();
   // its open proposals: a change to the circle, and any events it's deciding
-  const openProposals = proposals.filter((p) => p.circleId === c.id && p.status === "open");
+  const openProposals = openProposalsFor(proposals, c.id);
   const memberById = useMemberById();
   const members = c.members.map(memberById).filter((m): m is Member => Boolean(m));
   const childCircles = circleChildren(c, circles);
@@ -114,12 +115,6 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
 
   return (
     <PageContainer size="normal">
-      {openProposals.length > 0 && (
-        <div className="mb-2 flex flex-col gap-3">
-          {openProposals.map((p) => <ProposalBanner key={p.id} proposal={p} memberId={profile.id} />)}
-        </div>
-      )}
-
       {section === "bulletin" && (
         <SectionGroup>
           <Section className="pt-0">
@@ -132,6 +127,22 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
         <SectionGroup>
           <Section className="pt-0">
             <TasksSection circle={c} adding={addingTask} onAdd={startAddingTask} onAddingDone={() => setAddingTask(false)} onOpenPage={onOpenTaskPage} />
+          </Section>
+        </SectionGroup>
+      )}
+
+      {section === "decisions" && (
+        <SectionGroup>
+          <Section className="pt-0">
+            {openProposals.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {openProposals.map((p) => (
+                  <ProposalBanner key={p.id} proposal={p} memberId={profile.id} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState>Nothing to decide right now. When someone proposes something for {c.name}, it&rsquo;s decided here.</EmptyState>
+            )}
           </Section>
         </SectionGroup>
       )}

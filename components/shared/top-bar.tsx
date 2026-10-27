@@ -3,12 +3,13 @@
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, CheckCircleIcon, EllipsisHorizontalIcon, HomeIcon, InboxIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, CheckCircleIcon, EllipsisHorizontalIcon, HandRaisedIcon, HomeIcon, InboxIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
 import { useCurrentTopBarAction, useCurrentTopBarMenu } from "@/components/providers/top-bar-action-provider";
+import { openProposalsFor } from "@/lib/proposals.util";
 import { CIRCLE_SECTION_LABEL, circleHasPage, circleSections, defaultCircleSection, isCircleMember, isCircleSection, postingCirclesFor, type CircleSection } from "@/lib/circles.util";
 import { useHomeNeedsAttention } from "@/lib/hooks";
 import type { Circle, CircleResource, Event, Member, Profile } from "@/lib/types";
@@ -145,6 +146,7 @@ const CIRCLE_SECTION_ICON: Record<CircleSection, ComponentType<SVGProps<SVGSVGEl
   bulletin: MegaphoneIcon,
   tasks: CheckCircleIcon,
   inbox: InboxIcon,
+  decisions: HandRaisedIcon,
   wiki: BookOpenIcon,
   members: UsersIcon,
   events: CalendarIcon,
@@ -166,7 +168,7 @@ function circleTabs(pathname: string, circles: Circle[], profile: Profile): { ci
 export function TopBar({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { circles, events, members, resources, profile, messages } = useAppState();
+  const { circles, events, members, resources, profile, messages, proposals } = useAppState();
   const needsAttention = useHomeNeedsAttention();
   const isHomeNeighborhood =profile.homeCircleId !== null && pathname === `/circles/${profile.homeCircleId}`;
 
@@ -177,6 +179,9 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   const action = pageAction(pathname, profile);
   const menu = pageMenu(pathname, circles, profile);
   const tabs = circleTabs(pathname, circles, profile);
+  // what a circle's tab counts: its Inbox's unread open messages, and its open proposals
+  const sectionCount = (key: CircleSection, circleId: string) =>
+    key === "inbox" ? messages.filter((m) => m.circleId === circleId && !m.read && !m.doneAt).length : key === "decisions" ? openProposalsFor(proposals, circleId).length : 0;
   const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
   const ownMenu = useCurrentTopBarMenu();
   const runBackHandler = useRunBackHandler();
@@ -296,7 +301,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         // Back to retrace; the section showing goes back to its top.
         <div className="mx-auto max-w-220 px-6">
           <SimpleTabs
-            tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key], icon: CIRCLE_SECTION_ICON[key], count: key === "inbox" ? messages.filter((m) => m.circleId === tabs.circle.id && !m.read && !m.doneAt).length : 0 }))}
+            tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key], icon: CIRCLE_SECTION_ICON[key], count: sectionCount(key, tabs.circle.id) }))}
             active={tabs.active}
             onChange={(key) => (key === tabs.active ? onReselect() : router.replace(`/circles/${tabs.circle.id}/${key}`))}
           />

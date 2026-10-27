@@ -267,6 +267,15 @@ export function everyoneConsented(p: Pick<CircleProposal, "responses">, memberId
   });
 }
 
+/* A circle's open proposals, its Decisions section and that tab's count:
+   what it's deciding itself (a change, its events and posts), and a change
+   to it that its neighborhood decides with it, soonest to close first. */
+export function openProposalsFor(proposals: CircleProposal[], circleId: string): CircleProposal[] {
+  return proposals
+    .filter((p) => p.status === "open" && (p.circleId === circleId || p.subjectCircleId === circleId))
+    .sort((a, b) => a.closesAt.localeCompare(b.closesAt));
+}
+
 // open and still waiting on this member's answer (not its proposer's, who
 // consented by proposing it)
 export function awaitingResponse(p: CircleProposal, memberId: number): boolean {

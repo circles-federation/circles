@@ -162,9 +162,9 @@ export function circleHasInbox(circle: Pick<Circle, "type" | "parentId" | "inbox
    /circles/[id]/[section]. The bulletin, tasks and inbox are its members'
    alone, with no hint to anyone else; a group has no wiki or tasks, its
    bulletin standing in for them. */
-export const CIRCLE_SECTIONS = ["bulletin", "tasks", "inbox", "wiki", "members", "events"] as const;
+export const CIRCLE_SECTIONS = ["bulletin", "tasks", "inbox", "decisions", "wiki", "members", "events"] as const;
 export type CircleSection = (typeof CIRCLE_SECTIONS)[number];
-export const CIRCLE_SECTION_LABEL: Record<CircleSection, string> = { bulletin: "Bulletin", tasks: "Tasks", inbox: "Inbox", wiki: "Wiki", members: "Members", events: "Events" };
+export const CIRCLE_SECTION_LABEL: Record<CircleSection, string> = { bulletin: "Bulletin", tasks: "Tasks", inbox: "Inbox", decisions: "Decisions", wiki: "Wiki", members: "Members", events: "Events" };
 
 export function isCircleSection(value: string | undefined): value is CircleSection {
   return (CIRCLE_SECTIONS as readonly string[]).includes(value ?? "");
@@ -177,6 +177,8 @@ export function circleSections(circle: Pick<Circle, "type" | "parentId" | "inbox
     if (s === "bulletin") return isMember;
     if (s === "tasks") return isMember && circleHasTasks(circle);
     if (s === "inbox") return isMember && circleHasInbox(circle);
+    // proposals are its members' alone
+    if (s === "decisions") return isMember;
     if (s === "wiki") return circleHasWiki(circle);
     return true;
   });
