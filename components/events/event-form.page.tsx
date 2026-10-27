@@ -401,7 +401,15 @@ export function EventFormPage(props: EventFormPageProps) {
   const agendaComplete = agenda.every((a) => a.title.trim());
   useTopBarAction(
     view !== "form"
-      ? { label: "Done", icon: CheckIcon, onAction: closeView, disabled: view === "agenda" && !agendaComplete, variant: "primary" }
+      ? {
+          label: "Done",
+          icon: CheckIcon,
+          onAction: closeView,
+          // nothing to keep until something's changed (Back leaves), and the
+          // agenda not until every topic in it has a title
+          disabled: !viewDirty || (view === "agenda" && !agendaComplete),
+          variant: "primary",
+        }
       : proposingNew
         ? { label: busy ? "Saving" : submitLabel, icon: HandRaisedIcon, onAction: () => setConfirmingProposal(true), disabled: !canSubmit, variant: "propose" }
         : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" }
