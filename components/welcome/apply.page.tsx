@@ -8,14 +8,14 @@ import { toSquareJpeg } from "@/components/profile/photo-picker";
 import { confirmApplicationCode, resendApplicationCode, submitApplication } from "@/lib/apply";
 import { BetaPrivacy } from "@/components/legal/beta-privacy";
 import { BetaTerms } from "@/components/legal/beta-terms";
-import type { Circle } from "@/lib/types";
+import type { CirclePlace } from "@/lib/types";
 import { APPLICATION_NAME_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationErrors, type ApplicationInput } from "@/lib/applications.util";
 
 type Step = "form" | "agree" | "confirm" | "done";
 
 interface ApplyPageProps {
   // the neighborhoods to choose from, with the city they sit in
-  neighborhoods: Pick<Circle, "id" | "name" | "type" | "parentId">[];
+  neighborhoods: CirclePlace[];
   // someone who RSVPed to an event from its share link: their address is
   // already proved, so there's no code to enter
   guest?: { id: string; firstName: string; lastName: string; email: string };
@@ -40,7 +40,7 @@ export function ApplyPage({ neighborhoods, guest }: ApplyPageProps) {
 
   const set = (patch: Partial<ApplicationInput>) => setInput((prev) => ({ ...prev, ...patch }));
   // where they live, chosen in the Federation Explorer: a dialog on every
-  // screen, since this page has no top bar to put Choose in
+  // screen, since this page has no top bar to put Done in
   const placeExplorer = useFederationExplorer({
     title: "Your neighborhood",
     circles: neighborhoods,

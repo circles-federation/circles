@@ -6,7 +6,7 @@ import { UserFacingError } from "./errors";
 import { readPhoto } from "./members";
 import { applications, circleMembers, circles, eventGuestRsvps, eventRsvps, events, memberPhotos, members, user } from "./schema";
 import { hasEnded } from "@/lib/events.util";
-import type { Circle } from "@/lib/types";
+import type { CirclePlace } from "@/lib/types";
 import { APPLICATION_NOTE_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationInput } from "@/lib/applications.util";
 
 /* Applications to join (see the applications table in schema.ts). The public
@@ -31,7 +31,7 @@ const normalizeEmail = (email: string) => email.trim().toLowerCase();
 /* The neighborhoods someone can apply to live in, for the apply form's
    Federation Explorer, with the city they sit in: where each is and what it
    is, never who's in it, since the form is public */
-export async function getNeighborhoodsForApplying(): Promise<Pick<Circle, "id" | "name" | "type" | "parentId">[]> {
+export async function getNeighborhoodsForApplying(): Promise<CirclePlace[]> {
   return db
     .select({ id: circles.id, name: circles.name, type: circles.type, parentId: circles.parentId })
     .from(circles)

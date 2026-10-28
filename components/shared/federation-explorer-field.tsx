@@ -66,9 +66,12 @@ export function useFederationExplorer<T extends ExplorerCircle>({ title, circles
   const done = kept !== value ? kept : null;
 
   function open() {
-    setAt(startingFolder(value, circles, byId) ?? circles.find((c) => c.parentId === null)?.id ?? "");
+    const start = startingFolder(value, circles, byId) ?? circles.find((c) => c.parentId === null)?.id ?? "";
+    setAt(start);
     setQuery("");
-    setPicked(value);
+    // opened beside the current choice, it starts checked; opened in it, it's
+    // the circle it's in, which Done keeps with nothing picked
+    setPicked(value !== start ? value : null);
     setMode(isPhoneWidth() && !dialogOnly ? "view" : "dialog");
   }
   const close = () => setMode(null);
@@ -80,7 +83,8 @@ export function useFederationExplorer<T extends ExplorerCircle>({ title, circles
   const explorer = (
     <FederationExplorer
       circles={circles}
-      value={picked}
+      picked={picked}
+      current={value}
       refusal={refusal}
       {...(you ? { you } : {})}
       at={at}
@@ -92,7 +96,7 @@ export function useFederationExplorer<T extends ExplorerCircle>({ title, circles
       }}
       query={query}
       onQuery={setQuery}
-      onChoose={setPicked}
+      onPick={(id) => setPicked((p) => (p === id ? null : id))}
     />
   );
 
