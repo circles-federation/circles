@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, type ComponentType, type SVGProps } from "react";
-import { BuildingStorefrontIcon, CheckIcon, HandRaisedIcon, LockClosedIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { useState } from "react";
+import { CheckIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { ConfirmModal, Input, Label, PageContainer, RichSelect, RingIcon, Section, SectionGroup } from "@/components/shared";
+import { CIRCLE_TYPE_ICON, ConfirmModal, Input, Label, PageContainer, RichSelect, Section, SectionGroup } from "@/components/shared";
 import {
   CIRCLE_NAME_MAX,
   CIRCLE_TAGLINE_MAX,
@@ -22,15 +22,7 @@ import { newCircleDecider } from "@/lib/proposals.util";
 import { rolesHeldBy } from "@/lib/circle-roles.util";
 import type { Circle, CircleType, Member } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
-import { ParentCircleSelect } from "./parent-circle-select";
-
-// each kind's icon in the Type list: a ring for a Circle, as on every chip
-const CIRCLE_TYPE_ICON: Partial<Record<CircleType, ComponentType<SVGProps<SVGSVGElement>>>> = {
-  circle: RingIcon,
-  collective: UserGroupIcon,
-  cooperative: BuildingStorefrontIcon,
-  group: LockClosedIcon,
-};
+import { ParentCircleSelect, useParentCircleExplorer } from "./parent-circle-select";
 
 interface CreateCirclePageProps {
   circles: Circle[];
@@ -95,12 +87,17 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
     }
   }
 
-  useBackHandler(dirty && !creating ? () => setConfirmingDiscard(true) : null);
+  // choosing its parent: on a phone, a view in place of the form, which then
+  // owns the top bar's action and Back
+  const parentExplorer = useParentCircleExplorer({ circles, value: parentId, onChange: setParentId });
+  useBackHandler(parentExplorer.backHandler ?? (dirty && !creating ? () => setConfirmingDiscard(true) : null));
   useTopBarAction(
-    decider
+    parentExplorer.topBarAction ?? (decider
       ? { label: creating ? "Proposing" : "Propose circle", icon: HandRaisedIcon, onAction: () => setConfirmingProposal(true), disabled: !!problem || creating, variant: "propose" }
-      : { label: creating ? "Creating" : "Create circle", icon: CheckIcon, onAction: create, disabled: !!problem || creating, variant: "primary" }
+      : { label: creating ? "Creating" : "Create circle", icon: CheckIcon, onAction: create, disabled: !!problem || creating, variant: "primary" })
   );
+
+  if (parentExplorer.view) return parentExplorer.view;
 
   return (
     <PageContainer size="normal">
@@ -168,7 +165,7 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
               </p>
             </div>
           ) : (
-            <ParentCircleSelect circles={circles} value={parentId} onChange={setParentId} />
+            <ParentCircleSelect circles={circles} value={parentId} onOpen={parentExplorer.open} />
           )}
         </Section>
       </SectionGroup>
@@ -177,6 +174,8 @@ export function CreateCirclePage({ circles, initialParentId, onCreate, onBack }:
         {inside ? `${delegateName ?? "Its delegate"} will be its first member` : "You'll be its first member"}. Add more about it, like what it does and how to join, from Manage circle once it&rsquo;s {decider ? "started" : "created"}.
       </p>
       {error && <p className="mt-3 font-sans text-sm font-bold text-danger">{error}</p>}
+
+      {parentExplorer.dialog}
 
       {confirmingProposal && decider && (
         <ConfirmModal

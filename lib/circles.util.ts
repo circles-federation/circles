@@ -85,6 +85,29 @@ export function parentCircleOptions(circles: Circle[], except?: string): Circle[
     .concat(root && root.id !== except ? [root] : []);
 }
 
+/* Why `candidate` can't be a circle's parent, in a few words under it in the
+   Federation Explorer, or null when it can: the same rule as
+   parentCircleOptions. `editing` is the circle being moved, which can't go
+   inside itself. */
+export function parentCircleRefusal(candidate: Circle, byId: CirclesById, editing?: string): string | null {
+  if (editing && candidate.id === editing) return "This circle";
+  if (editing && isWithinCircle(candidate.id, editing, (id) => byId[id]?.parentId)) return "Inside this circle";
+  return candidate.parentId === null || candidate.type === "neighborhood" ? null : "Only a neighborhood or the whole city";
+}
+
+// the circles above this one, the city first, for a path ("Providence ›
+// The 903") that tells two circles of the same name apart
+export function circleAncestors(circle: Pick<Circle, "parentId">, byId: CirclesById): Circle[] {
+  const path: Circle[] = [];
+  let next = circle.parentId !== null ? byId[circle.parentId] : undefined;
+  // bounded, so a corrupt parent cycle can't loop forever
+  for (let depth = 0; next && depth < 64; depth++) {
+    path.unshift(next);
+    next = next.parentId !== null ? byId[next.parentId] : undefined;
+  }
+  return path;
+}
+
 /* Circles sorted under the headings the Circles browser uses — the city,
    Neighborhoods, Circles, Groups, then Organizations (collectives,
    cooperatives and the rest) — for a picker's optgroups. Keeps the order given
