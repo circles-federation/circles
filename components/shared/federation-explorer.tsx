@@ -3,40 +3,52 @@
 import { useMemo } from "react";
 import { CheckIcon, ChevronRightIcon, HomeIcon, UserIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { useAppState } from "@/components/providers/app-state-provider";
-import { circleAncestors, circlesByKind, indexCircles, type CirclesById } from "@/lib/circles.util";
+import { circleAncestors, circlesByKind, indexCircles } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
 import { CircleTypeIcon } from "./circle-type-icon";
 import { EmptyState } from "./empty-state";
 import { SearchWithFilter } from "./search-with-filter";
 
-interface FederationExplorerProps {
+/* What the explorer needs of a circle: where it sits and what it is, and its
+   members only where there's a member to mark it for (outside the app, the
+   application form's neighborhoods, there's neither) */
+export type ExplorerCircle = Pick<Circle, "id" | "name" | "type" | "parentId"> & { members?: number[] };
+
+// whoever's choosing, signed in, for marking their neighborhood and their circles
+export interface ExplorerYou {
+  id: number;
+  homeCircleId: string | null;
+}
+
+interface FederationExplorerProps<T extends ExplorerCircle> {
   // the circles it shows, as the field using it decides (Parent circle: every
   // circle the member can see)
-  circles: Circle[];
-  // the one chosen, checked where it's listed
+  circles: T[];
+  // the one picked, checked where it's listed
   value: string | null;
   // why a circle can't be chosen here, in a few words under it, or null when
   // it can. One that can't is still opened, to reach those inside it
-  refusal: (circle: Circle) => string | null;
+  refusal: (circle: T) => string | null;
+  you?: ExplorerYou;
   // the circle it's in, and what's being searched for: held by
-  // useFederationExplorer, whose Choose (in the top bar or the dialog's
-  // header) chooses the circle it's in
+  // useFederationExplorer, whose Done (in the top bar or the dialog's
+  // header) keeps the circle picked, or else the circle it's in
   at: string;
   onOpen: (id: string) => void;
   query: string;
   onQuery: (query: string) => void;
+  // a tap on a circle with none inside, which picks it
   onChoose: (id: string) => void;
 }
 
 /* Choosing a circle from the whole federation the way a file is chosen from
    folders: one level at a time from the city down, with breadcrumbs back up.
-   A circle with circles inside opens when tapped, and is chosen from inside,
-   by the Choose its holder puts in the top bar or the dialog's header; one
-   with none is chosen with a tap. What can't be chosen is grey, saying why,
+   A circle with circles inside opens when tapped, and is kept from inside,
+   by the Done its holder puts in the top bar or the dialog's header; one
+   with none is picked with a tap, and kept by Done. What can't be chosen is grey, saying why,
    and opens all the same. A search flattens the tree, each result with its
    path. Opened through useFederationExplorer. */
-export function FederationExplorer({ circles, value, refusal, at, onOpen, query, onQuery, onChoose }: FederationExplorerProps) {
+export function FederationExplorer<T extends ExplorerCircle>({ circles, value, refusal, you, at, onOpen, query, onQuery, onChoose }: FederationExplorerProps<T>) {
   const byId = useMemo(() => indexCircles(circles), [circles]);
   const folder = byId[at];
   const childrenOf = (id: string) => circles.filter((c) => c.parentId === id);
@@ -68,7 +80,7 @@ export function FederationExplorer({ circles, value, refusal, at, onOpen, query,
               {folder.id === value && <CheckIcon className="size-4 shrink-0" strokeWidth={3} aria-label="Chosen" />}
             </span>
           </nav>
-          {/* why Choose is off here */}
+          {/* why Done can't keep this one */}
           {folderRefusal && <p className="mt-1 font-serif text-sm text-soft">{folderRefusal}</p>}
         </div>
       )}
@@ -79,7 +91,7 @@ export function FederationExplorer({ circles, value, refusal, at, onOpen, query,
             <ExplorerRow
               key={c.id}
               circle={c}
-              byId={byId}
+              you={you}
               path={q ? circleAncestors(c, byId).map((a) => a.name).join(" › ") : null}
               opens={childrenOf(c.id).length > 0}
               chosen={c.id === value}
@@ -97,8 +109,8 @@ export function FederationExplorer({ circles, value, refusal, at, onOpen, query,
 }
 
 interface ExplorerRowProps {
-  circle: Circle;
-  byId: CirclesById;
+  circle: ExplorerCircle;
+  you: ExplorerYou | undefined;
   // where it sits, for a search result
   path: string | null;
   // it has circles inside, so a tap opens it
@@ -111,10 +123,9 @@ interface ExplorerRowProps {
 
 // a circle in the list: its icon, its name (marked, like the home on your
 // neighborhood, with a person on a circle you're a member of), why it can't be chosen, and a chevron if it opens
-function ExplorerRow({ circle: c, path, opens, chosen, refused, onOpen, onChoose }: ExplorerRowProps) {
-  const { profile } = useAppState();
-  const home = c.id === profile.homeCircleId;
-  const member = !home && c.members.includes(profile.id);
+function ExplorerRow({ circle: c, you, path, opens, chosen, refused, onOpen, onChoose }: ExplorerRowProps) {
+  const home = !!you && c.id === you.homeCircleId;
+  const member = !!you && !home && !!c.members?.includes(you.id);
   const act = opens ? onOpen : refused ? null : onChoose;
 
   const body = (
@@ -155,7 +166,7 @@ function ExplorerRow({ circle: c, path, opens, chosen, refused, onOpen, onChoose
 
 // where to open: in the chosen circle itself, where Choose is ready to keep
 // it, if it has circles inside; otherwise beside it, in its parent
-export function startingFolder(value: string | null, circles: Circle[], byId: CirclesById): string | undefined {
+export function startingFolder(value: string | null, circles: ExplorerCircle[], byId: Record<string, ExplorerCircle>): string | undefined {
   const chosen = value ? byId[value] : undefined;
   if (!chosen) return undefined;
   if (circles.some((c) => c.parentId === chosen.id)) return chosen.id;
@@ -164,6 +175,6 @@ export function startingFolder(value: string | null, circles: Circle[], byId: Ci
 
 // in the order the Circles browser lists them: neighborhoods, Circles,
 // groups, then organizations, each by name
-function inKindOrder(circles: Circle[]): Circle[] {
+function inKindOrder<T extends ExplorerCircle>(circles: T[]): T[] {
   return circlesByKind([...circles].sort((a, b) => a.name.localeCompare(b.name))).flatMap((g) => g.circles);
 }

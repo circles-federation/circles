@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useAppState } from "@/components/providers/app-state-provider";
 import { FederationExplorerField, Label, useFederationExplorer } from "@/components/shared";
 import { indexCircles, parentCircleRefusal } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
@@ -18,8 +19,16 @@ interface ParentExplorerOptions {
    (parentCircleRefusal, the rule parentCircleOptions holds the server to).
    The form holding the field uses it as useFederationExplorer says. */
 export function useParentCircleExplorer({ circles, value, onChange, except }: ParentExplorerOptions) {
+  const { profile } = useAppState();
   const byId = useMemo(() => indexCircles(circles), [circles]);
-  return useFederationExplorer({ title: "Parent circle", circles, value: value || null, onChange, refusal: (c) => parentCircleRefusal(c, byId, except) });
+  return useFederationExplorer({
+    title: "Parent circle",
+    circles,
+    value: value || null,
+    onChange,
+    refusal: (c) => parentCircleRefusal(c, byId, except),
+    you: { id: profile.id, homeCircleId: profile.homeCircleId },
+  });
 }
 
 interface ParentCircleSelectProps {
