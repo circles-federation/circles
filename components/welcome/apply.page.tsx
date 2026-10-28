@@ -3,17 +3,19 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, CameraIcon } from "@heroicons/react/24/outline";
-import { Button, Eyebrow, Input, Label, Select, useToast } from "@/components/shared";
+import { Button, Eyebrow, FederationExplorerField, Input, Label, useFederationExplorer, useToast } from "@/components/shared";
 import { toSquareJpeg } from "@/components/profile/photo-picker";
 import { confirmApplicationCode, resendApplicationCode, submitApplication } from "@/lib/apply";
 import { BetaPrivacy } from "@/components/legal/beta-privacy";
 import { BetaTerms } from "@/components/legal/beta-terms";
+import type { CirclePlace } from "@/lib/types";
 import { APPLICATION_NAME_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationErrors, type ApplicationInput } from "@/lib/applications.util";
 
 type Step = "form" | "agree" | "confirm" | "done";
 
 interface ApplyPageProps {
-  neighborhoods: { id: string; name: string }[];
+  // the neighborhoods to choose from, with the city they sit in
+  neighborhoods: CirclePlace[];
   // someone who RSVPed to an event from its share link: their address is
   // already proved, so there's no code to enter
   guest?: { id: string; firstName: string; lastName: string; email: string };
@@ -37,6 +39,16 @@ export function ApplyPage({ neighborhoods, guest }: ApplyPageProps) {
   const [busy, setBusy] = useState(false);
 
   const set = (patch: Partial<ApplicationInput>) => setInput((prev) => ({ ...prev, ...patch }));
+  // where they live, chosen in the Federation Explorer: a dialog on every
+  // screen, since this page has no top bar to put Done in
+  const placeExplorer = useFederationExplorer({
+    title: "Your neighborhood",
+    circles: neighborhoods,
+    value: input.neighborhoodId || null,
+    onChange: (id) => set({ neighborhoodId: id }),
+    refusal: (c) => (c.type === "neighborhood" ? null : "Choose the neighborhood you live in"),
+    dialogOnly: true,
+  });
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -142,12 +154,7 @@ export function ApplyPage({ neighborhoods, guest }: ApplyPageProps) {
 
             <div>
               <Label htmlFor="neighborhood">Neighborhood</Label>
-              <Select id="neighborhood" value={input.neighborhoodId} onChange={(e) => set({ neighborhoodId: e.target.value })}>
-                <option value="">Choose where you live</option>
-                {neighborhoods.map((n) => (
-                  <option key={n.id} value={n.id}>{n.name}</option>
-                ))}
-              </Select>
+              <FederationExplorerField id="neighborhood" circles={neighborhoods} value={input.neighborhoodId || null} onOpen={placeExplorer.open} placeholder="Choose where you live" />
               <FieldError message={errors.neighborhoodId} />
             </div>
 
@@ -156,6 +163,8 @@ export function ApplyPage({ neighborhoods, guest }: ApplyPageProps) {
             </Button>
           </form>
         )}
+        {/* outside the form, so Enter in its search doesn't send the application */}
+        {placeExplorer.dialog}
 
         {step === "agree" && (
           <div className="mt-7">

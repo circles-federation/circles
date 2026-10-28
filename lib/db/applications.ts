@@ -1,11 +1,12 @@
 import { createHash, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
-import { and, asc, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { readPhoto } from "./members";
 import { applications, circleMembers, circles, eventGuestRsvps, eventRsvps, events, memberPhotos, members, user } from "./schema";
 import { hasEnded } from "@/lib/events.util";
+import type { CirclePlace } from "@/lib/types";
 import { APPLICATION_NOTE_MAX, BETA_AGREEMENT_VERSION, validateApplication, type ApplicationInput } from "@/lib/applications.util";
 
 /* Applications to join (see the applications table in schema.ts). The public
@@ -27,9 +28,15 @@ const UNCONFIRMED_TTL_MS = 24 * 60 * 60 * 1000;
 const hashCode = (code: string) => createHash("sha256").update(code).digest("hex");
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-// the neighborhoods someone can apply to live in, for the apply form
-export async function getNeighborhoodsForApplying(): Promise<{ id: string; name: string }[]> {
-  return db.select({ id: circles.id, name: circles.name }).from(circles).where(eq(circles.type, "neighborhood")).orderBy(asc(circles.name));
+/* The neighborhoods someone can apply to live in, for the apply form's
+   Federation Explorer, with the city they sit in: where each is and what it
+   is, never who's in it, since the form is public */
+export async function getNeighborhoodsForApplying(): Promise<CirclePlace[]> {
+  return db
+    .select({ id: circles.id, name: circles.name, type: circles.type, parentId: circles.parentId })
+    .from(circles)
+    .where(and(or(eq(circles.type, "neighborhood"), isNull(circles.parentId)), isNull(circles.archivedAt)))
+    .orderBy(asc(circles.name));
 }
 
 /* Start an application: checked, stored unconfirmed, and given a confirmation

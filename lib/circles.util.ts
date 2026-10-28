@@ -97,8 +97,8 @@ export function parentCircleRefusal(candidate: Circle, byId: CirclesById, editin
 
 // the circles above this one, the city first, for a path ("Providence ›
 // The 903") that tells two circles of the same name apart
-export function circleAncestors(circle: Pick<Circle, "parentId">, byId: CirclesById): Circle[] {
-  const path: Circle[] = [];
+export function circleAncestors<T extends Pick<Circle, "parentId">>(circle: Pick<Circle, "parentId">, byId: Record<string, T>): T[] {
+  const path: T[] = [];
   let next = circle.parentId !== null ? byId[circle.parentId] : undefined;
   // bounded, so a corrupt parent cycle can't loop forever
   for (let depth = 0; next && depth < 64; depth++) {
@@ -112,8 +112,8 @@ export function circleAncestors(circle: Pick<Circle, "parentId">, byId: CirclesB
    Neighborhoods, Circles, Groups, then Organizations (collectives,
    cooperatives and the rest) — for a picker's optgroups. Keeps the order given
    within each, and leaves out a heading with nothing under it. */
-export function circlesByKind(circles: Circle[]): { label: string; circles: Circle[] }[] {
-  const kinds: [string, (c: Circle) => boolean][] = [
+export function circlesByKind<T extends Pick<Circle, "parentId" | "type">>(circles: T[]): { label: string; circles: T[] }[] {
+  const kinds: [string, (c: T) => boolean][] = [
     ["Citywide", (c) => c.parentId === null],
     ["Neighborhoods", (c) => c.parentId !== null && c.type === "neighborhood"],
     ["Circles", (c) => c.parentId !== null && c.type === "circle"],
@@ -257,8 +257,8 @@ export function hostCanShowTo(host: Pick<Circle, "id" | "type">, circleId: strin
   return isGroup(host) ? circleId === host.id : isWithinCircle(host.id, circleId, parentOf);
 }
 
-export function indexCircles(circles: Circle[]): CirclesById {
-  return circles.reduce<CirclesById>((acc, c) => {
+export function indexCircles<T extends Pick<Circle, "id"> = Circle>(circles: T[]): Record<string, T> {
+  return circles.reduce<Record<string, T>>((acc, c) => {
     acc[c.id] = c;
     return acc;
   }, {});

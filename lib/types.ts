@@ -119,6 +119,10 @@ export interface Circle {
   hours?: [string, string][];
 }
 
+// where a circle sits and what it is, without who's in it: enough to find
+// and choose it by (the Federation Explorer, the public application form)
+export type CirclePlace = Pick<Circle, "id" | "name" | "type" | "parentId">;
+
 export interface Role {
   key: string;
   label: string;

@@ -5,23 +5,27 @@ import { CheckIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import type { TopBarAction } from "@/components/providers/top-bar-action-provider";
 import { circleAncestors, indexCircles } from "@/lib/circles.util";
-import type { Circle } from "@/lib/types";
 import { isPhoneWidth } from "@/lib/viewport";
 import { CircleTypeIcon } from "./circle-type-icon";
-import { FederationExplorer, startingFolder } from "./federation-explorer";
+import { FederationExplorer, startingFolder, type ExplorerCircle, type ExplorerYou } from "./federation-explorer";
 import { ICON_BUTTON_SLOT, IconButtonCircle } from "./icon-button-circle";
 import { DISABLED_FIELD, FIELD } from "./input";
 import { Modal } from "./modal";
 import { PageContainer } from "./page-container";
 
-interface FederationExplorerOptions {
+interface FederationExplorerOptions<T extends ExplorerCircle> {
   // the explorer's heading ("Parent circle")
   title: string;
-  circles: Circle[];
+  circles: T[];
   value: string | null;
   onChange: (id: string) => void;
   // why a circle can't be chosen, or null when it can (see FederationExplorer)
-  refusal: (circle: Circle) => string | null;
+  refusal: (circle: T) => string | null;
+  // the signed-in member, whose neighborhood and circles are marked
+  you?: ExplorerYou;
+  // a dialog on every screen, for a page outside the app with no top bar to
+  // put Done in (the application form)
+  dialogOnly?: boolean;
 }
 
 interface FederationExplorerHandle {
@@ -32,31 +36,43 @@ interface FederationExplorerHandle {
   // on desktop, a dialog the form renders anywhere
   dialog: ReactNode;
   // while the view's open, the form's top bar action and Back give way to
-  // these: Choose the circle it's in, and Back to the form
+  // these: Done, and Back to the form
   topBarAction: TopBarAction | null;
   backHandler: (() => void) | null;
 }
 
 /* The Federation Explorer for a field in a form, opened from
    FederationExplorerField: a view swapped in for the form on a phone, so the
-   draft survives and the top bar is the page's own, with Choose its action
-   and Back returning to the form; a dialog on desktop, Choose in its header.
+   draft survives and the top bar is the page's own, with Back returning to
+   the form; a dialog on desktop. Either way a tap only picks a circle, and
+   Done (the top bar's action, or in the dialog's header) keeps it, or with
+   none picked the circle it's in, once that's a change.
    Which is decided at the tap. The form shows `view` in place of its fields
    while it's there, renders `dialog`, and lets `topBarAction` and
    `backHandler` take precedence over its own. */
-export function useFederationExplorer({ title, circles, value, onChange, refusal }: FederationExplorerOptions): FederationExplorerHandle {
+export function useFederationExplorer<T extends ExplorerCircle>({ title, circles, value, onChange, refusal, you, dialogOnly }: FederationExplorerOptions<T>): FederationExplorerHandle {
   const [mode, setMode] = useState<"view" | "dialog" | null>(null);
   const [at, setAt] = useState("");
   const [query, setQuery] = useState("");
+  // a circle tapped is only picked, checked until Done keeps it
+  const [picked, setPicked] = useState<string | null>(null);
   const byId = useMemo(() => indexCircles(circles), [circles]);
   const folder = byId[at];
   // the circle it's in, unless searching (when it isn't what's on screen)
   const choosable = folder && !query.trim() && !refusal(folder) ? folder : null;
+  // what Done keeps: the circle picked, or else the one it's in; off until
+  // that's a change
+  const kept = picked ?? choosable?.id ?? null;
+  const done = kept !== value ? kept : null;
 
   function open() {
-    setAt(startingFolder(value, circles, byId) ?? circles.find((c) => c.parentId === null)?.id ?? "");
+    const start = startingFolder(value, circles, byId) ?? circles.find((c) => c.parentId === null)?.id ?? "";
+    setAt(start);
     setQuery("");
-    setMode(isPhoneWidth() ? "view" : "dialog");
+    // opened beside the current choice, it starts checked; opened in it, it's
+    // the circle it's in, which Done keeps with nothing picked
+    setPicked(value !== start ? value : null);
+    setMode(isPhoneWidth() && !dialogOnly ? "view" : "dialog");
   }
   const close = () => setMode(null);
   function choose(id: string) {
@@ -67,19 +83,22 @@ export function useFederationExplorer({ title, circles, value, onChange, refusal
   const explorer = (
     <FederationExplorer
       circles={circles}
-      value={value}
+      picked={picked}
+      current={value}
       refusal={refusal}
+      {...(you ? { you } : {})}
       at={at}
       onOpen={(id) => {
         setAt(id);
         setQuery("");
+        // a pick is of what's in view: opening another circle lets it go
+        setPicked(null);
       }}
       query={query}
       onQuery={setQuery}
-      onChoose={choose}
+      onPick={(id) => setPicked((p) => (p === id ? null : id))}
     />
   );
-  const chooseLabel = folder ? `Choose ${folder.name}` : "Choose";
 
   return {
     open,
@@ -99,10 +118,10 @@ export function useFederationExplorer({ title, circles, value, onChange, refusal
           action={
             <button
               type="button"
-              onClick={() => choosable && choose(choosable.id)}
-              disabled={!choosable}
-              aria-label={chooseLabel}
-              title={chooseLabel}
+              onClick={() => done && choose(done)}
+              disabled={!done}
+              aria-label="Done"
+              title="Done"
               className={clsx(ICON_BUTTON_SLOT, "cursor-pointer border-0 bg-transparent p-0 disabled:cursor-default")}
             >
               <IconButtonCircle icon={CheckIcon} variant="primary" />
@@ -112,14 +131,14 @@ export function useFederationExplorer({ title, circles, value, onChange, refusal
           <div className="p-5">{explorer}</div>
         </Modal>
       ) : null,
-    topBarAction: mode === "view" ? { label: chooseLabel, icon: CheckIcon, onAction: () => choosable && choose(choosable.id), disabled: !choosable, variant: "primary" } : null,
+    topBarAction: mode === "view" ? { label: "Done", icon: CheckIcon, onAction: () => done && choose(done), disabled: !done, variant: "primary" } : null,
     backHandler: mode === "view" ? close : null,
   };
 }
 
 interface FederationExplorerFieldProps {
   id?: string;
-  circles: Circle[];
+  circles: ExplorerCircle[];
   value: string | null;
   // opens the explorer (useFederationExplorer's open)
   onOpen: () => void;
