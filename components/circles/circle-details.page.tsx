@@ -10,7 +10,7 @@ import { changedFields, checkChanges, checkCircleBasics, hasChanges, neighborhoo
 import type { Circle, CircleProposal, CircleType, ProposalChanges } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
 import { ConsentNotice, useConsentError } from "./consent-form";
-import { ParentCircleSelect } from "./parent-circle-select";
+import { ParentCircleSelect, useParentCircleExplorer } from "./parent-circle-select";
 
 // neighborhood isn't offered here for now — its type carries real behavior
 // (home circles, the folder view, no roles) that switching into or out of
@@ -87,14 +87,29 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
     if (!result.ok) setConsentError({ field: null, message: result.error });
   }
 
-  useBackHandler(dirty && !saving ? () => setConfirmingDiscard(true) : null);
-  useTopBarAction({
-    label: saving ? "Saving" : "Propose changes",
-    icon: HandRaisedIcon,
-    onAction: neighborhood ? () => check() && setConfirmingNeighborhood(true) : handleSave,
-    disabled: !dirty || saving || locked,
-    variant: "propose",
+  // choosing its parent: on a phone, a view in place of the form, which then
+  // owns the top bar's action and Back
+  const parentExplorer = useParentCircleExplorer({
+    circles,
+    value: parentId ?? "",
+    onChange: (id) => {
+      clearError("parentId");
+      setParentId(id);
+    },
+    except: o.id,
   });
+  useBackHandler(parentExplorer.backHandler ?? (dirty && !saving ? () => setConfirmingDiscard(true) : null));
+  useTopBarAction(
+    parentExplorer.topBarAction ?? {
+      label: saving ? "Saving" : "Propose changes",
+      icon: HandRaisedIcon,
+      onAction: neighborhood ? () => check() && setConfirmingNeighborhood(true) : handleSave,
+      disabled: !dirty || saving || locked,
+      variant: "propose",
+    }
+  );
+
+  if (parentExplorer.view) return parentExplorer.view;
 
   return (
     <PageContainer size="normal">
@@ -112,11 +127,7 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
             <ParentCircleSelect
               circles={circles}
               value={parentId ?? ""}
-              onChange={(id) => {
-                clearError("parentId");
-                setParentId(id === "" ? null : id);
-              }}
-              except={o.id}
+              onOpen={parentExplorer.open}
               disabled={locked}
             />
             {fieldError("parentId")}
@@ -193,6 +204,8 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
           />
         )}
       </div>
+
+      {parentExplorer.dialog}
 
       {confirmingNeighborhood && neighborhood && (
         <ConfirmModal

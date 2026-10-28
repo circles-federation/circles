@@ -17,6 +17,9 @@ interface ModalProps {
   // content taller than the viewport scrolls instead of being clipped
   centered?: boolean;
   role?: "dialog" | "alertdialog";
+  // the header's action, on its right as the top bar's is (an
+  // IconButtonCircle in ICON_BUTTON_SLOT): a picker's Choose
+  action?: ReactNode;
   children: ReactNode;
 }
 
@@ -28,7 +31,7 @@ interface ModalProps {
    FloatingActionButton's own note on this). overscroll-contain keeps a scroll
    that reaches the overlay's end from carrying on into the page behind it,
    which in the installed app is AppShell's <main>, the modal's own ancestor. */
-export function Modal({ onClose, className, title, centered, role = "dialog", children }: ModalProps) {
+export function Modal({ onClose, className, title, centered, role = "dialog", action, children }: ModalProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     window.addEventListener("keydown", onKey);
@@ -54,7 +57,8 @@ export function Modal({ onClose, className, title, centered, role = "dialog", ch
           // as the bar's Back is
           <div className="flex h-14.5 items-center gap-1 border-b border-faint px-5">
             <GhostIconButton icon={XMarkIcon} label="Close" onClick={onClose} className="-ml-3" />
-            <h2 className="m-0 truncate font-sans text-lg font-extrabold tracking-heading">{title}</h2>
+            <h2 className="m-0 min-w-0 flex-1 truncate font-sans text-lg font-extrabold tracking-heading">{title}</h2>
+            {action}
           </div>
         )}
         {children}

@@ -1,43 +1,44 @@
-import { Label, Select } from "@/components/shared";
-import { parentCircleOptions } from "@/lib/circles.util";
+"use client";
+
+import { useMemo } from "react";
+import { FederationExplorerField, Label, useFederationExplorer } from "@/components/shared";
+import { indexCircles, parentCircleRefusal } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
+
+interface ParentExplorerOptions {
+  circles: Circle[];
+  value: string;
+  onChange: (parentId: string) => void;
+  // the circle being edited, which can't go inside itself
+  except?: string;
+}
+
+/* The Federation Explorer for a circle's parent: every circle the member can
+   see is there to browse, but only a neighborhood or the city can be chosen
+   (parentCircleRefusal, the rule parentCircleOptions holds the server to).
+   The form holding the field uses it as useFederationExplorer says. */
+export function useParentCircleExplorer({ circles, value, onChange, except }: ParentExplorerOptions) {
+  const byId = useMemo(() => indexCircles(circles), [circles]);
+  return useFederationExplorer({ title: "Parent circle", circles, value: value || null, onChange, refusal: (c) => parentCircleRefusal(c, byId, except) });
+}
 
 interface ParentCircleSelectProps {
   circles: Circle[];
   value: string;
-  onChange: (parentId: string) => void;
-  // the circle being edited, which can't be its own parent
-  except?: string;
+  // opens useParentCircleExplorer
+  onOpen: () => void;
   disabled?: boolean;
 }
 
-/* The Parent Circle field, on Create circle and Manage circle: where a circle
-   sits. The options are grouped under what they are (Neighborhoods, then
-   Citywide) and the city reads as the whole city, since "Providence" alone
-   doesn't say whether it's a neighborhood or the city. */
-export function ParentCircleSelect({ circles, value, onChange, except, disabled }: ParentCircleSelectProps) {
-  const options = parentCircleOptions(circles, except);
-  const neighborhoods = options.filter((c) => c.parentId !== null);
-  const root = options.find((c) => c.parentId === null);
+// The Parent Circle field, on Create circle and Manage circle: where a circle sits
+export function ParentCircleSelect({ circles, value, onOpen, disabled }: ParentCircleSelectProps) {
+  const root = circles.find((c) => c.parentId === null);
   return (
     <div>
       <Label htmlFor="circle-parent">Parent Circle</Label>
-      <Select id="circle-parent" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className="min-[720px]:max-w-90">
-        {neighborhoods.length > 0 && (
-          <optgroup label="Neighborhoods">
-            {neighborhoods.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {root && (
-          <optgroup label="Citywide">
-            <option value={root.id}>{root.name} (the whole city)</option>
-          </optgroup>
-        )}
-      </Select>
+      <div className="min-[720px]:max-w-90">
+        <FederationExplorerField id="circle-parent" circles={circles} value={value || null} onOpen={onOpen} disabled={disabled} />
+      </div>
       <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
         Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
       </p>
