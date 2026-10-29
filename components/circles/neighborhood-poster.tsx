@@ -1,8 +1,18 @@
-import { ChipView, Eyebrow, QrCode } from "@/components/shared";
+import type { ComponentType, SVGProps } from "react";
+import { CalendarIcon, HandRaisedIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { ChipView, Eyebrow, QrCode, RingIcon } from "@/components/shared";
 import type { Circle } from "@/lib/types";
 
 // the address printed under the code, for a camera that won't scan it
 const CIRCLES_SITE = "circles.foundation";
+
+// what's there for them once they've joined, each with the icon the app uses for it
+const FEATURES: { icon: ComponentType<SVGProps<SVGSVGElement>>; name: string; line: string }[] = [
+  { icon: CalendarIcon, name: "Events", line: "What’s happening nearby, and who’s going." },
+  { icon: UsersIcon, name: "People", line: "Your neighbors, friends, and colleagues." },
+  { icon: RingIcon, name: "Organizations", line: "Councils, collectives, co-ops, and informal groups." },
+  { icon: HandRaisedIcon, name: "Participation", line: "A say in what’s decided, together." },
+];
 
 interface NeighborhoodPosterProps {
   neighborhood: Pick<Circle, "name" | "members">;
@@ -20,13 +30,14 @@ interface NeighborhoodPosterProps {
    in print, where it fills a letter-size page (InviteNeighborsPage). */
 export function NeighborhoodPoster({ neighborhood, city, applyUrl }: NeighborhoodPosterProps) {
   const count = neighborhood.members.length;
-  // in print a sheet of fixed size, 720 by 912 CSS pixels (7.5 by 9.5
-  // inches, inside a letter page's margins with some to spare), its type
+  // in print a sheet of fixed size, 720 by 864 CSS pixels (7.5 by 9 inches,
+  // inside a letter page's margins with room for iOS's printed header and
+  // footer), never split across pages, its type
   // sized in pixels too: iOS lays a printed page out at the phone's width
   // and scales that to the paper, so anything sized by the screen or in
   // inches came out a fraction of the page, and over two
   return (
-    <article className="flex flex-col bg-paper text-ink print:h-[912px] print:overflow-hidden">
+    <article className="flex flex-col bg-paper text-ink print:h-[864px] print:break-inside-avoid print:overflow-hidden">
       <div className="border-t-[3px] border-t-ink pt-5">
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="shrink-0 text-soft">Neighborhood</Eyebrow>
@@ -36,18 +47,35 @@ export function NeighborhoodPoster({ neighborhood, city, applyUrl }: Neighborhoo
         <p className="mt-4 font-serif text-xl text-body italic print:text-2xl">Join your neighborhood circle.</p>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-8 border-t border-faint pt-8 min-[720px]:grid-cols-[1fr_auto] print:grid-cols-[1fr_auto]">
-        <div className="flex flex-col gap-6">
+      <div className="mt-8 grid grid-cols-1 gap-8 border-t border-faint pt-8 min-[720px]:grid-cols-[1fr_auto] print:mt-6 print:grid-cols-[1fr_auto] print:pt-6">
+        {/* in print, plain blocks spaced by margins rather than flex gaps:
+            iOS's print layout misplaces a flex column's children, setting
+            the steps far below their heading */}
+        <div className="flex flex-col gap-6 print:block print:space-y-5">
           <section>
             <Eyebrow className="text-soft">What it is</Eyebrow>
-            <p className="mt-2 font-serif text-lg leading-[1.5] text-body">
+            <p className="mt-2 font-serif text-lg leading-[1.5] text-body print:text-base">
               Circles is where {neighborhood.name}&rsquo;s neighbors find each other: news on the neighborhood&rsquo;s bulletin, events coming up nearby, and the councils and groups
               that get things done.
             </p>
           </section>
           <section>
+            <Eyebrow className="text-soft">What you&rsquo;ll find</Eyebrow>
+            <ul className="m-0 mt-3 grid list-none grid-cols-1 gap-x-6 gap-y-3 p-0 min-[480px]:grid-cols-2 print:grid-cols-2">
+              {FEATURES.map(({ icon: Icon, name, line }) => (
+                <li key={name} className="flex gap-2">
+                  <Icon className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2} aria-hidden />
+                  <span>
+                    <span className="block font-sans text-base font-bold">{name}</span>
+                    <span className="block font-serif text-base leading-snug text-body">{line}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section>
             <Eyebrow className="text-soft">How to join</Eyebrow>
-            <ol className="m-0 mt-2 flex list-none flex-col gap-2 p-0 font-serif text-lg leading-[1.4] text-body">
+            <ol className="m-0 mt-2 flex list-none flex-col gap-2 p-0 font-serif text-lg leading-[1.4] text-body print:block print:space-y-2 print:text-base">
               {["Scan the code with your phone’s camera.", "Join with your name, your email and a photo of yourself.", `A person reads every application and checks that you live in ${neighborhood.name}. Then you’re in.`].map(
                 (step, i) => (
                   <li key={i} className="flex gap-3">
