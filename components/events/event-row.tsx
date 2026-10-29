@@ -42,10 +42,11 @@ const ROW_ACCENT: Record<RowAccent, string> = {
 export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent", tags, title, titleMuted = false, meta, metaMuted = false, right }: EventRowProps) {
   return (
     <div className={clsx(
-      // border-b-ink (not the border-ink shorthand) on purpose: the
+      // border-b-faint (not the border-faint shorthand) on purpose: the
       // shorthand also sets border-left-color, which would fight
-      // the accent's border below over the same property
-      "flex items-start gap-5 border-b border-b-ink py-5",
+      // the accent's border below over the same property. Grey between
+      // rows, ink under the last, as Home's rows (LinkRow) are ruled.
+      "flex items-start gap-5 border-b border-b-faint py-5 last:border-b-ink",
       // a plain row has no side edges, so no side padding either (as circle
       // resources' rows): its content runs flush with the list. Only an
       // accented one is inset, and only on its left, beside its bar: the right
