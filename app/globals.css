@@ -398,13 +398,20 @@ body {
 .press-invert > * { transition: filter var(--motion-press); }
 .press-invert[data-pressed] > * { filter: invert(1); }
 
-/* Printing (PrintSheet): only the sheet a page puts under <body> prints, on
-   a letter-size page; on screen it's never shown. */
+/* Printing (PrintSheet): on a page that has one, only the sheet it puts
+   under <body> prints, on a letter-size page; on screen it's never shown.
+   Every rule is scoped to such a page, so any other prints as it is. */
 .print-sheet { display: none; }
 @media print {
   @page { size: letter; margin: 0.5in; }
-  body > *:not(.print-sheet) { display: none !important; }
-  .print-sheet { display: block; }
+  html:has(> body > .print-sheet) body > *:not(.print-sheet) { display: none !important; }
+  /* the width of a letter page inside its margins, at 96px an inch, fixed
+     rather than the page's: iOS prints at the phone's width, scaled to the
+     paper, so a sheet this wide scales as a whole (see NeighborhoodPoster) */
+  .print-sheet { display: block; width: 720px; }
+  /* and the page as wide, so it doesn't clip it to the phone's width */
+  html:has(> body > .print-sheet),
+  html:has(> body > .print-sheet) body { width: 720px !important; min-width: 720px; overflow: visible !important; }
   /* colours and fills printed as they are, not dropped to save ink */
   .print-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

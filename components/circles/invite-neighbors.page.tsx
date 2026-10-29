@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { ArrowUpTrayIcon, PrinterIcon } from "@heroicons/react/24/outline";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { PageContainer, PrintSheet, useToast } from "@/components/shared";
+import { printPage } from "@/lib/print";
 import { shareOrCopy } from "@/lib/share";
 import type { Circle } from "@/lib/types";
 import { NeighborhoodPoster } from "./neighborhood-poster";
@@ -34,7 +35,7 @@ export function InviteNeighborsPage({ neighborhood, city }: InviteNeighborsPageP
   }
 
   useTopBarMenu([
-    { label: "Print", icon: PrinterIcon, onSelect: () => window.print() },
+    { label: "Print", icon: PrinterIcon, onSelect: printPage },
     { label: "Share link", icon: ArrowUpTrayIcon, onSelect: () => void shareLink() },
   ]);
 
