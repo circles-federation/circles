@@ -3,38 +3,41 @@
    them, so nothing else changes. A warm near-black rather than pure black,
    so hairlines and grey text can be tuned against it, and each accent a step
    brighter, to read on the dark. Applied as data-theme="luna" on <html>
-   (lib/theme.ts), and unlayered, so it wins over @theme's defaults. A new
+   (lib/theme.ts), and unlayered, so it wins over @theme's defaults. On screen
+   only: a printed page is always paper, whatever the device shows. A new
    theme is a file like this, imported in globals.css, and an entry in
    lib/themes.util.ts. */
-[data-theme="luna"] {
-  color-scheme: dark;
-  --color-ink: #edebe6;
-  --color-paper: #131313;
-  --color-body: #d4d2cc;
-  --color-ghost: #6e6c68;
-  --color-attention: #ff453a;
-  --color-soft: #9a9893;
-  --color-faint: #31302e;
-  --color-wash: #1c1c1b;
-  --color-flame: #ff7a3d;
-  --color-leaf: #5cb860;
-  --color-teal: #2bb3a9;
-  --color-danger: #ff5a4e;
-  --color-folder: #e0b341;
-  --color-file: #5b9bff;
-  --color-video: #a47bff;
-  --color-announcement: #ff5a4e;
-  --color-survey: #8cc152;
-  --color-agenda: #2bc1ba;
-  --color-phone: #ff5a4e;
-  --color-email: #6cb8ff;
-  --color-action: #3d8bff;
-  --color-accept: #ffc93c;
-  --color-chrome: #3a3a38;
-  --color-on-chrome: #edebe6;
-  --color-raised: #242423;
-  --color-scrim: #000000;
-  --color-warning: #ffc93c;
-  --shadow-float: 0 4px 14px rgba(0, 0, 0, 0.55);
-  --shadow-overlay: 0 6px 22px rgba(0, 0, 0, 0.65);
+@media not print {
+  [data-theme="luna"] {
+    color-scheme: dark;
+    --color-ink: #edebe6;
+    --color-paper: #131313;
+    --color-body: #d4d2cc;
+    --color-ghost: #6e6c68;
+    --color-attention: #ff453a;
+    --color-soft: #9a9893;
+    --color-faint: #31302e;
+    --color-wash: #1c1c1b;
+    --color-flame: #ff7a3d;
+    --color-leaf: #5cb860;
+    --color-teal: #2bb3a9;
+    --color-danger: #ff5a4e;
+    --color-folder: #e0b341;
+    --color-file: #5b9bff;
+    --color-video: #a47bff;
+    --color-announcement: #ff5a4e;
+    --color-survey: #8cc152;
+    --color-agenda: #2bc1ba;
+    --color-phone: #ff5a4e;
+    --color-email: #6cb8ff;
+    --color-action: #3d8bff;
+    --color-accept: #ffc93c;
+    --color-chrome: #3a3a38;
+    --color-on-chrome: #edebe6;
+    --color-raised: #242423;
+    --color-scrim: #000000;
+    --color-warning: #ffc93c;
+    --shadow-float: 0 4px 14px rgba(0, 0, 0, 0.55);
+    --shadow-overlay: 0 6px 22px rgba(0, 0, 0, 0.65);
+  }
 }
