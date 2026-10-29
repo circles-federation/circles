@@ -20,14 +20,19 @@ interface NeighborhoodPosterProps {
    in print, where it fills a letter-size page (InviteNeighborsPage). */
 export function NeighborhoodPoster({ neighborhood, city, applyUrl }: NeighborhoodPosterProps) {
   const count = neighborhood.members.length;
+  // in print a sheet of fixed size, 720 by 912 CSS pixels (7.5 by 9.5
+  // inches, inside a letter page's margins with some to spare), its type
+  // sized in pixels too: iOS lays a printed page out at the phone's width
+  // and scales that to the paper, so anything sized by the screen or in
+  // inches came out a fraction of the page, and over two
   return (
-    <article className="flex flex-col bg-paper text-ink print:min-h-[10in]">
+    <article className="flex flex-col bg-paper text-ink print:h-[912px] print:overflow-hidden">
       <div className="border-t-[3px] border-t-ink pt-5">
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="shrink-0 text-soft">Neighborhood</Eyebrow>
           <ChipView tone="federation">{city}</ChipView>
         </div>
-        <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display wrap-break-word print:text-hero">{neighborhood.name}</h1>
+        <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display wrap-break-word print:text-[64px]">{neighborhood.name}</h1>
         <p className="mt-4 font-serif text-xl text-body italic print:text-2xl">Join your neighborhood circle.</p>
       </div>
 
@@ -58,9 +63,9 @@ export function NeighborhoodPoster({ neighborhood, city, applyUrl }: Neighborhoo
         {/* the way in: large enough to scan from arm's length on a wall */}
         <div className="flex flex-col items-center gap-3 justify-self-center">
           {applyUrl ? (
-            <QrCode value={applyUrl} label={`QR code to join ${neighborhood.name} on Circles`} className="size-56 text-ink print:size-[3in]" />
+            <QrCode value={applyUrl} label={`QR code to join ${neighborhood.name} on Circles`} className="size-56 text-ink print:size-[288px]" />
           ) : (
-            <div className="size-56 bg-wash print:size-[3in]" aria-hidden />
+            <div className="size-56 bg-wash print:size-[288px]" aria-hidden />
           )}
           <p className="m-0 text-center font-sans text-sm font-bold tracking-caps uppercase">Scan to join</p>
           <p className="m-0 text-center font-serif text-base text-soft">or visit {CIRCLES_SITE}</p>
