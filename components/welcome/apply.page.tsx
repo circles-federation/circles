@@ -16,6 +16,8 @@ type Step = "form" | "agree" | "confirm" | "done";
 interface ApplyPageProps {
   // the neighborhoods to choose from, with the city they sit in
   neighborhoods: CirclePlace[];
+  // where it starts, arriving from a neighborhood's poster
+  neighborhoodId?: string;
   // someone who RSVPed to an event from its share link: their address is
   // already proved, so there's no code to enter
   guest?: { id: string; firstName: string; lastName: string; email: string };
@@ -27,10 +29,10 @@ interface ApplyPageProps {
    address is theirs and sends the application for review; and a "thanks,
    we'll email you". Outside the signed-in app, so it's laid out like the
    welcome page rather than under a top bar. */
-export function ApplyPage({ neighborhoods, guest }: ApplyPageProps) {
+export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPageProps) {
   const { showToast } = useToast();
   const [step, setStep] = useState<Step>("form");
-  const [input, setInput] = useState<ApplicationInput>({ firstName: guest?.firstName ?? "", lastName: guest?.lastName ?? "", email: guest?.email ?? "", neighborhoodId: "" });
+  const [input, setInput] = useState<ApplicationInput>({ firstName: guest?.firstName ?? "", lastName: guest?.lastName ?? "", email: guest?.email ?? "", neighborhoodId });
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [errors, setErrors] = useState<ApplicationErrors>({});
   const [applicationId, setApplicationId] = useState("");

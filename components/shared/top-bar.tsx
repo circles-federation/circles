@@ -3,7 +3,7 @@
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, CheckCircleIcon, EllipsisHorizontalIcon, HandRaisedIcon, HomeIcon, InboxIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, CheckCircleIcon, EllipsisHorizontalIcon, HandRaisedIcon, HomeIcon, InboxIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UserPlusIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -52,7 +52,8 @@ function pageAction(pathname: string, profile: Profile): PageAction | null {
    event or a meeting. New circle starts it wherever it was chosen (the
    city at the root, or the neighborhood whose page it's on); a neighborhood
    adds posting on its bulletin, for a member of a Circle in it, and on your
-   own, once someone else lives there, Hi, neighbor (learning their names). */
+   own, inviting your neighbors (its poster) and, once someone else lives
+   there, Hi, neighbor (learning their names). */
 function pageMenu(pathname: string, circles: Circle[], profile: Profile): TopBarMenuItem[] | null {
   // the event form still has its own Event/Meeting switch (a circle page's
   // Events tab opens it too); these just start it on one or the other
@@ -69,8 +70,9 @@ function pageMenu(pathname: string, circles: Circle[], profile: Profile): TopBar
   if (circle?.type !== "neighborhood") return null;
   const items: TopBarMenuItem[] = [{ label: "New circle", href: `/circles/new?parent=${id}`, icon: RingIcon }];
   if (postingCirclesFor(profile.id, circle, circles).length > 0) items.push({ label: "Post on bulletin", href: `/circles/${id}/bulletin/new`, icon: PlusIcon });
-  if (circle.id === profile.homeCircleId && circle.members.some((m) => m !== profile.id)) {
-    items.push({ label: "Hi, neighbor", href: "/game", icon: PlayIcon, iconClassName: "text-teal" });
+  if (circle.id === profile.homeCircleId) {
+    items.push({ label: "Invite neighbors", href: `/circles/${id}/poster`, icon: UserPlusIcon });
+    if (circle.members.some((m) => m !== profile.id)) items.push({ label: "Hi, neighbor", href: "/game", icon: PlayIcon, iconClassName: "text-teal" });
   }
   return items;
 }
@@ -87,6 +89,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     // a neighborhood's bulletin takes posts, proposed by the Circles in it
     if (sub === "bulletin" && item) return circles.find((c) => c.id === id)?.type === "neighborhood" ? "New post" : resourceFormTitle(resources.find((r) => r.id === item)?.icon);
     if (sub === "invite") return "Invite";
+    if (sub === "poster") return "Invite neighbors";
     if (sub === "tasks" && item) return item === "new" ? "New task" : "Task";
     if (sub === "inbox" && item) return "Message";
     if (sub === "write") return "New message";
