@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { PressFeedback, ToastProvider } from "@/components/shared";
+import { startupImages } from "@/lib/startup-screens";
 import { LIGHT_THEME, themeByKey, themeScript } from "@/lib/themes.util";
 
 export const metadata: Metadata = {
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   description: "A federated coordination tool for neighborhoods and organizations.",
   // iOS still reads these rather than the manifest when added to the Home
   // Screen. "default" keeps a white status bar above the page, like the top bar.
-  appleWebApp: { capable: true, title: "Circles", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Circles", statusBarStyle: "default", startupImage: startupImages },
 };
 
 // viewportFit "cover" draws under the home indicator and a landscape notch, so

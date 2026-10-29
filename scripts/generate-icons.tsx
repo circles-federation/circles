@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { ImageResponse } from "next/og";
+import { STARTUP_SCREENS } from "../lib/startup-screens";
 
 /* Renders every app icon from one mark: circles nested inside each other,
    paper on ink. Rerun after changing the mark (`npm run icons`) and commit
@@ -31,8 +32,30 @@ async function png(path: string, size: number, scale: number, stroke: number, ba
   writeFileSync(path, Buffer.from(await image.arrayBuffer()));
 }
 
+/* iOS shows a launch image from the tap until the first byte arrives (black,
+   if there isn't one for the device's exact screen size), so each size in
+   lib/startup-screens.ts gets paper with the mark in ink at the middle,
+   matching AppSplash. */
+async function startupImage(width: number, height: number, ratio: number) {
+  const mark = 96 * ratio;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#0a0a0a" stroke-width="4"><circle cx="50" cy="50" r="28"/><circle cx="50" cy="55" r="17"/><circle cx="50" cy="61" r="6" fill="#0a0a0a" stroke="none"/></svg>`;
+  const src = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+  const px = { width: width * ratio, height: height * ratio };
+  const image = new ImageResponse(
+    (
+      <div style={{ ...px, display: "flex", alignItems: "center", justifyContent: "center", background: "#ffffff" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} width={mark} height={mark} alt="" />
+      </div>
+    ),
+    px,
+  );
+  writeFileSync(`public/icons/startup-${px.width}x${px.height}.png`, Buffer.from(await image.arrayBuffer()));
+}
+
 async function main() {
   mkdirSync("public/icons", { recursive: true });
+  for (const [w, h, r] of STARTUP_SCREENS) await startupImage(w, h, r);
   await png("public/icons/icon-192.png", 192, 1.25, 4);
   await png("public/icons/icon-512.png", 512, 1.25, 4);
   await png("public/icons/icon-maskable-512.png", 512, 1, 4);

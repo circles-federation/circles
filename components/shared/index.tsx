@@ -35,6 +35,7 @@ export { Modal } from "./modal";
 export { OfflineBanner } from "./offline-banner";
 export { PageContainer } from "./page-container";
 export { PageLoading } from "./page-loading";
+export { AppSplash } from "./app-splash";
 export { togglePress, PressFeedback } from "./press-feedback";
 export { PrintSheet } from "./print-sheet";
 export { PrivateLabel } from "./private-label";
