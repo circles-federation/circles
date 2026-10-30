@@ -198,6 +198,12 @@ export function circleHasTasks(circle: Pick<Circle, "type" | "parentId">): boole
   return circleHasPage(circle) && !isGroup(circle);
 }
 
+// a chat thread (lib/db/chat.ts): a circle with a page, groups included;
+// a neighborhood's or the city's members are too many to share one
+export function circleHasChat(circle: Pick<Circle, "type" | "parentId">): boolean {
+  return circleHasPage(circle);
+}
+
 // an Inbox: anyone may write to it from its wiki (lib/db/messages.ts). A
 // Circle, a collective or a co-op may have one, once its members consent to
 // it; not a group, whose page only its members see, nor a neighborhood or

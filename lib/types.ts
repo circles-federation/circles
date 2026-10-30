@@ -383,6 +383,26 @@ export interface CircleMessage {
   doneAt?: string;
 }
 
+/* One message in a circle's chat thread (lib/db/chat.ts). `body` is Markdown
+   when `scheme` is 0; a deleted message keeps its place with an empty body.
+   `rev` is the version of this message, which rises with every change to it
+   so a client can ask for everything newer than the last one it saw. `mentions`
+   are the members it was addressed to: when there are any, only they are
+   notified. */
+export interface ChatMessage {
+  id: number;
+  circleId: string;
+  // gone if they've since left the platform
+  authorId?: number;
+  scheme: number;
+  body: string;
+  mentions: number[];
+  createdAt: string;
+  editedAt?: string;
+  deletedAt?: string;
+  rev: number;
+}
+
 export type TaskStatus = "todo" | "doing" | "done";
 // Critical, High, Medium, Normal and the back burner (see TASK_PRIORITIES)
 export type TaskPriority = "urgent" | "high" | "normal" | "none" | "someday";

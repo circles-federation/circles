@@ -4,6 +4,7 @@ import { after } from "next/server";
 import * as applications from "./applications";
 import * as availability from "./availability";
 import { getAppStateForMember, type AppStateData } from "./app-state";
+import * as chat from "./chat";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
 import * as eventShares from "./event-shares";
@@ -139,6 +140,28 @@ export async function updateCircleAction(id: string, patch: Partial<Circle>) {
    They return a result object instead of throwing — Next sanitizes a thrown
    error's message in production, so the caller couldn't show why it was
    refused (same shape lib/auth.ts's actions use). */
+/* A circle's chat thread (lib/db/chat.ts checks who may). The writes reach
+   everyone's open app through the stream, so none hands back state. */
+export async function sendChatMessageAction(circleId: string, input: { body: string; mentions: number[] }) {
+  return asMember((memberId) => chat.sendChatMessage(memberId, circleId, input));
+}
+
+export async function editChatMessageAction(id: number, body: string) {
+  return asMember((memberId) => chat.editChatMessage(memberId, id, body));
+}
+
+export async function deleteChatMessageAction(id: number) {
+  return asMember((memberId) => chat.deleteChatMessage(memberId, id));
+}
+
+export async function getChatMessagesAction(circleId: string, before?: number) {
+  return asMember((memberId) => chat.getChatMessages(memberId, circleId, before));
+}
+
+export async function markChatReadAction(circleId: string, lastReadId: number) {
+  return asMember((memberId) => chat.markChatRead(memberId, circleId, lastReadId));
+}
+
 async function asMember<T>(run: (memberId: number) => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
   const memberId = await getCurrentUserId();
   if (!memberId) return { ok: false, error: "Sign in again to do that." };

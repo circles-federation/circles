@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   check,
   customType,
@@ -9,6 +10,7 @@ import {
   integer,
   jsonb,
   pgEnum,
+  pgSequence,
   pgTable,
   primaryKey,
   smallint,
@@ -640,6 +642,55 @@ export const circleMessageReads = pgTable(
     readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.messageId, t.memberId] })]
+);
+
+// the version every chat message takes when it's written or changed, so a
+// client can ask for what's newer than the last it saw (circle_chat_messages.rev)
+export const circleChatRev = pgSequence("circle_chat_rev_seq");
+
+/* A circle's chat thread (lib/db/chat.ts), its members' alone. `scheme` says
+   how `body` is stored: 0 is Markdown as written, and other values are kept
+   for encrypting it later. A deleted message stays as a row with an empty
+   body (deleted_at set), so the thread still reads and replies don't dangle.
+   Goes with the circle; an author who leaves the platform leaves their
+   messages. */
+export const circleChatMessages = pgTable(
+  "circle_chat_messages",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    authorId: integer("author_id").references(() => members.id, { onDelete: "set null" }),
+    scheme: smallint("scheme").notNull().default(0),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    rev: bigint("rev", { mode: "number" }).notNull().default(sql`nextval('circle_chat_rev_seq')`),
+  },
+  (t) => [index("circle_chat_messages_circle_idx").on(t.circleId, t.id), index("circle_chat_messages_rev_idx").on(t.circleId, t.rev)]
+);
+
+/* Who a chat message was addressed to (@name): the server checks each is a
+   member of the circle, and only they are notified. Kept apart from the body
+   so it stays readable if the body is ever encrypted. */
+export const circleChatMentions = pgTable(
+  "circle_chat_mentions",
+  {
+    messageId: bigint("message_id", { mode: "number" }).notNull().references(() => circleChatMessages.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.messageId, t.memberId] }), index("circle_chat_mentions_member_idx").on(t.memberId)]
+);
+
+// how far through a circle's thread a member has read
+export const circleChatReads = pgTable(
+  "circle_chat_reads",
+  {
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    lastReadId: bigint("last_read_id", { mode: "number" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.circleId, t.memberId] })]
 );
 
 /* A member's link to an event for someone without an account (see
