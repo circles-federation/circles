@@ -439,6 +439,7 @@ function Composer({ circleName, people, onSend, onHeight }: { circleName: string
   }, [host, onHeight]);
   // who has been picked from the list, and the @word being typed now
   const picked = useRef<MentionTarget[]>([]);
+  const caretAfter = useRef<{ value: string; at: number } | null>(null);
   const [typing, setTyping] = useState<{ start: number; query: string } | null>(null);
   const [active, setActive] = useState(0);
   const choices = typing ? matchMentions(people, typing.query) : [];
@@ -485,6 +486,15 @@ function Composer({ circleName, people, onSend, onHeight }: { circleName: string
     };
   }, [listOpen]);
 
+  // applied as soon as the field holds the inserted name, before anything more can be typed
+  useLayoutEffect(() => {
+    const want = caretAfter.current;
+    const el = field.current;
+    if (!want || !el || draft !== want.value) return;
+    caretAfter.current = null;
+    el.setSelectionRange(want.at, want.at);
+  }, [draft]);
+
   function watchCaret(text: string, caret: number) {
     setTyping(mentionAt(text, caret));
     setActive(0);
@@ -499,11 +509,8 @@ function Composer({ circleName, people, onSend, onHeight }: { circleName: string
     setDraft(next);
     setTyping(null);
     // the caret goes after the name once the field has what was inserted
-    const at = typing.start + person.name.length + 2;
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(at, at);
-    });
+    caretAfter.current = { value: next, at: typing.start + person.name.length + 2 };
+    el.focus();
   }
 
   async function submit(e?: FormEvent) {
