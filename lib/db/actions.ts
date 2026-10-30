@@ -5,6 +5,7 @@ import * as applications from "./applications";
 import * as availability from "./availability";
 import { getAppStateForMember, type AppStateData } from "./app-state";
 import * as chat from "./chat";
+import { chatHub } from "./chat-stream";
 import * as circles from "./circles";
 import { UserFacingError } from "./errors";
 import * as eventShares from "./event-shares";
@@ -20,7 +21,7 @@ import * as resources from "./resources";
 import * as tasks from "./tasks";
 import { sendEmail } from "@/lib/email";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail, photoDecisionEmail, taskAssignedEmail } from "@/lib/email/templates.util";
-import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember, tellCircleOfMessage } from "@/lib/notify";
+import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember, tellCircleOfChat, tellCircleOfMessage } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
 import { invitationPush, photoDecisionPush, taskAssignedPush } from "@/lib/push/messages.util";
 import { dueLabel, type TaskInput } from "@/lib/tasks.util";
@@ -141,9 +142,21 @@ export async function updateCircleAction(id: string, patch: Partial<Circle>) {
    error's message in production, so the caller couldn't show why it was
    refused (same shape lib/auth.ts's actions use). */
 /* A circle's chat thread (lib/db/chat.ts checks who may). The writes reach
-   everyone's open app through the stream, so none hands back state. */
+   everyone's open app through the stream, so none hands back state. A new
+   message is pushed to those it's for right after the response, like an
+   invitation; a failed push isn't retried, since it waits in the thread. */
 export async function sendChatMessageAction(circleId: string, input: { body: string; mentions: number[] }) {
-  return asMember((memberId) => chat.sendChatMessage(memberId, circleId, input));
+  const result = await asMember((memberId) => chat.sendChatMessage(memberId, circleId, input));
+  if (result.ok) after(() => tellCircleOfChat(result.value.id));
+  return result;
+}
+
+// which threads this copy of the app is showing right now (none when hidden),
+// so a push isn't sent to someone already reading
+export async function setChatViewingAction(clientId: string, circleIds: string[]) {
+  return asMember(async (memberId) => {
+    if (typeof clientId === "string" && clientId.length <= 64) chatHub.setViewing(memberId, clientId, circleIds.slice(0, 20).filter((id) => typeof id === "string"));
+  });
 }
 
 export async function editChatMessageAction(id: number, body: string) {

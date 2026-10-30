@@ -376,6 +376,11 @@ body {
   .message-text li > p {
     margin: 0;
   }
+  /* an @name a chat message was addressed to */
+  .chat-mention {
+    font-weight: 700;
+    color: var(--color-action);
+  }
   .message-text a {
     color: var(--color-ink);
     text-decoration: underline;

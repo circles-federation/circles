@@ -9,6 +9,7 @@ import {
   getChatUnreadAction,
   markChatReadAction,
   sendChatMessageAction,
+  setChatViewingAction,
 } from "@/lib/db/actions";
 import type { ChatMessage } from "@/lib/types";
 import { useAppState } from "./app-state-provider";
@@ -44,7 +45,7 @@ interface ChatValue {
   view: (circleId: string) => () => void;
   loadEarlier: (circleId: string) => Promise<void>;
   // each resolves to why it failed, or null
-  send: (circleId: string, body: string) => Promise<string | null>;
+  send: (circleId: string, body: string, mentions: number[]) => Promise<string | null>;
   edit: (id: number, body: string) => Promise<string | null>;
   remove: (id: number) => Promise<string | null>;
 }
@@ -84,6 +85,7 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
   const loading = useRef(new Set<string>());
   const lastRev = useRef<number | null>(null);
   const readTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const clientId = useRef("");
   useEffect(() => {
     me.current = profile.id;
     threadsRef.current = threads;
@@ -108,6 +110,23 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
       }, READ_DEBOUNCE_MS),
     );
   }, []);
+
+  /* Tells the server which threads are on screen, so it doesn't push what's
+     being read. Said again every so often while any is, since it forgets a
+     client that goes quiet (the app closed, a lost connection). */
+  const reportViewing = useCallback(() => {
+    clientId.current ||= crypto.randomUUID();
+    const circleIds = document.visibilityState === "visible" ? [...viewing.current.keys()] : [];
+    void setChatViewingAction(clientId.current, circleIds);
+  }, []);
+  useEffect(() => {
+    const timer = setInterval(() => viewing.current.size > 0 && reportViewing(), 45_000);
+    document.addEventListener("visibilitychange", reportViewing);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", reportViewing);
+    };
+  }, [reportViewing]);
 
   const loadThread = useCallback(async (circleId: string) => {
     if (loading.current.has(circleId)) return;
@@ -212,15 +231,17 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
   const view = useCallback(
     (circleId: string) => {
       viewing.current.set(circleId, (viewing.current.get(circleId) ?? 0) + 1);
+      reportViewing();
       if (threadsRef.current[circleId]) markRead(circleId);
       else void loadThread(circleId).then(() => markRead(circleId));
       return () => {
         const n = (viewing.current.get(circleId) ?? 1) - 1;
         if (n <= 0) viewing.current.delete(circleId);
         else viewing.current.set(circleId, n);
+        reportViewing();
       };
     },
-    [loadThread, markRead],
+    [loadThread, markRead, reportViewing],
   );
 
   const loadEarlier = useCallback(
@@ -244,8 +265,8 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
   }, []);
 
   const send = useCallback(
-    async (circleId: string, body: string) => {
-      const result = await sendChatMessageAction(circleId, { body, mentions: [] });
+    async (circleId: string, body: string, mentions: number[]) => {
+      const result = await sendChatMessageAction(circleId, { body, mentions });
       if (!result.ok) return result.error;
       adopt(result.value);
       return null;

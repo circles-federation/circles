@@ -6,6 +6,7 @@ import type { ProposalChanges, ProposalKind, ProposalLine, ProposalNoticeKind } 
 import { endedBefore, relativeDayWord } from "@/lib/recurrence.util";
 import { autoCancelClock } from "@/lib/roles.util";
 import { isReminder } from "@/lib/events.util";
+import { messageText } from "@/lib/messages.util";
 
 /* The app's push notifications, as pure functions from data to a message —
    the counterparts of lib/email/templates.util.ts's emails, saying the same
@@ -153,4 +154,13 @@ export function digestPush(): PushMessage {
 // someone wrote to a circle you're a member of: who, and what about; opens it
 export function circleMessagePush(d: { messageId: string; circleId: string; circleName: string; senderName: string; subject: string }): PushMessage {
   return message(`${d.senderName} wrote to ${d.circleName}`, d.subject, `/circles/${d.circleId}/inbox/${d.messageId}`, `message-${d.messageId}`);
+}
+
+/* A new message in a circle's chat. Tagged, it says so; the text is as much
+   as fits, unless it isn't plain text (`scheme` not 0: encrypted), when a
+   notification can't carry it and says only that there's one. Tagged by
+   circle, so a burst of messages is one notification on the device. */
+export function chatPush(d: { circleId: string; circleName: string; authorName: string; body: string; scheme: number; tagged: boolean }): PushMessage {
+  const text = d.scheme === 0 ? messageText(d.body).replace(/\s+/g, " ").trim() : "Open Circles to read it.";
+  return message(d.tagged ? `${d.authorName} tagged you in ${d.circleName}` : `${d.authorName} in ${d.circleName}`, text, `/circles/${d.circleId}/chat`, `chat-${d.circleId}`);
 }

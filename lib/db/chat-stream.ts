@@ -20,8 +20,36 @@ export interface ChatSubscriber {
   onReset(): void;
 }
 
+// a client that stops saying it's still looking is taken to have gone
+const VIEWING_TTL_MS = 2 * 60_000;
+
 class ChatHub {
   private subscribers = new Set<ChatSubscriber>();
+  // member -> client -> the threads it's showing right now, and until when
+  private viewing = new Map<number, Map<string, { circleIds: Set<string>; until: number }>>();
+
+  /* A client (one open copy of the app) says which threads it has on screen,
+     visibly, or none. Chat pushes skip a member who's already reading the
+     thread. Per process, so with several instances a push may still go to
+     someone reading on another one: a spare notice, never a missed one. */
+  setViewing(memberId: number, clientId: string, circleIds: string[]): void {
+    const clients = this.viewing.get(memberId) ?? new Map();
+    if (circleIds.length === 0) clients.delete(clientId);
+    else clients.set(clientId, { circleIds: new Set(circleIds), until: Date.now() + VIEWING_TTL_MS });
+    if (clients.size === 0) this.viewing.delete(memberId);
+    else this.viewing.set(memberId, clients);
+  }
+
+  isViewing(memberId: number, circleId: string): boolean {
+    const clients = this.viewing.get(memberId);
+    if (!clients) return false;
+    const now = Date.now();
+    for (const [id, c] of clients) {
+      if (c.until < now) clients.delete(id);
+      else if (c.circleIds.has(circleId)) return true;
+    }
+    return false;
+  }
   private client: Client | null = null;
   private connecting = false;
   private retryMs = 1000;

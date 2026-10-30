@@ -4,7 +4,7 @@ import { circleHasChat } from "@/lib/circles.util";
 import type { ChatMessage } from "@/lib/types";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
-import { circleChatMentions, circleChatMessages, circleChatReads, circleMembers, circles } from "./schema";
+import { circleChatMentions, circleChatMessages, circleChatReads, circleMembers, circles, members } from "./schema";
 
 /* A circle's chat thread, its members' alone: this file is where that's held
    to. Every read and write checks the member belongs to a circle that has
@@ -212,4 +212,31 @@ export async function getChatForFanout(id: number): Promise<{ message: ChatMessa
   const [message] = await withMentions([row]);
   const memberIds = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, row.circleId))).map((r) => r.id);
   return message ? { message, memberIds } : null;
+}
+
+/* Who to tell of a new message, and what to say. A message that tags people
+   tells only them; one that doesn't tells the whole circle. Either way not its
+   author, and nothing for one deleted since or whose circle is gone. */
+export async function getChatNoticeData(id: number) {
+  const [row] = await db
+    .select({ message: circleChatMessages, circleName: circles.name })
+    .from(circleChatMessages)
+    .innerJoin(circles, eq(circles.id, circleChatMessages.circleId))
+    .where(eq(circleChatMessages.id, id));
+  if (!row || row.message.deletedAt) return null;
+  const { message } = row;
+  const tagged = (await db.select({ id: circleChatMentions.memberId }).from(circleChatMentions).where(eq(circleChatMentions.messageId, id))).map((r) => r.id);
+  const circleMemberIds = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, message.circleId))).map((r) => r.id);
+  const audience = tagged.length > 0 ? tagged.filter((m) => circleMemberIds.includes(m)) : circleMemberIds;
+  const [author] = message.authorId !== null ? await db.select({ name: members.name }).from(members).where(eq(members.id, message.authorId)) : [];
+  return {
+    id,
+    circleId: message.circleId,
+    circleName: row.circleName,
+    authorName: author?.name ?? "A former member",
+    scheme: message.scheme,
+    body: message.body,
+    tagged: tagged.length > 0,
+    recipientIds: audience.filter((m) => m !== message.authorId),
+  };
 }

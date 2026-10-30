@@ -16,6 +16,8 @@ import {
 } from "@/lib/db/notifications";
 import { purgeGuestData } from "@/lib/db/guest-rsvps";
 import { purgeGuestMessageDrafts } from "@/lib/db/guest-messages";
+import { getChatNoticeData } from "@/lib/db/chat";
+import { chatHub } from "@/lib/db/chat-stream";
 import { getMessageNoticeData } from "@/lib/db/messages";
 import { claimGuestNotifications, markGuestFailed, markGuestSent } from "@/lib/db/guest-notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
@@ -23,7 +25,7 @@ import { closeDueProposals, withdrawLapsedEventProposals } from "@/lib/db/propos
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
-import { announcementPush, circleMessagePush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
+import { announcementPush, chatPush, circleMessagePush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
 import { announcementEmail, circleMessageEmail, digestEmail, eventChanges, eventNotificationEmail, guestEmail, proposalEmail } from "@/lib/email/templates.util";
 import { eventStartsAt, isReminder } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -395,5 +397,24 @@ export async function tellCircleOfMessage(id: string) {
       r.email && sendEmail({ to: r.email, ...circleMessageEmail({ ...data, name: r.name, url }) }).catch((err) => console.error("Couldn't email a circle of a message:", err)),
       pushToMember(r.memberId, circleMessagePush({ ...data, messageId: id })).catch((err) => console.error("Couldn't push a circle a message:", err)),
     ]),
+  );
+}
+
+/* A new message in a circle's chat: told by push only (an email per message
+   would be unusable, and a message is already waiting in the thread), right
+   after the response that sent it; a failed push isn't retried. A message that
+   tags people tells only them, and one that doesn't tells the whole circle.
+   Anyone already reading the thread on screen is skipped. */
+export async function tellCircleOfChat(id: number) {
+  const data = await getChatNoticeData(id).catch((err) => {
+    console.error("Couldn't read a chat message to tell its circle of:", err);
+    return null;
+  });
+  if (!data) return;
+  const message = chatPush(data);
+  await Promise.all(
+    data.recipientIds
+      .filter((memberId) => !chatHub.isViewing(memberId, data.circleId))
+      .map((memberId) => pushToMember(memberId, message).catch((err) => console.error("Couldn't push a chat message:", err))),
   );
 }
