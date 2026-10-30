@@ -21,6 +21,8 @@ interface ProposalPageProps {
   explainer?: string;
   // a new Circle that was started: its page
   onOpenStarted?: () => void;
+  // a proposal to remove a chat message: the circle's chat
+  onOpenChat?: () => void;
   memberId: number;
   onOpenCircle: () => void;
   onOpenMember: (m: Member) => void;
@@ -49,9 +51,9 @@ const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon:
    everyone's answer. Reached from its email or push, the circle's banner,
    and Home. */
 // what each kind is about, as its section heads it
-const ABOUT: Record<CircleProposal["kind"], string> = { change: "What it changes", event: "The event", post: "The post", new_circle: "The circle" };
+const ABOUT: Record<CircleProposal["kind"], string> = { change: "What it changes", event: "The event", post: "The post", new_circle: "The circle", remove_message: "The message" };
 
-export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenStarted, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw }: ProposalPageProps) {
+export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenStarted, onOpenChat, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw }: ProposalPageProps) {
   // it proposes holding an event, not changing the circle
   const event = isEventProposal(p);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -120,6 +122,11 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
             {onOpenEvent && (
               <button type="button" onClick={onOpenEvent} className="mt-3 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2">
                 See the event&rsquo;s page
+              </button>
+            )}
+            {onOpenChat && (
+              <button type="button" onClick={onOpenChat} className="mt-3 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-bold text-ink underline underline-offset-2">
+                Go to {circle.name}&rsquo;s chat
               </button>
             )}
             {onOpenStarted && (
@@ -254,6 +261,7 @@ const WITHDRAWN: Record<CircleProposal["kind"], string> = {
   event: "the event won’t be held",
   post: "it won’t be posted",
   new_circle: "the circle won’t be started",
+  remove_message: "the message won’t be removed",
 };
 
 // what becomes of each kind: "it's {made}", "{done}", "it won't be {notDone}"
@@ -262,6 +270,7 @@ const WORDS: Record<CircleProposal["kind"], { made: string; done: string; notDon
   event: { made: "scheduled", done: "the event was scheduled", notDone: "held" },
   post: { made: "posted", done: "it was posted to the neighborhood's bulletin", notDone: "posted" },
   new_circle: { made: "started", done: "the circle was started", notDone: "started" },
+  remove_message: { made: "removed", done: "the message was removed", notDone: "removed" },
 };
 
 // until when it's open and what happens then, or how it ended — for an event,

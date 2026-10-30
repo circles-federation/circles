@@ -188,6 +188,19 @@ export function describeEventProposal(e: Pick<Event, "title" | "kind" | "date" |
 }
 
 // it proposes an event rather than a change to its circle
+const MESSAGE_QUOTE_MAX = 500;
+
+// a proposal to remove a chat message: what it said (quoted as it stood, so it
+// still reads once the message is gone) and who wrote it
+export function describeChatRemoval(body: string, authorName: string, circleName: string): ProposalLine[] {
+  const text = body.trim();
+  return [
+    { label: "Message", before: "", after: text.length > MESSAGE_QUOTE_MAX ? `${text.slice(0, MESSAGE_QUOTE_MAX).trimEnd()}…` : text },
+    { label: "Written by", before: "", after: authorName },
+    { label: "Where", before: "", after: `${circleName}'s chat` },
+  ];
+}
+
 export function isEventProposal(p: Pick<CircleProposal, "kind">): boolean {
   return p.kind === "event";
 }
@@ -259,6 +272,7 @@ export function newCircleDecider(input: Pick<NewCircleInput, "type" | "parentId"
 // “Survey” to the neighborhood" or "Start the Tenants' Circle"
 export function proposalTitle(p: Pick<CircleProposal, "kind" | "changes" | "lines">): string {
   if (isEventProposal(p)) return `Schedule ${p.lines[0]!.after}`;
+  if (p.kind === "remove_message") return `Remove a message by ${p.lines[1]?.after ?? "a member"}`;
   if (p.kind === "post") return `Post “${p.lines[0]?.after ?? ""}”`;
   if (p.kind === "new_circle") return `Start ${p.changes.name ?? "a Circle"}`;
   const c = p.changes;

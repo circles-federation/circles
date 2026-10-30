@@ -148,14 +148,14 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
   }, [showToast]);
 
   const onMessage = useCallback(
-    (m: ChatMessage) => {
+    (m: ChatMessage, fresh: boolean) => {
       lastRev.current = Math.max(lastRev.current ?? 0, m.rev);
       const held = threadsRef.current[m.circleId];
       if (held) setThreads((t) => (t[m.circleId] ? { ...t, [m.circleId]: { ...t[m.circleId]!, messages: upsert(t[m.circleId]!.messages, m) } } : t));
       const onScreen = viewing.current.has(m.circleId) && document.visibilityState === "visible";
       if (onScreen) {
         if (m.authorId !== me.current && !m.deletedAt) markRead(m.circleId);
-      } else if (m.authorId !== me.current && !m.deletedAt && !m.editedAt) {
+      } else if (fresh && m.authorId !== me.current && !m.deletedAt) {
         setUnread((u) => ({ ...u, [m.circleId]: (u[m.circleId] ?? 0) + 1 }));
       }
     },
@@ -191,7 +191,8 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
         if (opened) resync();
         opened = true;
       });
-      source.addEventListener("message", (e) => onMessage(JSON.parse((e as MessageEvent<string>).data) as ChatMessage));
+      source.addEventListener("message", (e) => onMessage(JSON.parse((e as MessageEvent<string>).data) as ChatMessage, true));
+      source.addEventListener("update", (e) => onMessage(JSON.parse((e as MessageEvent<string>).data) as ChatMessage, false));
       source.addEventListener("ready", (e) => {
         const rev = Number((e as MessageEvent<string>).lastEventId);
         if (Number.isFinite(rev) && lastRev.current === null) lastRev.current = rev;

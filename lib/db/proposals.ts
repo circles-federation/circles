@@ -5,10 +5,11 @@ import { getCircleById, getCirclesForMember, insertCircle } from "./circles";
 import { writeCircleRoles } from "./circle-roles";
 import { syncDelegate } from "./memberships";
 import { UserFacingError } from "./errors";
+import { chatMembersOf, touchChatMessage, tombstone } from "./chat";
 import { approveHostedEvent, discardEvent, getEvent } from "./events";
 import { discardPost, publishPost } from "./neighborhood-posts";
 import { enqueueNeighborhoodNotifications, enqueueProposalNotifications, wallClock } from "./notifications";
-import { circleMembers, circleProposals, circles, eventRsvps, eventVotes, events, members, proposalNotifications, proposalResponses, roles as eventRoles } from "./schema";
+import { circleChatMessages, circleMembers, circleProposals, circles, eventRsvps, eventVotes, events, members, proposalNotifications, proposalResponses, roles as eventRoles } from "./schema";
 import { groupBy } from "./util";
 import {
   OBJECTION_REASON_MAX,
@@ -25,6 +26,7 @@ import {
   newCircleDecider,
   validateChanges,
 } from "@/lib/proposals.util";
+import { describeChatRemoval } from "@/lib/proposals.util";
 import { indexCircles, validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
 import { DELEGATE } from "@/lib/circle-roles.util";
 import { RESOURCE_KIND_LABEL } from "@/lib/resources.util";
@@ -54,6 +56,7 @@ function toProposal(row: ProposalRow, responses: ProposalResponse[]): CircleProp
     ...(row.postId !== null ? { postId: row.postId } : {}),
     proposerId: row.proposerId,
     ...(row.eventId !== null ? { eventId: row.eventId } : {}),
+    ...(row.chatMessageId !== null ? { chatMessageId: row.chatMessageId } : {}),
     changes: row.changes,
     lines: row.lines,
     status: row.status,
@@ -170,6 +173,13 @@ async function pass(tx: Tx, proposal: ProposalRow, actorId: number | null): Prom
     if (proposal.postId !== null) await publishPost(tx, proposal.postId);
   } else if (proposal.kind === "new_circle") {
     await startCircle(tx, proposal);
+  } else if (proposal.kind === "remove_message") {
+    // gone for everyone, as if its author had deleted it (a message since
+    // deleted by them is already so)
+    if (proposal.chatMessageId !== null) {
+      const [msg] = await tx.select({ deletedAt: circleChatMessages.deletedAt }).from(circleChatMessages).where(eq(circleChatMessages.id, proposal.chatMessageId));
+      if (msg && !msg.deletedAt) await tombstone(tx, proposal.chatMessageId);
+    }
   } else {
     await applyProposal(tx, proposal);
   }
@@ -319,6 +329,49 @@ async function dropUnsentNotices(tx: Tx, proposalId: string): Promise<void> {
   await tx.delete(proposalNotifications).where(and(eq(proposalNotifications.proposalId, proposalId), isNull(proposalNotifications.sentAt)));
 }
 
+/* Propose removing a message from a circle's chat, which its members decide
+   by consent like any change to the circle. Any member may, but not for their
+   own message (they can delete it). While it's open the message is collapsed
+   for everyone ("under review"); if it passes it's removed, and otherwise
+   (an objection, a withdrawal) it's back as it was. The proposer has consented
+   by proposing, and a circle of one decides at once. */
+export async function proposeChatRemoval(memberId: number, messageId: number): Promise<CircleProposal> {
+  const id = randomUUID();
+  await db.transaction(async (tx) => {
+    const [message] = await tx.select().from(circleChatMessages).where(eq(circleChatMessages.id, messageId)).for("update");
+    if (!message) throw new ProposalError("That message doesn't exist.");
+    const memberIds = await chatMembersOf(memberId, message.circleId);
+    if (message.deletedAt) throw new ProposalError("That message has already been removed.");
+    if (message.authorId === memberId) throw new ProposalError("It's your message, so you can delete it yourself.");
+    const [open] = await tx.select({ id: circleProposals.id }).from(circleProposals).where(and(eq(circleProposals.chatMessageId, messageId), eq(circleProposals.status, "open")));
+    if (open) throw new ProposalError("Its circle is already deciding whether to remove this message.");
+    const [circle] = await tx.select({ name: circles.name }).from(circles).where(eq(circles.id, message.circleId));
+    const [author] = message.authorId !== null ? await tx.select({ name: members.name }).from(members).where(eq(members.id, message.authorId)) : [];
+    const [row] = await tx
+      .insert(circleProposals)
+      .values({
+        id,
+        kind: "remove_message",
+        circleId: message.circleId,
+        proposerId: memberId,
+        chatMessageId: messageId,
+        changes: {},
+        lines: describeChatRemoval(message.body, author?.name ?? "A former member", circle?.name ?? ""),
+        closesAt: new Date(Date.now() + PROPOSAL_WINDOW_MS),
+      })
+      .returning();
+    await tx.insert(proposalResponses).values({ proposalId: id, memberId, response: "like" });
+    if (everyoneConsented({ responses: [{ memberId, response: "like", respondedAt: "" }] }, memberIds)) {
+      await pass(tx, row!, memberId);
+      return;
+    }
+    await touchChatMessage(tx, messageId);
+    await enqueueProposalNotifications(tx, id, "opened", memberIds.filter((m) => m !== memberId));
+  });
+  const [proposal] = await withResponses(await db.select().from(circleProposals).where(eq(circleProposals.id, id)));
+  return proposal!;
+}
+
 /* Its proposer takes back a change to a circle, or a new Circle, while it's
    open: closed as withdrawn, nothing made, with no notices (an event's or a
    post's is withdrawn by cancelling or taking down what it proposes, which
@@ -327,11 +380,12 @@ export async function withdrawProposal(memberId: number, id: string): Promise<Ci
   return db.transaction(async (tx) => {
     const [row] = await tx.select().from(circleProposals).where(eq(circleProposals.id, id)).for("update");
     if (!row || !(await decidersOf(tx, row)).concat(row.proposerId).includes(memberId)) throw new ProposalError("That proposal doesn't exist.");
-    if (row.kind !== "change" && row.kind !== "new_circle") throw new ProposalError(row.kind === "event" ? "Withdraw it by cancelling its event." : "Withdraw it by taking down its post.");
+    if (row.kind !== "change" && row.kind !== "new_circle" && row.kind !== "remove_message") throw new ProposalError(row.kind === "event" ? "Withdraw it by cancelling its event." : "Withdraw it by taking down its post.");
     if (row.proposerId !== memberId) throw new ProposalError("Only whoever proposed it can withdraw it.");
     if (row.status !== "open") throw new ProposalError("This proposal has already been decided.");
     const [updated] = await tx.update(circleProposals).set({ status: "withdrawn", decidedAt: new Date() }).where(eq(circleProposals.id, id)).returning();
     await dropUnsentNotices(tx, id);
+    if (row.chatMessageId !== null) await touchChatMessage(tx, row.chatMessageId);
     const [full] = await withResponses([updated!], tx);
     return full!;
   });
@@ -541,6 +595,8 @@ export async function respondToProposal(
       // scheduled or published, so it simply goes
       if (row.eventId !== null) await discardEvent(tx, row.eventId);
       if (row.postId !== null) await discardPost(tx, row.postId);
+      // a message back in the thread, no longer under review
+      if (row.chatMessageId !== null) await touchChatMessage(tx, row.chatMessageId);
       await enqueueProposalNotifications(tx, id, "objected", (await toldOfOutcome(tx, row)).filter((m) => m !== memberId));
       return false;
     }

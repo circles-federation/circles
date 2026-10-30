@@ -825,6 +825,9 @@ export const circleProposals = pgTable(
     // lib/db/proposals.ts), rather than to change the circle. Kept when the
     // event goes (an objection or a withdrawal deletes it), so the record stays.
     eventId: text("event_id").references((): AnyPgColumn => events.id, { onDelete: "set null" }),
+    // a proposal to remove a chat message from the circle's thread, kept null
+    // once it's gone
+    chatMessageId: bigint("chat_message_id", { mode: "number" }).references((): AnyPgColumn => circleChatMessages.id, { onDelete: "set null" }),
     // what it would change (ProposalChanges), and how that read when proposed
     changes: jsonb("changes").$type<ProposalChanges>().notNull(),
     lines: jsonb("lines").$type<ProposalLine[]>().notNull(),
@@ -841,6 +844,8 @@ export const circleProposals = pgTable(
     // one open change to a circle at a time, whoever decides it; any number of
     // events, posts and new circles can be open
     uniqueIndex("circle_proposals_one_open").on(sql`coalesce(${t.subjectCircleId}, ${t.circleId})`).where(sql`${t.status} = 'open' and ${t.kind} = 'change'`),
+    // and one open removal per message
+    uniqueIndex("circle_proposals_one_open_removal").on(t.chatMessageId).where(sql`${t.status} = 'open' and ${t.kind} = 'remove_message'`),
     index("circle_proposals_subject_idx").on(t.subjectCircleId),
     index("circle_proposals_open_idx").on(t.closesAt).where(sql`${t.status} = 'open'`),
   ]

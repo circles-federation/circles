@@ -421,6 +421,13 @@
       "when": 1793365738995,
       "tag": "0059_circle_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793378261960,
+      "tag": "0060_chat_message_removal",
+      "breakpoints": true
     }
   ]
 }

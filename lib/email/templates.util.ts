@@ -718,6 +718,7 @@ export function proposalEmail(d: ProposalEmailData): Body {
    neighborhood's bulletin, or a new Circle. */
 export function proposalWords(d: Pick<ProposalEmailData, "kind" | "circleName" | "subjectCircleName" | "changes">): { made: string; ask: string; passed: string } {
   if (d.kind === "event") return { made: "scheduled", ask: `that ${d.circleName} hold this event, which needs its members' consent`, passed: "the event has been scheduled" };
+  if (d.kind === "remove_message") return { made: "removed", ask: `that a message in ${d.circleName}'s chat be removed, which needs its members' consent`, passed: "the message has been removed" };
   if (d.kind === "post") return { made: "posted", ask: `that ${d.circleName} post this to its neighborhood's bulletin, which needs its members' consent`, passed: "it's now on the neighborhood's bulletin" };
   if (d.kind === "new_circle") {
     const name = d.changes.name ?? "a new Circle";

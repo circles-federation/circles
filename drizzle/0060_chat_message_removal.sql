@@ -1,0 +1,3 @@
+ALTER TABLE "circle_proposals" ADD COLUMN "chat_message_id" bigint;--> statement-breakpoint
+ALTER TABLE "circle_proposals" ADD CONSTRAINT "circle_proposals_chat_message_id_circle_chat_messages_id_fk" FOREIGN KEY ("chat_message_id") REFERENCES "public"."circle_chat_messages"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "circle_proposals_one_open_removal" ON "circle_proposals" USING btree ("chat_message_id") WHERE "circle_proposals"."status" = 'open' and "circle_proposals"."kind" = 'remove_message';

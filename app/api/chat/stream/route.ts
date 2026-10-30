@@ -35,7 +35,9 @@ export async function GET(request: Request) {
       const send = (chunk: string) => {
         if (open) controller.enqueue(encoder.encode(chunk));
       };
-      const sendMessage = (m: ChatMessage) => send(`id: ${m.rev}\nevent: message\ndata: ${JSON.stringify(m)}\n\n`);
+      // a message just written is `message`; one that changed (and everything a
+      // catch-up replays) is `update`, which the app doesn't count as unread
+      const sendMessage = (m: ChatMessage, fresh = false) => send(`id: ${m.rev}\nevent: ${fresh ? "message" : "update"}\ndata: ${JSON.stringify(m)}\n\n`);
       let cursor = since ?? (await getChatRev());
 
       // a catch-up that finds too much to send tells the client to read afresh
@@ -53,9 +55,9 @@ export async function GET(request: Request) {
       // a client takes a message it's already seen as a no-op
       const unsubscribe = chatHub.subscribe({
         memberId,
-        onMessage: (m) => {
+        onMessage: (m, fresh) => {
           cursor = Math.max(cursor, m.rev);
-          sendMessage(m);
+          sendMessage(m, fresh);
         },
         onReset: () => void catchUp().catch(() => send(`event: resync\ndata: {}\n\n`)),
       });

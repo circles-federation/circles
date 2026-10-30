@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
@@ -26,7 +28,9 @@ const LINK_BUTTON = "hit cursor-pointer border-0 bg-transparent p-0 font-sans te
    Enter sends on a computer, and starts a new line on a phone, where there's
    no Shift. Typing @ offers the circle's members: those tagged are the only
    ones notified of the message, and anyone untagged still reads it here. Your own messages can be edited for a while and deleted at any
-   time. */
+   time. Anyone else's can be proposed for removal, which the circle's members
+   decide by consent: until they do, the message is collapsed for everyone as
+   under review, and a tap still shows it. */
 export function ChatSection({ circle }: { circle: Circle }) {
   const { threads, view, loadEarlier, send } = useChat();
   const { profile } = useAppState();
@@ -104,12 +108,26 @@ export function ChatSection({ circle }: { circle: Circle }) {
 
 function ChatRow({ message: m, circleName, authorName, avatar, continued, mine, mentioned }: { message: ChatMessage; circleName: string; authorName: string; avatar: React.ReactNode; continued: boolean; mine: boolean; mentioned: string[] }) {
   const { edit, remove } = useChat();
+  const { proposals, proposeMessageRemoval } = useAppState();
+  const router = useRouter();
   const { showToast } = useToast();
   const now = useClock();
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const canEdit = mine && !m.deletedAt && now !== null && canEditChat(m.createdAt, now);
+  const [proposingRemoval, setProposingRemoval] = useState(false);
+  // the message of a proposal to remove it is hidden until asked for
+  const [revealed, setRevealed] = useState(false);
+  const underReview = !!m.reviewProposalId && !m.deletedAt;
+  const reviewKnown = !!m.reviewProposalId && proposals.some((p) => p.id === m.reviewProposalId);
+  const canEdit = mine && !m.deletedAt && !underReview && now !== null && canEditChat(m.createdAt, now);
+
+  async function proposeRemoval() {
+    setProposingRemoval(false);
+    const result = await proposeMessageRemoval(m.id);
+    if (!result.ok) return showToast({ tone: "error", message: result.error });
+    router.push(`/proposals/${result.proposalId}`);
+  }
 
   async function save() {
     if (editing === null) return;
@@ -151,10 +169,44 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, mine, 
               </Button>
             </div>
           </div>
+        ) : underReview && !revealed ? (
+          <div className="mt-1 border-l-4 border-l-flame bg-wash px-3 py-2">
+            <p className="m-0 font-serif text-sm leading-snug text-body">Under review. {circleName}&rsquo;s members are deciding whether to remove this message.</p>
+            <div className="mt-1 flex items-center gap-3">
+              <button type="button" className={LINK_BUTTON} onClick={() => setRevealed(true)}>
+                Show
+              </button>
+              {reviewKnown && (
+                <Link href={`/proposals/${m.reviewProposalId}`} className={LINK_BUTTON}>
+                  View proposal
+                </Link>
+              )}
+              {mine && (
+                <button type="button" className={LINK_BUTTON} onClick={() => setConfirmingDelete(true)}>
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
         ) : (
           <>
-            <div className="message-text font-serif text-base leading-normal text-body wrap-break-word" dangerouslySetInnerHTML={{ __html: highlightMentions(messageHtml(m.body), mentioned) }} />
+            <div className={clsx("message-text font-serif text-base leading-normal text-body wrap-break-word", underReview && "opacity-60")} dangerouslySetInnerHTML={{ __html: highlightMentions(messageHtml(m.body), mentioned) }} />
             <div className="flex items-center gap-3">
+              {underReview && (
+                <button type="button" className={LINK_BUTTON} onClick={() => setRevealed(false)}>
+                  Hide
+                </button>
+              )}
+              {underReview && reviewKnown && (
+                <Link href={`/proposals/${m.reviewProposalId}`} className={LINK_BUTTON}>
+                  View proposal
+                </Link>
+              )}
+              {!mine && !m.deletedAt && !underReview && (
+                <button type="button" className={LINK_BUTTON} onClick={() => setProposingRemoval(true)}>
+                  Remove
+                </button>
+              )}
               {m.editedAt && <span className="font-sans text-label tracking-caps text-soft uppercase">Edited</span>}
               {canEdit && (
                 <button type="button" className={LINK_BUTTON} onClick={() => setEditing(m.body)}>
@@ -170,6 +222,17 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, mine, 
           </>
         )}
       </div>
+      {proposingRemoval && (
+        <ConfirmModal
+          tone="flame"
+          title="Propose removing this message?"
+          message={`${circleName}'s members decide by consent. Until they do, it's collapsed for everyone as under review. If no one objects within 3 days, it's removed.`}
+          confirmLabel="Propose"
+          cancelLabel="Cancel"
+          onConfirm={proposeRemoval}
+          onCancel={() => setProposingRemoval(false)}
+        />
+      )}
       {confirmingDelete && (
         <ConfirmModal
           title="Delete this message?"

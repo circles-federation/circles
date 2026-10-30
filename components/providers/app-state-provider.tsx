@@ -14,6 +14,7 @@ import {
   createProposalAction as dbCreateProposal,
   respondToProposalAction as dbRespondToProposal,
   withdrawProposalAction as dbWithdrawProposal,
+  proposeMessageRemovalAction as dbProposeMessageRemoval,
   updateCircleAction as dbUpdateCircle,
   updateEventDetailsAction as dbUpdateEventDetails,
   updateMemberAction as dbUpdateMember,
@@ -90,6 +91,8 @@ export interface AppStateValue {
   respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult>;
   // its proposer takes back a change to a circle or a new Circle
   withdrawProposal(id: string): Promise<MutationResult>;
+  // asks a chat message's circle to remove it; the proposal's id, to go to
+  proposeMessageRemoval(messageId: number): Promise<{ ok: true; proposalId: string } | { ok: false; error: string }>;
   // photoPending: a new photo saved with it is waiting for review, which the toast says
   saveProfile(next: Profile, options?: { photoPending?: boolean }): void;
   // pending: it waits for a system admin's review, so only they see it yet
@@ -497,6 +500,13 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  async function proposeMessageRemoval(messageId: number): Promise<{ ok: true; proposalId: string } | { ok: false; error: string }> {
+    const result = await dbProposeMessageRemoval(messageId).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    takeProposal(result.value, null);
+    return { ok: true, proposalId: result.value.id };
+  }
+
   async function respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult> {
     const result = await dbRespondToProposal(id, response, reason).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
@@ -798,6 +808,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         proposeCircleChanges: tracked(proposeCircleChanges),
         respondToProposal: tracked(respondToProposal),
         withdrawProposal: tracked(withdrawProposal),
+        proposeMessageRemoval: tracked(proposeMessageRemoval),
         saveProfile: tracked(saveProfile),
         savePhoto: tracked(savePhoto),
         saveNotificationSettings: tracked(saveNotificationSettings),

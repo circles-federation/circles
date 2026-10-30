@@ -4,7 +4,7 @@ import { circleHasChat } from "@/lib/circles.util";
 import type { ChatMessage } from "@/lib/types";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
-import { circleChatMentions, circleChatMessages, circleChatReads, circleMembers, circles, members } from "./schema";
+import { circleChatMentions, circleChatMessages, circleChatReads, circleMembers, circleProposals, circles, members, proposalNotifications } from "./schema";
 
 /* A circle's chat thread, its members' alone: this file is where that's held
    to. Every read and write checks the member belongs to a circle that has
@@ -27,7 +27,7 @@ const CHANGES_MAX = 500;
 
 type MessageRow = typeof circleChatMessages.$inferSelect;
 
-export function toChatMessage(row: MessageRow, mentions: number[]): ChatMessage {
+export function toChatMessage(row: MessageRow, mentions: number[], reviewProposalId?: string): ChatMessage {
   return {
     id: row.id,
     circleId: row.circleId,
@@ -39,20 +39,29 @@ export function toChatMessage(row: MessageRow, mentions: number[]): ChatMessage 
     ...(row.editedAt ? { editedAt: row.editedAt.toISOString() } : {}),
     ...(row.deletedAt ? { deletedAt: row.deletedAt.toISOString() } : {}),
     rev: row.rev,
+    ...(reviewProposalId ? { reviewProposalId } : {}),
   };
 }
 
+// messages with who they were addressed to, and the open proposal to remove
+// each, if there is one
 async function withMentions(rows: MessageRow[]): Promise<ChatMessage[]> {
   if (rows.length === 0) return [];
-  const found = await db.select().from(circleChatMentions).where(inArray(circleChatMentions.messageId, rows.map((r) => r.id)));
+  const ids = rows.map((r) => r.id);
+  const found = await db.select().from(circleChatMentions).where(inArray(circleChatMentions.messageId, ids));
   const byMessage = new Map<number, number[]>();
   for (const m of found) byMessage.set(m.messageId, [...(byMessage.get(m.messageId) ?? []), m.memberId]);
-  return rows.map((r) => toChatMessage(r, byMessage.get(r.id) ?? []));
+  const reviews = await db
+    .select({ messageId: circleProposals.chatMessageId, id: circleProposals.id })
+    .from(circleProposals)
+    .where(and(inArray(circleProposals.chatMessageId, ids), eq(circleProposals.status, "open"), eq(circleProposals.kind, "remove_message")));
+  const reviewOf = new Map(reviews.map((r) => [r.messageId, r.id]));
+  return rows.map((r) => toChatMessage(r, byMessage.get(r.id) ?? [], reviewOf.get(r.id)));
 }
 
 /* The circle's members, if `memberId` is one of them and it's a live circle
    with chat; refused otherwise, as if it doesn't exist. */
-async function membersOf(memberId: number, circleId: string): Promise<number[]> {
+export async function chatMembersOf(memberId: number, circleId: string): Promise<number[]> {
   const [circle] = await db.select({ type: circles.type, parentId: circles.parentId, archivedAt: circles.archivedAt }).from(circles).where(eq(circles.id, circleId));
   if (!circle || circle.archivedAt || !circleHasChat(circle)) throw new ChatError("That circle doesn't have a chat.");
   const ids = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.id);
@@ -72,7 +81,7 @@ export async function chatCircleIdsOf(memberId: number): Promise<string[]> {
 
 // a page of the thread, oldest first: the newest `PAGE`, or those just before `before`
 export async function getChatMessages(memberId: number, circleId: string, before?: number): Promise<{ messages: ChatMessage[]; more: boolean }> {
-  await membersOf(memberId, circleId);
+  await chatMembersOf(memberId, circleId);
   const rows = await db
     .select()
     .from(circleChatMessages)
@@ -103,7 +112,17 @@ export async function getChatRev(): Promise<number> {
   return row?.rev ?? 0;
 }
 
-const wake = (tx: Tx, id: number) => tx.execute(sql`select pg_notify(${CHAT_CHANNEL}, ${String(id)})`);
+/* Announces a message to the stream: as new, or (`update`) as changed, which
+   the app takes as news only for the first, so an edit or a message going
+   under review isn't counted as unread. */
+const wake = (tx: Tx, id: number, update = false) => tx.execute(sql`select pg_notify(${CHAT_CHANNEL}, ${update ? `${id}:u` : String(id)})`);
+
+/* A message's state changed without its text (it went under review, or came
+   back): a new version, so every open app updates it. */
+export async function touchChatMessage(tx: Tx, id: number): Promise<void> {
+  await tx.update(circleChatMessages).set({ rev: sql`nextval('circle_chat_rev_seq')` }).where(eq(circleChatMessages.id, id));
+  await wake(tx, id, true);
+}
 
 /* Write to a circle's thread. `mentions` are who it's addressed to: those
    that aren't its members, or are the author, are dropped, and when any are
@@ -111,7 +130,7 @@ const wake = (tx: Tx, id: number) => tx.execute(sql`select pg_notify(${CHAT_CHAN
 export async function sendChatMessage(authorId: number, circleId: string, input: { body: string; mentions: number[] }): Promise<ChatMessage> {
   const problem = validateChatBody(input.body);
   if (problem) throw new ChatError(problem);
-  const memberIds = await membersOf(authorId, circleId);
+  const memberIds = await chatMembersOf(authorId, circleId);
 
   const [{ n } = { n: 0 }] = await db
     .select({ n: count() })
@@ -142,15 +161,18 @@ export async function editChatMessage(memberId: number, id: number, body: string
   if (problem) throw new ChatError(problem);
   return db.transaction(async (tx) => {
     const row = await lockOwn(tx, memberId, id);
-    await membersOf(memberId, row.circleId);
+    await chatMembersOf(memberId, row.circleId);
     if (!canEditChat(row.createdAt.toISOString(), Date.now())) throw new ChatError("It's too late to edit that message.");
+    // what's under review is what its circle is being asked about
+    const [review] = await tx.select({ id: circleProposals.id }).from(circleProposals).where(and(eq(circleProposals.chatMessageId, id), eq(circleProposals.status, "open")));
+    if (review) throw new ChatError("It can't be edited while its circle is deciding whether to remove it.");
     const [updated] = await tx
       .update(circleChatMessages)
       .set({ body: body.trim(), editedAt: new Date(), rev: sql`nextval('circle_chat_rev_seq')` })
       .where(eq(circleChatMessages.id, id))
       .returning();
     if (!updated) throw new Error("Chat message update returned nothing.");
-    await wake(tx, id);
+    await wake(tx, id, true);
     const mentions = (await tx.select().from(circleChatMentions).where(eq(circleChatMentions.messageId, id))).map((m) => m.memberId);
     return toChatMessage(updated, mentions);
   });
@@ -160,7 +182,14 @@ export async function editChatMessage(memberId: number, id: number, body: string
 export async function deleteChatMessage(memberId: number, id: number): Promise<ChatMessage> {
   return db.transaction(async (tx) => {
     const row = await lockOwn(tx, memberId, id);
-    await membersOf(memberId, row.circleId);
+    await chatMembersOf(memberId, row.circleId);
+    // a proposal to remove it is moot: closed, and its unsent notices with it
+    const closed = await tx
+      .update(circleProposals)
+      .set({ status: "withdrawn", decidedAt: new Date() })
+      .where(and(eq(circleProposals.chatMessageId, id), eq(circleProposals.kind, "remove_message"), eq(circleProposals.status, "open")))
+      .returning({ id: circleProposals.id });
+    if (closed.length > 0) await tx.delete(proposalNotifications).where(and(inArray(proposalNotifications.proposalId, closed.map((c) => c.id)), isNull(proposalNotifications.sentAt)));
     return tombstone(tx, id);
   });
 }
@@ -175,7 +204,7 @@ export async function tombstone(tx: Tx, id: number): Promise<ChatMessage> {
     .returning();
   if (!updated) throw new Error("Chat message update returned nothing.");
   await tx.delete(circleChatMentions).where(eq(circleChatMentions.messageId, id));
-  await wake(tx, id);
+  await wake(tx, id, true);
   return toChatMessage(updated, []);
 }
 
@@ -197,7 +226,7 @@ export async function getChatUnread(memberId: number): Promise<Record<string, nu
 
 // read up to here: never moves backwards
 export async function markChatRead(memberId: number, circleId: string, lastReadId: number): Promise<void> {
-  await membersOf(memberId, circleId);
+  await chatMembersOf(memberId, circleId);
   await db
     .insert(circleChatReads)
     .values({ circleId, memberId, lastReadId })

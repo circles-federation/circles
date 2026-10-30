@@ -262,8 +262,8 @@ export type ProposalNoticeKind = "opened" | "objected" | "passed";
 // what a proposal is for: a change to a circle (its own, or, decided by its
 // neighborhood, one inside it: see subjectCircleId), holding an event the
 // circle hosts, posting to its neighborhood's bulletin, or starting a new
-// Circle in a neighborhood
-export type ProposalKind = "change" | "event" | "post" | "new_circle";
+// Circle in a neighborhood, or removing a message from a circle's chat
+export type ProposalKind = "change" | "event" | "post" | "new_circle" | "remove_message";
 
 export interface ProposalResponse {
   memberId: number;
@@ -288,6 +288,8 @@ export interface CircleProposal {
   // set when it proposes holding an event the circle hosts, rather than
   // changing the circle (null once that event is gone)
   eventId?: string;
+  // a proposal to remove this chat message, while it exists
+  chatMessageId?: number;
   changes: ProposalChanges;
   lines: ProposalLine[];
   status: ProposalStatus;
@@ -401,6 +403,8 @@ export interface ChatMessage {
   editedAt?: string;
   deletedAt?: string;
   rev: number;
+  // set while a proposal to remove it is open: the thread collapses it
+  reviewProposalId?: string;
 }
 
 export type TaskStatus = "todo" | "doing" | "done";

@@ -113,12 +113,20 @@ export async function withdrawProposalAction(id: string) {
   return asMember((memberId) => proposals.withdrawProposal(memberId, id));
 }
 
+// a member proposes removing a message from a circle's chat; its members are
+// asked, and it's collapsed for them all until it's decided
+export async function proposeMessageRemovalAction(messageId: number) {
+  const result = await asMember((memberId) => proposals.proposeChatRemoval(memberId, messageId));
+  if (result.ok) after(() => deliverProposalNotifications());
+  return result;
+}
+
 export async function respondToProposalAction(id: string, response: ConsentResponse, reason?: string) {
   const result = await asMember(async (memberId) => {
     const answered = await proposals.respondToProposal(memberId, id, response, reason);
     // one that moves more than a proposal and a circle (an event, a post, a
     // new circle) hands back everything
-    return answered.proposal.kind === "change" ? answered : { ...answered, state: await stateFor(memberId) };
+    return answered.proposal.kind === "change" || answered.proposal.kind === "remove_message" ? answered : { ...answered, state: await stateFor(memberId) };
   });
   if (result.ok) after(() => Promise.all([deliverProposalNotifications(), deliverEventNotifications()]));
   return result;

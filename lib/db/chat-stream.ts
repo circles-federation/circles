@@ -16,7 +16,8 @@ import { CHAT_CHANNEL, getChatForFanout } from "./chat";
 
 export interface ChatSubscriber {
   memberId: number;
-  onMessage(message: ChatMessage): void;
+  // `fresh`: a message just written, rather than one that changed
+  onMessage(message: ChatMessage, fresh: boolean): void;
   onReset(): void;
 }
 
@@ -67,7 +68,7 @@ class ChatHub {
     this.connecting = true;
     const client = new Client({ connectionString: process.env.DATABASE_URL });
     try {
-      client.on("notification", (n) => void this.fanOut(Number(n.payload)));
+      client.on("notification", (n) => void this.fanOut(n.payload ?? ""));
       client.on("error", () => this.lost(client));
       client.on("end", () => this.lost(client));
       await client.connect();
@@ -95,11 +96,14 @@ class ChatHub {
     setTimeout(() => void this.listen(), wait).unref();
   }
 
-  private async fanOut(id: number) {
+  // the payload is a message's id, with ":u" when it changed rather than was written
+  private async fanOut(payload: string) {
+    const id = Number.parseInt(payload, 10);
+    const fresh = !payload.endsWith(":u");
     if (!Number.isFinite(id) || this.subscribers.size === 0) return;
     const found = await getChatForFanout(id).catch(() => null);
     if (!found) return;
-    for (const s of this.subscribers) if (found.memberIds.includes(s.memberId)) s.onMessage(found.message);
+    for (const s of this.subscribers) if (found.memberIds.includes(s.memberId)) s.onMessage(found.message, fresh);
   }
 }
 
