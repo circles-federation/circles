@@ -23,6 +23,9 @@ export interface ChatSubscriber {
 
 // a client that stops saying it's still looking is taken to have gone
 const VIEWING_TTL_MS = 2 * 60_000;
+// what one member can make the hub remember, since the report comes from a browser
+const VIEWING_CLIENTS_MAX = 10;
+const VIEWING_CIRCLES_MAX = 20;
 
 class ChatHub {
   private subscribers = new Set<ChatSubscriber>();
@@ -35,8 +38,12 @@ class ChatHub {
      someone reading on another one: a spare notice, never a missed one. */
   setViewing(memberId: number, clientId: string, circleIds: string[]): void {
     const clients = this.viewing.get(memberId) ?? new Map();
+    const now = Date.now();
+    for (const [id, c] of clients) if (c.until < now) clients.delete(id);
     if (circleIds.length === 0) clients.delete(clientId);
-    else clients.set(clientId, { circleIds: new Set(circleIds), until: Date.now() + VIEWING_TTL_MS });
+    else if (clients.has(clientId) || clients.size < VIEWING_CLIENTS_MAX) {
+      clients.set(clientId, { circleIds: new Set(circleIds.slice(0, VIEWING_CIRCLES_MAX)), until: now + VIEWING_TTL_MS });
+    }
     if (clients.size === 0) this.viewing.delete(memberId);
     else this.viewing.set(memberId, clients);
   }
@@ -49,11 +56,15 @@ class ChatHub {
       if (c.until < now) clients.delete(id);
       else if (c.circleIds.has(circleId)) return true;
     }
+    if (clients.size === 0) this.viewing.delete(memberId);
     return false;
   }
+
   private client: Client | null = null;
   private connecting = false;
   private retryMs = 1000;
+  // connections already given up on, so a second report of the same loss is ignored
+  private gone = new WeakSet<Client>();
 
   subscribe(subscriber: ChatSubscriber): () => void {
     this.subscribers.add(subscriber);
@@ -86,7 +97,11 @@ class ChatHub {
   }
 
   private lost(client: Client) {
+    if (this.gone.has(client)) return;
+    this.gone.add(client);
+    // a dead connection may still raise an error, which must not go unhandled
     client.removeAllListeners();
+    client.on("error", () => {});
     client.end().catch(() => {});
     if (this.client === client) this.client = null;
     // retry while anyone's listening; the next subscriber starts it otherwise

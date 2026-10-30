@@ -191,7 +191,7 @@ interface ChatRowProps {
 const TRAY_BUTTON = "hit flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 font-sans text-xs font-bold tracking-caps uppercase";
 
 /* One message, as a chat bubble: round on every corner but the one by its
-   author, light grey from other people and blue from you, yours on the right.
+   author, light grey from other people and teal from you, yours on the right.
    A run of one person's messages shows their photo and name once, and yours
    its time once, under the last. Nothing else is drawn on a message: a tap on
    a bubble (or the ellipsis that appears beside it where there's a pointer)
@@ -246,7 +246,7 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, endsRu
     onSelect(!selected);
   }
 
-  const bubble = clsx("w-fit max-w-full rounded-bubble px-4 py-2.5 wrap-break-word", mine ? "rounded-br-none" : "rounded-bl-none");
+  const bubble = clsx("w-fit max-w-full rounded-bubble px-4 py-2 wrap-break-word", mine ? "rounded-br-none" : "rounded-bl-none");
 
   // what is said, or why it isn't
   let content: ReactNode;
@@ -604,7 +604,7 @@ function Composer({ circleName, people, onSend, onHeight }: { circleName: string
             placeholder={`Message ${circleName}`}
             aria-label={`Message ${circleName}`}
             aria-autocomplete="list"
-            className="max-h-40 min-h-11 resize-none! py-2.5"
+            className="max-h-40 min-h-11 resize-none! py-3"
           />
           {/* the same blue circle as the top bar's primary action, faint until there's something to send */}
           <button type="submit" aria-label="Send" disabled={busy || !draft.trim()} className="group flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 disabled:cursor-not-allowed">

@@ -163,7 +163,11 @@ export async function sendChatMessageAction(circleId: string, input: { body: str
 // so a push isn't sent to someone already reading
 export async function setChatViewingAction(clientId: string, circleIds: string[]) {
   return asMember(async (memberId) => {
-    if (typeof clientId === "string" && clientId.length <= 64) chatHub.setViewing(memberId, clientId, circleIds.slice(0, 20).filter((id) => typeof id === "string"));
+    if (typeof clientId !== "string" || clientId.length > 64 || !Array.isArray(circleIds)) return;
+    const asked = circleIds.slice(0, 20).filter((id) => typeof id === "string");
+    // only threads they're in, since the hub keeps what it's told
+    const mine = asked.length > 0 ? new Set(await chat.chatCircleIdsOf(memberId)) : null;
+    chatHub.setViewing(memberId, clientId, mine ? asked.filter((id) => mine.has(id)) : []);
   });
 }
 

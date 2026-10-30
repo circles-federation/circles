@@ -17,6 +17,7 @@ import {
   changedFields,
   describeChanges,
   describeNewCircle,
+  describeChatRemoval,
   describePostProposal,
   everyoneConsented,
   describeEventProposal,
@@ -26,7 +27,6 @@ import {
   newCircleDecider,
   validateChanges,
 } from "@/lib/proposals.util";
-import { describeChatRemoval } from "@/lib/proposals.util";
 import { indexCircles, validateNewCircle, type NewCircleInput } from "@/lib/circles.util";
 import { DELEGATE } from "@/lib/circle-roles.util";
 import { RESOURCE_KIND_LABEL } from "@/lib/resources.util";

@@ -23,9 +23,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // the signed-in member always resolves here: currentUserId comes from a
   // valid session, whose user is looked up back to a real member by email
   // (see lib/session.ts).
-  const state = await getAppStateForMember(currentUserId);
+  const [state, chatUnread] = await Promise.all([
+    getAppStateForMember(currentUserId),
+    // a count that can't be read shouldn't keep the app from opening
+    getChatUnread(currentUserId).catch((err) => {
+      console.error("Couldn't count unread chat:", err);
+      return {};
+    }),
+  ]);
   if (!state) redirect("/");
-  const chatUnread = await getChatUnread(currentUserId);
   const { events, circles, members, resources, neighborhoodPosts, tasks, messages, invitations, proposals, profile, pendingReviews } = state;
 
   return (

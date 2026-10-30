@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, max, sql } from "drizzle-orm";
 import { CHAT_MENTIONS_MAX, canEditChat, validateChatBody } from "@/lib/chat.util";
 import { circleHasChat } from "@/lib/circles.util";
 import type { ChatMessage } from "@/lib/types";
@@ -82,6 +82,7 @@ export async function chatCircleIdsOf(memberId: number): Promise<string[]> {
 // a page of the thread, oldest first: the newest `PAGE`, or those just before `before`
 export async function getChatMessages(memberId: number, circleId: string, before?: number): Promise<{ messages: ChatMessage[]; more: boolean }> {
   await chatMembersOf(memberId, circleId);
+  if (before !== undefined && !Number.isSafeInteger(before)) throw new ChatError("That isn't a place in the thread.");
   const rows = await db
     .select()
     .from(circleChatMessages)
@@ -227,6 +228,11 @@ export async function getChatUnread(memberId: number): Promise<Record<string, nu
 // read up to here: never moves backwards
 export async function markChatRead(memberId: number, circleId: string, lastReadId: number): Promise<void> {
   await chatMembersOf(memberId, circleId);
+  if (!Number.isSafeInteger(lastReadId) || lastReadId < 1) throw new ChatError("That isn't a place in the thread.");
+  // never past the newest message, or later ones would count as read before they're written
+  const [newest] = await db.select({ id: max(circleChatMessages.id) }).from(circleChatMessages).where(eq(circleChatMessages.circleId, circleId));
+  if (!newest?.id) return;
+  lastReadId = Math.min(lastReadId, newest.id);
   await db
     .insert(circleChatReads)
     .values({ circleId, memberId, lastReadId })

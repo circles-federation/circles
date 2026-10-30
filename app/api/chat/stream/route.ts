@@ -43,7 +43,11 @@ export async function GET(request: Request) {
       // a catch-up that finds too much to send tells the client to read afresh
       const catchUp = async () => {
         const { messages, truncated } = await getChatChanges(memberId, cursor);
-        if (truncated) return send(`event: resync\ndata: {}\n\n`);
+        if (truncated) {
+          // its id moves the client's place on, so the next reconnect doesn't repeat this
+          cursor = await getChatRev();
+          return send(`id: ${cursor}\nevent: resync\ndata: {}\n\n`);
+        }
         for (const m of messages) {
           sendMessage(m);
           cursor = Math.max(cursor, m.rev);
@@ -67,12 +71,15 @@ export async function GET(request: Request) {
         clearInterval(heartbeat);
         unsubscribe();
       };
-      request.signal.addEventListener("abort", () => {
+      const leave = () => {
         cleanup();
         try {
           controller.close();
         } catch {}
-      });
+      };
+      // it may have gone while the above was awaited, which would never fire again
+      if (request.signal.aborted) return leave();
+      request.signal.addEventListener("abort", leave);
 
       if (since !== null) await catchUp().catch(() => send(`event: resync\ndata: {}\n\n`));
       // its id lets a reconnect before any message arrives still resume from here

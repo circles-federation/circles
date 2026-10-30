@@ -187,7 +187,6 @@ export function describeEventProposal(e: Pick<Event, "title" | "kind" | "date" |
   ];
 }
 
-// it proposes an event rather than a change to its circle
 const MESSAGE_QUOTE_MAX = 500;
 
 // a proposal to remove a chat message: what it said (quoted as it stood, so it
@@ -201,6 +200,7 @@ export function describeChatRemoval(body: string, authorName: string, circleName
   ];
 }
 
+// it proposes an event rather than a change to its circle
 export function isEventProposal(p: Pick<CircleProposal, "kind">): boolean {
   return p.kind === "event";
 }

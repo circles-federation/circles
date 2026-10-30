@@ -70,6 +70,8 @@ function upsert(list: ChatMessage[], m: ChatMessage): ChatMessage[] {
 }
 
 const READ_DEBOUNCE_MS = 400;
+// how long after the last touch someone counts as at the screen
+const PRESENT_MS = 2 * 60_000;
 const RECONNECT_MS = [2000, 5000, 15000, 30000];
 
 export function ChatProvider({ initialUnread, children }: { initialUnread: Record<string, number>; children: ReactNode }) {
@@ -86,6 +88,7 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
   const lastRev = useRef<number | null>(null);
   const readTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const clientId = useRef("");
+  const lastActive = useRef(0);
   useEffect(() => {
     me.current = profile.id;
     threadsRef.current = threads;
@@ -116,14 +119,26 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
      client that goes quiet (the app closed, a lost connection). */
   const reportViewing = useCallback(() => {
     clientId.current ||= crypto.randomUUID();
-    const circleIds = document.visibilityState === "visible" ? [...viewing.current.keys()] : [];
+    // a tab left open and visible with no one at it isn't reading
+    const present = document.visibilityState === "visible" && Date.now() - lastActive.current < PRESENT_MS;
+    const circleIds = present ? [...viewing.current.keys()] : [];
     void setChatViewingAction(clientId.current, circleIds);
   }, []);
   useEffect(() => {
+    lastActive.current = Date.now();
     const timer = setInterval(() => viewing.current.size > 0 && reportViewing(), 45_000);
+    // a return after a lull says so at once, rather than at the next report
+    const active = () => {
+      const idle = Date.now() - lastActive.current >= PRESENT_MS;
+      lastActive.current = Date.now();
+      if (idle && viewing.current.size > 0) reportViewing();
+    };
+    const events = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"] as const;
+    for (const name of events) window.addEventListener(name, active, { passive: true, capture: true });
     document.addEventListener("visibilitychange", reportViewing);
     return () => {
       clearInterval(timer);
+      for (const name of events) window.removeEventListener(name, active, { capture: true });
       document.removeEventListener("visibilitychange", reportViewing);
     };
   }, [reportViewing]);
@@ -197,7 +212,12 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
         const rev = Number((e as MessageEvent<string>).lastEventId);
         if (Number.isFinite(rev) && lastRev.current === null) lastRev.current = rev;
       });
-      source.addEventListener("resync", resync);
+      source.addEventListener("resync", (e) => {
+        // a catch-up too large to send moves our place on to where it left off
+        const id = (e as MessageEvent<string>).lastEventId;
+        if (id !== "" && Number.isFinite(Number(id))) lastRev.current = Math.max(lastRev.current ?? 0, Number(id));
+        resync();
+      });
       source.addEventListener("error", () => {
         // the browser retries by itself unless it has given up
         if (source?.readyState !== EventSource.CLOSED) return;
@@ -261,7 +281,6 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
 
   // the server's copy goes into the thread at once; the stream brings the same again, a no-op
   const adopt = useCallback((m: ChatMessage) => {
-    lastRev.current = Math.max(lastRev.current ?? 0, m.rev);
     setThreads((t) => (t[m.circleId] ? { ...t, [m.circleId]: { ...t[m.circleId]!, messages: upsert(t[m.circleId]!.messages, m) } } : t));
   }, []);
 
