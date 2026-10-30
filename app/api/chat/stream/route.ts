@@ -73,7 +73,8 @@ export async function GET(request: Request) {
       });
 
       if (since !== null) await catchUp().catch(() => send(`event: resync\ndata: {}\n\n`));
-      else send(`event: ready\ndata: ${JSON.stringify({ rev: cursor })}\n\n`);
+      // its id lets a reconnect before any message arrives still resume from here
+      else send(`id: ${cursor}\nevent: ready\ndata: {}\n\n`);
     },
     cancel() {
       cleanup();

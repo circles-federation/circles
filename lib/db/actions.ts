@@ -158,6 +158,10 @@ export async function getChatMessagesAction(circleId: string, before?: number) {
   return asMember((memberId) => chat.getChatMessages(memberId, circleId, before));
 }
 
+export async function getChatUnreadAction() {
+  return asMember((memberId) => chat.getChatUnread(memberId));
+}
+
 export async function markChatReadAction(circleId: string, lastReadId: number) {
   return asMember((memberId) => chat.markChatRead(memberId, circleId, lastReadId));
 }

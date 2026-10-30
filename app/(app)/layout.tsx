@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/shared";
 import { AppStateProvider } from "@/components/providers/app-state-provider";
+import { ChatProvider } from "@/components/providers/chat-provider";
 import { BackHandlerProvider } from "@/components/providers/back-handler-provider";
 import { TopBarActionProvider } from "@/components/providers/top-bar-action-provider";
+import { getChatUnread } from "@/lib/db/chat";
 import { getAppStateForMember } from "@/lib/db/app-state";
 import { getCurrentUserId } from "@/lib/session";
 
@@ -23,15 +25,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // (see lib/session.ts).
   const state = await getAppStateForMember(currentUserId);
   if (!state) redirect("/");
+  const chatUnread = await getChatUnread(currentUserId);
   const { events, circles, members, resources, neighborhoodPosts, tasks, messages, invitations, proposals, profile, pendingReviews } = state;
 
   return (
     <AppStateProvider currentUserId={currentUserId} initialEvents={events} initialCircles={circles} initialMembers={members} initialResources={resources} initialNeighborhoodPosts={neighborhoodPosts} initialTasks={tasks} initialMessages={messages} initialProfile={profile} initialPendingReviews={pendingReviews} initialInvitations={invitations} initialProposals={proposals}>
-      <BackHandlerProvider>
-        <TopBarActionProvider>
-          <AppShell>{children}</AppShell>
-        </TopBarActionProvider>
-      </BackHandlerProvider>
+      <ChatProvider initialUnread={chatUnread}>
+        <BackHandlerProvider>
+          <TopBarActionProvider>
+            <AppShell>{children}</AppShell>
+          </TopBarActionProvider>
+        </BackHandlerProvider>
+      </ChatProvider>
     </AppStateProvider>
   );
 }

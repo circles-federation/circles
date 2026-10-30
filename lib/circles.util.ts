@@ -217,12 +217,12 @@ export function circleHasInbox(circle: Pick<Circle, "type" | "parentId" | "inbox
 }
 
 /* A circle page's sections, in the order its tab row shows them, each at
-   /circles/[id]/[section]. The bulletin, tasks and inbox are its members'
+   /circles/[id]/[section]. The bulletin, chat, tasks and inbox are its members'
    alone, with no hint to anyone else; a group has no wiki or tasks, its
    bulletin standing in for them. */
-export const CIRCLE_SECTIONS = ["bulletin", "tasks", "inbox", "decisions", "wiki", "members", "events"] as const;
+export const CIRCLE_SECTIONS = ["bulletin", "chat", "tasks", "inbox", "decisions", "wiki", "members", "events"] as const;
 export type CircleSection = (typeof CIRCLE_SECTIONS)[number];
-export const CIRCLE_SECTION_LABEL: Record<CircleSection, string> = { bulletin: "Bulletin", tasks: "Tasks", inbox: "Inbox", decisions: "Decisions", wiki: "Wiki", members: "Members", events: "Events" };
+export const CIRCLE_SECTION_LABEL: Record<CircleSection, string> = { bulletin: "Bulletin", chat: "Chat", tasks: "Tasks", inbox: "Inbox", decisions: "Decisions", wiki: "Wiki", members: "Members", events: "Events" };
 
 export function isCircleSection(value: string | undefined): value is CircleSection {
   return (CIRCLE_SECTIONS as readonly string[]).includes(value ?? "");
@@ -233,6 +233,7 @@ export function isCircleSection(value: string | undefined): value is CircleSecti
 export function circleSections(circle: Pick<Circle, "type" | "parentId" | "inbox">, isMember: boolean): CircleSection[] {
   return CIRCLE_SECTIONS.filter((s) => {
     if (s === "bulletin") return isMember;
+    if (s === "chat") return isMember && circleHasChat(circle);
     if (s === "tasks") return isMember && circleHasTasks(circle);
     if (s === "inbox") return isMember && circleHasInbox(circle);
     // proposals are its members' alone

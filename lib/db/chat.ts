@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { CHAT_MENTIONS_MAX, canEditChat, validateChatBody } from "@/lib/chat.util";
 import { circleHasChat } from "@/lib/circles.util";
 import type { ChatMessage } from "@/lib/types";
@@ -177,6 +177,22 @@ export async function tombstone(tx: Tx, id: number): Promise<ChatMessage> {
   await tx.delete(circleChatMentions).where(eq(circleChatMentions.messageId, id));
   await wake(tx, id);
   return toChatMessage(updated, []);
+}
+
+/* How many messages each of the member's circles has that they haven't read:
+   those after where they last read to, by anyone else, not deleted. A circle
+   they've never opened counts its whole thread. */
+export async function getChatUnread(memberId: number): Promise<Record<string, number>> {
+  const ids = await chatCircleIdsOf(memberId);
+  if (ids.length === 0) return {};
+  const m = circleChatMessages;
+  const rows = await db
+    .select({ circleId: m.circleId, n: count() })
+    .from(m)
+    .leftJoin(circleChatReads, and(eq(circleChatReads.circleId, m.circleId), eq(circleChatReads.memberId, memberId)))
+    .where(and(inArray(m.circleId, ids), isNull(m.deletedAt), sql`${m.authorId} is distinct from ${memberId}`, sql`${m.id} > coalesce(${circleChatReads.lastReadId}, 0)`))
+    .groupBy(m.circleId);
+  return Object.fromEntries(rows.map((r) => [r.circleId, r.n]));
 }
 
 // read up to here: never moves backwards

@@ -7,6 +7,7 @@ import { CircleWiki } from "./circle-wiki";
 import { BulletinSection } from "./bulletin-section";
 import { TasksSection } from "./tasks-section";
 import { InboxSection } from "./inbox-section";
+import { ChatSection } from "./chat-section";
 import { InviteModal } from "./invite-picker";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
@@ -121,6 +122,14 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
         <SectionGroup>
           <Section className="pt-0">
             <BulletinSection circleId={c.id} adding={adding} onAdd={startAdding} onAddingDone={() => setAdding(false)} onEditPage={onEditResourcePage} />
+          </Section>
+        </SectionGroup>
+      )}
+
+      {section === "chat" && (
+        <SectionGroup>
+          <Section className="pt-0">
+            <ChatSection circle={c} />
           </Section>
         </SectionGroup>
       )}

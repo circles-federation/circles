@@ -3,10 +3,11 @@
 import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, CheckCircleIcon, EllipsisHorizontalIcon, HandRaisedIcon, HomeIcon, InboxIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UserPlusIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, EllipsisHorizontalIcon, HandRaisedIcon, HomeIcon, InboxIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UserPlusIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { useChat } from "@/components/providers/chat-provider";
 import { useGoBack, useRunBackHandler } from "@/components/providers/back-handler-provider";
 import { useCurrentTopBarAction, useCurrentTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { openProposalsFor } from "@/lib/proposals.util";
@@ -116,6 +117,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
 // each section's icon, beside its tab's label on desktop
 const CIRCLE_SECTION_ICON: Record<CircleSection, ComponentType<SVGProps<SVGSVGElement>>> = {
   bulletin: MegaphoneIcon,
+  chat: ChatBubbleLeftRightIcon,
   tasks: CheckCircleIcon,
   inbox: InboxIcon,
   decisions: HandRaisedIcon,
@@ -141,6 +143,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { circles, events, members, resources, profile, messages, proposals } = useAppState();
+  const { unread: chatUnread } = useChat();
   const needsAttention = useHomeNeedsAttention();
   const isHomeNeighborhood =profile.homeCircleId !== null && pathname === `/circles/${profile.homeCircleId}`;
 
@@ -151,9 +154,10 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   const action = pageAction(pathname, profile);
   const menu = pageMenu(pathname, circles, profile);
   const tabs = circleTabs(pathname, circles, profile);
-  // what a circle's tab counts: its Inbox's unread open messages, and its open proposals
+  // what a circle's tab counts: its chat's unread messages, its Inbox's unread
+  // open messages, and its open proposals
   const sectionCount = (key: CircleSection, circleId: string) =>
-    key === "inbox" ? messages.filter((m) => m.circleId === circleId && !m.read && !m.doneAt).length : key === "decisions" ? openProposalsFor(proposals, circleId).length : 0;
+    key === "chat" ? chatUnread[circleId] ?? 0 : key === "inbox" ? messages.filter((m) => m.circleId === circleId && !m.read && !m.doneAt).length : key === "decisions" ? openProposalsFor(proposals, circleId).length : 0;
   const { shown: pageOwn, run: runPageOwn } = useCurrentTopBarAction();
   const ownMenu = useCurrentTopBarMenu();
   const runBackHandler = useRunBackHandler();
