@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject, type UIEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
-import { activeTab } from "@/lib/nav.util";
+import { activeTab, hidesBottomNav } from "@/lib/nav.util";
 // imported for its effect too: it catches the browser's install offer early
 import "@/lib/install";
 import { registerServiceWorker } from "@/lib/push-client";
@@ -32,7 +32,8 @@ import { TopBar } from "./top-bar";
    block and the document scrolls as usual. */
 export function AppShell({ children }: { children: ReactNode }) {
   const mainRef = useRef<HTMLElement>(null);
-  const showNav = activeTab(usePathname()) !== null;
+  const pathname = usePathname();
+  const showNav = activeTab(pathname) !== null && !hidesBottomNav(pathname);
   const onScroll = useScrollRestoration(mainRef);
   useBlockEdgeSwipe();
   useBlockPinchZoom();

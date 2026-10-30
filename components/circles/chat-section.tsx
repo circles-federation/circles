@@ -1,19 +1,23 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
+import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useChat } from "@/components/providers/chat-provider";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { Avatar, Button, ConfirmModal, EmptyState, TextArea, useToast } from "@/components/shared";
+import { IconButtonCircle } from "@/components/shared/icon-button-circle";
 import { canEditChat, highlightMentions, matchMentions, mentionAt, mentionsIn, type MentionTarget } from "@/lib/chat.util";
 import { useClock, useMemberById, useMembers } from "@/lib/hooks";
 import { messageHtml, messageWhen } from "@/lib/messages.util";
 import type { ChatMessage, Circle, Member } from "@/lib/types";
 import { isPhoneWidth } from "@/lib/viewport";
+
+// for useSyncExternalStore reading something that never changes once there's a browser
+const subscribeNothing = () => () => {};
 
 // a run of one person's messages shows their name and photo once, unless a gap this long falls in it
 const RUN_GAP_MS = 5 * 60_000;
@@ -21,8 +25,9 @@ const RUN_GAP_MS = 5 * 60_000;
 const LINK_BUTTON = "hit cursor-pointer border-0 bg-transparent p-0 font-sans text-xs font-bold tracking-caps text-soft uppercase underline hover:text-ink";
 
 /* A circle's chat thread, for its members (components/providers/
-   chat-provider.tsx keeps it live): oldest at the top, the composer pinned at
-   the foot of the screen, clear of the bottom nav on a phone. Opening it
+   chat-provider.tsx keeps it live): oldest at the top, the composer fixed to
+   the foot of the screen (the bottom nav is away on this page, hidesBottomNav,
+   for the room). Opening it
    reads it. It follows the thread down as messages arrive, but only while
    the reader is already at the end of it, so reading back isn't interrupted.
    Enter sends on a computer, and starts a new line on a phone, where there's
@@ -62,9 +67,14 @@ export function ChatSection({ circle }: { circle: Circle }) {
   }, [last, profile.id]);
 
   const [earlierBusy, setEarlierBusy] = useState(false);
+  // how tall the composer is, which is fixed over the foot of the screen, so the
+  // end of the thread stops above it
+  const [composerHeight, setComposerHeight] = useState(76);
 
   return (
-    <div>
+    // -mb-20 takes back the page container's bottom padding, which would leave a gap
+    // between the last message and the composer
+    <div className="-mb-20">
       {thread === undefined ? (
         <p className="font-serif text-base text-soft">Loading the conversation…</p>
       ) : (
@@ -100,7 +110,8 @@ export function ChatSection({ circle }: { circle: Circle }) {
         </>
       )}
 
-      <Composer circleName={circle.name} people={people} onSend={(body, mentions) => send(circle.id, body, mentions)} />
+      <Composer circleName={circle.name} people={people} onSend={(body, mentions) => send(circle.id, body, mentions)} onHeight={setComposerHeight} />
+      <div aria-hidden style={{ height: composerHeight }} />
       <div ref={endRef} />
     </div>
   );
@@ -247,12 +258,40 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, mine, 
   );
 }
 
-function Composer({ circleName, people, onSend }: { circleName: string; people: Member[]; onSend: (body: string, mentions: number[]) => Promise<string | null> }) {
+function Composer({ circleName, people, onSend, onHeight }: { circleName: string; people: Member[]; onSend: (body: string, mentions: number[]) => Promise<string | null>; onHeight: (px: number) => void }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const field = useRef<HTMLTextAreaElement>(null);
-  const form = useRef<HTMLFormElement>(null);
+  // the row of field and button, which the list of members is laid against
+  const row = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  // laid on the page itself, not inside it: a page's content animates in, and
+  // anything fixed inside an animating ancestor stops being fixed to the screen
+  const host = useSyncExternalStore(subscribeNothing, () => document.body, () => null);
+  // how far the on-screen keyboard covers the foot of the layout viewport (the
+  // browser lifts a field above it only on some platforms), so the bar rides on it
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => setInset(viewport.scale > 1.01 ? 0 : Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)));
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
+  useEffect(() => {
+    const el = bar.current;
+    if (!host || !el) return;
+    const observer = new ResizeObserver(() => onHeight(el.offsetHeight));
+    observer.observe(el);
+    onHeight(el.offsetHeight);
+    return () => observer.disconnect();
+  }, [host, onHeight]);
   // who has been picked from the list, and the @word being typed now
   const picked = useRef<MentionTarget[]>([]);
   const [typing, setTyping] = useState<{ start: number; query: string } | null>(null);
@@ -273,7 +312,7 @@ function Composer({ circleName, people, onSend }: { circleName: string; people: 
      under the composer, whichever has more room, and no taller than that. */
   const [place, setPlace] = useState<{ left: number; width: number; maxHeight: number; top?: number; bottom?: number } | null>(null);
   useLayoutEffect(() => {
-    const el = form.current;
+    const el = row.current;
     if (!listOpen || !el) return setPlace(null);
     function measure() {
       const rect = el!.getBoundingClientRect();
@@ -361,73 +400,75 @@ function Composer({ circleName, people, onSend }: { circleName: string; people: 
     }
   }
 
-  return (
-    <form
-      ref={form}
-      onSubmit={submit}
-      // pinned over the end of the thread, above the bottom nav on a phone
-      className="sticky bottom-[calc(var(--bottom-nav-gap)+4.75rem)] z-10 mt-4 border-t border-faint bg-paper py-3 min-[720px]:bottom-0"
+  if (!host) return null;
+  return createPortal(
+    // a bar fixed to the foot of the screen, on paper with a hairline above it
+    // like the top bar's tab row, level with the page's column; over the foot
+    // of the page but under the top bar
+    <div
+      ref={bar}
+      style={{ bottom: inset }}
+      className="fixed inset-x-0 z-40 border-t border-faint bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]"
     >
-      {listOpen &&
-        place &&
-        createPortal(
-          // a press on the list mustn't take focus from the field, or the list closes before the tap lands
-          <ul
-            role="listbox"
-            aria-label="Members to tag"
-            onMouseDown={(e) => e.preventDefault()}
-            style={{ left: place.left, width: place.width, maxHeight: place.maxHeight, top: place.top, bottom: place.bottom }}
-            className="fixed z-60 m-0 list-none overflow-y-auto bg-raised p-0 shadow-overlay"
-          >
-            {choices.map((person, i) => (
-              <li key={person.id} role="option" aria-selected={i === active}>
-                <button
-                  type="button"
-                  onClick={() => pick(person)}
-                  onMouseEnter={() => setActive(i)}
-                  className={clsx("flex w-full cursor-pointer items-center gap-3 border-0 border-b border-faint px-4 py-3 text-left text-ink last:border-b-0", i === active ? "bg-wash" : "bg-transparent")}
-                >
-                  <Avatar member={person} size={32} />
-                  <span className="min-w-0">
-                    <span className="block truncate font-sans text-base font-bold tracking-snug">{person.name}</span>
-                    {person.role && <span className="block truncate font-serif text-sm text-soft">{person.role}</span>}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>,
-          document.body,
-        )}
-      <div className="flex items-end gap-2">
-        <TextArea
-          ref={field}
-          rows={1}
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            watchCaret(e.target.value, e.target.selectionStart);
-          }}
-          onKeyDown={onKeyDown}
-          onKeyUp={(e) => {
-            if (e.key === "ArrowLeft" || e.key === "ArrowRight") watchCaret(draft, e.currentTarget.selectionStart);
-          }}
-          onClick={(e) => watchCaret(draft, e.currentTarget.selectionStart)}
-          onBlur={() => setTyping(null)}
-          placeholder={`Message ${circleName}`}
-          aria-label={`Message ${circleName}`}
-          aria-autocomplete="list"
-          className="max-h-40 min-h-12 resize-none!"
-        />
-        <button
-          type="submit"
-          aria-label="Send"
-          disabled={busy || !draft.trim()}
-          className="btn-invert btn-ink flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink bg-ink text-paper disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <PaperAirplaneIcon className="size-5" />
-        </button>
-      </div>
-      {error && <p className="m-0 mt-2 font-serif text-sm text-danger">{error}</p>}
-    </form>
+      <form onSubmit={submit} className={clsx("mx-auto max-w-220 px-6 pt-3", inset > 0 ? "pb-3" : "pb-[max(0.75rem,env(safe-area-inset-bottom))]")}>
+        {listOpen &&
+          place &&
+          createPortal(
+            // a press on the list mustn't take focus from the field, or the list closes before the tap lands
+            <ul
+              role="listbox"
+              aria-label="Members to tag"
+              onMouseDown={(e) => e.preventDefault()}
+              style={{ left: place.left, width: place.width, maxHeight: place.maxHeight, top: place.top, bottom: place.bottom }}
+              className="fixed z-60 m-0 list-none overflow-y-auto bg-raised p-0 shadow-overlay"
+            >
+              {choices.map((person, i) => (
+                <li key={person.id} role="option" aria-selected={i === active}>
+                  <button
+                    type="button"
+                    onClick={() => pick(person)}
+                    onMouseEnter={() => setActive(i)}
+                    className={clsx("flex w-full cursor-pointer items-center gap-3 border-0 border-b border-faint px-4 py-3 text-left text-ink last:border-b-0", i === active ? "bg-wash" : "bg-transparent")}
+                  >
+                    <Avatar member={person} size={32} />
+                    <span className="min-w-0">
+                      <span className="block truncate font-sans text-base font-bold tracking-snug">{person.name}</span>
+                      {person.role && <span className="block truncate font-serif text-sm text-soft">{person.role}</span>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body,
+          )}
+        <div ref={row} className="flex items-end gap-2">
+          <TextArea
+            ref={field}
+            rows={1}
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              watchCaret(e.target.value, e.target.selectionStart);
+            }}
+            onKeyDown={onKeyDown}
+            onKeyUp={(e) => {
+              if (e.key === "ArrowLeft" || e.key === "ArrowRight") watchCaret(draft, e.currentTarget.selectionStart);
+            }}
+            onClick={(e) => watchCaret(draft, e.currentTarget.selectionStart)}
+            onBlur={() => setTyping(null)}
+            placeholder={`Message ${circleName}`}
+            aria-label={`Message ${circleName}`}
+            aria-autocomplete="list"
+            className="max-h-40 min-h-11 resize-none! py-2.5"
+          />
+          {/* the same blue circle as the top bar's primary action, faint until there's something to send */}
+          <button type="submit" aria-label="Send" disabled={busy || !draft.trim()} className="group flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 disabled:cursor-not-allowed">
+            <IconButtonCircle icon={PaperAirplaneIcon} variant="primary" />
+          </button>
+        </div>
+        {error && <p className="m-0 mt-2 font-serif text-sm text-danger">{error}</p>}
+      </form>
+    </div>,
+    host,
   );
 }

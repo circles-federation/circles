@@ -13,6 +13,15 @@ export type Tab = "/home" | "/circles" | "/events";
    event, a circle's Manage, Invite and bulletin forms, an invitation (to
    accept or decline), an admin's applications (to review), and Hi, neighbor,
    a game that wants the whole screen. */
+/* A page that is still its tab's but wants the whole screen, so the bottom nav
+   goes while it's open (it slides away as for a page of doing something, see
+   AppShell) and its tab stays lit: a circle's chat, whose composer is fixed to
+   the foot of the screen. */
+export function hidesBottomNav(pathname: string): boolean {
+  const [section, , sub, item] = pathname.split("/").slice(1);
+  return section === "circles" && sub === "chat" && !item;
+}
+
 export function activeTab(pathname: string): Tab | null {
   const [section, id, sub] = pathname.split("/").slice(1);
   switch (section) {
