@@ -394,7 +394,7 @@ body {
     font-weight: 700;
     color: var(--color-action);
   }
-  /* a bubble of your own is blue with paper text, so what is ink elsewhere
+  /* a bubble of your own is teal with paper text, so what is ink elsewhere
      reads in its colour */
   .chat-bubble-mine .message-text a,
   .chat-bubble-mine .message-text strong,

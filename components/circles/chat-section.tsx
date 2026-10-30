@@ -45,27 +45,44 @@ export function ChatSection({ circle }: { circle: Circle }) {
   const people = allMembers.filter((m) => m.id !== profile.id && circle.members.includes(m.id));
   const thread = threads[circle.id];
   const messages = thread?.messages ?? [];
-  const last = messages.at(-1);
 
   useEffect(() => view(circle.id), [view, circle.id]);
 
-  // follow the thread down while the reader is at its end
+  /* The thread opens at its newest message and stays there: pinned to the
+     end until the reader scrolls up, and again once they're back near it.
+     Anything that makes the page taller while pinned (a message arriving, a
+     photo loading, the composer growing) is followed down, and for the first
+     moments after opening it's put back repeatedly, since the page resets
+     its own scroll as it arrives. Sending always returns to the end. Whichever
+     of the document or <main> scrolls, the end marker is scrolled into view. */
+  const root = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const atEnd = useRef(true);
-  const shownLast = useRef<number | null>(null);
+  const pinned = useRef(true);
   useEffect(() => {
+    const el = root.current;
     const end = endRef.current;
-    if (!end) return;
-    const observer = new IntersectionObserver(([entry]) => void (atEnd.current = entry?.isIntersecting ?? true), { rootMargin: "0px 0px 160px 0px" });
-    observer.observe(end);
-    return () => observer.disconnect();
+    if (!el || !end) return;
+    const openedAt = Date.now();
+    let moving = 0;
+    const toEnd = () => {
+      // our own scrolling mustn't be taken for the reader leaving
+      moving = Date.now() + 500;
+      end.scrollIntoView({ block: "end", behavior: Date.now() - openedAt < 1500 ? "auto" : "smooth" });
+    };
+    const nearEnd = () => end.getBoundingClientRect().top <= window.innerHeight + 120;
+    const onScroll = () => {
+      if (Date.now() > moving) pinned.current = nearEnd();
+    };
+    const follow = new ResizeObserver(() => pinned.current && toEnd());
+    follow.observe(el);
+    const settle = [0, 100, 300, 800].map((ms) => setTimeout(() => pinned.current && toEnd(), ms));
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      follow.disconnect();
+      settle.forEach(clearTimeout);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, []);
-  useLayoutEffect(() => {
-    if (!last) return;
-    const first = shownLast.current === null;
-    if (first || atEnd.current || last.authorId === profile.id) endRef.current?.scrollIntoView({ block: "end", behavior: first ? "auto" : "smooth" });
-    shownLast.current = last.id;
-  }, [last, profile.id]);
 
   // the message whose actions are showing, if any: tapping a bubble opens them, and
   // a tap anywhere else or Escape puts them away
@@ -92,7 +109,7 @@ export function ChatSection({ circle }: { circle: Circle }) {
   return (
     // -mb-20 takes back the page container's bottom padding, which would leave a gap
     // between the last message and the composer
-    <div className="-mb-20">
+    <div ref={root} className="-mb-20">
       {thread === undefined ? (
         <p className="font-serif text-base text-soft">Loading the conversation…</p>
       ) : (
@@ -143,7 +160,11 @@ export function ChatSection({ circle }: { circle: Circle }) {
         </>
       )}
 
-      <Composer circleName={circle.name} people={people} onSend={(body, mentions) => send(circle.id, body, mentions)} onHeight={setComposerHeight} />
+      <Composer circleName={circle.name} people={people} onSend={(body, mentions) => {
+          // your own message always takes you to the end
+          pinned.current = true;
+          return send(circle.id, body, mentions);
+        }} onHeight={setComposerHeight} />
       <div aria-hidden style={{ height: composerHeight }} />
       <div ref={endRef} />
     </div>
@@ -279,7 +300,7 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, endsRu
           className={clsx(
             bubble,
             "font-serif text-base leading-snug transition-[filter] duration-(--motion-small)",
-            mine ? "chat-bubble-mine bg-action text-paper" : "bg-wash text-body",
+            mine ? "chat-bubble-mine bg-teal text-paper" : "bg-wash text-body",
             hasActions && "cursor-pointer",
             selected && "brightness-95",
             underReview && "opacity-60",
