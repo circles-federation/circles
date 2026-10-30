@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { EllipsisHorizontalIcon, HandRaisedIcon, PaperAirplaneIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useChat } from "@/components/providers/chat-provider";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { Avatar, Button, ConfirmModal, EmptyState, TextArea, useToast } from "@/components/shared";
+import { GhostIconButton } from "@/components/shared/ghost-icon-button";
 import { IconButtonCircle } from "@/components/shared/icon-button-circle";
 import { canEditChat, highlightMentions, matchMentions, mentionAt, mentionsIn, type MentionTarget } from "@/lib/chat.util";
 import { useClock, useMemberById, useMembers } from "@/lib/hooks";
@@ -66,6 +67,23 @@ export function ChatSection({ circle }: { circle: Circle }) {
     shownLast.current = last.id;
   }, [last, profile.id]);
 
+  // the message whose actions are showing, if any: tapping a bubble opens them, and
+  // a tap anywhere else or Escape puts them away
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  useEffect(() => {
+    if (selectedId === null) return;
+    const away = (e: PointerEvent) => {
+      if (!(e.target instanceof Element) || !e.target.closest(`[data-chat-message="${selectedId}"]`)) setSelectedId(null);
+    };
+    const escape = (e: globalThis.KeyboardEvent) => e.key === "Escape" && setSelectedId(null);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [selectedId]);
+
   const [earlierBusy, setEarlierBusy] = useState(false);
   // how tall the composer is, which is fixed over the foot of the screen, so the
   // end of the thread stops above it
@@ -101,9 +119,24 @@ export function ChatSection({ circle }: { circle: Circle }) {
             <div>
               {messages.map((m, i) => {
                 const prev = messages[i - 1];
-                const run = prev && prev.authorId === m.authorId && new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime() < RUN_GAP_MS;
+                const next = messages[i + 1];
+                const within = (a: ChatMessage, b: ChatMessage) => a.authorId === b.authorId && new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() < RUN_GAP_MS;
                 const author = m.authorId !== undefined ? memberById(m.authorId) : undefined;
-                return <ChatRow key={m.id} message={m} circleName={circle.name} authorName={author?.name ?? "Former member"} avatar={author ? <Avatar member={author} size={36} /> : <span className="size-9 shrink-0 border border-ink bg-faint" />} continued={!!run} mine={m.authorId === profile.id} mentioned={m.mentions.flatMap((id) => memberById(id)?.name ?? [])} />;
+                return (
+                  <ChatRow
+                    key={m.id}
+                    message={m}
+                    circleName={circle.name}
+                    authorName={author?.name ?? "Former member"}
+                    avatar={author ? <Avatar member={author} size={36} /> : <span className="size-9 shrink-0 border border-ink bg-faint" />}
+                    continued={!!prev && within(prev, m)}
+                    endsRun={!next || !within(m, next)}
+                    mine={m.authorId === profile.id}
+                    mentioned={m.mentions.flatMap((id) => memberById(id)?.name ?? [])}
+                    selected={selectedId === m.id}
+                    onSelect={(open) => setSelectedId(open ? m.id : null)}
+                  />
+                );
               })}
             </div>
           )}
@@ -117,7 +150,34 @@ export function ChatSection({ circle }: { circle: Circle }) {
   );
 }
 
-function ChatRow({ message: m, circleName, authorName, avatar, continued, mine, mentioned }: { message: ChatMessage; circleName: string; authorName: string; avatar: React.ReactNode; continued: boolean; mine: boolean; mentioned: string[] }) {
+interface ChatRowProps {
+  message: ChatMessage;
+  circleName: string;
+  authorName: string;
+  avatar: ReactNode;
+  // the same person's message follows on from the one before it, so it carries
+  // no name or photo of its own
+  continued: boolean;
+  // and the next one is someone else's, or much later
+  endsRun: boolean;
+  mine: boolean;
+  mentioned: string[];
+  selected: boolean;
+  onSelect: (open: boolean) => void;
+}
+
+// what each action in the tray under a bubble looks like
+const TRAY_BUTTON = "hit flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 font-sans text-xs font-bold tracking-caps uppercase";
+
+/* One message, as a chat bubble: round on every corner but the one by its
+   author, light grey from other people and blue from you, yours on the right.
+   A run of one person's messages shows their photo and name once, and yours
+   its time once, under the last. Nothing else is drawn on a message: a tap on
+   a bubble (or the ellipsis that appears beside it where there's a pointer)
+   opens a small tray of what can be done to it, and a tap elsewhere puts it
+   away. You can edit yours for a while and delete it at any time; anyone
+   else's can be proposed for removal. */
+function ChatRow({ message: m, circleName, authorName, avatar, continued, endsRun, mine, mentioned, selected, onSelect }: ChatRowProps) {
   const { edit, remove } = useChat();
   const { proposals, proposeMessageRemoval } = useAppState();
   const router = useRouter();
@@ -127,18 +187,15 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, mine, 
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [proposingRemoval, setProposingRemoval] = useState(false);
-  // the message of a proposal to remove it is hidden until asked for
+  // a message under review is hidden until asked for
   const [revealed, setRevealed] = useState(false);
   const underReview = !!m.reviewProposalId && !m.deletedAt;
   const reviewKnown = !!m.reviewProposalId && proposals.some((p) => p.id === m.reviewProposalId);
   const canEdit = mine && !m.deletedAt && !underReview && now !== null && canEditChat(m.createdAt, now);
-
-  async function proposeRemoval() {
-    setProposingRemoval(false);
-    const result = await proposeMessageRemoval(m.id);
-    if (!result.ok) return showToast({ tone: "error", message: result.error });
-    router.push(`/proposals/${result.proposalId}`);
-  }
+  const canDelete = mine && !m.deletedAt;
+  const canPropose = !mine && !m.deletedAt && !underReview;
+  const hasActions = canEdit || canDelete || canPropose;
+  const when = now !== null ? messageWhen(m.createdAt, new Date(now)) : "";
 
   async function save() {
     if (editing === null) return;
@@ -155,84 +212,151 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, mine, 
     if (error) showToast({ tone: "error", message: error });
   }
 
+  async function proposeRemoval() {
+    setProposingRemoval(false);
+    const result = await proposeMessageRemoval(m.id);
+    if (!result.ok) return showToast({ tone: "error", message: result.error });
+    router.push(`/proposals/${result.proposalId}`);
+  }
+
+  // a tap on the bubble opens its actions, unless it was a link, or the start of selecting its text
+  function tapBubble(e: MouseEvent) {
+    if (!hasActions || (e.target instanceof Element && e.target.closest("a")) || window.getSelection()?.toString()) return;
+    onSelect(!selected);
+  }
+
+  const bubble = clsx("w-fit max-w-full rounded-bubble px-4 py-2.5 wrap-break-word", mine ? "rounded-br-none" : "rounded-bl-none");
+
+  // what is said, or why it isn't
+  let content: ReactNode;
+  if (m.deletedAt) {
+    content = <p className={clsx(bubble, "m-0 border border-dashed border-faint font-serif text-sm text-soft italic")}>Message deleted</p>;
+  } else if (editing !== null) {
+    content = (
+      <div className="w-72 max-w-full min-[720px]:w-120">
+        <TextArea
+          value={editing}
+          onChange={(e) => setEditing(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setEditing(null);
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void save();
+          }}
+          rows={3}
+          autoFocus
+        />
+        <div className={clsx("mt-2 flex gap-2", mine && "justify-end")}>
+          <Button variant="secondary" size="compact" onClick={() => setEditing(null)}>
+            Cancel
+          </Button>
+          <Button size="compact" disabled={busy || !editing.trim() || editing.trim() === m.body} onClick={save}>
+            Save
+          </Button>
+        </div>
+      </div>
+    );
+  } else if (underReview && !revealed) {
+    content = (
+      <div onClick={tapBubble} className={clsx(bubble, "border border-flame bg-paper", hasActions && "cursor-pointer")}>
+        <div className="font-sans text-label font-bold tracking-caps text-flame uppercase">Under review</div>
+        <p className="m-0 mt-0.5 font-serif text-sm leading-snug text-body">{circleName}&rsquo;s members are deciding whether to remove this message.</p>
+        <div className="mt-1 flex items-center gap-3">
+          <button type="button" className={LINK_BUTTON} onClick={() => setRevealed(true)}>
+            Show
+          </button>
+          {reviewKnown && (
+            <Link href={`/proposals/${m.reviewProposalId}`} className={LINK_BUTTON}>
+              View proposal
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  } else {
+    content = (
+      <div className="group/row relative max-w-full">
+        <div
+          onClick={tapBubble}
+          className={clsx(
+            bubble,
+            "font-serif text-base leading-snug transition-[filter] duration-(--motion-small)",
+            mine ? "chat-bubble-mine bg-action text-paper" : "bg-wash text-body",
+            hasActions && "cursor-pointer",
+            selected && "brightness-95",
+            underReview && "opacity-60",
+          )}
+        >
+          <div className="message-text" dangerouslySetInnerHTML={{ __html: highlightMentions(messageHtml(m.body), mentioned) }} />
+        </div>
+        {/* where there's a pointer, the way in is shown on hover; a touch screen just taps the bubble */}
+        {hasActions && !selected && (
+          <GhostIconButton
+            icon={EllipsisHorizontalIcon}
+            label="Message actions"
+            onClick={() => onSelect(true)}
+            className={clsx("absolute top-1/2 -translate-y-1/2 text-soft opacity-0 transition-opacity duration-(--motion-small) group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:hidden", mine ? "right-full" : "left-full")}
+          />
+        )}
+      </div>
+    );
+  }
+
+  const caption = [m.editedAt && !m.deletedAt && "Edited", mine && endsRun && when].filter(Boolean).join(" · ");
+
   return (
-    <div className={clsx("flex gap-2", continued ? "pt-1" : "pt-4")}>
-      <div className="w-9 shrink-0">{!continued && avatar}</div>
-      <div className="min-w-0 flex-1">
-        {!continued && (
-          <div className="flex items-baseline gap-2">
+    <div className={clsx("flex gap-2", mine && "justify-end", continued ? "pt-0.5" : "pt-4")}>
+      {!mine && <div className="w-9 shrink-0">{!continued && avatar}</div>}
+      <div data-chat-message={m.id} className={clsx("flex min-w-0 max-w-[85%] flex-col min-[720px]:max-w-136", mine ? "items-end" : "items-start")}>
+        {!continued && !mine && (
+          <div className="mb-1 flex items-baseline gap-2">
             <span className="truncate font-sans text-base font-extrabold tracking-snug">{authorName}</span>
             {/* the browser's own time and day, so not drawn on the server */}
-            {now !== null && <span className="shrink-0 font-serif text-sm text-soft" title={new Date(m.createdAt).toLocaleString()}>{messageWhen(m.createdAt, new Date(now))}</span>}
+            {now !== null && <span className="shrink-0 font-serif text-sm text-soft" title={new Date(m.createdAt).toLocaleString()}>{when}</span>}
           </div>
         )}
-        {m.deletedAt ? (
-          <p className="m-0 font-serif text-base text-soft italic">Message deleted</p>
-        ) : editing !== null ? (
-          <div className="mt-1">
-            <TextArea value={editing} onChange={(e) => setEditing(e.target.value)} rows={3} autoFocus />
-            <div className="mt-2 flex gap-2">
-              <Button size="compact" disabled={busy || !editing.trim() || editing.trim() === m.body} onClick={save}>
-                Save
-              </Button>
-              <Button variant="secondary" size="compact" onClick={() => setEditing(null)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : underReview && !revealed ? (
-          <div className="mt-1 border-l-4 border-l-flame bg-wash px-3 py-2">
-            <p className="m-0 font-serif text-sm leading-snug text-body">Under review. {circleName}&rsquo;s members are deciding whether to remove this message.</p>
-            <div className="mt-1 flex items-center gap-3">
-              <button type="button" className={LINK_BUTTON} onClick={() => setRevealed(true)}>
-                Show
+        {content}
+
+        {selected && hasActions && (
+          <div className={clsx("mt-1 flex items-center gap-4 px-1 animate-tray-in", mine && "flex-row-reverse")}>
+            {canEdit && (
+              <button type="button" className={clsx(TRAY_BUTTON, "text-body hover:text-ink")} onClick={() => { onSelect(false); setEditing(m.body); }}>
+                <PencilIcon className="size-4" strokeWidth={2} aria-hidden />
+                Edit
               </button>
-              {reviewKnown && (
-                <Link href={`/proposals/${m.reviewProposalId}`} className={LINK_BUTTON}>
-                  View proposal
-                </Link>
-              )}
-              {mine && (
-                <button type="button" className={LINK_BUTTON} onClick={() => setConfirmingDelete(true)}>
-                  Delete
-                </button>
-              )}
-            </div>
+            )}
+            {canDelete && (
+              <button type="button" className={clsx(TRAY_BUTTON, "text-danger")} onClick={() => { onSelect(false); setConfirmingDelete(true); }}>
+                <TrashIcon className="size-4" strokeWidth={2} aria-hidden />
+                Delete
+              </button>
+            )}
+            {canPropose && (
+              <button type="button" className={clsx(TRAY_BUTTON, "text-flame")} onClick={() => { onSelect(false); setProposingRemoval(true); }}>
+                <HandRaisedIcon className="size-4" strokeWidth={2} aria-hidden />
+                Propose removal
+              </button>
+            )}
           </div>
-        ) : (
-          <>
-            <div className={clsx("message-text font-serif text-base leading-normal text-body wrap-break-word", underReview && "opacity-60")} dangerouslySetInnerHTML={{ __html: highlightMentions(messageHtml(m.body), mentioned) }} />
-            <div className="flex items-center gap-3">
-              {underReview && (
+        )}
+
+        {(caption || (underReview && revealed)) && (
+          <div className="mt-1 flex items-center gap-3 px-1 font-serif text-sm text-soft">
+            {caption && <span>{caption}</span>}
+            {underReview && revealed && (
+              <>
                 <button type="button" className={LINK_BUTTON} onClick={() => setRevealed(false)}>
                   Hide
                 </button>
-              )}
-              {underReview && reviewKnown && (
-                <Link href={`/proposals/${m.reviewProposalId}`} className={LINK_BUTTON}>
-                  View proposal
-                </Link>
-              )}
-              {!mine && !m.deletedAt && !underReview && (
-                <button type="button" className={LINK_BUTTON} onClick={() => setProposingRemoval(true)}>
-                  Remove
-                </button>
-              )}
-              {m.editedAt && <span className="font-sans text-label tracking-caps text-soft uppercase">Edited</span>}
-              {canEdit && (
-                <button type="button" className={LINK_BUTTON} onClick={() => setEditing(m.body)}>
-                  Edit
-                </button>
-              )}
-              {mine && (
-                <button type="button" className={LINK_BUTTON} onClick={() => setConfirmingDelete(true)}>
-                  Delete
-                </button>
-              )}
-            </div>
-          </>
+                {reviewKnown && (
+                  <Link href={`/proposals/${m.reviewProposalId}`} className={LINK_BUTTON}>
+                    View proposal
+                  </Link>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
+
       {proposingRemoval && (
         <ConfirmModal
           tone="flame"

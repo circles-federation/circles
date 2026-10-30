@@ -139,6 +139,19 @@
     }
   }
 
+  /* a chat message's bubble: round on every corner but the one by its author
+     (the only radius besides round icon buttons and the circle chip) */
+  --radius-bubble: 1.25rem;
+
+  /* the actions under a chat message you tapped, easing out from it */
+  --animate-tray-in: tray-in var(--motion-small) var(--ease-enter) both;
+  @keyframes tray-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
   /* a menu dropping from the button that opened it (ProfileMenu), grown
      from that corner like a context menu */
   --animate-menu-in: menu-in var(--motion-small) var(--ease-enter) both;
@@ -380,6 +393,17 @@ body {
   .chat-mention {
     font-weight: 700;
     color: var(--color-action);
+  }
+  /* a bubble of your own is blue with paper text, so what is ink elsewhere
+     reads in its colour */
+  .chat-bubble-mine .message-text a,
+  .chat-bubble-mine .message-text strong,
+  .chat-bubble-mine .chat-mention {
+    color: inherit;
+  }
+  .chat-bubble-mine .chat-mention {
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .message-text a {
     color: var(--color-ink);
