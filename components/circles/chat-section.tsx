@@ -392,7 +392,7 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, endsRu
       {confirmingDelete && (
         <ConfirmModal
           title="Delete this message?"
-          message={`It disappears for everyone in ${circleName}. This can't be undone.`}
+          message={`It's removed for everyone in ${circleName}. This can't be undone, but anyone who has already seen it, or been sent a notification, still has it.`}
           confirmLabel="Delete"
           cancelLabel="Keep"
           onConfirm={confirmDelete}

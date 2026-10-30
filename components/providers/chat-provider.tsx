@@ -71,8 +71,11 @@ function upsert(list: ChatMessage[], m: ChatMessage): ChatMessage[] {
 
 const READ_DEBOUNCE_MS = 400;
 // how long after the last touch someone counts as at the screen
+const LOAD_RETRY_MS = 4000;
 const PRESENT_MS = 2 * 60_000;
 const RECONNECT_MS = [2000, 5000, 15000, 30000];
+
+const failed = () => ({ ok: false as const, error: "Couldn't reach the server. Check your connection and try again." });
 
 export function ChatProvider({ initialUnread, children }: { initialUnread: Record<string, number>; children: ReactNode }) {
   const { profile } = useAppState();
@@ -143,29 +146,58 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
     };
   }, [reportViewing]);
 
-  const loadThread = useCallback(async (circleId: string) => {
-    if (loading.current.has(circleId)) return;
-    loading.current.add(circleId);
-    try {
-      const result = await getChatMessagesAction(circleId);
-      if (!result.ok) {
-        showToast({ tone: "error", message: result.error });
-        return;
+  // what the stream delivers for a thread that's still being read from the
+  // server, since the read may have run before it was written
+  const arrived = useRef(new Map<string, ChatMessage[]>());
+  const retries = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const again = useRef<(circleId: string) => void>(() => {});
+
+  const loadThread = useCallback(
+    async (circleId: string): Promise<boolean> => {
+      if (loading.current.has(circleId)) return false;
+      loading.current.add(circleId);
+      arrived.current.set(circleId, []);
+      clearTimeout(retries.current.get(circleId));
+      try {
+        const result = await getChatMessagesAction(circleId);
+        if (!result.ok) {
+          showToast({ tone: "error", message: result.error });
+          return false;
+        }
+        const early = arrived.current.get(circleId) ?? [];
+        setThreads((t) => {
+          // what the stream delivered while this was loading is newer
+          const held = [...(t[circleId]?.messages ?? []), ...early];
+          return { ...t, [circleId]: { messages: held.reduce(upsert, result.value.messages), more: t[circleId]?.more ?? result.value.more } };
+        });
+        return true;
+      } catch {
+        // the connection failed: tried again for as long as it's on screen
+        if (viewing.current.has(circleId)) {
+          retries.current.set(
+            circleId,
+            setTimeout(() => again.current(circleId), LOAD_RETRY_MS),
+          );
+        }
+        return false;
+      } finally {
+        loading.current.delete(circleId);
+        arrived.current.delete(circleId);
       }
-      setThreads((t) => {
-        // what the stream delivered while this was loading is newer
-        const held = t[circleId]?.messages ?? [];
-        return { ...t, [circleId]: { messages: held.reduce(upsert, result.value.messages), more: t[circleId]?.more ?? result.value.more } };
-      });
-    } finally {
-      loading.current.delete(circleId);
-    }
-  }, [showToast]);
+    },
+    [showToast],
+  );
+  useEffect(() => {
+    again.current = (circleId) => void loadThread(circleId).then((ok) => ok && markRead(circleId));
+    const timers = retries.current;
+    return () => timers.forEach(clearTimeout);
+  }, [loadThread, markRead]);
 
   const onMessage = useCallback(
     (m: ChatMessage, fresh: boolean) => {
       lastRev.current = Math.max(lastRev.current ?? 0, m.rev);
       const held = threadsRef.current[m.circleId];
+      arrived.current.get(m.circleId)?.push(m);
       if (held) setThreads((t) => (t[m.circleId] ? { ...t, [m.circleId]: { ...t[m.circleId]!, messages: upsert(t[m.circleId]!.messages, m) } } : t));
       const onScreen = viewing.current.has(m.circleId) && document.visibilityState === "visible";
       if (onScreen) {
@@ -254,7 +286,7 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
       viewing.current.set(circleId, (viewing.current.get(circleId) ?? 0) + 1);
       reportViewing();
       if (threadsRef.current[circleId]) markRead(circleId);
-      else void loadThread(circleId).then(() => markRead(circleId));
+      else void loadThread(circleId).then((ok) => ok && markRead(circleId));
       return () => {
         const n = (viewing.current.get(circleId) ?? 1) - 1;
         if (n <= 0) viewing.current.delete(circleId);
@@ -286,7 +318,7 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
 
   const send = useCallback(
     async (circleId: string, body: string, mentions: number[]) => {
-      const result = await sendChatMessageAction(circleId, { body, mentions });
+      const result = await sendChatMessageAction(circleId, { body, mentions }).catch(failed);
       if (!result.ok) return result.error;
       adopt(result.value);
       return null;
@@ -296,7 +328,7 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
 
   const edit = useCallback(
     async (id: number, body: string) => {
-      const result = await editChatMessageAction(id, body);
+      const result = await editChatMessageAction(id, body).catch(failed);
       if (!result.ok) return result.error;
       adopt(result.value);
       return null;
@@ -306,7 +338,7 @@ export function ChatProvider({ initialUnread, children }: { initialUnread: Recor
 
   const remove = useCallback(
     async (id: number) => {
-      const result = await deleteChatMessageAction(id);
+      const result = await deleteChatMessageAction(id).catch(failed);
       if (!result.ok) return result.error;
       adopt(result.value);
       return null;

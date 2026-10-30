@@ -24,6 +24,9 @@ export interface ChatSubscriber {
 // a client that stops saying it's still looking is taken to have gone
 const VIEWING_TTL_MS = 2 * 60_000;
 // what one member can make the hub remember, since the report comes from a browser
+// how often the listening connection is probed, and how long it has to answer
+const PROBE_MS = 30_000;
+const PROBE_TIMEOUT_MS = 10_000;
 const VIEWING_CLIENTS_MAX = 10;
 const VIEWING_CIRCLES_MAX = 20;
 
@@ -65,6 +68,7 @@ class ChatHub {
   private retryMs = 1000;
   // connections already given up on, so a second report of the same loss is ignored
   private gone = new WeakSet<Client>();
+  private keepalive: ReturnType<typeof setInterval> | null = null;
 
   subscribe(subscriber: ChatSubscriber): () => void {
     this.subscribers.add(subscriber);
@@ -77,7 +81,7 @@ class ChatHub {
   private async listen() {
     if (this.client || this.connecting) return;
     this.connecting = true;
-    const client = new Client({ connectionString: process.env.DATABASE_URL });
+    const client = new Client({ connectionString: process.env.DATABASE_URL, keepAlive: true });
     try {
       client.on("notification", (n) => void this.fanOut(n.payload ?? ""));
       client.on("error", () => this.lost(client));
@@ -85,6 +89,7 @@ class ChatHub {
       await client.connect();
       await client.query(`LISTEN ${CHAT_CHANNEL}`);
       this.client = client;
+      this.watch(client);
       const reconnected = this.retryMs > 1000;
       this.retryMs = 1000;
       // anything sent while it was down was missed
@@ -96,9 +101,31 @@ class ChatHub {
     }
   }
 
+  /* A socket killed by a NAT or load balancer raises no error, and then no
+     NOTIFY would ever arrive: so it's asked something now and then, and given
+     up on if it doesn't answer. */
+  private watch(client: Client) {
+    if (this.keepalive) clearInterval(this.keepalive);
+    this.keepalive = setInterval(() => {
+      const dead = setTimeout(() => this.lost(client), PROBE_TIMEOUT_MS);
+      client.query("select 1").then(
+        () => clearTimeout(dead),
+        () => {
+          clearTimeout(dead);
+          this.lost(client);
+        },
+      );
+    }, PROBE_MS);
+    this.keepalive.unref();
+  }
+
   private lost(client: Client) {
     if (this.gone.has(client)) return;
     this.gone.add(client);
+    if (this.client === client && this.keepalive) {
+      clearInterval(this.keepalive);
+      this.keepalive = null;
+    }
     // a dead connection may still raise an error, which must not go unhandled
     client.removeAllListeners();
     client.on("error", () => {});

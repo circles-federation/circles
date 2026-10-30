@@ -59,12 +59,27 @@ async function withMentions(rows: MessageRow[]): Promise<ChatMessage[]> {
   return rows.map((r) => toChatMessage(r, byMessage.get(r.id) ?? [], reviewOf.get(r.id)));
 }
 
-/* The circle's members, if `memberId` is one of them and it's a live circle
-   with chat; refused otherwise, as if it doesn't exist. */
-export async function chatMembersOf(memberId: number, circleId: string): Promise<number[]> {
+async function rosterOf(circleId: string): Promise<number[]> {
+  return (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.id);
+}
+
+async function assertChatCircle(circleId: string): Promise<void> {
   const [circle] = await db.select({ type: circles.type, parentId: circles.parentId, archivedAt: circles.archivedAt }).from(circles).where(eq(circles.id, circleId));
   if (!circle || circle.archivedAt || !circleHasChat(circle)) throw new ChatError("That circle doesn't have a chat.");
-  const ids = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.id);
+}
+
+/* Refuses unless `memberId` belongs to a live circle with chat, as if it
+   doesn't exist. A yes or no, so it doesn't read the roster. */
+export async function assertChatMember(memberId: number, circleId: string): Promise<void> {
+  await assertChatCircle(circleId);
+  const [row] = await db.select({ id: circleMembers.memberId }).from(circleMembers).where(and(eq(circleMembers.circleId, circleId), eq(circleMembers.memberId, memberId))).limit(1);
+  if (!row) throw new ChatError("Only the circle's members can read or write its chat.");
+}
+
+// the circle's members, on the same terms, for what needs to know who they are
+export async function chatMembersOf(memberId: number, circleId: string): Promise<number[]> {
+  await assertChatCircle(circleId);
+  const ids = await rosterOf(circleId);
   if (!ids.includes(memberId)) throw new ChatError("Only the circle's members can read or write its chat.");
   return ids;
 }
@@ -81,7 +96,7 @@ export async function chatCircleIdsOf(memberId: number): Promise<string[]> {
 
 // a page of the thread, oldest first: the newest `PAGE`, or those just before `before`
 export async function getChatMessages(memberId: number, circleId: string, before?: number): Promise<{ messages: ChatMessage[]; more: boolean }> {
-  await chatMembersOf(memberId, circleId);
+  await assertChatMember(memberId, circleId);
   if (before !== undefined && !Number.isSafeInteger(before)) throw new ChatError("That isn't a place in the thread.");
   const rows = await db
     .select()
@@ -162,7 +177,7 @@ export async function editChatMessage(memberId: number, id: number, body: string
   if (problem) throw new ChatError(problem);
   return db.transaction(async (tx) => {
     const row = await lockOwn(tx, memberId, id);
-    await chatMembersOf(memberId, row.circleId);
+    await assertChatMember(memberId, row.circleId);
     if (!canEditChat(row.createdAt.toISOString(), Date.now())) throw new ChatError("It's too late to edit that message.");
     // what's under review is what its circle is being asked about
     const [review] = await tx.select({ id: circleProposals.id }).from(circleProposals).where(and(eq(circleProposals.chatMessageId, id), eq(circleProposals.status, "open")));
@@ -182,8 +197,11 @@ export async function editChatMessage(memberId: number, id: number, body: string
 // the author takes back what they wrote; the message stays as a gap in the thread
 export async function deleteChatMessage(memberId: number, id: number): Promise<ChatMessage> {
   return db.transaction(async (tx) => {
-    const row = await lockOwn(tx, memberId, id);
-    await chatMembersOf(memberId, row.circleId);
+    // A proposal passing or being withdrawn locks its own row and then this
+    // message's, so this takes them in that order too, or the two can deadlock.
+    const [peek] = await tx.select({ authorId: circleChatMessages.authorId, circleId: circleChatMessages.circleId }).from(circleChatMessages).where(eq(circleChatMessages.id, id));
+    if (!peek || peek.authorId !== memberId) throw new ChatError("That message doesn't exist.");
+    await assertChatMember(memberId, peek.circleId);
     // a proposal to remove it is moot: closed, and its unsent notices with it
     const closed = await tx
       .update(circleProposals)
@@ -191,8 +209,20 @@ export async function deleteChatMessage(memberId: number, id: number): Promise<C
       .where(and(eq(circleProposals.chatMessageId, id), eq(circleProposals.kind, "remove_message"), eq(circleProposals.status, "open")))
       .returning({ id: circleProposals.id });
     if (closed.length > 0) await tx.delete(proposalNotifications).where(and(inArray(proposalNotifications.proposalId, closed.map((c) => c.id)), isNull(proposalNotifications.sentAt)));
+    await lockOwn(tx, memberId, id);
     return tombstone(tx, id);
   });
+}
+
+/* A proposal to remove a message quotes it, so that it still reads once the
+   message is gone; once it is gone the quote goes too, from every proposal
+   that named it. */
+async function redactRemovals(tx: Tx, messageId: number): Promise<void> {
+  const rows = await tx.select({ id: circleProposals.id, lines: circleProposals.lines }).from(circleProposals).where(and(eq(circleProposals.chatMessageId, messageId), eq(circleProposals.kind, "remove_message")));
+  for (const r of rows) {
+    const lines = r.lines.map((l) => (l.label === "Message" ? { ...l, after: "(removed)" } : l));
+    await tx.update(circleProposals).set({ lines }).where(eq(circleProposals.id, r.id));
+  }
 }
 
 /* Clears a message's text and who it was addressed to, leaving the row. Used
@@ -205,6 +235,7 @@ export async function tombstone(tx: Tx, id: number): Promise<ChatMessage> {
     .returning();
   if (!updated) throw new Error("Chat message update returned nothing.");
   await tx.delete(circleChatMentions).where(eq(circleChatMentions.messageId, id));
+  await redactRemovals(tx, id);
   await wake(tx, id, true);
   return toChatMessage(updated, []);
 }
@@ -227,7 +258,7 @@ export async function getChatUnread(memberId: number): Promise<Record<string, nu
 
 // read up to here: never moves backwards
 export async function markChatRead(memberId: number, circleId: string, lastReadId: number): Promise<void> {
-  await chatMembersOf(memberId, circleId);
+  await assertChatMember(memberId, circleId);
   if (!Number.isSafeInteger(lastReadId) || lastReadId < 1) throw new ChatError("That isn't a place in the thread.");
   // never past the newest message, or later ones would count as read before they're written
   const [newest] = await db.select({ id: max(circleChatMessages.id) }).from(circleChatMessages).where(eq(circleChatMessages.circleId, circleId));
@@ -245,7 +276,7 @@ export async function getChatForFanout(id: number): Promise<{ message: ChatMessa
   const [row] = await db.select().from(circleChatMessages).where(eq(circleChatMessages.id, id));
   if (!row) return null;
   const [message] = await withMentions([row]);
-  const memberIds = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, row.circleId))).map((r) => r.id);
+  const memberIds = await rosterOf(row.circleId);
   return message ? { message, memberIds } : null;
 }
 
@@ -261,7 +292,7 @@ export async function getChatNoticeData(id: number) {
   if (!row || row.message.deletedAt) return null;
   const { message } = row;
   const tagged = (await db.select({ id: circleChatMentions.memberId }).from(circleChatMentions).where(eq(circleChatMentions.messageId, id))).map((r) => r.id);
-  const circleMemberIds = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, message.circleId))).map((r) => r.id);
+  const circleMemberIds = await rosterOf(message.circleId);
   const audience = tagged.length > 0 ? tagged.filter((m) => circleMemberIds.includes(m)) : circleMemberIds;
   const [author] = message.authorId !== null ? await db.select({ name: members.name }).from(members).where(eq(members.id, message.authorId)) : [];
   return {

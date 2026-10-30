@@ -16,6 +16,8 @@ export const runtime = "nodejs";
 
 // under the idle timeout of the proxies in front of the server
 const HEARTBEAT_MS = 25_000;
+// every this many beats, the session is checked again: about 2 minutes
+const SESSION_CHECK_BEATS = 5;
 
 export async function GET(request: Request) {
   const memberId = await getCurrentUserId();
@@ -39,6 +41,7 @@ export async function GET(request: Request) {
       // catch-up replays) is `update`, which the app doesn't count as unread
       const sendMessage = (m: ChatMessage, fresh = false) => send(`id: ${m.rev}\nevent: ${fresh ? "message" : "update"}\ndata: ${JSON.stringify(m)}\n\n`);
       let cursor = since ?? (await getChatRev());
+      const began = cursor;
 
       // a catch-up that finds too much to send tells the client to read afresh
       const catchUp = async () => {
@@ -63,27 +66,41 @@ export async function GET(request: Request) {
           cursor = Math.max(cursor, m.rev);
           sendMessage(m, fresh);
         },
-        onReset: () => void catchUp().catch(() => send(`event: resync\ndata: {}\n\n`)),
+        // what it replays is "changed", not "new", so the client is also told to
+        // count and read afresh
+        onReset: () =>
+          void catchUp()
+            .catch(() => {})
+            .then(() => send(`event: resync\ndata: {}\n\n`)),
       });
-      const heartbeat = setInterval(() => send(`: ping\n\n`), HEARTBEAT_MS);
-      cleanup = () => {
-        open = false;
-        clearInterval(heartbeat);
-        unsubscribe();
-      };
       const leave = () => {
         cleanup();
         try {
           controller.close();
         } catch {}
       };
+      let beats = 0;
+      const heartbeat = setInterval(() => {
+        send(`: ping\n\n`);
+        if (++beats % SESSION_CHECK_BEATS !== 0) return;
+        // signed out or revoked since it opened: stop sending
+        void getCurrentUserId()
+          .then((current) => current !== memberId && leave())
+          .catch(() => {});
+      }, HEARTBEAT_MS);
+      cleanup = () => {
+        open = false;
+        clearInterval(heartbeat);
+        unsubscribe();
+      };
       // it may have gone while the above was awaited, which would never fire again
       if (request.signal.aborted) return leave();
       request.signal.addEventListener("abort", leave);
 
-      if (since !== null) await catchUp().catch(() => send(`event: resync\ndata: {}\n\n`));
       // its id lets a reconnect before any message arrives still resume from here
-      else send(`id: ${cursor}\nevent: ready\ndata: {}\n\n`);
+      if (since === null) send(`id: ${began}\nevent: ready\ndata: {}\n\n`);
+      // and what was written between reading where to begin and subscribing is sent
+      await catchUp().catch(() => send(`event: resync\ndata: {}\n\n`));
     },
     cancel() {
       cleanup();
