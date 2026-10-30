@@ -8,8 +8,8 @@ import { MeetingAvailability } from "./meeting-availability";
 import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, Section, SectionGroup, Select, SettingRow, SettingRows, TextArea } from "@/components/shared";
-import { audienceLabel, circleCanHoldMeetings, circlesByKind, circlesForAudience, circlesForMember, indexCircles, isCircleMember, hostCanShowTo, isGroup, isRootCircle, isWithinCircle } from "@/lib/circles.util";
+import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, FederationExplorerField, Section, SectionGroup, Select, SettingRow, SettingRows, useFederationExplorer, TextArea } from "@/components/shared";
+import { audienceLabel, circleCanHoldMeetings, circlesForAudience, circlesForMember, indexCircles, isCircleMember, hostCanShowTo, isGroup, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
 import { DEFAULT_REMINDERS, REMINDERS, attendeeIds, availableReminders, defaultReminders, defaultEventTimes, endAfterStartMoves, remindersSummary, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -211,7 +211,6 @@ export function EventFormPage(props: EventFormPageProps) {
     ? (byId[initialValues.circleId] ? [byId[initialValues.circleId]!] : [])
     : postable.filter((c) => !gov || canHoldMeeting(c));
   const circle = byId[circleId];
-  const circleGroups = circlesByKind(circleChoices);
   // a circle can only host if it has members of its own — the city's roster is
   // implicit, so it isn't offered — and only an event shown to itself or to a
   // circle it's part of, so the options follow the Circle chosen above
@@ -219,7 +218,36 @@ export function EventFormPage(props: EventFormPageProps) {
   const hostChoices = mode === "edit"
     ? (hostCircle ? [hostCircle] : [])
     : circlesForMember(profile.id, circles).filter((c) => !isRootCircle(c) && hostCanShowTo(c, circleId, parentOf));
-  const hostGroups = circlesByKind(hostChoices);
+
+  // every circle can be browsed in the explorer; the rest say why they can't be chosen
+  const you = { id: profile.id, homeCircleId: profile.homeCircleId };
+  const circleExplorer = useFederationExplorer({
+    title: gov ? "Which circle is meeting?" : "Shown to",
+    circles,
+    value: circleId || null,
+    onChange: pickCircle,
+    refusal: (c) => {
+      if (circleChoices.some((x) => x.id === c.id)) return null;
+      if (gov && isRootCircle(c)) return "A meeting can't be held citywide";
+      if (gov && !circleCanHoldMeetings(c)) return "A group can't hold a meeting";
+      return "You're not a member";
+    },
+    you,
+  });
+  const hostExplorer = useFederationExplorer({
+    title: "Hosted by",
+    circles,
+    value: hostCircleId || null,
+    onChange: setHostCircleId,
+    refusal: (c) => {
+      if (hostChoices.some((x) => x.id === c.id)) return null;
+      if (isRootCircle(c)) return "The city can't host an event";
+      if (!isCircleMember(c, profile.id)) return "You're not a member";
+      return `It can't host an event shown to ${circle?.name ?? "this circle"}`;
+    },
+    you,
+  });
+  const explorerView = circleExplorer.view ?? hostExplorer.view;
 
   // true once something differs from where the form started — guards Back/
   // Cancel behind a confirmation. Switching the Event/Meeting tab alone
@@ -306,7 +334,7 @@ export function EventFormPage(props: EventFormPageProps) {
   // leaving is the top bar's Back, which asks before discarding changes; from
   // a view within the form it goes back to the form without that view's
   // changes (Done is what keeps them), asking first if there are any
-  useBackHandler(view !== "form" ? (viewDirty ? () => setConfirmingViewDiscard(true) : discardView) : dirty ? () => setConfirmingDiscard(true) : null);
+  useBackHandler(circleExplorer.backHandler ?? hostExplorer.backHandler ?? (view !== "form" ? (viewDirty ? () => setConfirmingViewDiscard(true) : discardView) : dirty ? () => setConfirmingDiscard(true) : null));
 
   // the event as it would be submitted, and the first thing wrong with it if
   // anything is — worked out on every render, so the submit buttons stay
@@ -400,7 +428,7 @@ export function EventFormPage(props: EventFormPageProps) {
   // is filled in or removed first (Back still leaves; the form then says what's missing)
   const agendaComplete = agenda.every((a) => a.title.trim());
   useTopBarAction(
-    view !== "form"
+    circleExplorer.topBarAction ?? hostExplorer.topBarAction ?? (view !== "form"
       ? {
           label: "Done",
           icon: CheckIcon,
@@ -412,7 +440,7 @@ export function EventFormPage(props: EventFormPageProps) {
         }
       : proposingNew
         ? { label: busy ? "Saving" : submitLabel, icon: HandRaisedIcon, onAction: () => setConfirmingProposal(true), disabled: !canSubmit, variant: "propose" }
-        : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" }
+        : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" })
   );
   // proposing sends it to the deciding circle's members at once, so it's
   // asked first, saying who'll be asked and how it's decided
@@ -438,15 +466,7 @@ export function EventFormPage(props: EventFormPageProps) {
   ];
 
   const circleSelect = (
-    <Select id="circle" value={circleId} onChange={(e) => pickCircle(e.target.value)} disabled={mode === "edit"}>
-      {circleGroups.map((g) => (
-        <optgroup key={g.label} label={g.label}>
-          {g.circles.map((c) => (
-            <option key={c.id} value={c.id}>{isRootCircle(c) ? `${c.name} (Everyone)` : c.name}</option>
-          ))}
-        </optgroup>
-      ))}
-    </Select>
+    <FederationExplorerField id="circle" circles={circles} value={circleId || null} onOpen={circleExplorer.open} disabled={mode === "edit"} />
   );
 
   const topics = agenda.filter((a) => a.title.trim());
@@ -463,6 +483,8 @@ export function EventFormPage(props: EventFormPageProps) {
       onCancel={() => setConfirmingViewDiscard(false)}
     />
   );
+
+  if (explorerView) return explorerView;
 
   if (view === "slots") {
     return (
@@ -725,16 +747,12 @@ export function EventFormPage(props: EventFormPageProps) {
           ) : (
             <div>
               <Label htmlFor="host">Hosted by</Label>
-              <Select id="host" value={hostCircleId} onChange={(e) => setHostCircleId(e.target.value)} disabled={mode === "edit"}>
-                <option value="">{profile.name} (you)</option>
-                {hostGroups.map((g) => (
-                  <optgroup key={g.label} label={g.label}>
-                    {g.circles.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </Select>
+              <FederationExplorerField id="host" circles={circles} value={hostCircleId || null} onOpen={hostExplorer.open} placeholder={`${profile.name} (you)`} disabled={mode === "edit"} />
+              {hostCircleId && mode !== "edit" && (
+                <button type="button" onClick={() => setHostCircleId("")} className="hit relative mt-2 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-semibold text-soft underline underline-offset-2">
+                  Host it yourself instead
+                </button>
+              )}
               {hostCircle && circle && (
                 <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
                   {mode === "edit"
@@ -795,6 +813,8 @@ export function EventFormPage(props: EventFormPageProps) {
         />
       )}
 
+      {circleExplorer.dialog}
+      {hostExplorer.dialog}
       {confirmingProposal && decidingCircle && (
         <ConfirmModal
           title={`Propose this ${noun}?`}

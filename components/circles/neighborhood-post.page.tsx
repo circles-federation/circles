@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { CheckIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
-import { ConfirmModal, Label, PageContainer, Select } from "@/components/shared";
+import { ConfirmModal, FederationExplorerField, Label, PageContainer, useFederationExplorer } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
+import { useCircles } from "@/lib/hooks";
 import { validateResourceInput } from "@/lib/resources.util";
 import type { Circle } from "@/lib/types";
 import { ResourceFields, useResourceForm } from "./resource-form";
@@ -29,7 +30,8 @@ interface NeighborhoodPostPageProps {
    asked. A page on every screen, like the event form, since it starts a
    proposal rather than pinning something up. */
 export function NeighborhoodPostPage({ neighborhood, circles, onPosted, onProposed, onDiscard }: NeighborhoodPostPageProps) {
-  const { proposeNeighborhoodPost } = useAppState();
+  const { proposeNeighborhoodPost, profile } = useAppState();
+  const allCircles = useCircles();
   // always chosen, never assumed, even from one: it's posted as that circle
   const [circleId, setCircleId] = useState("");
   const circle = circles.find((c) => c.id === circleId);
@@ -47,33 +49,36 @@ export function NeighborhoodPostPage({ neighborhood, circles, onPosted, onPropos
   // nothing to post until it's whole: a title, and a valid link or a message
   const ready = !!circle && !form.busy && Object.keys(validateResourceInput({ title: form.title, icon: form.icon, url: form.url, message: form.message })).length === 0;
 
-  useBackHandler(form.dirty && !form.busy ? () => setConfirmingDiscard(true) : null);
+  const explorer = useFederationExplorer({
+    title: "From",
+    circles: allCircles,
+    value: circleId || null,
+    onChange: setCircleId,
+    refusal: (c) => (circles.some((x) => x.id === c.id) ? null : `Only a Circle in ${neighborhood.name} you belong to can post`),
+    you: { id: profile.id, homeCircleId: profile.homeCircleId },
+  });
+
+  useBackHandler(explorer.backHandler ?? (form.dirty && !form.busy ? () => setConfirmingDiscard(true) : null));
   useTopBarAction(
-    alone
+    explorer.topBarAction ?? (alone
       ? { label: form.busy ? "Posting" : "Post", icon: CheckIcon, onAction: () => void form.submit(), disabled: !ready, variant: "primary" }
-      : { label: form.busy ? "Proposing" : "Propose post", icon: HandRaisedIcon, onAction: () => setConfirming(true), disabled: !ready, variant: "propose" }
+      : { label: form.busy ? "Proposing" : "Propose post", icon: HandRaisedIcon, onAction: () => setConfirming(true), disabled: !ready, variant: "propose" })
   );
+
+  if (explorer.view) return explorer.view;
 
   return (
     <PageContainer size="compact">
       <form onSubmit={(e) => e.preventDefault()} noValidate className="flex flex-col gap-5">
         <div>
           <Label htmlFor="post-from">From</Label>
-          <Select id="post-from" value={circleId} onChange={(e) => setCircleId(e.target.value)}>
-            <option value="" disabled>
-              Choose a circle
-            </option>
-            {circles.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
+          <FederationExplorerField id="post-from" circles={allCircles} value={circleId || null} onOpen={explorer.open} />
           <p className="mt-1.5 font-serif text-sm leading-snug text-soft">It goes on {neighborhood.name}&rsquo;s bulletin, for everyone who lives there, and into their daily digest.</p>
         </div>
         <ResourceFields form={form} audience="neighbors" />
       </form>
 
+      {explorer.dialog}
       {confirming && circle && (
         <ConfirmModal
           title="Propose this post?"
