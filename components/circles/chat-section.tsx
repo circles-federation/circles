@@ -15,7 +15,7 @@ import { canEditChat, highlightMentions, matchMentions, mentionAt, mentionsIn, t
 import { useClock, useMemberById, useMembers } from "@/lib/hooks";
 import { messageHtml, messageWhen } from "@/lib/messages.util";
 import type { ChatMessage, Circle, Member } from "@/lib/types";
-import { isPhoneWidth } from "@/lib/viewport";
+import { FOOT_SLOT_ID, isInstalledApp, isPhoneWidth } from "@/lib/viewport";
 
 // for useSyncExternalStore reading something that never changes once there's a browser
 const subscribeNothing = () => () => {};
@@ -75,6 +75,9 @@ export function ChatSection({ circle }: { circle: Circle }) {
     };
     const follow = new ResizeObserver(() => pinned.current && toEnd());
     follow.observe(el);
+    // the installed app's scroller shortens when the keyboard comes up, which leaves the end under the composer
+    const scroller = el.closest("main");
+    if (scroller) follow.observe(scroller);
     const settle = [0, 100, 300, 800].map((ms) => setTimeout(() => pinned.current && toEnd(), ms));
     window.addEventListener("scroll", onScroll, true);
     return () => {
@@ -413,28 +416,29 @@ function Composer({ circleName, people, onSend, onHeight }: { circleName: string
   const bar = useRef<HTMLDivElement>(null);
   // laid on the page itself, not inside it: a page's content animates in, and
   // anything fixed inside an animating ancestor stops being fixed to the screen
-  const host = useSyncExternalStore(subscribeNothing, () => document.body, () => null);
-  // how far the on-screen keyboard covers the foot of the layout viewport (the
-  // browser lifts a field above it only on some platforms), so the bar rides on it
-  const [inset, setInset] = useState(0);
+  const host = useSyncExternalStore(subscribeNothing, () => document.getElementById(FOOT_SLOT_ID) ?? document.body, () => null);
+  // whether the on-screen keyboard is up, only for the bar's bottom padding: the home
+  // indicator's room isn't needed above a keyboard. Not tracked while scrolling, and the
+  // bar's own position is never worked out here: in the installed app it's laid out by
+  // AppShell, which is shortened by the keyboard, and in a browser tab the browser lifts a
+  // fixed bar itself. Following the visual viewport by hand made it bounce on iOS.
+  const [keyboard, setKeyboard] = useState(false);
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
-    const update = () => setInset(viewport.scale > 1.01 ? 0 : Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)));
+    const update = () => setKeyboard(viewport.scale <= 1.01 && viewport.height < window.innerHeight - 1);
     update();
     viewport.addEventListener("resize", update);
-    viewport.addEventListener("scroll", update);
-    return () => {
-      viewport.removeEventListener("resize", update);
-      viewport.removeEventListener("scroll", update);
-    };
+    return () => viewport.removeEventListener("resize", update);
   }, []);
   useEffect(() => {
     const el = bar.current;
     if (!host || !el) return;
-    const observer = new ResizeObserver(() => onHeight(el.offsetHeight));
+    // in the installed app the bar takes its own room under the thread, so nothing needs reserving
+    const report = () => onHeight(isInstalledApp() ? 0 : el.offsetHeight);
+    const observer = new ResizeObserver(report);
     observer.observe(el);
-    onHeight(el.offsetHeight);
+    report();
     return () => observer.disconnect();
   }, [host, onHeight]);
   // who has been picked from the list, and the @word being typed now
@@ -559,10 +563,9 @@ function Composer({ circleName, people, onSend, onHeight }: { circleName: string
     // of the page but under the top bar
     <div
       ref={bar}
-      style={{ bottom: inset }}
-      className="fixed inset-x-0 z-40 border-t border-faint bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-faint bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] standalone:static standalone:pr-0 standalone:pl-0"
     >
-      <form onSubmit={submit} className={clsx("mx-auto max-w-220 px-6 pt-3", inset > 0 ? "pb-3" : "pb-[max(0.75rem,env(safe-area-inset-bottom))]")}>
+      <form onSubmit={submit} className={clsx("mx-auto max-w-220 px-6 pt-3", keyboard ? "pb-3" : "pb-[max(0.75rem,env(safe-area-inset-bottom))]")}>
         {listOpen &&
           place &&
           createPortal(

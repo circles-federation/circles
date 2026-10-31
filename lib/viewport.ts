@@ -18,3 +18,7 @@ export function isInstalledApp(): boolean {
 export function isIPhoneBrowserTab(): boolean {
   return /iPhone|iPod/.test(navigator.userAgent) && !isInstalledApp();
 }
+
+// where AppShell leaves room for a bar that belongs at the foot of the screen
+// (the chat's composer), so the installed app lays it out rather than pinning it
+export const FOOT_SLOT_ID = "foot-slot";

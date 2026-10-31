@@ -7,7 +7,7 @@ import { activeTab, hidesBottomNav } from "@/lib/nav.util";
 // imported for its effect too: it catches the browser's install offer early
 import "@/lib/install";
 import { registerServiceWorker } from "@/lib/push-client";
-import { isInstalledApp } from "@/lib/viewport";
+import { FOOT_SLOT_ID, isInstalledApp } from "@/lib/viewport";
 import { BottomNav } from "./bottom-nav";
 import { TopBar } from "./top-bar";
 
@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-dvh bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink standalone:relative standalone:flex standalone:h-(--app-height) standalone:flex-col">
+    <div className="min-h-dvh bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink standalone:relative standalone:flex standalone:h-(--app-height) standalone:min-h-0 standalone:flex-col">
       <TopBar onReselect={scrollToTop} />
 
       <main
@@ -63,6 +63,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
         <div aria-hidden className="h-(--keyboard-room)" />
       </main>
+
+      {/* in the installed app a bar for the foot of the screen is laid out here, under <main>, so it
+          rides the shell's height as the keyboard shortens it (see useIosKeyboard); in a browser tab
+          it's pinned to the screen instead, and the browser lifts it itself */}
+      <div id={FOOT_SLOT_ID} data-keyboard-lift className="standalone:shrink-0" />
 
       <BottomNav onReselect={scrollToTop} away={!showNav} />
     </div>
@@ -94,6 +99,9 @@ const TYPED_FIELD = "textarea, [contenteditable], input:not([type]), input[type=
 const FIELD_MARGIN_PX = 24;
 // a field lower than this share of the screen would end up under the keyboard
 const KEYBOARD_LINE = 0.4;
+// how tall the shell is made, as a share of the screen, the instant a field in the foot slot
+// is tapped: short enough that the field is clear of any iPhone keyboard before it appears
+const LIFT_HEIGHT = 0.56;
 // a touch that moved further than this was a scroll, not a tap
 const TAP_SLOP_PX = 6;
 
@@ -146,8 +154,30 @@ function useIosKeyboard(mainRef: RefObject<HTMLElement | null>) {
       const tapped = start && t && Math.hypot(t.clientX - start.x, t.clientY - start.y) <= TAP_SLOP_PX;
       start = null;
       const field = fieldAt(e.target);
-      if (!tapped || !e.cancelable || !field || field === document.activeElement || !main?.contains(field)) return;
+      if (!tapped || !e.cancelable || !field || field === document.activeElement) return;
+      const lifted = !!field.closest("[data-keyboard-lift]");
+      if (!lifted && !main?.contains(field)) return;
       if (field.matches(":disabled, [readonly]")) return;
+      if (lifted) {
+        /* A field at the foot of the screen is under the keyboard however it's focused, so Safari
+           would slide the whole page up and this would then have to undo it, which shows as the
+           bar bouncing. So the shell is shortened first, which puts the field above where the
+           keyboard will be, and then it's focused: nothing is left for Safari to slide. The
+           keyboard's own resize then sets the exact height (fit). */
+        e.preventDefault();
+        root.style.setProperty("--app-height", `${Math.round(window.innerHeight * LIFT_HEIGHT)}px`);
+        field.focus({ preventScroll: true });
+        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+          try {
+            field.setSelectionRange(field.value.length, field.value.length);
+          } catch {}
+        }
+        // no on-screen keyboard (a hardware one) means no resize to correct the height
+        setTimeout(() => {
+          if (!keyboardUp()) fit();
+        }, 800);
+        return;
+      }
       root.style.setProperty("--keyboard-room", "60dvh");
       const rect = field.getBoundingClientRect();
       // high enough already: the keyboard won't cover it, so nothing slides
@@ -155,7 +185,7 @@ function useIosKeyboard(mainRef: RefObject<HTMLElement | null>) {
       // no native focus (or the click after it), which would slide the page
       e.preventDefault();
       const topBar = parseFloat(getComputedStyle(root).getPropertyValue("--top-bar-height")) || 0;
-      main.scrollTop += rect.top - topBar - FIELD_MARGIN_PX;
+      if (main) main.scrollTop += rect.top - topBar - FIELD_MARGIN_PX;
       field.focus({ preventScroll: true });
       // a tap would have put the caret where it landed; at the end is the
       // nearest a programmatic focus can do (some input types can't be set)
@@ -170,7 +200,10 @@ function useIosKeyboard(mainRef: RefObject<HTMLElement | null>) {
     // the room isn't needed. With the keyboard up, fit() takes it away once
     // the keyboard has gone, so the page doesn't jump while it's closing.
     function onFocusOut(e: FocusEvent) {
-      if (!fieldAt(e.relatedTarget) && !keyboardUp()) root.style.setProperty("--keyboard-room", "0px");
+      if (!fieldAt(e.relatedTarget) && !keyboardUp()) {
+        root.style.setProperty("--keyboard-room", "0px");
+        fit();
+      }
     }
 
     function fit() {
