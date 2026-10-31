@@ -66,7 +66,8 @@ export async function requestLoginCode(email: string): Promise<RequestCodeResult
 
 export async function verifyLoginCode(email: string, code: string): Promise<AuthResult> {
   try {
-    await auth.api.signInEmailOTP({ body: { email, otp: code.trim() } });
+    // the headers are how the session records the browser and address it was made from
+    await auth.api.signInEmailOTP({ body: { email, otp: code.trim() }, headers: await headers() });
   } catch {
     // Better Auth uses the same INVALID_OTP error for a wrong code, an
     // expired one, and disableSignUp rejecting an unrecognized email — no
