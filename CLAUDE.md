@@ -16,6 +16,8 @@ It's a Next.js (App Router, TypeScript) app backed by a real, self-hosted Postgr
 
 There is no test runner yet — deliberately deferred until the app grows past prototype stage.
 
+Production database changes and deploys: use `scripts/prod-db.sh` and follow the `/prod` skill (`.claude/skills/prod/SKILL.md`) — never `railway ssh`, `railway run` or a production `DATABASE_URL` directly. Nothing in the repo may hold credentials.
+
 ## Architecture
 
 ### Routing and shared app state
