@@ -14,7 +14,7 @@ It's a Next.js (App Router, TypeScript) app backed by a real, self-hosted Postgr
 - `npm run build` — production build (also the fastest way to catch broken imports/syntax across the app)
 - `npm run lint` — ESLint
 
-There is no test runner yet — deliberately deferred until the app grows past prototype stage.
+- `npm test` — Vitest unit tests (`lib/**/*.test.ts`, beside the module they cover); `npm run typecheck` — `tsc --noEmit`. CI (`.github/workflows/ci.yml`) runs typecheck, lint, test and build on every PR and push to `main`.
 
 Production database changes and deploys: use `scripts/prod-db.sh` and follow the `/prod` skill (`.claude/skills/prod/SKILL.md`) — never `railway ssh`, `railway run` or a production `DATABASE_URL` directly. Nothing in the repo may hold credentials.
 
