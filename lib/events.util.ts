@@ -1,5 +1,5 @@
 import { validateAgenda } from "./agenda.util";
-import { isPastEvent } from "./format.util";
+import { isCalendarDay, isPastEvent } from "./format.util";
 import { REPEAT_FREQUENCIES, localDay } from "./recurrence.util";
 import type { AgendaItem, Event, EventKindKey, NotificationKind, ReminderHours, RepeatFrequency } from "./types";
 
@@ -147,7 +147,7 @@ export function roleKey(label: string, index: number): string {
   return label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `slot-${index}`;
 }
 
-export const isDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(`${s}T00:00:00`).getTime());
+export const isDay = isCalendarDay;
 export const isClock = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
 const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));

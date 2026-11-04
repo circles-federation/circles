@@ -1,4 +1,4 @@
-import { MONTHS, WEEKDAYS, parseDay } from "./format.util";
+import { MONTHS, WEEKDAYS, isCalendarDay, parseDay } from "./format.util";
 import type { CircleTask, TaskPriority, TaskStatus } from "./types";
 
 /* A circle's backlog (lib/db/tasks.ts): the rules the form, the lists and the
@@ -52,7 +52,7 @@ export function validateTask(input: TaskInput, memberIds: number[]): TaskErrors 
   if (input.description.trim().length > TASK_DESCRIPTION_MAX) errors.description = `Keep the description under ${TASK_DESCRIPTION_MAX} characters.`;
   if (!TASK_STATUSES.some((s) => s.key === input.status)) errors.status = "Choose where the task stands.";
   if (!TASK_PRIORITIES.some((p) => p.key === input.priority)) errors.priority = "Choose a priority.";
-  if (input.dueDate && (!/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) || isNaN(parseDay(input.dueDate).getTime()))) errors.dueDate = "That date wasn't recognized.";
+  if (input.dueDate && !isCalendarDay(input.dueDate)) errors.dueDate = "That date wasn't recognized.";
   if (input.assigneeId !== null && !memberIds.includes(input.assigneeId)) errors.assigneeId = "Assign it to one of the circle's members.";
   return errors;
 }
