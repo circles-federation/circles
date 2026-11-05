@@ -36,8 +36,8 @@ export function messageText(markdown: string): string {
   return markdown
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]*)\]\(([^)]*)\)/g, "$1 ($2)")
-    .replace(/(\*\*|__|\*|_|~~|`)/g, "")
     .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)/gm, "")
+    .replace(/(\*\*|__|\*|_|~~|`)/g, "")
     .replace(/\\([\\`*_{}[\]()#+\-.!>])/g, "$1")
     .replace(/\n{3,}/g, "\n\n")
     .trim();

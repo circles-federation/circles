@@ -9,6 +9,14 @@ export function parseDay(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
   return new Date(y, m - 1, d);
 }
+// a real calendar day in "YYYY-MM-DD" form: JavaScript rolls 2026-02-31 over
+// to March 3rd, which a date column would refuse
+export function isCalendarDay(iso: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+  const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
+  const day = new Date(y, m - 1, d);
+  return day.getFullYear() === y && day.getMonth() === m - 1 && day.getDate() === d;
+}
 // an event is "past" once its day is before today. events with no set date
 // (e.g. a just-convened council, date TBD) are never past.
 export function isPastEvent(e: Pick<Event, "date">): boolean {
