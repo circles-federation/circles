@@ -82,3 +82,36 @@ export async function roleHolder(circleId: string, label: string): Promise<numbe
   );
   return rows[0] === undefined ? undefined : rows[0].member_id;
 }
+
+export async function enablePush(memberId: number): Promise<void> {
+  await db.execute(sql`insert into push_subscriptions (endpoint, member_id, p256dh, auth) values (${`https://push.example.test/${memberId}`}, ${memberId}, 'k', 'a')`);
+}
+
+export async function setNotify(memberId: number, over: { email?: boolean; push?: boolean; address?: string | null }): Promise<void> {
+  if (over.email !== undefined) await db.execute(sql`update members set notify_email = ${over.email} where id = ${memberId}`);
+  if (over.push !== undefined) await db.execute(sql`update members set notify_push = ${over.push} where id = ${memberId}`);
+  if (over.address !== undefined) await db.execute(sql`update members set email = ${over.address} where id = ${memberId}`);
+}
+
+// the queue rows about an event for a member and kind: channel, digest, and delivery state
+export async function noticeRows(eventId: string, memberId: number, kind: string) {
+  const { rows } = await db.execute<{ channel: string; digest: boolean; sent_at: Date | null; attempts: number; change: unknown }>(
+    sql`select channel, digest, sent_at, attempts, change from event_notifications where event_id = ${eventId} and member_id = ${memberId} and kind = ${kind} order by channel`
+  );
+  return rows;
+}
+
+// every (kind, member, channel, digest) queued about an event, for asserting on the whole queue
+export async function queueOf(eventId: string): Promise<string[]> {
+  const { rows } = await db.execute<{ kind: string; member_id: number; channel: string; digest: boolean }>(
+    sql`select kind, member_id, channel, digest from event_notifications where event_id = ${eventId} order by kind, member_id, channel`
+  );
+  return rows.map((r) => `${r.kind}:${r.member_id}:${r.channel}${r.digest ? ":digest" : ""}`);
+}
+
+export async function ageNotice(eventId: string, memberId: number, kind: string, set: { lastAttemptMinutesAgo?: number; attempts?: number }): Promise<void> {
+  if (set.lastAttemptMinutesAgo !== undefined)
+    await db.execute(sql`update event_notifications set last_attempt_at = now() - make_interval(mins => ${set.lastAttemptMinutesAgo}) where event_id = ${eventId} and member_id = ${memberId} and kind = ${kind}`);
+  if (set.attempts !== undefined)
+    await db.execute(sql`update event_notifications set attempts = ${set.attempts} where event_id = ${eventId} and member_id = ${memberId} and kind = ${kind}`);
+}
