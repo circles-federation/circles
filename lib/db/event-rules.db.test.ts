@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { EventDraft } from "@/lib/events.util";
+import type { EventDetails, EventDraft } from "@/lib/events.util";
 import { cancelEvent, createEvent, getEvent, getVisibleEvent, setRsvp, toggleRoleSlot, updateEventDetails } from "./events";
 import { addCircle, addMember, eventNotices, join, resetDb } from "./testing";
 
@@ -17,7 +17,7 @@ const draft = (over: Partial<EventDraft> = {}): EventDraft => ({
   ...over,
 });
 
-const details = (over: Partial<Parameters<typeof updateEventDetails>[2]> = {}) => ({
+const details = (over: Partial<EventDetails> = {}): EventDetails => ({
   title: "Potluck",
   date: "2026-11-10",
   start: "18:00",
