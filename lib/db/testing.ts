@@ -48,3 +48,11 @@ export async function proposalNotices(proposalId: string, kind: string): Promise
 export async function giveRole(circleId: string, label: string, memberId: number): Promise<void> {
   await db.insert(circleRoles).values({ id: `${circleId}-${label}`, circleId, label, builtin: true, memberId, position: 0 });
 }
+
+// who's been queued a notice of this kind about an event, whatever the channel
+export async function eventNotices(eventId: string, kind: string): Promise<number[]> {
+  const { rows } = await db.execute<{ member_id: number }>(
+    sql`select distinct member_id from event_notifications where event_id = ${eventId} and kind = ${kind} order by member_id`
+  );
+  return rows.map((r) => r.member_id);
+}
