@@ -101,14 +101,16 @@ export async function renewGuestCode(id: string): Promise<{ code: string; email:
 // the emailed code makes the RSVP count, and shows the guest's first name in
 // the list of who's going
 export async function confirmGuestRsvp(id: string, code: string): Promise<void> {
-  await db.transaction(async (tx) => {
+  // the wrong-code count is committed before the refusal is thrown, since
+  // throwing inside the transaction would roll the count back
+  const mismatch = await db.transaction(async (tx) => {
     const [row] = await tx.select().from(eventGuestRsvps).where(eq(eventGuestRsvps.id, id)).for("update");
     if (!row || !row.codeHash) throw new GuestRsvpError("That code has already been used, or has expired — start again.");
     if (row.codeAttempts >= CODE_MAX_ATTEMPTS) throw new GuestRsvpError("Too many wrong codes — send yourself a new one.");
     if (!row.codeExpiresAt || row.codeExpiresAt < new Date()) throw new GuestRsvpError("That code has expired — send yourself a new one.");
     if (!timingSafeEqual(Buffer.from(hashCode(code.trim())), Buffer.from(row.codeHash))) {
       await tx.update(eventGuestRsvps).set({ codeAttempts: row.codeAttempts + 1 }).where(eq(eventGuestRsvps.id, id));
-      throw new GuestRsvpError("That code doesn't match — check the email and try again.");
+      return true;
     }
     await tx
       .update(eventGuestRsvps)
@@ -116,7 +118,9 @@ export async function confirmGuestRsvp(id: string, code: string): Promise<void> 
       .where(eq(eventGuestRsvps.id, id));
     // told once, the first time; getting back in with a new code isn't news
     if (row.confirmedAt === null) await enqueueGuestConfirmation(tx, id);
+    return false;
   });
+  if (mismatch) throw new GuestRsvpError("That code doesn't match — check the email and try again.");
 }
 
 // taking back an RSVP: whoever holds its id (the cookie set on confirming) may

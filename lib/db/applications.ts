@@ -117,7 +117,9 @@ export async function renewConfirmationCode(id: string): Promise<{ email: string
 // the emailed code proves the address is theirs, and sends the application on
 // to the admins
 export async function confirmApplication(id: string, code: string): Promise<void> {
-  await db.transaction(async (tx) => {
+  // the wrong-code count is committed before the refusal is thrown, since
+  // throwing inside the transaction would roll the count back
+  const mismatch = await db.transaction(async (tx) => {
     const [row] = await tx.select().from(applications).where(eq(applications.id, id)).for("update");
     if (!row || row.status !== "unconfirmed" || !row.confirmCodeHash) throw new ApplicationError("That application has already been confirmed, or has expired — start again.");
     if (row.confirmAttempts >= CONFIRM_MAX_ATTEMPTS) throw new ApplicationError("Too many wrong codes — send yourself a new one.");
@@ -125,13 +127,15 @@ export async function confirmApplication(id: string, code: string): Promise<void
     const given = Buffer.from(hashCode(code.trim()));
     if (!timingSafeEqual(given, Buffer.from(row.confirmCodeHash))) {
       await tx.update(applications).set({ confirmAttempts: row.confirmAttempts + 1 }).where(eq(applications.id, id));
-      throw new ApplicationError("That code doesn't match — check the email and try again.");
+      return true;
     }
     await tx
       .update(applications)
       .set({ status: "pending", submittedAt: new Date(), confirmCodeHash: null, confirmExpiresAt: null })
       .where(eq(applications.id, id));
+    return false;
   });
+  if (mismatch) throw new ApplicationError("That code doesn't match — check the email and try again.");
 }
 
 export async function isAdmin(memberId: number): Promise<boolean> {

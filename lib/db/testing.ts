@@ -115,3 +115,46 @@ export async function ageNotice(eventId: string, memberId: number, kind: string,
   if (set.attempts !== undefined)
     await db.execute(sql`update event_notifications set attempts = ${set.attempts} where event_id = ${eventId} and member_id = ${memberId} and kind = ${kind}`);
 }
+
+export async function setInbox(circleId: string, on = true): Promise<void> {
+  await db.execute(sql`update circles set inbox_enabled = ${on} where id = ${circleId}`);
+}
+
+// a guest's RSVP as stored, by id
+export async function guestRsvpRow(id: string) {
+  const { rows } = await db.execute<{ confirmed: boolean; attempts: number; name: string; waiting_on_code: boolean; emails_off: boolean }>(
+    sql`select confirmed_at is not null as confirmed, code_attempts as attempts, name, code_hash is not null as waiting_on_code, emails_off_at is not null as emails_off from event_guest_rsvps where id = ${id}`
+  );
+  return rows[0];
+}
+
+export async function guestRsvpCount(): Promise<number> {
+  const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from event_guest_rsvps`);
+  return rows[0]!.n;
+}
+
+export async function guestNoticeKinds(guestId: string): Promise<string[]> {
+  const { rows } = await db.execute<{ kind: string }>(sql`select kind from guest_notifications where guest_id = ${guestId} order by kind`);
+  return rows.map((r) => r.kind);
+}
+
+// make a waiting code expired, or old enough to be asked for again
+export async function ageGuestCode(table: "event_guest_rsvps" | "guest_message_drafts", id: string, what: "expired" | "cooldown-over"): Promise<void> {
+  const t = sql.identifier(table);
+  if (what === "expired") await db.execute(sql`update ${t} set code_expires_at = now() - interval '1 minute' where id = ${id}`);
+  else await db.execute(sql`update ${t} set code_sent_at = now() - interval '2 minutes' where id = ${id}`);
+}
+
+export async function backdate(table: "event_guest_rsvps" | "guest_message_drafts", id: string, daysAgo: number): Promise<void> {
+  await db.execute(sql`update ${sql.identifier(table)} set created_at = now() - make_interval(days => ${daysAgo}) where id = ${id}`);
+}
+
+export async function guestMessageDraftCount(): Promise<number> {
+  const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from guest_message_drafts`);
+  return rows[0]!.n;
+}
+
+export async function codeRequestCount(): Promise<number> {
+  const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from guest_code_requests`);
+  return rows[0]!.n;
+}
