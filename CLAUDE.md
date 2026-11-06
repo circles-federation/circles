@@ -14,7 +14,7 @@ It's a Next.js (App Router, TypeScript) app backed by a real, self-hosted Postgr
 - `npm run build` — production build (also the fastest way to catch broken imports/syntax across the app)
 - `npm run lint` — ESLint
 
-- `npm test` — Vitest unit tests (`lib/**/*.test.ts`, beside the module they cover); `npm run typecheck` — `tsc --noEmit`. CI (`.github/workflows/ci.yml`) runs typecheck, lint, test and build on every PR and push to `main`.
+- `npm test` — Vitest unit tests (`lib/**/*.test.ts`, beside the module they cover); `npm run typecheck` — `tsc --noEmit`. `*.db.test.ts` files (beside the DAL module they cover) run against a real Postgres: their own `circles_test` database on the `docker compose` server (`TEST_DATABASE_URL` overrides; its name must end in `_test`, since each run drops and rebuilds it by applying `drizzle/`), one file at a time, with `resetDb`/`addMember`/`addCircle`/`join` from `lib/db/testing.ts` (in `lib/db/` because only it may import the schema). `npm test` runs both kinds, so Postgres must be up locally. CI (`.github/workflows/ci.yml`, with a Postgres service) runs typecheck, lint, test and build on every PR and push to `main`.
 
 Production database changes and deploys: use `scripts/prod-db.sh` and follow the `/prod` skill (`.claude/skills/prod/SKILL.md`) — never `railway ssh`, `railway run` or a production `DATABASE_URL` directly. Nothing in the repo may hold credentials.
 
