@@ -21,6 +21,7 @@ import { getMessagesForMember } from "./messages";
 import { getOrCreateShareToken, getSharedEvent, getShareStatus, revokeShareLinks } from "./event-shares";
 import {
   addCircle,
+  addShareLink,
   addMember,
   ageGuestCode,
   backdate,
@@ -94,6 +95,15 @@ describe("sharing an event", () => {
     expect(shared?.going.sort()).toEqual(["Member 1", "Member 2"]);
     expect(Object.keys(shared!)).not.toContain("organizerId");
     expect(await getSharedEvent("nope")).toBeNull();
+  });
+
+  it("shows nothing at a link to a meeting or an event its circle hasn't consented to", async () => {
+    const meeting = (await createEvent(1, draft({ circleId: "council", kind: "meeting", description: "", agenda: [{ title: "Hi", category: "report" }] }))).events[0]!;
+    const proposed = await make(1, { circleId: "the903", hostCircleId: "council" });
+    await addShareLink("meeting-link", meeting.id, 1);
+    await addShareLink("proposal-link", proposed.id, 1);
+    expect(await getSharedEvent("meeting-link")).toBeNull();
+    expect(await getSharedEvent("proposal-link")).toBeNull();
   });
 
   it("names the group on a group's event, which may be shared", async () => {
@@ -327,6 +337,13 @@ describe("a guest's message to a circle", () => {
     await ageGuestCode("guest_message_drafts", s.id, "cooldown-over");
     const again = await renewGuestMessageCode(s.id);
     await expect(confirmGuestMessage(s.id, again.code)).resolves.toBeTruthy();
+  });
+
+  it("checks the Inbox is still on when the code is entered", async () => {
+    const s = await startGuestMessage("council", "Ona", "ona@example.test", message);
+    await setInbox("council", false);
+    await expect(confirmGuestMessage(s.id, s.code)).rejects.toThrow(/isn't taking messages/);
+    expect(await getMessagesForMember(1)).toEqual([]);
   });
 
   it("allows one code a minute per address", async () => {

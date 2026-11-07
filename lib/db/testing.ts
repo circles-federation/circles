@@ -185,3 +185,8 @@ export async function addGuestRsvp(eventId: string, invitedBy: number, email: st
 export async function setMemberEmail(memberId: number, email: string): Promise<void> {
   await db.execute(sql`update members set email = ${email} where id = ${memberId}`);
 }
+
+// a share link made without the checks getOrCreateShareToken applies, to test what the public page still refuses
+export async function addShareLink(token: string, eventId: string, memberId: number): Promise<void> {
+  await db.execute(sql`insert into event_share_links (token, event_id, member_id) values (${token}, ${eventId}, ${memberId})`);
+}
