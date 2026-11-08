@@ -190,3 +190,19 @@ export async function setMemberEmail(memberId: number, email: string): Promise<v
 export async function addShareLink(token: string, eventId: string, memberId: number): Promise<void> {
   await db.execute(sql`insert into event_share_links (token, event_id, member_id) values (${token}, ${eventId}, ${memberId})`);
 }
+
+// how many rows every table holds, to assert that something wrote nothing
+export async function tableCounts(): Promise<Record<string, number>> {
+  const { rows } = await db.execute<{ tablename: string }>(sql`select tablename from pg_tables where schemaname = 'public' order by tablename`);
+  const counts: Record<string, number> = {};
+  for (const { tablename } of rows) {
+    const { rows: n } = await db.execute<{ n: number }>(sql.raw(`select count(*)::int as n from "${tablename}"`));
+    counts[tablename] = n[0]!.n;
+  }
+  return counts;
+}
+
+export async function memberName(id: number): Promise<string | undefined> {
+  const { rows } = await db.execute<{ name: string }>(sql`select name from members where id = ${id}`);
+  return rows[0]?.name;
+}
