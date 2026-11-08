@@ -37,7 +37,8 @@ jobs:
           BETTER_AUTH_SECRET: ci-only-secret-not-used-at-runtime-0000
 
   e2e:
-    runs-on: ubuntu-latest
+    # Playwright supports only some Ubuntu releases, which ubuntu-latest outruns
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:17-alpine
