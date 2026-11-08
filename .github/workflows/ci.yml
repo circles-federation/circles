@@ -35,3 +35,41 @@ jobs:
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
           BETTER_AUTH_SECRET: ci-only-secret-not-used-at-runtime-0000
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: circles
+          POSTGRES_PASSWORD: circles
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U circles"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      mailpit:
+        image: axllent/mailpit
+        ports:
+          - 1025:1025
+          - 8025:8025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
