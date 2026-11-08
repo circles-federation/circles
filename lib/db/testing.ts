@@ -18,6 +18,8 @@ export async function resetDb(): Promise<void> {
 
 export async function addMember(id: number, name = `Member ${id}`): Promise<number> {
   await db.insert(members).values({ id, name, pronouns: "", role: "", bio: "", email: `m${id}@example.test` });
+  // explicit ids don't move the identity sequence, as the seed scripts know
+  await db.execute(sql`select setval(pg_get_serial_sequence('members', 'id'), (select max(id) from members))`);
   return id;
 }
 
@@ -114,4 +116,77 @@ export async function ageNotice(eventId: string, memberId: number, kind: string,
     await db.execute(sql`update event_notifications set last_attempt_at = now() - make_interval(mins => ${set.lastAttemptMinutesAgo}) where event_id = ${eventId} and member_id = ${memberId} and kind = ${kind}`);
   if (set.attempts !== undefined)
     await db.execute(sql`update event_notifications set attempts = ${set.attempts} where event_id = ${eventId} and member_id = ${memberId} and kind = ${kind}`);
+}
+
+export async function setInbox(circleId: string, on = true): Promise<void> {
+  await db.execute(sql`update circles set inbox_enabled = ${on} where id = ${circleId}`);
+}
+
+// a guest's RSVP as stored, by id
+export async function guestRsvpRow(id: string) {
+  const { rows } = await db.execute<{ confirmed: boolean; attempts: number; name: string; waiting_on_code: boolean; emails_off: boolean }>(
+    sql`select confirmed_at is not null as confirmed, code_attempts as attempts, name, code_hash is not null as waiting_on_code, emails_off_at is not null as emails_off from event_guest_rsvps where id = ${id}`
+  );
+  return rows[0];
+}
+
+export async function guestRsvpCount(): Promise<number> {
+  const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from event_guest_rsvps`);
+  return rows[0]!.n;
+}
+
+export async function guestNoticeKinds(guestId: string): Promise<string[]> {
+  const { rows } = await db.execute<{ kind: string }>(sql`select kind from guest_notifications where guest_id = ${guestId} order by kind`);
+  return rows.map((r) => r.kind);
+}
+
+// make a waiting code expired, or old enough to be asked for again
+export async function ageGuestCode(table: "event_guest_rsvps" | "guest_message_drafts", id: string, what: "expired" | "cooldown-over"): Promise<void> {
+  const t = sql.identifier(table);
+  if (what === "expired") await db.execute(sql`update ${t} set code_expires_at = now() - interval '1 minute' where id = ${id}`);
+  else await db.execute(sql`update ${t} set code_sent_at = now() - interval '2 minutes' where id = ${id}`);
+}
+
+export async function backdate(table: "event_guest_rsvps" | "guest_message_drafts", id: string, daysAgo: number): Promise<void> {
+  await db.execute(sql`update ${sql.identifier(table)} set created_at = now() - make_interval(days => ${daysAgo}) where id = ${id}`);
+}
+
+export async function guestMessageDraftCount(): Promise<number> {
+  const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from guest_message_drafts`);
+  return rows[0]!.n;
+}
+
+export async function codeRequestCount(): Promise<number> {
+  const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from guest_code_requests`);
+  return rows[0]!.n;
+}
+
+export async function loginExists(email: string): Promise<boolean> {
+  const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from "user" where email = ${email}`);
+  return rows[0]!.n > 0;
+}
+
+export async function applicationRow(id: string) {
+  const { rows } = await db.execute<{ status: string; has_photo: boolean; attempts: number; code_pending: boolean; referred_by: number | null; member_id: number | null; note: string | null }>(
+    sql`select status, photo is not null as has_photo, confirm_attempts as attempts, confirm_code_hash is not null as code_pending, referred_by, member_id, note from applications where id = ${id}`
+  );
+  return rows[0];
+}
+
+export async function ageApplicationCode(id: string, what: "expired" | "created-two-days-ago"): Promise<void> {
+  if (what === "expired") await db.execute(sql`update applications set confirm_expires_at = now() - interval '1 minute' where id = ${id}`);
+  else await db.execute(sql`update applications set created_at = now() - interval '2 days' where id = ${id}`);
+}
+
+export async function addGuestRsvp(eventId: string, invitedBy: number, email: string): Promise<void> {
+  await db.execute(sql`insert into event_guest_rsvps (id, event_id, invited_by, name, email, confirmed_at) values (gen_random_uuid(), ${eventId}, ${invitedBy}, 'Ona', ${email}, now())`);
+}
+
+export async function setMemberEmail(memberId: number, email: string): Promise<void> {
+  await db.execute(sql`update members set email = ${email} where id = ${memberId}`);
+}
+
+// a share link made without the checks getOrCreateShareToken applies, to test what the public page still refuses
+export async function addShareLink(token: string, eventId: string, memberId: number): Promise<void> {
+  await db.execute(sql`insert into event_share_links (token, event_id, member_id) values (${token}, ${eventId}, ${memberId})`);
 }

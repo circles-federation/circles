@@ -116,14 +116,16 @@ export async function renewGuestMessageCode(id: string): Promise<{ code: string;
    may have changed while the code was on its way. Returns the message's id,
    for its circle to be told. */
 export async function confirmGuestMessage(id: string, code: string): Promise<{ messageId: string }> {
-  return db.transaction(async (tx) => {
+  // the wrong-code count is committed before the refusal is thrown, since
+  // throwing inside the transaction would roll the count back
+  const result = await db.transaction(async (tx) => {
     const [draft] = await tx.select().from(guestMessageDrafts).where(eq(guestMessageDrafts.id, id)).for("update");
     if (!draft) throw new GuestMessageError("That code has already been used, or has expired — write the message again.");
     if (draft.codeAttempts >= CODE_MAX_ATTEMPTS) throw new GuestMessageError("Too many wrong codes — send yourself a new one.");
     if (draft.codeExpiresAt < new Date()) throw new GuestMessageError("That code has expired — send yourself a new one.");
     if (!timingSafeEqual(Buffer.from(hashCode(code.trim())), Buffer.from(draft.codeHash))) {
       await tx.update(guestMessageDrafts).set({ codeAttempts: draft.codeAttempts + 1 }).where(eq(guestMessageDrafts.id, id));
-      throw new GuestMessageError("That code doesn't match — check the email and try again.");
+      return null;
     }
     await openInbox(draft.circleId, tx);
     // serialized per address, so two codes entered at once can't both pass the limit
@@ -143,6 +145,8 @@ export async function confirmGuestMessage(id: string, code: string): Promise<{ m
     await tx.delete(guestMessageDrafts).where(eq(guestMessageDrafts.id, id));
     return { messageId };
   });
+  if (!result) throw new GuestMessageError("That code doesn't match — check the email and try again.");
+  return result;
 }
 
 // messages never confirmed, a day on (the code expires in half an hour). Run
