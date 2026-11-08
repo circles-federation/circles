@@ -21,6 +21,28 @@ export const PRONOUNS_MAX = 30;
 // the pronouns Edit myself offers with a tap; anything else is typed below them
 export const PRONOUN_OPTIONS = ["he/him", "she/her", "they/them"] as const;
 export const OCCUPATION_MAX = 60;
+// every member's profile is sent to every member's browser, so each part is capped
+export const MEMBER_NAME_MAX = 60;
+export const BIO_MAX = 2_000;
+export const MAX_TAGS = 30;
+export const TAG_MAX = 40;
+
+// what's wrong with a profile edit's name, bio and tags, or null
+export function validateProfileText(p: { name?: string; lastName?: string | null; bio?: string; skills?: string[]; interests?: string[] }): string | null {
+  if (p.name !== undefined) {
+    if (typeof p.name !== "string" || !p.name.trim()) return "Enter your name.";
+    if (p.name.trim().length > MEMBER_NAME_MAX) return `Keep your name under ${MEMBER_NAME_MAX} characters.`;
+  }
+  if (p.lastName != null && (typeof p.lastName !== "string" || p.lastName.trim().length > MEMBER_NAME_MAX)) return `Keep your last name under ${MEMBER_NAME_MAX} characters.`;
+  if (p.bio !== undefined && (typeof p.bio !== "string" || p.bio.length > BIO_MAX)) return `Keep your bio under ${BIO_MAX} characters.`;
+  for (const [label, tags] of [["skills", p.skills], ["interests", p.interests]] as const) {
+    if (tags === undefined) continue;
+    if (!Array.isArray(tags) || tags.some((t) => typeof t !== "string")) return `Those ${label} weren't recognized.`;
+    if (tags.length > MAX_TAGS) return `Keep ${label} to ${MAX_TAGS} or fewer.`;
+    if (tags.some((t) => t.length > TAG_MAX)) return `Keep each of your ${label} under ${TAG_MAX} characters.`;
+  }
+  return null;
+}
 
 export const BIRTH_DECADES = [1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010] as const;
 

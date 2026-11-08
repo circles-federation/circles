@@ -10,6 +10,7 @@ import { takeCodeAllowance } from "@/lib/db/guest-rsvps";
    "use server" files, which may only export actions. */
 export async function takeAllowance(): Promise<void> {
   const h = await headers();
-  const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim();
+  // the last entry of x-forwarded-for is the one our own proxy added; the first is whatever the client sent
+  const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",").at(-1)?.trim();
   if (ip) await takeCodeAllowance(createHash("sha256").update(`${ip}|${process.env.BETTER_AUTH_SECRET ?? ""}`).digest("hex"));
 }

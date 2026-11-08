@@ -41,6 +41,39 @@ export const CIRCLE_DOMAIN_MAX = 500;
 export const CIRCLE_AIM_MAX = 200;
 export const MAX_CIRCLE_AIMS = 10;
 
+/* What a circle's page may hold, which every signed-in member's browser is
+   sent whole, so no one member can make the app heavy for everyone. Generous:
+   they're ceilings against abuse, not a style guide. */
+export const CIRCLE_ABOUT_MAX = 10_000;
+export const CIRCLE_JOIN_MAX = 5_000;
+export const CIRCLE_SHORT_FIELD_MAX = 300;
+export const MAX_CIRCLE_LIST_ITEMS = 50;
+export const CIRCLE_LIST_ITEM_MAX = 200;
+export const MAX_CIRCLE_PAIRS = 30;
+export const CIRCLE_PAIR_PART_MAX = 200;
+
+// what's wrong with a direct edit of a circle's page (its wiki fields), or null
+export function validateWikiPatch(p: Partial<Pick<Circle, "about" | "offers" | "needs" | "facts" | "join" | "contact" | "website" | "address" | "hours">>): string | null {
+  if (p.about !== undefined && p.about.length > CIRCLE_ABOUT_MAX) return `Keep About to ${CIRCLE_ABOUT_MAX} characters.`;
+  if (p.join !== undefined && p.join.length > CIRCLE_JOIN_MAX) return `Keep How to join to ${CIRCLE_JOIN_MAX} characters.`;
+  for (const [label, value] of [["website", p.website], ["contact", p.contact], ["address", p.address]] as const) {
+    if (value !== undefined && value.length > CIRCLE_SHORT_FIELD_MAX) return `Keep the ${label} to ${CIRCLE_SHORT_FIELD_MAX} characters.`;
+  }
+  for (const [label, list] of [["offers", p.offers], ["needs", p.needs]] as const) {
+    if (list === undefined) continue;
+    if (!Array.isArray(list) || list.some((i) => typeof i !== "string")) return `Those ${label} weren't recognized.`;
+    if (list.length > MAX_CIRCLE_LIST_ITEMS) return `Keep ${label} to ${MAX_CIRCLE_LIST_ITEMS} items or fewer.`;
+    if (list.some((i) => i.length > CIRCLE_LIST_ITEM_MAX)) return `Keep each of the ${label} to ${CIRCLE_LIST_ITEM_MAX} characters.`;
+  }
+  for (const [label, pairs] of [["quick facts", p.facts], ["hours", p.hours]] as const) {
+    if (pairs === undefined) continue;
+    if (!Array.isArray(pairs) || pairs.some((x) => !Array.isArray(x) || x.length !== 2 || typeof x[0] !== "string" || typeof x[1] !== "string")) return `Those ${label} weren't recognized.`;
+    if (pairs.length > MAX_CIRCLE_PAIRS) return `Keep ${label} to ${MAX_CIRCLE_PAIRS} rows or fewer.`;
+    if (pairs.some(([a, b]) => a.length > CIRCLE_PAIR_PART_MAX || b.length > CIRCLE_PAIR_PART_MAX)) return `Keep each of the ${label} to ${CIRCLE_PAIR_PART_MAX} characters.`;
+  }
+  return null;
+}
+
 export interface NewCircleInput {
   type: CircleType;
   name: string;

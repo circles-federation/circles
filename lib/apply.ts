@@ -3,7 +3,10 @@
 import { cookies } from "next/headers";
 import { getVerifiedGuest } from "@/lib/db/guest-rsvps";
 import { GUEST_COOKIE, guestIdsFrom } from "@/lib/guest-rsvp.util";
-import { ApplicationError, CONFIRM_CODE_MINUTES, confirmApplication, renewConfirmationCode, startApplication, unconfirmedApplicationEmail } from "@/lib/db/applications";
+import { takeAllowance } from "@/lib/code-allowance";
+import { UserFacingError } from "@/lib/db/errors";
+import { validateApplication } from "@/lib/applications.util";
+import { CONFIRM_CODE_MINUTES, confirmApplication, renewConfirmationCode, startApplication, unconfirmedApplicationEmail } from "@/lib/db/applications";
 import { sendEmail } from "@/lib/email";
 import { applicationCodeEmail } from "@/lib/email/templates.util";
 
@@ -53,6 +56,12 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
   const wait = guest ? null : cooldownError(email);
   if (wait) return { ok: false, error: wait };
   try {
+    // an application stores a photo and emails a code to whatever address was
+    // typed, so each connection gets an hour's allowance (a mistyped form is
+    // refused first and doesn't spend it)
+    const details = { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId") };
+    const complete = !Object.values(validateApplication(details, photo instanceof Blob && photo.size > 0))[0];
+    if (!guest && complete) await takeAllowance();
     const { id, code } = await startApplication(
       { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId") },
       photo instanceof Blob ? photo : new Blob(),
@@ -64,7 +73,7 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
     if (failed) return { ok: false, error: failed };
     return { ok: true, id, ...devCode(code) };
   } catch (err) {
-    if (err instanceof ApplicationError) return { ok: false, error: err.message };
+    if (err instanceof UserFacingError) return { ok: false, error: err.message };
     console.error("Couldn't start an application:", err);
     return { ok: false, error: "Something went wrong — try again in a moment." };
   }
@@ -75,11 +84,12 @@ export async function resendApplicationCode(id: string): Promise<Result<{ code?:
     // before a new code replaces the old one, so a refusal leaves the old one working
     const wait = cooldownError(await unconfirmedApplicationEmail(id));
     if (wait) return { ok: false, error: wait };
+    await takeAllowance();
     const { email, code } = await renewConfirmationCode(id);
     const failed = await sendCode(email, code);
     return failed ? { ok: false, error: failed } : { ok: true, ...devCode(code) };
   } catch (err) {
-    if (err instanceof ApplicationError) return { ok: false, error: err.message };
+    if (err instanceof UserFacingError) return { ok: false, error: err.message };
     console.error("Couldn't resend an application code:", err);
     return { ok: false, error: "Something went wrong — try again in a moment." };
   }
@@ -90,7 +100,7 @@ export async function confirmApplicationCode(id: string, code: string): Promise<
     await confirmApplication(id, code);
     return { ok: true };
   } catch (err) {
-    if (err instanceof ApplicationError) return { ok: false, error: err.message };
+    if (err instanceof UserFacingError) return { ok: false, error: err.message };
     console.error("Couldn't confirm an application:", err);
     return { ok: false, error: "Something went wrong — try again in a moment." };
   }

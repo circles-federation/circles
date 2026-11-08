@@ -6,7 +6,7 @@ import { circleInvitations, circleMembers, circleRoles, circles } from "./schema
 import { dropMembership } from "./memberships";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, DELEGATE, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { cleanAims, validateNewCircle, type NewCircleInput, circleHasInbox, circleHasPage, circleHasWiki } from "@/lib/circles.util";
+import { cleanAims, validateNewCircle, validateWikiPatch, type NewCircleInput, circleHasInbox, circleHasPage, circleHasWiki } from "@/lib/circles.util";
 import type { Circle, PublicWiki } from "@/lib/types";
 
 // the circles started inside another, when reading both at once
@@ -139,15 +139,25 @@ export async function updateCircle(memberId: number, id: string, patch: Partial<
   // consent: a proposal makes them (lib/db/proposals.ts), never this edit
   const consentNeeded = (["name", "tagline", "type", "parentId"] as const).find((k) => patch[k] !== undefined && patch[k] !== circle[k]);
   if (consentNeeded) throw new CircleError("That change needs the circle's consent: propose it from Manage circle.");
-  // and a Circle's domain and aims too, which are only ever proposed, so dropped here
-  const { members: _members, roles: _roles, lastEditedAt, name: _name, tagline: _tagline, type: _type, parentId: _parentId, domain: _domain, aims: _aims, inbox: _inbox, ...columnPatch } = patch;
-  if (Object.keys(columnPatch).length > 0 || lastEditedAt !== undefined) {
+  // what's left is the wiki, and only the wiki: nothing else a request carries
+  // (archiving, the id, who last edited it) is taken from it
+  const wiki = {
+    ...(patch.about !== undefined ? { about: patch.about } : {}),
+    ...(patch.offers !== undefined ? { offers: patch.offers } : {}),
+    ...(patch.needs !== undefined ? { needs: patch.needs } : {}),
+    ...(patch.facts !== undefined ? { facts: patch.facts } : {}),
+    ...(patch.join !== undefined ? { join: patch.join } : {}),
+    ...(patch.contact !== undefined ? { contact: patch.contact } : {}),
+    ...(patch.website !== undefined ? { website: patch.website } : {}),
+    ...(patch.address !== undefined ? { address: patch.address } : {}),
+    ...(patch.hours !== undefined ? { hours: patch.hours } : {}),
+  };
+  const problem = validateWikiPatch(wiki);
+  if (problem) throw new CircleError(problem);
+  if (Object.keys(wiki).length > 0) {
     await db
       .update(circles)
-      .set({
-        ...columnPatch,
-        ...(lastEditedAt !== undefined ? { lastEditedAt: new Date(lastEditedAt) } : {}),
-      })
+      .set({ ...wiki, lastEditedBy: memberId, lastEditedAt: new Date() })
       .where(eq(circles.id, id));
   }
   return getCircleById(id);

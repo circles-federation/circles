@@ -4,7 +4,7 @@ import { db } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, memberPendingPhotos, memberPhotos, members } from "./schema";
 import { validateLanguages } from "@/lib/languages.util";
-import { OCCUPATION_MAX, PRONOUNS_MAX, isBirthDecade } from "@/lib/members.util";
+import { OCCUPATION_MAX, PRONOUNS_MAX, isBirthDecade, validateProfileText } from "@/lib/members.util";
 import { normalizeAvailability, validateAvailability } from "@/lib/availability.util";
 import type { AvailabilityWindow, Member, NotificationSettings, Profile } from "@/lib/types";
 
@@ -131,6 +131,8 @@ export async function updateMember(id: number, patch: ProfilePatch): Promise<Mem
     const problem = validateLanguages(languages);
     if (problem) throw new MemberError(problem);
   }
+  const textProblem = validateProfileText({ ...(name !== undefined ? { name } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(bio !== undefined ? { bio } : {}), ...(skills !== undefined ? { skills } : {}), ...(interests !== undefined ? { interests } : {}) });
+  if (textProblem) throw new MemberError(textProblem);
   if (pronouns !== undefined && pronouns.trim().length > PRONOUNS_MAX) throw new MemberError(`Keep pronouns under ${PRONOUNS_MAX} characters.`);
   if (role !== undefined && role.trim().length > OCCUPATION_MAX) throw new MemberError(`Keep occupation under ${OCCUPATION_MAX} characters.`);
   const birthDecade = patch.birthDecade;
