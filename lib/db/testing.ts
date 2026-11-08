@@ -206,3 +206,13 @@ export async function memberName(id: number): Promise<string | undefined> {
   const { rows } = await db.execute<{ name: string }>(sql`select name from members where id = ${id}`);
   return rows[0]?.name;
 }
+
+export async function circleArchived(id: string): Promise<boolean> {
+  const { rows } = await db.execute<{ archived: boolean }>(sql`select archived_at is not null as archived from circles where id = ${id}`);
+  return rows[0]?.archived ?? false;
+}
+
+export async function circleEditor(id: string): Promise<{ by: number | null; at: Date | null }> {
+  const { rows } = await db.execute<{ by: number | null; at: string | null }>(sql`select last_edited_by as by, last_edited_at as at from circles where id = ${id}`);
+  return { by: rows[0]?.by ?? null, at: rows[0]?.at ? new Date(rows[0].at) : null };
+}
