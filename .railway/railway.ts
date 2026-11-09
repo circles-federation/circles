@@ -31,6 +31,8 @@ export default defineRailway(() => {
       SMTP_URL: preserve(),
       EMAIL_FROM: preserve(),
       DIGEST_HOUR: preserve(),
+      GLITCHTIP_DSN: preserve(),
+      NEXT_PUBLIC_GLITCHTIP_DSN: preserve(),
       TZ: preserve(),
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: preserve(),
       VAPID_PRIVATE_KEY: preserve(),

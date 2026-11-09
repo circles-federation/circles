@@ -22,6 +22,7 @@ export function BetaPrivacy() {
         <li>What you write in a circle&apos;s chat. Deleting a message erases its text and leaves a gap in the thread.</li>
         <li>If you RSVP to an event someone shared with you, without an account: your name and email address, and which member shared the link with you. To limit abuse, a scrambled (hashed) form of your IP address is kept for a day, only to count how many codes one connection asks for.</li>
         <li>Your sign-ins, including your IP address and browser type, to keep your account secure.</li>
+        <li>When Circles breaks, an error report: what failed, which page (never its query or the secret in a shared link), which version of Circles and your browser type. It&apos;s sent to the error tracker the people running Circles use, and leaves out your name, email address and anything you wrote.</li>
       </LegalList>
 
       <LegalHeading>Who sees it</LegalHeading>
