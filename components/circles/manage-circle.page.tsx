@@ -19,7 +19,7 @@ interface ManageCirclePageProps {
 
 // what Details covers, under its row
 function detailsSummary(c: Circle): string {
-  const parts = ["Name", "tagline", ...(c.type !== "neighborhood" && c.type !== "group" ? ["type"] : []), ...(c.parentId !== null ? ["parent"] : [])];
+  const parts = ["Name", "tagline", ...(c.type !== "neighborhood" && c.type !== "group" ? ["type"] : []), ...(c.parentId !== null ? ["parent"] : []), ...(c.type === "group" ? ["visibility"] : [])];
   const list = `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
   return c.type === "circle" ? `${parts.join(", ")}, domain and aims` : list;
 }
@@ -27,10 +27,10 @@ function detailsSummary(c: Circle): string {
 // under Details, Roles and Inbox while a change to the circle is open for consent
 const LOCKED = "Locked while a proposal is open";
 
-// whether a group is public, and which of its features are on, under its row
+// which of a group's features are on, under its row
 function featuresSummary(c: Circle): string {
   const on = GROUP_FEATURES.filter((f) => c.features?.includes(f.key)).map((f) => f.label);
-  return `${c.public ? "Public" : "Private"}${on.length > 0 ? `: ${on.join(", ")}` : ""}`;
+  return on.length > 0 ? on.join(", ") : "All off";
 }
 
 // how many of its roles are held, under its row
@@ -79,7 +79,7 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
           {/* holding Details and Roles until it's decided */}
           {openProposal && <ProposalBanner proposal={openProposal} memberId={memberId} className="mb-5" />}
           <div className="flex flex-col gap-3">
-            {showFeatures && <MenuRow href={`${base}/features`} icon={AdjustmentsHorizontalIcon} label="Visibility and features" detail={openProposal ? LOCKED : featuresSummary(o)} />}
+            {showFeatures && <MenuRow href={`${base}/features`} icon={AdjustmentsHorizontalIcon} label="Features" detail={openProposal ? LOCKED : featuresSummary(o)} />}
             <MenuRow href={`${base}/details`} icon={IdentificationIcon} label="Details" detail={openProposal ? LOCKED : detailsSummary(o)} />
             {showRoles && <MenuRow href={`${base}/roles`} icon={UserGroupIcon} label="Roles" detail={openProposal ? LOCKED : rolesSummary(o)} />}
             {showInbox && <MenuRow href={`${base}/inbox`} icon={InboxIcon} label="Inbox" detail={openProposal ? LOCKED : o.inbox ? "On: anyone can write to it" : "Off"} />}
@@ -88,7 +88,7 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
             {showNewCircle && <MenuRow href={`/circles/new?parent=${o.id}`} icon={RingIcon} label="New circle" detail="Start a circle inside this one" />}
           </div>
           <p className="mt-4 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-            Changes to its details{showRoles && ", roles"}{showInbox && " and Inbox"}{showFeatures && ", visibility and features"} are proposed to its members, who decide them by consent.
+            Changes to its details{showRoles && ", roles"}{showInbox && " and Inbox"}{showFeatures && " and features"} are proposed to its members, who decide them by consent.
           </p>
         </Section>
 
