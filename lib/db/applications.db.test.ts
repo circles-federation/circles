@@ -75,7 +75,7 @@ describe("applying", () => {
   it("refuses a member's address, whatever its case, and one already waiting for review", async () => {
     await expect(apply({ email: "M2@Example.test" })).rejects.toThrow(/already belongs to a member/);
     await pending();
-    await expect(apply({ email: "ONA@example.test" })).rejects.toThrow(/already an application/);
+    await expect(apply({ email: "ONA@example.test" })).rejects.toThrow(/already a request to join/);
   });
 
   it("replaces an earlier unconfirmed application for the address", async () => {
