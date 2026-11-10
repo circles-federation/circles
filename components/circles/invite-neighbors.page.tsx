@@ -25,12 +25,12 @@ export function InviteNeighborsPage({ neighborhood, city }: InviteNeighborsPageP
   const { showToast } = useToast();
   // the link needs this site's own address, which only the browser knows here
   const origin = useSyncExternalStore(noSubscribe, () => window.location.origin, () => null);
-  const applyUrl = origin ? `${origin}/apply?neighborhood=${encodeURIComponent(neighborhood.id)}` : null;
+  const applyUrl = origin ? `${origin}/join?neighborhood=${encodeURIComponent(neighborhood.id)}` : null;
 
   async function shareLink() {
     if (!applyUrl) return;
-    const how = await shareOrCopy({ title: `Join ${neighborhood.name} on Circles`, text: `Apply to join ${neighborhood.name}'s circle on Circles.`, url: applyUrl });
-    if (how === "copied") showToast({ tone: "success", title: "Link copied", message: `It opens the application with ${neighborhood.name} already chosen.` });
+    const how = await shareOrCopy({ title: `Join ${neighborhood.name} on Circles`, text: `Join ${neighborhood.name}'s circle on Circles.`, url: applyUrl });
+    if (how === "copied") showToast({ tone: "success", title: "Link copied", message: `It opens the sign-up with ${neighborhood.name} already chosen.` });
     if (how === "failed") showToast({ tone: "error", message: "Couldn't copy the link. Your browser blocked it." });
   }
 

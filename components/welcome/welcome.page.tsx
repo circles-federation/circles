@@ -153,7 +153,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
         {step === "email" && (
           <p className="mt-6 font-serif text-base text-soft">
             New to Circles?{" "}
-            <Link href="/apply" className="font-sans text-sm font-bold text-ink underline underline-offset-2">Apply to join</Link>
+            <Link href="/join" className="font-sans text-sm font-bold text-ink underline underline-offset-2">Join</Link>
           </p>
         )}
 

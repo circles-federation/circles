@@ -40,8 +40,8 @@ export function PublicWikiPage({ wiki }: { wiki: PublicWiki }) {
             {wiki.name} is on Circles, where neighbors in Providence organize together.
           </p>
           <p className="mt-3 font-sans text-sm">
-            <Link href="/apply" className="font-bold text-ink underline underline-offset-2">
-              Apply to join
+            <Link href="/join" className="font-bold text-ink underline underline-offset-2">
+              Join
             </Link>
             <span className="text-soft"> · </span>
             <Link href="/" className="font-bold text-ink underline underline-offset-2">

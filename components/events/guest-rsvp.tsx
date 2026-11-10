@@ -187,8 +187,8 @@ export function GuestRsvp({ token, guest }: GuestRsvpProps) {
                 </div>
                 <p className="mt-5 font-sans text-lg font-bold">You&apos;re going, {name.trim().split(/\s+/)[0]}.</p>
                 <p className="mt-1 font-serif text-base text-soft">Your name is on the list.</p>
-                <ButtonLink href={`/apply?guest=${id}`} className="mt-6 w-full justify-center text-center">
-                  Apply to join Circles
+                <ButtonLink href={`/join?guest=${id}`} className="mt-6 w-full justify-center text-center">
+                  Join Circles
                 </ButtonLink>
               </div>
             )}

@@ -86,7 +86,7 @@ export function NeighborhoodPoster({ neighborhood, city, applyUrl }: Neighborhoo
           <section>
             <Eyebrow className="text-soft">How to join</Eyebrow>
             <ol className="m-0 mt-2 flex list-none flex-col gap-2 p-0 font-serif text-lg leading-[1.4] text-body print:block print:space-y-2 print:text-base">
-              {["Scan the code with your phone’s camera.", "Join with your name, your email and a photo of yourself.", `A person reads every application and checks that you live in ${neighborhood.name}. Then you’re in.`].map(
+              {["Scan the code with your phone’s camera.", "Join with your name, your email and a photo of yourself.", `A person reads every request to join and checks that you live in ${neighborhood.name}. Then you’re in.`].map(
                 (step, i) => (
                   <li key={i} className="flex gap-3">
                     <span className="w-5 shrink-0 font-sans font-extrabold text-ink">{i + 1}</span>

@@ -52,7 +52,7 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
   // (its cookie) can apply as it.
   const guestId = field("guestId");
   const guest = guestId ? await getVerifiedGuest(guestIdsFrom((await cookies()).get(GUEST_COOKIE)?.value), guestId) : null;
-  if (guestId && !guest) return { ok: false, error: "That RSVP isn't from this browser — apply without it, or RSVP again." };
+  if (guestId && !guest) return { ok: false, error: "That RSVP isn't from this browser — join without it, or RSVP again." };
   const wait = guest ? null : cooldownError(email);
   if (wait) return { ok: false, error: wait };
   try {
