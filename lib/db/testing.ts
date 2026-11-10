@@ -216,3 +216,8 @@ export async function circleEditor(id: string): Promise<{ by: number | null; at:
   const { rows } = await db.execute<{ by: number | null; at: string | null }>(sql`select last_edited_by as by, last_edited_at as at from circles where id = ${id}`);
   return { by: rows[0]?.by ?? null, at: rows[0]?.at ? new Date(rows[0].at) : null };
 }
+
+// a chat message written this many minutes ago, for the edit window and the rate limit
+export async function ageChatMessage(id: number, minutes: number): Promise<void> {
+  await db.execute(sql`update circle_chat_messages set created_at = now() - make_interval(mins => ${minutes}) where id = ${id}`);
+}
