@@ -60,7 +60,7 @@ describe("who sees a waiting photo", () => {
 
   it("shows an admin the photo it would replace, only while one is waiting, and no one else", async () => {
     await submitMemberPhoto(MEMBER, JPEG(1));
-    const [{ version }] = await getPhotoReviews(ADMIN) as [{ version: number }];
+    const version = (await getPhotoReviews(ADMIN))[0]!.version;
     expect(await getCurrentPhotoForReview(ADMIN, MEMBER)).toBeNull();
     await approvePhoto(ADMIN, MEMBER, version);
     expect(await getCurrentPhotoForReview(ADMIN, MEMBER)).toBeNull();
@@ -118,7 +118,7 @@ describe("reviewing", () => {
     await submitMemberPhoto(MEMBER, JPEG(2));
     await expect(approvePhoto(ADMIN, MEMBER, pending)).rejects.toThrow(/different photo/);
     expect(await getMemberPhoto(OTHER, MEMBER)).toBeNull();
-    const [{ version }] = await getPhotoReviews(ADMIN) as [{ version: number }];
+    const version = (await getPhotoReviews(ADMIN))[0]!.version;
     await approvePhoto(ADMIN, MEMBER, version);
     await expect(approvePhoto(ADMIN, MEMBER, version)).rejects.toThrow(/already been decided/);
   });
