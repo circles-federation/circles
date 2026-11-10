@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { MIRA, pageFor } from "./helpers";
+import { MIRA, fillField, pageFor } from "./helpers";
 
 const FELIX = "0pqxx887@duck.com";
 const PRIYA = "sw5hfa5t@duck.com";
@@ -7,9 +7,9 @@ const PRIYA = "sw5hfa5t@duck.com";
 // a Circle must have a domain and aims, so its Details asks for them on any proposal
 async function proposeTagline(page: Page, tagline: string) {
   await page.goto("/circles/finance-council/manage/details");
-  await page.getByLabel("Tagline").fill(tagline);
-  await page.getByLabel("Domain").fill("The block's shared budget");
-  await page.getByLabel("Aim 1").fill("Keep the money transparent");
+  await fillField(page.getByLabel("Tagline"), tagline);
+  await fillField(page.getByLabel("Domain"), "The block's shared budget");
+  await fillField(page.getByLabel("Aim 1"), "Keep the money transparent");
   await page.getByRole("button", { name: "Propose changes" }).click();
   await page.waitForURL(/\/proposals\/[^/]+$/);
 }
@@ -42,7 +42,7 @@ test("one objection closes a proposal without changing the circle", async ({ bro
   const { context, page: priya } = await pageFor(browser, PRIYA);
   await priya.goto(proposalUrl);
   await priya.getByRole("button", { name: "Object" }).click();
-  await priya.getByLabel(/why|reason/i).fill("We haven't discussed this.");
+  await fillField(priya.getByLabel(/why|reason/i), "We haven't discussed this.");
   await priya.getByRole("button", { name: "Object" }).last().click();
   await expect(priya.getByText(/objected/i).first()).toBeVisible();
   await context.close();
