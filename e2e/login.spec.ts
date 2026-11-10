@@ -27,3 +27,9 @@ test("a wrong code is refused", async ({ page }) => {
   await page.getByRole("button", { name: "Verify" }).click();
   await expect(page).not.toHaveURL(/\/home/);
 });
+
+test("the health check answers without a session", async ({ request }) => {
+  const res = await request.get("/api/health", { maxRedirects: 0 });
+  expect(res.status()).toBe(200);
+  expect(await res.json()).toEqual({ ok: true });
+});

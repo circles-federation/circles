@@ -19,8 +19,9 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // the welcome page, applying to join, and the beta terms and privacy notes
   // an applicant agrees to, an event someone has shared (/e/[token]), and a
-  // circle's public wiki (/wiki/[id]) — all for people without a session
-  if (pathname === "/" || pathname.startsWith("/e/") || pathname.startsWith("/wiki/") || pathname === "/apply" || pathname === "/terms" || pathname === "/privacy") return NextResponse.next();
+  // circle's public wiki (/wiki/[id]), and the uptime monitor's check — all for
+  // people (or a monitor) without a session
+  if (pathname === "/" || pathname === "/api/health" || pathname.startsWith("/e/") || pathname.startsWith("/wiki/") || pathname === "/apply" || pathname === "/terms" || pathname === "/privacy") return NextResponse.next();
   if (!getSessionCookie(request)) {
     return NextResponse.redirect(new URL("/", request.url));
   }
