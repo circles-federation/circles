@@ -368,7 +368,7 @@ export const CIRCLES: Circle[] = [
     members: [27],
     lastEditedBy: 27, lastEditedAt: "2026-05-30T00:00:00.000Z",
     facts: [["Model", "Worker co-op"], ["Trade", "Bookstore"], ["Owners", "Equal"], ["Member of", "RIWCA"]],
-    join: "Shop the shelves, come to an event, or apply to join the worker team.",
+    join: "Shop the shelves, come to an event, or join the worker team.",
     contact: "hello@heartleafbooks.com",
   },
   {

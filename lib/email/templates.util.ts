@@ -784,13 +784,13 @@ const footnote = (text: string) =>
 
 // confirms an applicant's email is really theirs, before anyone reviews it
 export function applicationCodeEmail(code: string, minutes: number): Body {
-  const expiry = `Enter it on the application page to send your application for review. It expires in ${minutes} minutes.`;
-  const ignore = `If you didn't apply to join Circles, you can ignore this email — nothing happens without this code.`;
+  const expiry = `Enter it on the join page to send your request for review. It expires in ${minutes} minutes.`;
+  const ignore = `If you didn't ask to join Circles, you can ignore this email — nothing happens without this code.`;
   return {
-    subject: "Confirm your Circles application",
-    text: `Confirm your Circles application\n\n    ${code}\n\n${expiry}\n\n${ignore}`,
+    subject: "Confirm your request to join Circles",
+    text: `Confirm your request to join Circles\n\n    ${code}\n\n${expiry}\n\n${ignore}`,
     html: shell(
-      applicationMasthead("Confirm your application to") +
+      applicationMasthead("Confirm your request to join") +
         `<tr><td style="padding:28px 0 24px"><div style="border:2px solid ${INK};padding:26px 16px 26px 24px;text-align:center;font-family:${SANS};font-size:52px;font-weight:800;letter-spacing:0.16em;line-height:1;color:${INK}">${code}</div></td></tr>` +
         paragraph(expiry) +
         footnote(ignore)
@@ -865,7 +865,7 @@ export function guestEmail(n: Omit<EventNotificationData, "notice"> & { notice: 
 }
 
 export function applicationApprovedEmail(d: { firstName: string; neighborhoodName: string; url: string }): Body {
-  const body = `Your application has been approved, and you're now a member of ${d.neighborhoodName}. Sign in with this email address — we'll send you a code each time, with no password to remember.`;
+  const body = `Your request to join has been approved, and you're now a member of ${d.neighborhoodName}. Sign in with this email address — we'll send you a code each time, with no password to remember.`;
   return {
     subject: "Welcome to Circles",
     text: `Welcome to Circles, ${d.firstName}\n\n${body}\n\nSign in: ${d.url}`,
@@ -879,14 +879,14 @@ export function applicationApprovedEmail(d: { firstName: string; neighborhoodNam
 }
 
 export function applicationDeclinedEmail(d: { firstName: string; neighborhoodName: string; note?: string }): Body {
-  const body = `Thank you for applying to join ${d.neighborhoodName || "Circles"}. We weren't able to approve your application this time.`;
+  const body = `Thank you for asking to join ${d.neighborhoodName || "Circles"}. We weren't able to approve your request this time.`;
   const noteLabel = "A note from the reviewer";
-  const after = "If something has changed, or you think this was a mistake, you're welcome to apply again.";
+  const after = "If something has changed, or you think this was a mistake, you're welcome to ask again.";
   return {
-    subject: "Your Circles application",
+    subject: "Your request to join Circles",
     text: `${d.firstName},\n\n${body}\n\n${d.note ? `${noteLabel}:\n${d.note}\n\n` : ""}${after}`,
     html: shell(
-      applicationMasthead("Your application to") +
+      applicationMasthead("Your request to join") +
         `<tr><td style="padding-top:24px"></td></tr>` +
         paragraph(`${esc(d.firstName)}, ${esc(body)}`) +
         (d.note

@@ -74,7 +74,7 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
     const result = await submitApplication(form);
     setBusy(false);
     if (!result.ok) {
-      showToast({ tone: "error", title: "Couldn't send your application", message: result.error });
+      showToast({ tone: "error", title: "Couldn't send your request", message: result.error });
       return;
     }
     setApplicationId(result.id);
@@ -119,11 +119,11 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
         </Link>
 
         <div className="mt-6 border-t-[3px] border-t-ink pt-5">
-          <Eyebrow className="text-soft">Apply to join</Eyebrow>
+          <Eyebrow className="text-soft">Join</Eyebrow>
           <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">Circles</h1>
           {step === "form" && (
             <p className="mt-4 mb-7 font-serif text-lg leading-normal text-body">
-              Circles is for neighbors. Every application is read by a person, who checks that your photo shows your face and that you live in the neighborhood you choose.
+              Circles is for neighbors. Every request to join is read by a person, who checks that your photo shows your face and that you live in the neighborhood you choose.
             </p>
           )}
         </div>
@@ -165,13 +165,13 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
             </Button>
           </form>
         )}
-        {/* outside the form, so Enter in its search doesn't send the application */}
+        {/* outside the form, so Enter in its search doesn't send your request */}
         {placeExplorer.dialog}
 
         {step === "agree" && (
           <div className="mt-7">
             <p className="font-serif text-lg leading-normal text-body">
-              Before you send your application, please read the short terms and privacy notes for the beta.
+              Before you send your request, please read the short terms and privacy notes for the beta.
             </p>
             <h2 className="mt-9 border-t border-t-ink pt-4 font-sans text-xl font-extrabold tracking-heading">Beta terms</h2>
             <BetaTerms />
@@ -181,7 +181,7 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
               {busy ? "Sending…" : "Agree and send"}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setStep("form")} disabled={busy} className="mt-3 w-full">
-              Back to your application
+              Back to your details
             </Button>
           </div>
         )}
@@ -189,7 +189,7 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
         {step === "confirm" && (
           <form onSubmit={handleConfirm} className="mt-7">
             <p className="mb-4 font-serif text-lg leading-normal text-body">
-              One more step. We sent a code to <strong className="text-ink">{input.email.trim()}</strong> — enter it here to send your application for review.
+              One more step. We sent a code to <strong className="text-ink">{input.email.trim()}</strong> — enter it here to send your request for review.
             </p>
             {devCode && (
               <div className="mb-4 border border-dashed border-soft px-3 py-3 font-sans text-sm text-soft">
@@ -221,7 +221,7 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
         {step === "done" && (
           <div className="mt-7">
             <p className="font-serif text-lg leading-normal text-body">
-              Thank you, {input.firstName.trim()}. Your application is with us. Once someone has reviewed it, we&apos;ll email <strong className="text-ink">{input.email.trim()}</strong> to let you know.
+              Thank you, {input.firstName.trim()}. Your request to join is with us. Once someone has reviewed it, we&apos;ll email <strong className="text-ink">{input.email.trim()}</strong> to let you know.
             </p>
             <Link href="/" className="mt-7 inline-block font-sans text-sm font-bold text-ink underline underline-offset-2">
               Back to the welcome page

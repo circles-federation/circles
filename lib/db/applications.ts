@@ -60,7 +60,7 @@ export async function startApplication(input: ApplicationInput, photo: Blob, agr
   const problems = validateApplication(input, photo.size > 0);
   const first = Object.values(problems)[0];
   if (first) throw new ApplicationError(first);
-  if (!agreementVersion) throw new ApplicationError("Agree to the beta terms and privacy notes to apply.");
+  if (!agreementVersion) throw new ApplicationError("Agree to the beta terms and privacy notes to join.");
   if (agreementVersion !== BETA_AGREEMENT_VERSION) throw new ApplicationError("The beta terms have changed since you opened this page. Reload it to read them.");
   const { data, contentType } = await readPhoto(photo, ApplicationError);
   const email = normalizeEmail(input.email);
@@ -76,7 +76,7 @@ export async function startApplication(input: ApplicationInput, photo: Blob, agr
     await tx.delete(applications).where(and(eq(applications.status, "unconfirmed"), lt(applications.createdAt, new Date(Date.now() - UNCONFIRMED_TTL_MS))));
     await tx.delete(applications).where(and(eq(applications.status, "unconfirmed"), sql`lower(${applications.email}) = ${email}`));
     const [open] = await tx.select({ id: applications.id }).from(applications).where(and(eq(applications.status, "pending"), sql`lower(${applications.email}) = ${email}`));
-    if (open) throw new ApplicationError("There's already an application for this email waiting to be reviewed. We'll email you once it's decided.");
+    if (open) throw new ApplicationError("There's already a request to join for this email waiting to be reviewed. We'll email you once it's decided.");
     await tx.insert(applications).values({
       id,
       firstName: input.firstName.trim(),
@@ -98,7 +98,7 @@ export async function startApplication(input: ApplicationInput, photo: Blob, agr
 // the address of an application still waiting to be confirmed
 export async function unconfirmedApplicationEmail(id: string): Promise<string> {
   const [row] = await db.select({ email: applications.email, status: applications.status }).from(applications).where(eq(applications.id, id));
-  if (!row || row.status !== "unconfirmed") throw new ApplicationError("That application has already been confirmed, or has expired — start again.");
+  if (!row || row.status !== "unconfirmed") throw new ApplicationError("That request has already been confirmed, or has expired — start again.");
   return row.email;
 }
 
@@ -121,7 +121,7 @@ export async function confirmApplication(id: string, code: string): Promise<void
   // throwing inside the transaction would roll the count back
   const mismatch = await db.transaction(async (tx) => {
     const [row] = await tx.select().from(applications).where(eq(applications.id, id)).for("update");
-    if (!row || row.status !== "unconfirmed" || !row.confirmCodeHash) throw new ApplicationError("That application has already been confirmed, or has expired — start again.");
+    if (!row || row.status !== "unconfirmed" || !row.confirmCodeHash) throw new ApplicationError("That request has already been confirmed, or has expired — start again.");
     if (row.confirmAttempts >= CONFIRM_MAX_ATTEMPTS) throw new ApplicationError("Too many wrong codes — send yourself a new one.");
     if (!row.confirmExpiresAt || row.confirmExpiresAt < new Date()) throw new ApplicationError("That code has expired — send yourself a new one.");
     const given = Buffer.from(hashCode(code.trim()));
@@ -257,7 +257,7 @@ export async function approveApplication(adminId: number, id: string): Promise<D
   await assertAdmin(adminId);
   return db.transaction(async (tx) => {
     const [app] = await tx.select().from(applications).where(eq(applications.id, id)).for("update");
-    if (!app || app.status !== "pending") throw new ApplicationError("That application has already been decided.");
+    if (!app || app.status !== "pending") throw new ApplicationError("That request has already been decided.");
     const [taken] = await tx.select({ id: members.id }).from(members).where(sql`lower(${members.email}) = ${app.email}`);
     if (taken) throw new ApplicationError("That email already belongs to a member, so this application can only be declined.");
     const [hood] = await tx.select({ id: circles.id, name: circles.name }).from(circles).where(eq(circles.id, app.neighborhoodId));
@@ -292,7 +292,7 @@ export async function declineApplication(adminId: number, id: string, note: stri
   if (trimmed.length > APPLICATION_NOTE_MAX) throw new ApplicationError(`Keep the note under ${APPLICATION_NOTE_MAX} characters.`);
   return db.transaction(async (tx) => {
     const [app] = await tx.select().from(applications).where(eq(applications.id, id)).for("update");
-    if (!app || app.status !== "pending") throw new ApplicationError("That application has already been decided.");
+    if (!app || app.status !== "pending") throw new ApplicationError("That request has already been decided.");
     const [hood] = await tx.select({ name: circles.name }).from(circles).where(eq(circles.id, app.neighborhoodId));
     await tx
       .update(applications)

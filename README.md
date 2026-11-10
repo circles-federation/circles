@@ -16,7 +16,7 @@ Many of these features are inspired by [sociocracy](https://www.sociocracyforall
 - **A bulletin for each circle.** Members share links, files and announcements that only the circle can see.
 - **Roles, invitations and private groups.** Circles can name a Secretary, Leader and Facilitator, invite people in, and form private groups that only their members know about.
 - **Email that respects attention.** Small circles hear about new events right away. Large ones, like a whole neighborhood, get a daily digest instead.
-- **Joining by application.** There's no open sign-up. Someone applies to join their neighborhood, and a person reviews the application.
+- **Joining by request.** There's no open sign-up. Someone asks to join their neighborhood, and a person reviews the request.
 
 ## Built with
 

@@ -8,7 +8,7 @@ export function BetaTerms() {
   return (
     <>
       <LegalParagraph>
-        Circles is in a small, invitation-only beta. These are the short terms for using it while it&apos;s being built. By applying, you agree to them and to the privacy notes.
+        Circles is in a small, invitation-only beta. These are the short terms for using it while it&apos;s being built. By joining, you agree to them and to the privacy notes.
       </LegalParagraph>
 
       <LegalHeading>It&apos;s a beta</LegalHeading>
@@ -21,7 +21,7 @@ export function BetaTerms() {
 
       <LegalHeading>Joining</LegalHeading>
       <LegalParagraph>
-        You must be 18 or older, live in the neighborhood you apply for, and use your real name and a photo of yourself. One account per person.
+        You must be 18 or older, live in the neighborhood you join, and use your real name and a photo of yourself. One account per person.
       </LegalParagraph>
 
       <LegalHeading>Being a good neighbor</LegalHeading>

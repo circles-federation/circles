@@ -14,7 +14,7 @@ export function BetaPrivacy() {
 
       <LegalHeading>What Circles keeps</LegalHeading>
       <LegalList>
-        <li>What you apply with: your name, email, neighborhood and photo.</li>
+        <li>What you join with: your name, email, neighborhood and photo.</li>
         <li>What you add to your profile, all of it optional: pronouns, occupation, skills, interests and bio.</li>
         <li>When you can do meetings, if you choose to say (in Settings).</li>
         <li>What you do in Circles: the circles you belong to, events, RSVPs, your answers to proposals, bulletin posts and invitations.</li>
@@ -35,9 +35,9 @@ export function BetaPrivacy() {
         <li>A message you write to a circle&apos;s Inbox is seen only by that circle&apos;s members, with your name and email address (even if you hide your email from your profile), since you agree to be answered there when you send it. Its members see who among them is handling it.</li>
         <li>A circle&apos;s chat is seen only by its members, including a private group&apos;s. Messages aren&apos;t encrypted yet, so the people running Circles could read them. A message that tags people sends a notification to only them, and one that doesn&apos;t sends one to every member. A member can ask the circle to remove someone else&apos;s message by consent: until it decides, the message is hidden behind a note for every member, and the proposal quotes it for them.</li>
         <li>If you RSVP as a guest, your first name is shown on that event&apos;s page, to the members who can see the event and to anyone with the link. Your email address is shown to no one. It&apos;s used to check the address is yours, to confirm your RSVP, and to email you if the event is moved or cancelled. Every email to you has a link to stop them, or to come off the list and have your name and email deleted. You can also take your RSVP back from the event page. Otherwise your name and email are deleted 30 days after the event.</li>
-        <li>If you then apply to join, the admin reviewing your application sees which member invited you and through which event. Your guest RSVPs to events open to your neighborhood or the whole city become ordinary RSVPs once you&apos;re a member.</li>
+        <li>If you then ask to join, the admin reviewing your request sees which member invited you and through which event. Your guest RSVPs to events open to your neighborhood or the whole city become ordinary RSVPs once you&apos;re a member.</li>
         <li>If you write to a circle without an account, from its public wiki while its Inbox is on, its members see your name, your email address and your message, as they would a member&apos;s, and that you&apos;re not on Circles. We email you a code to check the address is yours, and the message is sent only once you enter it; if you don&apos;t, it&apos;s deleted after a day. Its members answer you by email. An address can send 3 messages a day. A sent message is kept in the circle&apos;s Inbox like any other.</li>
-        <li>Your application photo is seen only by the person reviewing it, and is no longer kept with the application once it&apos;s decided.</li>
+        <li>The photo you join with is seen only by the person reviewing it, and is no longer kept with your request once it&apos;s decided.</li>
         <li>When you change your photo, a Circles admin sees the new one, beside your current one, before anyone else does. Others keep seeing your current photo until it&apos;s approved, and a declined one is deleted.</li>
       </LegalList>
 
