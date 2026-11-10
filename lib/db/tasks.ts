@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { circleHasTasks } from "@/lib/circles.util";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
@@ -36,22 +36,22 @@ function toTask(row: TaskRow): CircleTask {
   };
 }
 
-// every task of every circle this member belongs to that has tasks (never a
-// group's): AppState's `tasks`
+// every task of every circle this member belongs to that has tasks (a
+// group's only once it has switched them on): AppState's `tasks`
 export async function getTasksForMember(memberId: number): Promise<CircleTask[]> {
   const rows = await db
     .select({ task: circleTasks })
     .from(circleTasks)
     .innerJoin(circles, eq(circles.id, circleTasks.circleId))
-    .where(and(inArray(circleTasks.circleId, db.select({ id: circleMembers.circleId }).from(circleMembers).where(eq(circleMembers.memberId, memberId))), ne(circles.type, "group")));
+    .where(and(inArray(circleTasks.circleId, db.select({ id: circleMembers.circleId }).from(circleMembers).where(eq(circleMembers.memberId, memberId))), or(and(isNull(circles.features), ne(circles.type, "group")), sql`'tasks' = any(${circles.features})`)));
   return rows.map((r) => toTask(r.task));
 }
 
 /* The circle's members, if `memberId` is one of them and it's a circle with
    tasks (circleHasTasks: not a neighborhood or the city, whose members are
-   their residents, too many for one backlog, nor a group); refused otherwise. */
+   their residents, too many for one backlog, nor a group that hasn't switched them on); refused otherwise. */
 async function membersOf(memberId: number, circleId: string): Promise<number[]> {
-  const [circle] = await db.select({ type: circles.type, parentId: circles.parentId }).from(circles).where(eq(circles.id, circleId));
+  const [circle] = await db.select({ type: circles.type, parentId: circles.parentId, features: circles.features }).from(circles).where(eq(circles.id, circleId));
   if (!circle || !circleHasTasks(circle)) throw new TaskError("That circle doesn't have tasks.");
   const ids = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.id);
   if (!ids.includes(memberId)) throw new TaskError("Only the circle's members can see or change its tasks.");

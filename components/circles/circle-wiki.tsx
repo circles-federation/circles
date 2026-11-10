@@ -5,7 +5,7 @@ import Link from "next/link";
 import { EnvelopeIcon, GlobeAltIcon, MapIcon, PencilSquareIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Eyebrow, EyebrowGroup, CappedChip, PrivateLabel, Section, SectionGroup, Tag, type ChipTone } from "@/components/shared";
-import { CIRCLE_TYPE_LABEL, circleContact, circleWebsiteUrl, isGroup } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleContact, circleWebsiteUrl, circleIsPrivate } from "@/lib/circles.util";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
 import type { Circle } from "@/lib/types";
 
@@ -46,7 +46,7 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
         {/* where it sits in the tree: its parent, as a chip opposite the type */}
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="shrink-0 text-soft">
-            {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
+            {circleIsPrivate(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
           </Eyebrow>
           {parent && (
             <CappedChip title={`Part of ${parent.name}`} {...(parent.onOpen ? { onClick: parent.onOpen } : {})} {...(parent.tone ? { tone: parent.tone } : {})}>

@@ -4,7 +4,7 @@ import { HomeIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar, EmptyState, Eyebrow, PrivateLabel } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { CIRCLE_TYPE_LABEL, circlesForMember, isGroup } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circlesForMember, circleIsPrivate } from "@/lib/circles.util";
 import { useAppNav, useMemberById } from "@/lib/hooks";
 import { HomeSection } from "./home-section";
 
@@ -33,7 +33,7 @@ export function MyCircles() {
           {mine.map((c) => (
             <li key={c.id} className="shrink-0 snap-start">
               <button type="button" onClick={() => nav.openCircle(c)} className="ink-press flex h-32 w-52 cursor-pointer flex-col items-stretch border border-ink bg-paper p-3 text-left text-ink">
-                <Eyebrow className="block truncate text-soft">{isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
+                <Eyebrow className="block truncate text-soft">{circleIsPrivate(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
                 <span className="mt-1.5 line-clamp-2 font-sans text-base leading-tight font-extrabold tracking-snug">
                   {c.name}
                   {c.id === profile.homeCircleId && <HomeIcon className="ml-1 inline size-4 align-[-2px] text-teal" strokeWidth={2.5} aria-label="Your neighborhood" />}

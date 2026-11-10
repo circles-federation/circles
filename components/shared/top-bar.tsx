@@ -86,7 +86,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
   if (section === "circles") {
     if (!id) return "Circles";
     if (id === "new") return "New circle";
-    if (sub === "manage") return item === "details" ? "Details" : item === "roles" ? "Roles" : item === "wiki" ? "Wiki" : item === "inbox" ? "Inbox" : "Manage circle";
+    if (sub === "manage") return item === "details" ? "Details" : item === "roles" ? "Roles" : item === "wiki" ? "Wiki" : item === "inbox" ? "Inbox" : item === "features" ? "Features" : "Manage circle";
     // a neighborhood's bulletin takes posts, proposed by the Circles in it
     if (sub === "bulletin" && item) return circles.find((c) => c.id === id)?.type === "neighborhood" ? "New post" : resourceFormTitle(resources.find((r) => r.id === item)?.icon);
     if (sub === "invite") return "Invite";

@@ -7,7 +7,7 @@ import { groupBy } from "./util";
 import { confirmedGuestCount, enqueueGuestCancellations, enqueueGuestUpdates } from "./guest-notifications";
 import { openEventProposal, withdrawEventProposal } from "./proposals";
 import { enqueueCancellationNotifications, enqueueEventNotifications, enqueueProposalApprovalNotifications, enqueueUpdateNotifications, enqueueSlotWarnings, wallClock, withdrawEventNotifications, withdrawReminders, withdrawSlotWarnings } from "./notifications";
-import { circleCanHoldMeetings, hostCanShowTo, isGroup } from "@/lib/circles.util";
+import { circleCanHoldMeetings, circleIsPrivate, hostCanShowTo, isGroup } from "@/lib/circles.util";
 import { eventStartsAt, hasEnded, DEFAULT_REMINDERS, normalizeReminders, remindersWithin, roleKey, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { REPEAT_HORIZON_DAYS, addDays, datesBetween, localDay } from "@/lib/recurrence.util";
@@ -280,7 +280,7 @@ function assertNotOver(row: EventRow) {
 }
 
 async function assertCanPost(v: Viewer, circleId: string): Promise<{ isRoot: boolean; canHoldMeetings: boolean }> {
-  const [circle] = await db.select({ parentId: circles.parentId, type: circles.type }).from(circles).where(eq(circles.id, circleId));
+  const [circle] = await db.select({ parentId: circles.parentId, type: circles.type, features: circles.features }).from(circles).where(eq(circles.id, circleId));
   if (!circle) throw new EventError("That circle doesn't exist.");
   if (!v.audience.includes(circleId)) throw new EventError("You can only post to circles you belong to.");
   return { isRoot: circle.parentId === null, canHoldMeetings: circleCanHoldMeetings(circle) };
@@ -292,14 +292,14 @@ async function assertCanPost(v: Viewer, circleId: string): Promise<{ isRoot: boo
 // group (hostCanShowTo); returns how many members it has, and whether it's a
 // group, whose events are proposed for consent (see lib/db/proposals.ts)
 async function assertCanHost(v: Viewer, circleId: string, audienceCircleId: string): Promise<{ size: number; group: boolean }> {
-  const rows = await db.select({ id: circles.id, parentId: circles.parentId, type: circles.type }).from(circles);
+  const rows = await db.select({ id: circles.id, parentId: circles.parentId, type: circles.type, public: circles.public }).from(circles);
   const circle = rows.find((c) => c.id === circleId);
   if (!circle) throw new EventError("That circle doesn't exist.");
   if (circle.parentId === null) throw new EventError("The whole city can't host an event — pick one of your circles.");
   if (!v.own.includes(circleId)) throw new EventError("You can only host on behalf of a circle you belong to.");
   const parents = new Map(rows.map((c) => [c.id, c.parentId]));
   if (!hostCanShowTo(circle, audienceCircleId, (id) => parents.get(id))) {
-    throw new EventError(isGroup(circle) ? "A group's events are shown only to the group." : "A circle can only host an event shown to itself or to a circle it's part of.");
+    throw new EventError(circleIsPrivate(circle) ? "A private group's events are shown only to the group." : "A circle can only host an event shown to itself or to a circle it's part of.");
   }
   const members = await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId));
   return { size: members.length, group: isGroup(circle) };
@@ -413,7 +413,7 @@ export async function createEvent(memberId: number, draft: EventDraft): Promise<
   const { isRoot, canHoldMeetings } = await assertCanPost(viewer, draft.circleId);
   const host = draft.hostCircleId ? await assertCanHost(viewer, draft.hostCircleId, draft.circleId) : null;
   if (draft.kind === "meeting" && isRoot) throw new EventError("A meeting needs a circle with its own members — pick a neighborhood or one of your circles.");
-  if (draft.kind === "meeting" && !canHoldMeetings) throw new EventError("A group can't hold a meeting — post an ordinary event to it instead.");
+  if (draft.kind === "meeting" && !canHoldMeetings) throw new EventError("This circle hasn't turned on meetings — post an ordinary event to it instead.");
   // a meeting held by anyone holding a role in its circle is scheduled
   // outright; every other meeting, and every event a circle hosts, is
   // proposed to that circle for its members' consent (lib/db/proposals.ts)

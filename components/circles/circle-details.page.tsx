@@ -4,8 +4,8 @@ import { useState } from "react";
 import { HandRaisedIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { ConfirmModal, Input, Label, PageContainer, Select } from "@/components/shared";
-import { CIRCLE_TYPE_LABEL, circleTypeNoun, indexCircles, startedInside } from "@/lib/circles.util";
+import { ConfirmModal, Input, Label, PageContainer, Select, SettingRow, SettingRows } from "@/components/shared";
+import { CIRCLE_TYPE_LABEL, circleTypeNoun, indexCircles, isGroup, startedInside } from "@/lib/circles.util";
 import { changedFields, checkChanges, checkCircleBasics, hasChanges, neighborhoodConsentFor } from "@/lib/proposals.util";
 import type { Circle, CircleProposal, CircleType, ProposalChanges } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
@@ -44,6 +44,8 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
   const typeOptions = o.type === "other" ? [...CIRCLE_TYPE_OPTIONS, ["other", CIRCLE_TYPE_LABEL.other] as [CircleType, string]] : CIRCLE_TYPE_OPTIONS;
   const [name, setName] = useState(o.name);
   const [tagline, setTagline] = useState(o.tagline);
+  // a group's visibility: private unless its members make it public
+  const [isPublic, setPublic] = useState(!!o.public);
   // a Circle's domain and aims (only while its type is Circle); one aim row
   // to start with if it has none, since it needs at least one
   const [domain, setDomain] = useState(o.domain ?? "");
@@ -64,6 +66,7 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
     type,
     ...(o.parentId !== null && parentId !== null ? { parentId } : {}),
     ...(isCircleType ? { domain, aims } : {}),
+    ...(isGroup(o) ? { public: isPublic } : {}),
   });
   const dirty = hasChanges(proposed);
   // the neighborhood that would decide this with the circle's members, if any
@@ -184,6 +187,25 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
           />
           {fieldError("tagline")}
         </div>
+
+        {isGroup(o) && (
+          <div id="field-public">
+            <Label>Visibility</Label>
+            <SettingRows>
+              <SettingRow
+                label="Public"
+                detail="Anyone on Circles can find and open it."
+                checked={isPublic}
+                onChange={(on) => {
+                  clearError("public");
+                  setPublic(on);
+                }}
+                disabled={locked}
+              />
+            </SettingRows>
+            {fieldError("public")}
+          </div>
+        )}
 
         {/* what makes it a circle, in sociocracy's terms */}
         {isCircleType && (

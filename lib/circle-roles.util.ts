@@ -1,3 +1,4 @@
+import { circleHasFeature, type Featured } from "./circles.util";
 import type { Circle, CircleRole, CircleType } from "./types";
 
 /* Roles a member can hold inside a circle — Secretary, Leader, and so on. Pure
@@ -52,10 +53,11 @@ export interface CircleRoleDraft {
   memberId: number | null;
 }
 
-// neighborhoods (a place, whose members are simply its residents), the city
-// root and groups (see isGroup in circles.util.ts) don't have roles
-export function circleHasRoles(circle: Pick<Circle, "type" | "parentId">): boolean {
-  return circle.type !== "neighborhood" && circle.type !== "group" && circle.parentId !== null;
+// neighborhoods (a place, whose members are simply its residents) and the city
+// root don't have roles, and any other circle only while its Roles feature is
+// on (CIRCLE_FEATURES in circles.util.ts; a group starts with it off)
+export function circleHasRoles(circle: Pick<Circle, "parentId"> & Featured): boolean {
+  return circle.type !== "neighborhood" && circle.parentId !== null && circleHasFeature(circle, "roles");
 }
 
 const sameLabel = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();

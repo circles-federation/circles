@@ -428,6 +428,27 @@
       "when": 1793378261960,
       "tag": "0060_chat_message_removal",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794339824086,
+      "tag": "0061_group_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1794340980788,
+      "tag": "0062_group_public",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1794343008916,
+      "tag": "0063_circle_features_default",
+      "breakpoints": true
     }
   ]
 }

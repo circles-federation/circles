@@ -13,7 +13,11 @@ import {
   circleHasInbox,
   circleHasPage,
   circleHasTasks,
+  circleHasPublicWiki,
+  defaultFeatures,
+  circleIsPrivate,
   circleHasWiki,
+  cleanFeatures,
   circleNeighborhood,
   circleSections,
   circleWebsiteUrl,
@@ -39,6 +43,7 @@ import {
   type NewCircleInput,
 } from "./circles.util";
 import { circle, tree } from "./test/factories";
+import type { CircleFeature } from "./types";
 
 const t = tree();
 const all = Object.values(t);
@@ -52,7 +57,40 @@ describe("which circles get which features", () => {
     expect(circleHasPage(t.the903)).toBe(false);
     expect(circleHasPage(t.city)).toBe(false);
   });
-  it("a group has no wiki or tasks but keeps chat", () => {
+  it("a group is private until it's made public, which opens up what would reveal it", () => {
+    expect(circleIsPrivate(t.club)).toBe(true);
+    expect(circleIsPrivate({ ...t.club, public: true })).toBe(false);
+    expect(circleIsPrivate(t.council)).toBe(false);
+    const open = { ...t.club, public: true, features: ["wiki" as const] };
+    expect(circleHasPublicWiki({ ...t.club, features: ["wiki"] })).toBe(false);
+    expect(circleHasPublicWiki(open)).toBe(true);
+    expect(circleCanHaveInbox(t.club)).toBe(false);
+    expect(circleCanHaveInbox(open)).toBe(true);
+    expect(circleCanHaveCircles(t.club)).toBe(false);
+    expect(circleCanHaveCircles(open)).toBe(true);
+    expect(hostCanShowTo(open, "city", () => "city")).toBe(true);
+    expect(hostCanShowTo(t.club, "city", () => "city")).toBe(false);
+  });
+  it("any other circle has its features on until it switches them off", () => {
+    expect(defaultFeatures("circle")).toEqual(["wiki", "tasks", "meetings", "roles"]);
+    expect(defaultFeatures("group")).toEqual([]);
+    expect(circleHasTasks(t.council)).toBe(true);
+    expect(circleHasTasks({ ...t.council, features: ["wiki"] })).toBe(false);
+    expect(circleHasWiki({ ...t.council, features: [] })).toBe(false);
+    expect(circleHasWiki({ ...t.council, features: ["wiki"] })).toBe(true);
+    expect(circleHasPublicWiki({ ...t.council, features: [] })).toBe(false);
+    expect(circleCanHoldMeetings({ ...t.council, features: [] })).toBe(false);
+  });
+  it("a group has a wiki and tasks once it switches them on", () => {
+    const on = { ...t.club, features: ["wiki", "tasks"] as CircleFeature[] };
+    expect(circleHasWiki(on)).toBe(true);
+    expect(circleHasTasks(on)).toBe(true);
+    expect(circleCanHoldMeetings(on)).toBe(false);
+    expect(circleHasPublicWiki(on)).toBe(false);
+    expect(circleHasPublicWiki(t.council)).toBe(true);
+    expect(cleanFeatures(["tasks", "bogus", "wiki", "wiki"])).toEqual(["wiki", "tasks"]);
+  });
+  it("a group has no wiki or tasks by default but keeps chat", () => {
     expect(circleHasWiki(t.club)).toBe(false);
     expect(circleHasTasks(t.club)).toBe(false);
     expect(circleHasChat(t.club)).toBe(true);
@@ -80,8 +118,9 @@ describe("which circles get which features", () => {
     expect(circleCanHaveCircles(t.city)).toBe(false);
     expect(circleCanHaveCircles(circle({ id: "o", type: "other" }))).toBe(false);
   });
-  it("a group can't hold a meeting", () => {
+  it("a group can't hold a meeting until it switches them on", () => {
     expect(circleCanHoldMeetings(t.club)).toBe(false);
+    expect(circleCanHoldMeetings({ ...t.club, features: ["meetings"] })).toBe(true);
     expect(circleCanHoldMeetings(t.council)).toBe(true);
   });
 });
@@ -97,8 +136,9 @@ describe("sections", () => {
     expect(circleSections({ ...t.council, inbox: true }, true)).toContain("inbox");
     expect(circleSections({ ...t.council, inbox: true }, false)).not.toContain("inbox");
   });
-  it("a group has no wiki or tasks", () => {
+  it("a group has no wiki or tasks until it switches them on", () => {
     expect(circleSections(t.club, true)).toEqual(["bulletin", "chat", "decisions", "members", "events"]);
+    expect(circleSections({ ...t.club, features: ["wiki", "tasks"] }, true)).toEqual(["bulletin", "chat", "tasks", "decisions", "wiki", "members", "events"]);
   });
   it("opens on the bulletin for a member, the wiki otherwise, and members for a group's outsider", () => {
     expect(defaultCircleSection(t.council, true)).toBe("bulletin");

@@ -21,7 +21,7 @@ import {
 } from "./proposals.util";
 import { indexCircles } from "./circles.util";
 import { circle, proposal, tree } from "./test/factories";
-import type { Circle, ProposalResponse } from "./types";
+import type { Circle, CircleFeature, ProposalResponse } from "./types";
 
 const answer = (memberId: number, response: ProposalResponse["response"]): ProposalResponse => ({ memberId, response, respondedAt: "2026-11-01T13:00:00.000Z" });
 
@@ -154,9 +154,46 @@ describe("checkChanges", () => {
     });
   });
 
+  describe("public", () => {
+    const group = (over: Partial<Circle> = {}) => defined({ type: "group", ...over });
+    it("is a group's to decide, and a change only if it differs", () => {
+      expect(changedFields(group(), { public: true })).toEqual({ public: true });
+      expect(changedFields(group({ public: true }), { public: true })).toEqual({});
+      expect(check({ public: true })).toMatchObject({ field: "public" });
+      expect(check({ public: true }, group())).toBeNull();
+    });
+    it("reads as Visibility, and titles itself", () => {
+      expect(describeChanges(group(), { public: true }, [], () => "")).toEqual([{ label: "Visibility", before: "Private", after: "Public" }]);
+      expect(proposalTitle({ kind: "change", changes: { public: false }, lines: [] })).toBe("Make the group private");
+    });
+  });
+
+  describe("features", () => {
+    const group = (features: CircleFeature[] = []) => defined({ type: "group", features });
+    it("are a group's to switch on, and only a change counts", () => {
+      expect(changedFields(group(), { features: ["tasks", "wiki"] })).toEqual({ features: ["wiki", "tasks"] });
+      expect(changedFields(group(["wiki"]), { features: ["wiki"] })).toEqual({});
+    });
+    it("start on for any other circle, which can switch them off", () => {
+      expect(changedFields(defined(), { features: ["wiki", "tasks", "meetings", "roles"] })).toEqual({});
+      expect(changedFields(defined(), { features: ["wiki"] })).toEqual({ features: ["wiki"] });
+      expect(check({ features: ["wiki"] })).toBeNull();
+    });
+    it("aren't for a neighborhood or the city", () => {
+      expect(check({ features: [] }, defined({ type: "neighborhood" }))).toMatchObject({ field: "features" });
+    });
+    it("read as one line each", () => {
+      expect(describeChanges(group(["wiki"]), { features: ["tasks"] }, [], () => "")).toEqual([
+        { label: "Wiki", before: "On", after: "Off" },
+        { label: "Tasks", before: "Off", after: "On" },
+      ]);
+    });
+  });
+
   describe("roles", () => {
-    it("refuses a circle without roles", () => {
+    it("refuses a circle without roles, a group's until it switches them on", () => {
       expect(check({ roles: [] }, defined({ type: "group" }))).toMatchObject({ field: "roles" });
+      expect(check({ roles: [] }, defined({ type: "group", features: ["roles"] }))).toBeNull();
     });
     it("only members can hold a role", () => {
       expect(check({ roles: [{ label: "Leader", memberId: 99 }] })).toMatchObject({ field: "roles" });

@@ -6,8 +6,8 @@ import { circleInvitations, circleMembers, circleRoles, circles } from "./schema
 import { dropMembership } from "./memberships";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, DELEGATE, type CircleRoleDraft } from "@/lib/circle-roles.util";
-import { cleanAims, validateNewCircle, validateWikiPatch, type NewCircleInput, circleHasInbox, circleHasPage, circleHasWiki } from "@/lib/circles.util";
-import type { Circle, PublicWiki } from "@/lib/types";
+import { cleanAims, validateNewCircle, validateWikiPatch, type NewCircleInput, circleHasInbox, circleHasPage, circleHasPublicWiki, circleIsPrivate } from "@/lib/circles.util";
+import type { Circle, CircleFeature, PublicWiki } from "@/lib/types";
 
 // the circles started inside another, when reading both at once
 const subcircles = alias(circles, "subcircles");
@@ -28,6 +28,8 @@ function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDra
     needs: row.needs,
     ...(row.domain ? { domain: row.domain } : {}),
     ...(row.inbox ? { inbox: true } : {}),
+    ...(row.public ? { public: true } : {}),
+    ...(row.features ? { features: row.features } : {}),
     aims: row.aims,
     members: memberIds,
     ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds, row.type) } : {}),
@@ -53,15 +55,15 @@ async function attachMembers(rows: CircleRow[]): Promise<Circle[]> {
   return rows.map((row) => toCircle(row, membersByCircle.get(row.id) || [], rolesByCircle.get(row.id) || []));
 }
 
-/* Every circle this member may know of: all of them, except a group they
-   don't belong to — a group is private to its members (see isGroup in
-   lib/circles.util.ts), so it, and its roster, never reach anyone else's
+/* Every circle this member may know of: all of them, except a private group
+   they don't belong to — a group is private to its members until they make
+   it public (see circleIsPrivate in lib/circles.util.ts), so it, and its roster, never reach anyone else's
    browser — and an archived one (its last member left), which reaches no
    one's. What AppState is seeded and refreshed with. */
 export async function getCirclesForMember(memberId: number): Promise<Circle[]> {
   const rows = await db.select().from(circles).where(isNull(circles.archivedAt));
   const all = await attachMembers(rows);
-  return all.filter((c) => c.type !== "group" || c.members.includes(memberId));
+  return all.filter((c) => !circleIsPrivate(c) || c.members.includes(memberId));
 }
 
 export async function getCircleById(id: string): Promise<Circle | null> {
@@ -74,7 +76,7 @@ export async function getCircleById(id: string): Promise<Circle | null> {
 // a circle whose wiki anyone may read: one with a page and a wiki (not a
 // neighborhood, the city or a group, which only its members know exists),
 // and not archived
-const hasPublicWiki = (c: { type: Circle["type"]; parentId: string | null; archivedAt: Date | null }) => !c.archivedAt && circleHasPage(c) && circleHasWiki(c);
+const hasPublicWiki = (c: { type: Circle["type"]; parentId: string | null; features: CircleFeature[] | null; public: boolean; archivedAt: Date | null }) => !c.archivedAt && circleHasPublicWiki(c);
 
 /* A circle's wiki for anyone, signed in or not (its public page): the one
    place what a stranger sees of a circle is decided, so it reads only what

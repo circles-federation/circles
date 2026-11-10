@@ -24,6 +24,7 @@ import {
 import type { RoleDraft } from "@/lib/events.util";
 import type {
   AgendaCategory,
+  CircleFeature,
   ConsentResponse,
   EventChange,
   EventKindKey,
@@ -178,6 +179,10 @@ export const circles = pgTable(
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     // its Inbox is on (decided by consent): see circle_messages
     inbox: boolean("inbox_enabled").notNull().default(false),
+    // a group's switched-on features (decided by consent); see CIRCLE_FEATURES
+    // a group its members have made public (decided by consent): see circleIsPrivate
+    public: boolean("is_public").notNull().default(false),
+    features: text("features").array().$type<CircleFeature[]>(),
   },
   (t) => [
     // target of circle_members' composite FK, which is what lets that table

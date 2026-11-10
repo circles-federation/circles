@@ -87,9 +87,20 @@ export interface CircleRole {
   memberId: number | null;
 }
 
+// what a group can switch on beyond its basics (see CIRCLE_FEATURES in
+// lib/circles.util.ts); every other kind of circle has them all by its type
+export type CircleFeature = "wiki" | "tasks" | "meetings" | "roles";
+
 export interface Circle {
   id: string;
   type: CircleType;
+  // its switched-on features, decided by its members' consent; absent means
+  // its type's defaults (lib/circles.util's defaultFeatures: all, but none for a group)
+  features?: CircleFeature[];
+  // a group that its members have consented to make public: listed and open
+  // to everyone like any other circle. Absent means private, the default; it
+  // means nothing on any other kind of circle (lib/circles.util's circleIsPrivate)
+  public?: boolean;
   // its Inbox is on: anyone may write to it from its wiki, and its members
   // read what's written (decided by consent; lib/circles.util's circleHasInbox)
   inbox?: boolean;
@@ -243,6 +254,10 @@ export interface ProposalChanges {
   roles?: { label: string; memberId: number | null }[];
   // turning its Inbox on or off
   inbox?: boolean;
+  // its switched-on features, the whole list as it should be
+  features?: CircleFeature[];
+  // making a group public, or private again
+  public?: boolean;
   // a new circle started inside this one: its first member and delegate
   delegateId?: number;
 }

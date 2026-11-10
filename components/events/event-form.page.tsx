@@ -9,7 +9,7 @@ import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, FederationExplorerField, Section, SectionGroup, Select, SettingRow, SettingRows, useFederationExplorer, TextArea } from "@/components/shared";
-import { audienceLabel, circleCanHoldMeetings, circlesForAudience, circlesForMember, indexCircles, isCircleMember, memberCirclesWithPaths, hostCanShowTo, isGroup, isRootCircle, isWithinCircle } from "@/lib/circles.util";
+import { audienceLabel, circleCanHoldMeetings, circlesForAudience, circlesForMember, indexCircles, isCircleMember, memberCirclesWithPaths, hostCanShowTo, circleIsPrivate, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
 import { DEFAULT_REMINDERS, REMINDERS, attendeeIds, availableReminders, defaultReminders, defaultEventTimes, endAfterStartMoves, remindersSummary, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -231,7 +231,7 @@ export function EventFormPage(props: EventFormPageProps) {
     refusal: (c) => {
       if (circleChoices.some((x) => x.id === c.id)) return null;
       if (gov && isRootCircle(c)) return "A meeting can't be held citywide";
-      if (gov && !circleCanHoldMeetings(c)) return "A group can't hold a meeting";
+      if (gov && !circleCanHoldMeetings(c)) return "Its members haven't turned on meetings";
       return "You're not a member";
     },
     you,
@@ -759,7 +759,7 @@ export function EventFormPage(props: EventFormPageProps) {
                 <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
                   {mode === "edit"
                     ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
-                    : `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects; until then only they can see it, ${hasRoles ? "and its roles can be taken once it's scheduled" : "and you and everyone who consents are marked as going"}. Once it's scheduled it opens to ${isGroup(hostCircle) ? "the group" : audienceLabel(circle)}, and any member of ${hostCircle.name} can edit or cancel it.`}
+                    : `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects; until then only they can see it, ${hasRoles ? "and its roles can be taken once it's scheduled" : "and you and everyone who consents are marked as going"}. Once it's scheduled it opens to ${circleIsPrivate(hostCircle) ? "the group" : audienceLabel(circle)}, and any member of ${hostCircle.name} can edit or cancel it.`}
                 </p>
               )}
             </div>

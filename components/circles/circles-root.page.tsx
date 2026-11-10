@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { EmptyState, FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
+import { EmptyState, FolderGrid, PageContainer, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
-import { CIRCLE_TYPE_LABEL, isGroup } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleIsPrivate, isGroup } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
 
 interface CirclesRootPageProps {
@@ -46,11 +46,11 @@ export function CirclesRootPage({ circles, onOpenCircle }: CirclesRootPageProps)
       items: folders.filter((c) => c.type === "neighborhood"),
       renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow={false} />,
     },
-    // groups, which only their own members ever receive, in their own grid
+    // groups, in their own grid: a private one (which only its members receive) is marked with a lock
     {
-      key: "groups", label: <PrivateLabel>Groups</PrivateLabel>, minWidth: 300,
+      key: "groups", label: "Groups", minWidth: 300,
       items: folders.filter(isGroup),
-      renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow={false} />,
+      renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow={circleIsPrivate(c)} />,
     },
     {
       key: "circles", label: "Organizations", minWidth: 300,

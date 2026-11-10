@@ -7,7 +7,7 @@ import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Button, ConfirmModal, FIELD, FIELD_ROW, Input, Label, PageContainer, ROW_INPUT, Section, SectionGroup, TextArea } from "@/components/shared";
 import { EditableTags } from "@/components/profile/editable-tags";
-import { circleContact, circleDomainEnding, circleTypeNoun, circleWebsiteUrl } from "@/lib/circles.util";
+import { circleContact, circleDomainEnding, circleHasPublicWiki, circleTypeNoun, circleWebsiteUrl } from "@/lib/circles.util";
 import type { Circle } from "@/lib/types";
 
 // matches circle.page.tsx's read-only facts grid (label above a bold value,
@@ -94,7 +94,9 @@ export function CircleWikiPage({ circle: o, onSave, onBack }: CircleWikiPageProp
   return (
     <PageContainer size="normal">
       <p className="max-w-[42em] font-serif text-sm leading-normal text-soft">
-        You&rsquo;re editing {o.name}&rsquo;s wiki as a member. It&rsquo;s public: anyone can read it, on Circles or not, and it can turn up in search results, so only put here what you&rsquo;d put on a flyer. Your name will show to members as the last editor.
+        {circleHasPublicWiki(o)
+          ? <>You&rsquo;re editing {o.name}&rsquo;s wiki as a member. It&rsquo;s public: anyone can read it, on Circles or not, and it can turn up in search results, so only put here what you&rsquo;d put on a flyer. Your name will show to members as the last editor.</>
+          : <>You&rsquo;re editing {o.name}&rsquo;s wiki as a member. It&rsquo;s private: only its members can read it. Your name will show to members as the last editor.</>}
       </p>
 
       {/* the quick facts open the wiki, as they do on the circle's page:

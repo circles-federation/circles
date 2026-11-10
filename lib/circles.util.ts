@@ -1,4 +1,4 @@
-import type { Circle, CircleType } from "./types";
+import type { Circle, CircleType, CircleFeature } from "./types";
 
 /* Pure helpers for the circle tree — circles nest via `parentId` (another
    circle's id, or null for the root, the city). Extend this module rather than
@@ -88,13 +88,13 @@ export interface NewCircleInput {
 }
 
 /* A circle that has grown can break down into circles of its own: a Circle,
-   a collective or a co-op (not a group, a neighborhood or the city). Its
+   a collective or a co-op, or a public group (not a private one, a neighborhood or the city). Its
    members consent to each, and each sends a delegate up, who becomes one of
    its members (syncDelegate, lib/db/memberships.ts), so its decisions are
    its own members' and its circles' delegates'. A circle started inside one
    is always a Circle, since only a Circle has a Delegate. */
-export function circleCanHaveCircles(circle: Pick<Circle, "type" | "parentId">): boolean {
-  return circleHasPage(circle) && (circle.type === "circle" || circle.type === "collective" || circle.type === "cooperative");
+export function circleCanHaveCircles(circle: Pick<Circle, "type" | "parentId" | "public">): boolean {
+  return circleHasPage(circle) && (circle.type === "circle" || circle.type === "collective" || circle.type === "cooperative" || (isGroup(circle) && !!circle.public));
 }
 
 // the circle this one was started inside, if it was (one that can have
@@ -198,13 +198,51 @@ export function cleanAims(aims: string[] | undefined): string[] {
   return (aims ?? []).map((a) => a.trim()).filter((a) => a !== "");
 }
 
-/* A group is a circle with fewer features, and private: only its own members
-   know it exists (lib/db/circles.ts never sends it to anyone else). It has a
-   bulletin, members and invitations, and members may post their own events to
-   it, but no wiki, quick facts or roles, and it can't host an event or hold a
-   meeting. */
+/* A group is a circle that starts private: only its own members know it
+   exists (lib/db/circles.ts never sends it to anyone else), until they
+   consent to making it public, when it's listed and open like any circle. It
+   has every feature another circle has, but a wiki, tasks, meetings and roles
+   start switched off (any other kind starts with them on), for its members to
+   turn on or off by consent (CIRCLE_FEATURES, defaultFeatures).
+   While it's private it has no public wiki, Inbox or circles inside it, since
+   each would reveal it. */
 export function isGroup(circle: Pick<Circle, "type">): boolean {
   return circle.type === "group";
+}
+
+// a group that hasn't been made public: only its members know it exists
+export function circleIsPrivate(circle: Pick<Circle, "type" | "public">): boolean {
+  return isGroup(circle) && !circle.public;
+}
+
+export const CIRCLE_FEATURES: readonly { key: CircleFeature; label: string; description: string }[] = [
+  { key: "wiki", label: "Wiki", description: "A page about the circle: about, what it offers and needs, quick facts." },
+  { key: "tasks", label: "Tasks", description: "A backlog of tasks for its members to share out." },
+  { key: "meetings", label: "Meetings", description: "Meetings with an agenda, scheduled by its members' consent." },
+  { key: "roles", label: "Roles", description: "Secretary, Facilitator and the like, held by its members." },
+];
+
+/* What a circle's type has switched on until its members decide otherwise
+   (`Circle.features` unset): everything for any kind of circle but a group,
+   which starts with none. */
+export function defaultFeatures(type: CircleType): CircleFeature[] {
+  return type === "group" ? [] : CIRCLE_FEATURES.map((f) => f.key);
+}
+
+// what a circle's type or its members' choice has switched on: a circle that
+// has never decided has its type's defaults
+export type Featured = { type: CircleType; features?: readonly CircleFeature[] | null };
+export function featuresOf(circle: Featured): readonly CircleFeature[] {
+  return circle.features ?? defaultFeatures(circle.type);
+}
+
+export function circleHasFeature(circle: Featured, feature: CircleFeature): boolean {
+  return featuresOf(circle).includes(feature);
+}
+
+// the features in CIRCLE_FEATURES' order, each once, nothing unknown
+export function cleanFeatures(features: readonly string[]): CircleFeature[] {
+  return CIRCLE_FEATURES.map((f) => f.key).filter((k) => features.includes(k));
 }
 
 // what to call a circle in a form's placeholder: its type, or "organization"
@@ -222,13 +260,18 @@ export function circleDomainEnding(type: CircleType): string {
 }
 
 // the wiki (About, offers and needs, visiting and joining) and quick facts
-export function circleHasWiki(circle: Pick<Circle, "type">): boolean {
-  return !isGroup(circle);
+export function circleHasWiki(circle: Featured): boolean {
+  return circleHasFeature(circle, "wiki");
 }
 
-// a backlog of tasks (lib/db/tasks.ts): a circle with a page, but not a group
-export function circleHasTasks(circle: Pick<Circle, "type" | "parentId">): boolean {
-  return circleHasPage(circle) && !isGroup(circle);
+// whether anyone may read it by its link: never a private group's, whatever it switches on
+export function circleHasPublicWiki(circle: Pick<Circle, "parentId" | "public"> & Featured): boolean {
+  return circleHasPage(circle) && !circleIsPrivate(circle) && circleHasWiki(circle);
+}
+
+// a backlog of tasks (lib/db/tasks.ts): a circle with a page; a group's once it switches them on
+export function circleHasTasks(circle: Pick<Circle, "parentId"> & Featured): boolean {
+  return circleHasPage(circle) && circleHasFeature(circle, "tasks");
 }
 
 // a chat thread (lib/db/chat.ts): a circle with a page, groups included;
@@ -239,20 +282,20 @@ export function circleHasChat(circle: Pick<Circle, "type" | "parentId">): boolea
 
 // an Inbox: anyone may write to it from its wiki (lib/db/messages.ts). A
 // Circle, a collective or a co-op may have one, once its members consent to
-// it; not a group, whose page only its members see, nor a neighborhood or
-// the city, too many members to answer as one
-export function circleCanHaveInbox(circle: Pick<Circle, "type" | "parentId">): boolean {
-  return circleHasPage(circle) && (circle.type === "circle" || circle.type === "collective" || circle.type === "cooperative");
+// it, and a group once it's public (a private one's page is seen only by its
+// members); never a neighborhood or the city, too many members to answer as one
+export function circleCanHaveInbox(circle: Pick<Circle, "type" | "parentId" | "public">): boolean {
+  return circleHasPage(circle) && (circle.type === "circle" || circle.type === "collective" || circle.type === "cooperative" || (isGroup(circle) && !!circle.public));
 }
 
-export function circleHasInbox(circle: Pick<Circle, "type" | "parentId" | "inbox">): boolean {
+export function circleHasInbox(circle: Pick<Circle, "type" | "parentId" | "inbox" | "public">): boolean {
   return circleCanHaveInbox(circle) && !!circle.inbox;
 }
 
 /* A circle page's sections, in the order its tab row shows them, each at
    /circles/[id]/[section]. The bulletin, chat, tasks and inbox are its members'
-   alone, with no hint to anyone else; a group has no wiki or tasks, its
-   bulletin standing in for them. */
+   alone, with no hint to anyone else; a group's wiki and tasks are there once
+   it switches them on. */
 export const CIRCLE_SECTIONS = ["bulletin", "chat", "tasks", "inbox", "decisions", "wiki", "members", "events"] as const;
 export type CircleSection = (typeof CIRCLE_SECTIONS)[number];
 export const CIRCLE_SECTION_LABEL: Record<CircleSection, string> = { bulletin: "Bulletin", chat: "Chat", tasks: "Tasks", inbox: "Inbox", decisions: "Decisions", wiki: "Wiki", members: "Members", events: "Events" };
@@ -263,7 +306,7 @@ export function isCircleSection(value: string | undefined): value is CircleSecti
 
 // the sections someone sees on a circle's page (one with a page: not a
 // neighborhood or the city)
-export function circleSections(circle: Pick<Circle, "type" | "parentId" | "inbox">, isMember: boolean): CircleSection[] {
+export function circleSections(circle: Pick<Circle, "parentId" | "inbox" | "public"> & Featured, isMember: boolean): CircleSection[] {
   return CIRCLE_SECTIONS.filter((s) => {
     if (s === "bulletin") return isMember;
     if (s === "chat") return isMember && circleHasChat(circle);
@@ -279,22 +322,22 @@ export function circleSections(circle: Pick<Circle, "type" | "parentId" | "inbox
 // where its page opens, at /circles/[id] itself: a member on the bulletin,
 // anyone else on the wiki (a group's members have no wiki, and no one else
 // sees a group)
-export function defaultCircleSection(circle: Pick<Circle, "type" | "parentId" | "inbox">, isMember: boolean): CircleSection {
+export function defaultCircleSection(circle: Pick<Circle, "parentId" | "inbox" | "public"> & Featured, isMember: boolean): CircleSection {
   return circleSections(circle, isMember)[0] ?? "members";
 }
 
-// a meeting is its circle's members voting, which a group doesn't do (any
-// circle but the city can host an event, a group included, by consent: see
-// lib/db/proposals.ts)
-export function circleCanHoldMeetings(circle: Pick<Circle, "type">): boolean {
-  return !isGroup(circle);
+// a meeting is decided by its circle's consent; a group holds them once it
+// switches them on (any circle but the city can host an event, a group
+// included, by consent: see lib/db/proposals.ts)
+export function circleCanHoldMeetings(circle: Featured): boolean {
+  return circleHasFeature(circle, "meetings");
 }
 
 /* Whether `host` may host an event shown to `circleId`: one shown to itself
-   or to a circle it's part of — except a group, which is private, so an
-   event it hosts is only ever shown to the group, or it would reveal it. */
-export function hostCanShowTo(host: Pick<Circle, "id" | "type">, circleId: string, parentOf: (id: string) => string | null | undefined): boolean {
-  return isGroup(host) ? circleId === host.id : isWithinCircle(host.id, circleId, parentOf);
+   or to a circle it's part of — except a private group, so an event it hosts
+   is only ever shown to the group, or it would reveal it. */
+export function hostCanShowTo(host: Pick<Circle, "id" | "type" | "public">, circleId: string, parentOf: (id: string) => string | null | undefined): boolean {
+  return circleIsPrivate(host) ? circleId === host.id : isWithinCircle(host.id, circleId, parentOf);
 }
 
 export function indexCircles<T extends Pick<Circle, "id"> = Circle>(circles: T[]): Record<string, T> {

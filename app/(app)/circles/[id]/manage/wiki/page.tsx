@@ -11,7 +11,7 @@ export default function Page() {
   const { saveCircle } = useAppState();
   const goBack = useGoBack();
   const { circle } = useManagedCircle()!;
-  // a group has no wiki
+  // a group has one once it switches it on
   if (!circleHasWiki(circle)) notFound();
   return <CircleWikiPage circle={circle} onSave={(patch) => saveCircle(circle.id, patch)} onBack={goBack} />;
 }
