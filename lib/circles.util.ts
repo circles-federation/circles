@@ -409,6 +409,24 @@ export function circlesForMember(memberId: number, circles: Circle[]): Circle[] 
   return circles.filter((c) => c.members.includes(memberId));
 }
 
+/* The circles a member belongs to, for a field that offers only those, with
+   the city and whatever circles lie between it and theirs, since the explorer
+   goes down from the city and a circle can't be reached without its path. The
+   path's circles are there to open, not to choose. The city is always there:
+   everyone is in it, for an event's audience. */
+export function memberCirclesWithPaths(memberId: number, circles: Circle[]): Circle[] {
+  const byId = indexCircles(circles);
+  const keep = new Set<string>();
+  for (const c of circles) {
+    if (c.parentId === null) keep.add(c.id);
+    else if (c.members.includes(memberId)) {
+      keep.add(c.id);
+      for (const a of circleAncestors(c, byId)) keep.add(a.id);
+    }
+  }
+  return circles.filter((c) => keep.has(c.id));
+}
+
 // two members are in the same "circle" if they share membership in at least
 // one circle — including their neighborhood, so simply living in the same
 // one counts. Used to gate whether one member can see another's profile photo
