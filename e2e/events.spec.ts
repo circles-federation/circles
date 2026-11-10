@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { MIRA, pageFor } from "./helpers";
+import { MIRA, fillField, pageFor } from "./helpers";
 
 const AISHA = "c2qx5017@duck.com";
 
@@ -11,9 +11,9 @@ function tomorrow(): string {
 test("a member creates an event and a neighbor RSVPs to it", async ({ browser }) => {
   const { page } = await pageFor(browser, MIRA);
   await page.goto("/events/new");
-  await page.getByLabel("Title").fill("E2E seed swap");
-  await page.getByLabel("Date").fill(tomorrow());
-  await page.getByLabel("Location").fill("The garden");
+  await fillField(page.getByLabel("Title"), "E2E seed swap");
+  await fillField(page.getByLabel("Date"), tomorrow());
+  await fillField(page.getByLabel("Location"), "The garden");
   await page.getByRole("button", { name: "Create event" }).click();
   await expect(page).toHaveURL(/\/events\/[^/]+$/);
   await expect(page.getByText("E2E seed swap").first()).toBeVisible();

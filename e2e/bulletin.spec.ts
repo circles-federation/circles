@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { MIRA, pageFor } from "./helpers";
+import { MIRA, fillField, pageFor } from "./helpers";
 
 const PRIYA = "sw5hfa5t@duck.com";
 const CARMEN = "awyhz93@duck.com";
@@ -7,8 +7,8 @@ const CARMEN = "awyhz93@duck.com";
 test("an announcement reaches the circle's members and no one else", async ({ browser }) => {
   const { page: mira } = await pageFor(browser, MIRA);
   await mira.goto("/circles/finance-council/bulletin/new");
-  await mira.getByLabel("Title").fill("E2E budget meeting moved");
-  await mira.getByLabel("Message").fill("We're meeting Thursday instead.");
+  await fillField(mira.getByLabel("Title"), "E2E budget meeting moved");
+  await fillField(mira.getByLabel("Message"), "We're meeting Thursday instead.");
   await mira.getByRole("button", { name: "Save" }).click();
   await expect(mira).toHaveURL(/\/circles\/finance-council(\/bulletin)?$/);
   await expect(mira.getByText("E2E budget meeting moved", { exact: true })).toBeVisible();

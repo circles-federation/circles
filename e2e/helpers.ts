@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 
 const MAILPIT = process.env.MAILPIT_URL ?? "http://localhost:8025";
 
@@ -50,4 +50,14 @@ export async function contextFor(browser: Browser, email: string): Promise<Brows
 export async function pageFor(browser: Browser, email: string): Promise<{ context: BrowserContext; page: Page }> {
   const context = await contextFor(browser, email);
   return { context, page: await context.newPage() };
+}
+
+/* Fills a field and checks it kept the value: typing in before the page has
+   hydrated can be overwritten when React takes over, which left a form empty
+   and its submit disabled. */
+export async function fillField(field: Locator, value: string) {
+  await expect(async () => {
+    await field.fill(value);
+    await expect(field).toHaveValue(value, { timeout: 500 });
+  }).toPass();
 }

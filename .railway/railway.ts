@@ -45,7 +45,9 @@ export default defineRailway(() => {
     deploy: {
       startCommand: "npm run start",
       numReplicas: 1,
-      healthcheckPath: "/",
+      // answers only while the database does, so a deploy that can't reach it
+      // never takes over from the one that can
+      healthcheckPath: "/api/health",
       healthcheckTimeout: 30,
       // restarts on failure, Railway's default: naming it only makes every
       // plan show a change, since Railway stores its default as null

@@ -27,12 +27,12 @@ export default defineConfig({
       // means new logic went in untested. The pure helpers and the data layer
       // hold the rules, so they have their own.
       thresholds: {
-        statements: 55,
-        branches: 52,
-        functions: 55,
-        lines: 57,
-        "lib/**/*.util.ts": { statements: 72, branches: 60, functions: 72, lines: 72 },
-        "lib/db/**/*.ts": { statements: 60, branches: 53, functions: 60, lines: 65 },
+        statements: 66,
+        branches: 65,
+        functions: 66,
+        lines: 68,
+        "lib/**/*.util.ts": { statements: 90, branches: 80, functions: 90, lines: 91 },
+        "lib/db/**/*.ts": { statements: 70, branches: 63, functions: 68, lines: 76 },
       },
     },
     projects: [
