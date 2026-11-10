@@ -52,10 +52,11 @@ export interface CircleRoleDraft {
   memberId: number | null;
 }
 
-// neighborhoods (a place, whose members are simply its residents), the city
-// root and groups (see isGroup in circles.util.ts) don't have roles
-export function circleHasRoles(circle: Pick<Circle, "type" | "parentId">): boolean {
-  return circle.type !== "neighborhood" && circle.type !== "group" && circle.parentId !== null;
+// neighborhoods (a place, whose members are simply its residents), the city root
+// don't have roles, and a group only once it switches them on (see
+// GROUP_FEATURES in circles.util.ts)
+export function circleHasRoles(circle: Pick<Circle, "type" | "parentId" | "features">): boolean {
+  return circle.type !== "neighborhood" && circle.parentId !== null && (circle.type !== "group" || !!circle.features?.includes("roles"));
 }
 
 const sameLabel = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();

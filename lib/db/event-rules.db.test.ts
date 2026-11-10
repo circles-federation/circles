@@ -77,7 +77,7 @@ describe("creating an event", () => {
   it("refuses a meeting in the city or in a group", async () => {
     const meeting = { kind: "meeting" as const, description: "", agenda: [{ title: "Hi", category: "report" as const }] };
     await expect(createEvent(1, draft({ ...meeting, circleId: "city" }))).rejects.toThrow(/own members/);
-    await expect(createEvent(1, draft({ ...meeting, circleId: "club" }))).rejects.toThrow(/group can't hold a meeting/);
+    await expect(createEvent(1, draft({ ...meeting, circleId: "club" }))).rejects.toThrow(/hasn't turned on meetings/);
   });
 
   it("refuses hosting for a circle they're not in, for the whole city, or a group's event shown elsewhere", async () => {

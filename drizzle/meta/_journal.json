@@ -428,6 +428,13 @@
       "when": 1793378261960,
       "tag": "0060_chat_message_removal",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794339824086,
+      "tag": "0061_group_features",
+      "breakpoints": true
     }
   ]
 }

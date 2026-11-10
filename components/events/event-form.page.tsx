@@ -231,7 +231,7 @@ export function EventFormPage(props: EventFormPageProps) {
     refusal: (c) => {
       if (circleChoices.some((x) => x.id === c.id)) return null;
       if (gov && isRootCircle(c)) return "A meeting can't be held citywide";
-      if (gov && !circleCanHoldMeetings(c)) return "A group can't hold a meeting";
+      if (gov && !circleCanHoldMeetings(c)) return "Its members haven't turned on meetings";
       return "You're not a member";
     },
     you,

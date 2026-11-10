@@ -49,9 +49,9 @@ export async function getTasksForMember(memberId: number): Promise<CircleTask[]>
 
 /* The circle's members, if `memberId` is one of them and it's a circle with
    tasks (circleHasTasks: not a neighborhood or the city, whose members are
-   their residents, too many for one backlog, nor a group); refused otherwise. */
+   their residents, too many for one backlog, nor a group that hasn't switched them on); refused otherwise. */
 async function membersOf(memberId: number, circleId: string): Promise<number[]> {
-  const [circle] = await db.select({ type: circles.type, parentId: circles.parentId }).from(circles).where(eq(circles.id, circleId));
+  const [circle] = await db.select({ type: circles.type, parentId: circles.parentId, features: circles.features }).from(circles).where(eq(circles.id, circleId));
   if (!circle || !circleHasTasks(circle)) throw new TaskError("That circle doesn't have tasks.");
   const ids = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.id);
   if (!ids.includes(memberId)) throw new TaskError("Only the circle's members can see or change its tasks.");

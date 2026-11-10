@@ -24,7 +24,7 @@ export class AvailabilityError extends UserFacingError {}
    meeting being edited, which doesn't clash with itself. */
 export async function getMeetingAvailability(memberId: number, circleId: string, date: string, start: string, end: string, excludeEventId?: string): Promise<MeetingAvailability> {
   if (!isDay(date) || !isClock(start) || !isClock(end)) throw new AvailabilityError("Pick a date and times first.");
-  const [circle] = await db.select({ parentId: circles.parentId, type: circles.type, name: circles.name }).from(circles).where(eq(circles.id, circleId));
+  const [circle] = await db.select({ parentId: circles.parentId, type: circles.type, name: circles.name, features: circles.features }).from(circles).where(eq(circles.id, circleId));
   const roster = circle ? await db.select({ id: members.id, availability: members.availability }).from(circleMembers).innerJoin(members, eq(members.id, circleMembers.memberId)).where(eq(circleMembers.circleId, circleId)) : [];
   if (!circle || !roster.some((m) => m.id === memberId)) {
     throw new AvailabilityError(circle && circle.type !== "group" ? `Only members of ${circle.name} can see who's available.` : "That circle doesn't exist.");

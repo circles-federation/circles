@@ -21,7 +21,7 @@ import {
 } from "./proposals.util";
 import { indexCircles } from "./circles.util";
 import { circle, proposal, tree } from "./test/factories";
-import type { Circle, ProposalResponse } from "./types";
+import type { Circle, GroupFeature, ProposalResponse } from "./types";
 
 const answer = (memberId: number, response: ProposalResponse["response"]): ProposalResponse => ({ memberId, response, respondedAt: "2026-11-01T13:00:00.000Z" });
 
@@ -154,9 +154,28 @@ describe("checkChanges", () => {
     });
   });
 
+  describe("features", () => {
+    const group = (features: GroupFeature[] = []) => defined({ type: "group", features });
+    it("are a group's to switch on, and only a change counts", () => {
+      expect(changedFields(group(), { features: ["tasks", "wiki"] })).toEqual({ features: ["wiki", "tasks"] });
+      expect(changedFields(group(["wiki"]), { features: ["wiki"] })).toEqual({});
+    });
+    it("are refused on any other circle", () => {
+      expect(check({ features: ["wiki"] })).toMatchObject({ field: "features" });
+      expect(check({ features: ["wiki"] }, group())).toBeNull();
+    });
+    it("read as one line each", () => {
+      expect(describeChanges(group(["wiki"]), { features: ["tasks"] }, [], () => "")).toEqual([
+        { label: "Wiki", before: "On", after: "Off" },
+        { label: "Tasks", before: "Off", after: "On" },
+      ]);
+    });
+  });
+
   describe("roles", () => {
-    it("refuses a circle without roles", () => {
+    it("refuses a circle without roles, a group's until it switches them on", () => {
       expect(check({ roles: [] }, defined({ type: "group" }))).toMatchObject({ field: "roles" });
+      expect(check({ roles: [] }, defined({ type: "group", features: ["roles"] }))).toBeNull();
     });
     it("only members can hold a role", () => {
       expect(check({ roles: [{ label: "Leader", memberId: 99 }] })).toMatchObject({ field: "roles" });
