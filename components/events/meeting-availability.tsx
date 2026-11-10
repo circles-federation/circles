@@ -15,6 +15,8 @@ interface MeetingAvailabilityProps {
   date: string;
   start: string;
   end: string;
+  // the meeting being edited, which doesn't clash with itself
+  eventId?: string;
 }
 
 // set apart from the fields around it, since it's an answer, not a field
@@ -28,14 +30,14 @@ type Answer = { key: string; result: Availability } | { key: string; error: stri
    Unknown for someone who hasn't set it. The server answers for that one time
    only (meetingAvailabilityAction), so no one's schedule reaches this form.
    Names aren't links: leaving the form would discard what's been typed. */
-export function MeetingAvailability({ circleId, date, start, end }: MeetingAvailabilityProps) {
+export function MeetingAvailability({ circleId, date, start, end, eventId }: MeetingAvailabilityProps) {
   const { profile, members } = useAppState();
   const [answer, setAnswer] = useState<Answer | null>(null);
 
   const ready = !!circleId && isDay(date) && isClock(start) && isClock(end);
   // a meeting that runs past midnight can't be judged against one day's windows
   const overnight = ready && clockMinutes(end) <= clockMinutes(start);
-  const key = `${circleId}|${date}|${start}|${end}`;
+  const key = `${circleId}|${date}|${start}|${end}|${eventId ?? ""}`;
 
   // asked a moment after the last change, and an answer that's since been
   // overtaken by a newer question is dropped
@@ -43,14 +45,14 @@ export function MeetingAvailability({ circleId, date, start, end }: MeetingAvail
     if (!ready || overnight) return;
     let stale = false;
     const timer = setTimeout(async () => {
-      const result = await meetingAvailabilityAction(circleId, date, start, end).catch(() => ({ ok: false as const, error: "Couldn't reach the server." }));
+      const result = await meetingAvailabilityAction(circleId, date, start, end, eventId).catch(() => ({ ok: false as const, error: "Couldn't reach the server." }));
       if (!stale) setAnswer(result.ok ? { key, result: result.value } : { key, error: result.error });
     }, 300);
     return () => {
       stale = true;
       clearTimeout(timer);
     };
-  }, [ready, overnight, circleId, date, start, end, key]);
+  }, [ready, overnight, circleId, date, start, end, eventId, key]);
 
   if (!ready) return null;
   if (overnight) return <div className={BOX}><p className="font-serif text-sm leading-[1.45] text-soft">Who&rsquo;s available isn&rsquo;t checked for a meeting that runs past midnight.</p></div>;
@@ -86,8 +88,9 @@ function Result({ result, dimmed, people }: { result: Availability; dimmed: bool
           title="Not available"
           rule="border-soft"
           entries={people(result.unavailable.map((u) => u.id)).map((p) => {
-            const freeUntil = result.unavailable.find((u) => u.id === p.member.id)?.freeUntil;
-            return freeUntil === undefined ? p : { ...p, note: `free until ${fmtTime(minutesClock(freeUntil))}` };
+            const u = result.unavailable.find((x) => x.id === p.member.id);
+            if (u?.busy) return { ...p, note: "has another event" };
+            return u?.freeUntil === undefined ? p : { ...p, note: `free until ${fmtTime(minutesClock(u.freeUntil))}` };
           })}
         />
         <Group title="Unknown" rule="border-soft" hint="Haven't set when they can do meetings." entries={people(result.unknown)} />
