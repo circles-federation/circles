@@ -9,7 +9,7 @@ import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, FederationExplorerField, Section, SectionGroup, Select, SettingRow, SettingRows, useFederationExplorer, TextArea } from "@/components/shared";
-import { audienceLabel, circleCanHoldMeetings, circlesForAudience, circlesForMember, indexCircles, isCircleMember, hostCanShowTo, isGroup, isRootCircle, isWithinCircle } from "@/lib/circles.util";
+import { audienceLabel, circleCanHoldMeetings, circlesForAudience, circlesForMember, indexCircles, isCircleMember, memberCirclesWithPaths, hostCanShowTo, isGroup, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
 import { DEFAULT_REMINDERS, REMINDERS, attendeeIds, availableReminders, defaultReminders, defaultEventTimes, endAfterStartMoves, remindersSummary, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
@@ -220,10 +220,12 @@ export function EventFormPage(props: EventFormPageProps) {
     : circlesForMember(profile.id, circles).filter((c) => !isRootCircle(c) && hostCanShowTo(c, circleId, parentOf));
 
   // every circle can be browsed in the explorer; the rest say why they can't be chosen
+  // only the member's own circles (and the way down to them), not the whole federation
+  const explorable = memberCirclesWithPaths(profile.id, circles);
   const you = { id: profile.id, homeCircleId: profile.homeCircleId };
   const circleExplorer = useFederationExplorer({
     title: gov ? "Which circle is meeting?" : "Shown to",
-    circles,
+    circles: explorable,
     value: circleId || null,
     onChange: pickCircle,
     refusal: (c) => {
@@ -236,7 +238,7 @@ export function EventFormPage(props: EventFormPageProps) {
   });
   const hostExplorer = useFederationExplorer({
     title: "Hosted by",
-    circles,
+    circles: explorable,
     value: hostCircleId || null,
     onChange: setHostCircleId,
     refusal: (c) => {
@@ -466,7 +468,7 @@ export function EventFormPage(props: EventFormPageProps) {
   ];
 
   const circleSelect = (
-    <FederationExplorerField id="circle" circles={circles} value={circleId || null} onOpen={circleExplorer.open} disabled={mode === "edit"} />
+    <FederationExplorerField id="circle" circles={mode === "edit" ? circles : explorable} value={circleId || null} onOpen={circleExplorer.open} disabled={mode === "edit"} />
   );
 
   const topics = agenda.filter((a) => a.title.trim());
@@ -747,7 +749,7 @@ export function EventFormPage(props: EventFormPageProps) {
           ) : (
             <div>
               <Label htmlFor="host">Hosted by</Label>
-              <FederationExplorerField id="host" circles={circles} value={hostCircleId || null} onOpen={hostExplorer.open} placeholder={`${profile.name} (you)`} disabled={mode === "edit"} />
+              <FederationExplorerField id="host" circles={mode === "edit" ? circles : explorable} value={hostCircleId || null} onOpen={hostExplorer.open} placeholder={`${profile.name} (you)`} disabled={mode === "edit"} />
               {hostCircleId && mode !== "edit" && (
                 <button type="button" onClick={() => setHostCircleId("")} className="hit relative mt-2 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-semibold text-soft underline underline-offset-2">
                   Host it yourself instead

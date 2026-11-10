@@ -28,6 +28,7 @@ import {
   isCircleMember,
   isCircleSection,
   isWithinCircle,
+  memberCirclesWithPaths,
   parentCircleOptions,
   parentCircleRefusal,
   postingCirclesFor,
@@ -331,5 +332,20 @@ describe("circleContact", () => {
   it("not an email without a domain dot", () => {
     expect(circleContact("a@b")).toBeNull();
     expect(circleContact("a b@c.org")).toBeNull();
+  });
+});
+
+describe("memberCirclesWithPaths", () => {
+  const ids = (memberId: number) => memberCirclesWithPaths(memberId, Object.values(tree())).map((c) => c.id).sort();
+
+  it("keeps a member's circles, the city and the path down to them", () => {
+    expect(ids(1)).toEqual(["city", "council", "the903"]);
+    expect(ids(2)).toEqual(["city", "coop", "council", "the903"]);
+  });
+
+  it("leaves out circles they aren't in, including groups", () => {
+    expect(ids(4)).toEqual(["city"]);
+    expect(ids(1)).not.toContain("club");
+    expect(ids(3)).toContain("club");
   });
 });
