@@ -21,7 +21,7 @@ import {
 } from "./proposals.util";
 import { indexCircles } from "./circles.util";
 import { circle, proposal, tree } from "./test/factories";
-import type { Circle, GroupFeature, ProposalResponse } from "./types";
+import type { Circle, CircleFeature, ProposalResponse } from "./types";
 
 const answer = (memberId: number, response: ProposalResponse["response"]): ProposalResponse => ({ memberId, response, respondedAt: "2026-11-01T13:00:00.000Z" });
 
@@ -169,14 +169,18 @@ describe("checkChanges", () => {
   });
 
   describe("features", () => {
-    const group = (features: GroupFeature[] = []) => defined({ type: "group", features });
+    const group = (features: CircleFeature[] = []) => defined({ type: "group", features });
     it("are a group's to switch on, and only a change counts", () => {
       expect(changedFields(group(), { features: ["tasks", "wiki"] })).toEqual({ features: ["wiki", "tasks"] });
       expect(changedFields(group(["wiki"]), { features: ["wiki"] })).toEqual({});
     });
-    it("are refused on any other circle", () => {
-      expect(check({ features: ["wiki"] })).toMatchObject({ field: "features" });
-      expect(check({ features: ["wiki"] }, group())).toBeNull();
+    it("start on for any other circle, which can switch them off", () => {
+      expect(changedFields(defined(), { features: ["wiki", "tasks", "meetings", "roles"] })).toEqual({});
+      expect(changedFields(defined(), { features: ["wiki"] })).toEqual({ features: ["wiki"] });
+      expect(check({ features: ["wiki"] })).toBeNull();
+    });
+    it("aren't for a neighborhood or the city", () => {
+      expect(check({ features: [] }, defined({ type: "neighborhood" }))).toMatchObject({ field: "features" });
     });
     it("read as one line each", () => {
       expect(describeChanges(group(["wiki"]), { features: ["tasks"] }, [], () => "")).toEqual([

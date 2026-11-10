@@ -7,7 +7,7 @@ import { dropMembership } from "./memberships";
 import { groupBy } from "./util";
 import { assembleCircleRoles, circleHasRoles, DELEGATE, type CircleRoleDraft } from "@/lib/circle-roles.util";
 import { cleanAims, validateNewCircle, validateWikiPatch, type NewCircleInput, circleHasInbox, circleHasPage, circleHasPublicWiki, circleIsPrivate } from "@/lib/circles.util";
-import type { Circle, GroupFeature, PublicWiki } from "@/lib/types";
+import type { Circle, CircleFeature, PublicWiki } from "@/lib/types";
 
 // the circles started inside another, when reading both at once
 const subcircles = alias(circles, "subcircles");
@@ -29,7 +29,7 @@ function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDra
     ...(row.domain ? { domain: row.domain } : {}),
     ...(row.inbox ? { inbox: true } : {}),
     ...(row.public ? { public: true } : {}),
-    ...(row.features.length > 0 ? { features: row.features } : {}),
+    ...(row.features ? { features: row.features } : {}),
     aims: row.aims,
     members: memberIds,
     ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds, row.type) } : {}),
@@ -76,7 +76,7 @@ export async function getCircleById(id: string): Promise<Circle | null> {
 // a circle whose wiki anyone may read: one with a page and a wiki (not a
 // neighborhood, the city or a group, which only its members know exists),
 // and not archived
-const hasPublicWiki = (c: { type: Circle["type"]; parentId: string | null; features: GroupFeature[]; public: boolean; archivedAt: Date | null }) => !c.archivedAt && circleHasPublicWiki(c);
+const hasPublicWiki = (c: { type: Circle["type"]; parentId: string | null; features: CircleFeature[] | null; public: boolean; archivedAt: Date | null }) => !c.archivedAt && circleHasPublicWiki(c);
 
 /* A circle's wiki for anyone, signed in or not (its public page): the one
    place what a stranger sees of a circle is decided, so it reads only what

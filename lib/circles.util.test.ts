@@ -14,6 +14,7 @@ import {
   circleHasPage,
   circleHasTasks,
   circleHasPublicWiki,
+  defaultFeatures,
   circleIsPrivate,
   circleHasWiki,
   cleanFeatures,
@@ -42,7 +43,7 @@ import {
   type NewCircleInput,
 } from "./circles.util";
 import { circle, tree } from "./test/factories";
-import type { GroupFeature } from "./types";
+import type { CircleFeature } from "./types";
 
 const t = tree();
 const all = Object.values(t);
@@ -70,8 +71,18 @@ describe("which circles get which features", () => {
     expect(hostCanShowTo(open, "city", () => "city")).toBe(true);
     expect(hostCanShowTo(t.club, "city", () => "city")).toBe(false);
   });
+  it("any other circle has its features on until it switches them off", () => {
+    expect(defaultFeatures("circle")).toEqual(["wiki", "tasks", "meetings", "roles"]);
+    expect(defaultFeatures("group")).toEqual([]);
+    expect(circleHasTasks(t.council)).toBe(true);
+    expect(circleHasTasks({ ...t.council, features: ["wiki"] })).toBe(false);
+    expect(circleHasWiki({ ...t.council, features: [] })).toBe(false);
+    expect(circleHasWiki({ ...t.council, features: ["wiki"] })).toBe(true);
+    expect(circleHasPublicWiki({ ...t.council, features: [] })).toBe(false);
+    expect(circleCanHoldMeetings({ ...t.council, features: [] })).toBe(false);
+  });
   it("a group has a wiki and tasks once it switches them on", () => {
-    const on = { ...t.club, features: ["wiki", "tasks"] as GroupFeature[] };
+    const on = { ...t.club, features: ["wiki", "tasks"] as CircleFeature[] };
     expect(circleHasWiki(on)).toBe(true);
     expect(circleHasTasks(on)).toBe(true);
     expect(circleCanHoldMeetings(on)).toBe(false);

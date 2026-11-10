@@ -1,5 +1,5 @@
 import { isBuiltinRole, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
-import { CIRCLE_AIM_MAX, GROUP_FEATURES, cleanFeatures, isGroup, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, circleCanHaveCircles, circleCanHaveInbox, indexCircles, startedInside, circleNeighborhood, parentCircleOptions, type CirclesById, type NewCircleInput } from "./circles.util";
+import { CIRCLE_AIM_MAX, CIRCLE_FEATURES, circleHasPage, cleanFeatures, featuresOf, isGroup, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, circleCanHaveCircles, circleCanHaveInbox, indexCircles, startedInside, circleNeighborhood, parentCircleOptions, type CirclesById, type NewCircleInput } from "./circles.util";
 import { AGENDA_CATEGORY } from "./agenda.util";
 import { fmtEventWhen } from "./format.util";
 import { repeatSummary } from "./recurrence.util";
@@ -56,7 +56,7 @@ export function changedFields(circle: Circle, draft: ProposalChanges): ProposalC
   if (draft.public !== undefined && draft.public !== !!circle.public) out.public = draft.public;
   if (draft.features !== undefined) {
     const features = cleanFeatures(draft.features);
-    if (JSON.stringify(features) !== JSON.stringify(cleanFeatures(circle.features ?? []))) out.features = features;
+    if (JSON.stringify(features) !== JSON.stringify(cleanFeatures(featuresOf(circle)))) out.features = features;
   }
   if (draft.roles !== undefined) {
     const roles = draft.roles.map((r) => ({ label: r.label.trim(), memberId: r.memberId })).filter((r) => r.label !== "");
@@ -109,7 +109,11 @@ export function checkChanges(circle: Circle, changes: ProposalChanges, circles: 
     // circles inside it would show who it is
     if (!changes.public && circles.some((c) => c.parentId === circle.id)) return problem("public", "It has circles inside it, which are public, so it can't be made private.");
   }
-  if (changes.features !== undefined && !isGroup(circle)) return problem("features", "Only a group has features to switch on.");
+  if (changes.features !== undefined) {
+    if (!circleHasPage(circle)) return problem("features", "This circle doesn't have features to switch.");
+    // its delegate sits in the circle above, chosen on its Roles page
+    if (!changes.features.includes("roles") && startedInside(circle, indexCircles(circles))) return problem("features", "It was started inside another circle, so it keeps Roles to choose its delegate.");
+  }
   if (changes.roles !== undefined) {
     if (!circleHasRoles(circle)) return problem("roles", "This circle doesn't have roles.");
     const message = validateCircleRoles(changes.roles, circle.members, changes.type ?? circle.type);
@@ -160,8 +164,8 @@ export function describeChanges(circle: Circle, changes: ProposalChanges, circle
   if (changes.inbox !== undefined) lines.push({ label: "Inbox", before: circle.inbox ? "On" : "Off", after: changes.inbox ? "On" : "Off" });
   if (changes.public !== undefined) lines.push({ label: "Visibility", before: circle.public ? "Public" : "Private", after: changes.public ? "Public" : "Private" });
   if (changes.features !== undefined) {
-    const was = circle.features ?? [];
-    for (const f of GROUP_FEATURES) {
+    const was = featuresOf(circle);
+    for (const f of CIRCLE_FEATURES) {
       if (was.includes(f.key) !== changes.features.includes(f.key)) lines.push({ label: f.label, before: was.includes(f.key) ? "On" : "Off", after: changes.features.includes(f.key) ? "On" : "Off" });
     }
   }

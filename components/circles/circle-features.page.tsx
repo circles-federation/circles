@@ -5,9 +5,9 @@ import { HandRaisedIcon } from "@heroicons/react/24/outline";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { ConfirmModal, PageContainer, SettingRow, SettingRows } from "@/components/shared";
-import { GROUP_FEATURES, cleanFeatures } from "@/lib/circles.util";
+import { CIRCLE_FEATURES, cleanFeatures, featuresOf } from "@/lib/circles.util";
 import { changedFields, checkChanges, hasChanges } from "@/lib/proposals.util";
-import type { Circle, CircleProposal, GroupFeature, ProposalChanges } from "@/lib/types";
+import type { Circle, CircleProposal, CircleFeature, ProposalChanges } from "@/lib/types";
 import { ConsentNotice, useConsentError } from "./consent-form";
 
 interface CircleFeaturesPageProps {
@@ -20,12 +20,12 @@ interface CircleFeaturesPageProps {
   onBack: () => void;
 }
 
-/* Manage circle → Features (a group's only): which of the features another
-   circle has from the start the group has switched on. They all begin off,
-   and like Details and Roles a change is proposed for its members' consent,
-   so Save is the orange Propose. */
+/* Manage circle → Features: which of a circle's optional features are on.
+   They start on, except for a group, which starts with them off; like Details
+   and Roles a change is proposed for its members' consent, so Save is the
+   orange Propose. */
 export function CircleFeaturesPage({ circle: o, circles, memberId, openProposal, onPropose, onBack }: CircleFeaturesPageProps) {
-  const [features, setFeatures] = useState<GroupFeature[]>(cleanFeatures(o.features ?? []));
+  const [features, setFeatures] = useState<CircleFeature[]>(cleanFeatures(featuresOf(o)));
   const { consentError, setConsentError, clearError, fieldError } = useConsentError();
   const [saving, setSaving] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -47,7 +47,7 @@ export function CircleFeaturesPage({ circle: o, circles, memberId, openProposal,
   useBackHandler(dirty && !saving ? () => setConfirmingDiscard(true) : null);
   useTopBarAction({ label: saving ? "Saving" : "Propose changes", icon: HandRaisedIcon, onAction: handleSave, disabled: !dirty || saving || locked, variant: "propose" });
 
-  const toggle = (key: GroupFeature, on: boolean) => {
+  const toggle = (key: CircleFeature, on: boolean) => {
     clearError("features");
     setFeatures((was) => cleanFeatures(on ? [...was, key] : was.filter((k) => k !== key)));
   };
@@ -57,7 +57,7 @@ export function CircleFeaturesPage({ circle: o, circles, memberId, openProposal,
       <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
       <p className="mb-4 max-w-[36em] font-serif text-base leading-normal text-body">Turning one off hides it without deleting what&rsquo;s in it.</p>
       <SettingRows>
-        {GROUP_FEATURES.map((f) => (
+        {CIRCLE_FEATURES.map((f) => (
           <SettingRow key={f.key} label={f.label} detail={f.description} checked={features.includes(f.key)} onChange={(on) => toggle(f.key, on)} disabled={locked} />
         ))}
       </SettingRows>

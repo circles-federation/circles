@@ -36,10 +36,20 @@ describe("a group's features", () => {
     await expect(createTask(1, "club", task)).rejects.toThrow(/doesn't have tasks/);
   });
 
-  it("only a group has them", async () => {
+  it("start on for any other circle, which can switch them off", async () => {
     await addCircle("council", { type: "circle", parentId: "city" });
     await join("council", 1);
-    await expect(createProposal(1, "council", { features: ["wiki"] })).rejects.toThrow(/Only a group/);
+    expect((await createTask(1, "council", task)).task.title).toBe("Bring chairs");
+    await createProposal(1, "council", { features: ["wiki"] });
+    await expect(createTask(1, "council", task)).rejects.toThrow(/doesn't have tasks/);
+    expect(await getTasksForMember(1)).toEqual([]);
+    expect((await getCircleById("council"))?.features).toEqual(["wiki"]);
+  });
+
+  it("aren't for a neighborhood", async () => {
+    await addCircle("hood", { type: "neighborhood", parentId: "city" });
+    await join("hood", 1);
+    await expect(createProposal(1, "hood", { features: ["wiki"] })).rejects.toThrow(/features/);
   });
 
   it("never make a group's wiki public", async () => {

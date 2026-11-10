@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AdjustmentsHorizontalIcon, ArrowRightStartOnRectangleIcon, BookOpenIcon, IdentificationIcon, InboxIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { Button, ConfirmModal, MenuRow, PageContainer, RingIcon, Section, SectionGroup } from "@/components/shared";
 import { circleHasRoles } from "@/lib/circle-roles.util";
-import { GROUP_FEATURES, circleCanHaveCircles, circleCanHaveInbox, circleHasPublicWiki, circleHasWiki, isGroup } from "@/lib/circles.util";
+import { CIRCLE_FEATURES, circleCanHaveCircles, circleCanHaveInbox, circleHasPage, circleHasPublicWiki, circleHasWiki, featuresOf } from "@/lib/circles.util";
 import type { Circle, CircleProposal } from "@/lib/types";
 import { ProposalBanner } from "./proposal-banner";
 
@@ -27,10 +27,10 @@ function detailsSummary(c: Circle): string {
 // under Details, Roles and Inbox while a change to the circle is open for consent
 const LOCKED = "Locked while a proposal is open";
 
-// which of a group's features are on, under its row
+// which of its features are on, under its row
 function featuresSummary(c: Circle): string {
-  const on = GROUP_FEATURES.filter((f) => c.features?.includes(f.key)).map((f) => f.label);
-  return on.length > 0 ? on.join(", ") : "All off";
+  const on = CIRCLE_FEATURES.filter((f) => featuresOf(c).includes(f.key)).map((f) => f.label);
+  return on.length === CIRCLE_FEATURES.length ? "All on" : on.length > 0 ? on.join(", ") : "All off";
 }
 
 // how many of its roles are held, under its row
@@ -49,9 +49,9 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
-  // a neighborhood and the city have no roles; a group has roles, a wiki, tasks
-  // and meetings once it switches them on (its Features)
-  const showFeatures = isGroup(o);
+  // a neighborhood and the city have no features to switch; every other circle
+  // has its wiki, tasks, meetings and roles while they're on (a group starts with them off)
+  const showFeatures = circleHasPage(o);
   const showRoles = circleHasRoles(o);
   const showWiki = circleHasWiki(o);
   // a Circle, a collective or a co-op may have an Inbox

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { CircleFeaturesPage } from "@/components/circles/circle-features.page";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useGoBack } from "@/components/providers/back-handler-provider";
-import { isGroup } from "@/lib/circles.util";
+import { circleHasPage } from "@/lib/circles.util";
 import { useManagedCircle, useProposeCircleChanges } from "@/lib/hooks";
 
 export default function Page() {
@@ -12,8 +12,8 @@ export default function Page() {
   const goBack = useGoBack();
   const { circle, openProposal } = useManagedCircle()!;
   const propose = useProposeCircleChanges(circle);
-  // only a group has features to switch on; every other circle has them by its type
-  if (!isGroup(circle)) notFound();
+  // a neighborhood and the city have none to switch
+  if (!circleHasPage(circle)) notFound();
   return (
     <CircleFeaturesPage
       circle={circle}

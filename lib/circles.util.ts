@@ -1,4 +1,4 @@
-import type { Circle, CircleType, GroupFeature } from "./types";
+import type { Circle, CircleType, CircleFeature } from "./types";
 
 /* Pure helpers for the circle tree — circles nest via `parentId` (another
    circle's id, or null for the root, the city). Extend this module rather than
@@ -202,7 +202,8 @@ export function cleanAims(aims: string[] | undefined): string[] {
    exists (lib/db/circles.ts never sends it to anyone else), until they
    consent to making it public, when it's listed and open like any circle. It
    has every feature another circle has, but a wiki, tasks, meetings and roles
-   start switched off, for its members to turn on by consent (GROUP_FEATURES).
+   start switched off (any other kind starts with them on), for its members to
+   turn on or off by consent (CIRCLE_FEATURES, defaultFeatures).
    While it's private it has no public wiki, Inbox or circles inside it, since
    each would reveal it. */
 export function isGroup(circle: Pick<Circle, "type">): boolean {
@@ -214,21 +215,34 @@ export function circleIsPrivate(circle: Pick<Circle, "type" | "public">): boolea
   return isGroup(circle) && !circle.public;
 }
 
-export const GROUP_FEATURES: readonly { key: GroupFeature; label: string; description: string }[] = [
-  { key: "wiki", label: "Wiki", description: "A page about the group for its members: about, what it offers and needs, quick facts." },
+export const CIRCLE_FEATURES: readonly { key: CircleFeature; label: string; description: string }[] = [
+  { key: "wiki", label: "Wiki", description: "A page about the circle: about, what it offers and needs, quick facts." },
   { key: "tasks", label: "Tasks", description: "A backlog of tasks for its members to share out." },
   { key: "meetings", label: "Meetings", description: "Meetings with an agenda, scheduled by its members' consent." },
   { key: "roles", label: "Roles", description: "Secretary, Facilitator and the like, held by its members." },
 ];
 
-// whether a group has switched a feature on; any other circle has it by its type
-export function groupHasFeature(circle: Pick<Circle, "type" | "features">, feature: GroupFeature): boolean {
-  return !isGroup(circle) || !!circle.features?.includes(feature);
+/* What a circle's type has switched on until its members decide otherwise
+   (`Circle.features` unset): everything for any kind of circle but a group,
+   which starts with none. */
+export function defaultFeatures(type: CircleType): CircleFeature[] {
+  return type === "group" ? [] : CIRCLE_FEATURES.map((f) => f.key);
 }
 
-// the features in GROUP_FEATURES' order, each once, nothing unknown
-export function cleanFeatures(features: readonly string[]): GroupFeature[] {
-  return GROUP_FEATURES.map((f) => f.key).filter((k) => features.includes(k));
+// what a circle's type or its members' choice has switched on: a circle that
+// has never decided has its type's defaults
+export type Featured = { type: CircleType; features?: readonly CircleFeature[] | null };
+export function featuresOf(circle: Featured): readonly CircleFeature[] {
+  return circle.features ?? defaultFeatures(circle.type);
+}
+
+export function circleHasFeature(circle: Featured, feature: CircleFeature): boolean {
+  return featuresOf(circle).includes(feature);
+}
+
+// the features in CIRCLE_FEATURES' order, each once, nothing unknown
+export function cleanFeatures(features: readonly string[]): CircleFeature[] {
+  return CIRCLE_FEATURES.map((f) => f.key).filter((k) => features.includes(k));
 }
 
 // what to call a circle in a form's placeholder: its type, or "organization"
@@ -246,18 +260,18 @@ export function circleDomainEnding(type: CircleType): string {
 }
 
 // the wiki (About, offers and needs, visiting and joining) and quick facts
-export function circleHasWiki(circle: Pick<Circle, "type" | "features">): boolean {
-  return groupHasFeature(circle, "wiki");
+export function circleHasWiki(circle: Featured): boolean {
+  return circleHasFeature(circle, "wiki");
 }
 
 // whether anyone may read it by its link: never a private group's, whatever it switches on
-export function circleHasPublicWiki(circle: Pick<Circle, "type" | "parentId" | "features" | "public">): boolean {
+export function circleHasPublicWiki(circle: Pick<Circle, "parentId" | "public"> & Featured): boolean {
   return circleHasPage(circle) && !circleIsPrivate(circle) && circleHasWiki(circle);
 }
 
 // a backlog of tasks (lib/db/tasks.ts): a circle with a page; a group's once it switches them on
-export function circleHasTasks(circle: Pick<Circle, "type" | "parentId" | "features">): boolean {
-  return circleHasPage(circle) && groupHasFeature(circle, "tasks");
+export function circleHasTasks(circle: Pick<Circle, "parentId"> & Featured): boolean {
+  return circleHasPage(circle) && circleHasFeature(circle, "tasks");
 }
 
 // a chat thread (lib/db/chat.ts): a circle with a page, groups included;
@@ -292,7 +306,7 @@ export function isCircleSection(value: string | undefined): value is CircleSecti
 
 // the sections someone sees on a circle's page (one with a page: not a
 // neighborhood or the city)
-export function circleSections(circle: Pick<Circle, "type" | "parentId" | "inbox" | "features" | "public">, isMember: boolean): CircleSection[] {
+export function circleSections(circle: Pick<Circle, "parentId" | "inbox" | "public"> & Featured, isMember: boolean): CircleSection[] {
   return CIRCLE_SECTIONS.filter((s) => {
     if (s === "bulletin") return isMember;
     if (s === "chat") return isMember && circleHasChat(circle);
@@ -308,15 +322,15 @@ export function circleSections(circle: Pick<Circle, "type" | "parentId" | "inbox
 // where its page opens, at /circles/[id] itself: a member on the bulletin,
 // anyone else on the wiki (a group's members have no wiki, and no one else
 // sees a group)
-export function defaultCircleSection(circle: Pick<Circle, "type" | "parentId" | "inbox" | "features" | "public">, isMember: boolean): CircleSection {
+export function defaultCircleSection(circle: Pick<Circle, "parentId" | "inbox" | "public"> & Featured, isMember: boolean): CircleSection {
   return circleSections(circle, isMember)[0] ?? "members";
 }
 
 // a meeting is decided by its circle's consent; a group holds them once it
 // switches them on (any circle but the city can host an event, a group
 // included, by consent: see lib/db/proposals.ts)
-export function circleCanHoldMeetings(circle: Pick<Circle, "type" | "features">): boolean {
-  return groupHasFeature(circle, "meetings");
+export function circleCanHoldMeetings(circle: Featured): boolean {
+  return circleHasFeature(circle, "meetings");
 }
 
 /* Whether `host` may host an event shown to `circleId`: one shown to itself

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { circleHasTasks } from "@/lib/circles.util";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
@@ -43,7 +43,7 @@ export async function getTasksForMember(memberId: number): Promise<CircleTask[]>
     .select({ task: circleTasks })
     .from(circleTasks)
     .innerJoin(circles, eq(circles.id, circleTasks.circleId))
-    .where(and(inArray(circleTasks.circleId, db.select({ id: circleMembers.circleId }).from(circleMembers).where(eq(circleMembers.memberId, memberId))), or(ne(circles.type, "group"), sql`'tasks' = any(${circles.features})`)));
+    .where(and(inArray(circleTasks.circleId, db.select({ id: circleMembers.circleId }).from(circleMembers).where(eq(circleMembers.memberId, memberId))), or(and(isNull(circles.features), ne(circles.type, "group")), sql`'tasks' = any(${circles.features})`)));
   return rows.map((r) => toTask(r.task));
 }
 
