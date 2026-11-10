@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { circleHasTasks } from "@/lib/circles.util";
 import { db } from "./client";
 import { UserFacingError } from "./errors";
@@ -36,14 +36,14 @@ function toTask(row: TaskRow): CircleTask {
   };
 }
 
-// every task of every circle this member belongs to that has tasks (never a
-// group's): AppState's `tasks`
+// every task of every circle this member belongs to that has tasks (a
+// group's only once it has switched them on): AppState's `tasks`
 export async function getTasksForMember(memberId: number): Promise<CircleTask[]> {
   const rows = await db
     .select({ task: circleTasks })
     .from(circleTasks)
     .innerJoin(circles, eq(circles.id, circleTasks.circleId))
-    .where(and(inArray(circleTasks.circleId, db.select({ id: circleMembers.circleId }).from(circleMembers).where(eq(circleMembers.memberId, memberId))), ne(circles.type, "group")));
+    .where(and(inArray(circleTasks.circleId, db.select({ id: circleMembers.circleId }).from(circleMembers).where(eq(circleMembers.memberId, memberId))), or(ne(circles.type, "group"), sql`'tasks' = any(${circles.features})`)));
   return rows.map((r) => toTask(r.task));
 }
 

@@ -30,7 +30,8 @@ export function CircleFeaturesPage({ circle: o, circles, memberId, openProposal,
   const [saving, setSaving] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const locked = !!openProposal;
-  const proposed = changedFields(o, { features });
+  const [isPublic, setPublic] = useState(!!o.public);
+  const proposed = changedFields(o, { features, public: isPublic });
   const dirty = hasChanges(proposed);
 
   async function handleSave() {
@@ -56,8 +57,22 @@ export function CircleFeaturesPage({ circle: o, circles, memberId, openProposal,
     <PageContainer size="normal">
       <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
       <p className="mb-4 max-w-[36em] font-serif text-base leading-normal text-body">
-        {o.name} is private, so these stay between its members: nothing here is public. Turning one off hides it without deleting what&rsquo;s in it.
+        {o.name} is private unless its members make it public: only they know it exists. Public, it&rsquo;s listed and open to everyone on Circles like any circle, and what it has switched on (a wiki, an Inbox, circles inside it) can be seen or used by anyone.
       </p>
+      <SettingRows>
+        <SettingRow
+          label="Public"
+          detail="Listed and open to everyone, not only its members."
+          checked={isPublic}
+          onChange={(on) => {
+            clearError("public");
+            setPublic(on);
+          }}
+          disabled={locked}
+        />
+      </SettingRows>
+      {fieldError("public")}
+      <p className="mt-8 mb-4 max-w-[36em] font-serif text-base leading-normal text-body">Turning a feature off hides it without deleting what&rsquo;s in it.</p>
       <SettingRows>
         {GROUP_FEATURES.map((f) => (
           <SettingRow key={f.key} label={f.label} detail={f.description} checked={features.includes(f.key)} onChange={(on) => toggle(f.key, on)} disabled={locked} />

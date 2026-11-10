@@ -14,6 +14,7 @@ import {
   circleHasPage,
   circleHasTasks,
   circleHasPublicWiki,
+  circleIsPrivate,
   circleHasWiki,
   cleanFeatures,
   circleNeighborhood,
@@ -54,6 +55,20 @@ describe("which circles get which features", () => {
     expect(circleHasPage(t.club)).toBe(true);
     expect(circleHasPage(t.the903)).toBe(false);
     expect(circleHasPage(t.city)).toBe(false);
+  });
+  it("a group is private until it's made public, which opens up what would reveal it", () => {
+    expect(circleIsPrivate(t.club)).toBe(true);
+    expect(circleIsPrivate({ ...t.club, public: true })).toBe(false);
+    expect(circleIsPrivate(t.council)).toBe(false);
+    const open = { ...t.club, public: true, features: ["wiki" as const] };
+    expect(circleHasPublicWiki({ ...t.club, features: ["wiki"] })).toBe(false);
+    expect(circleHasPublicWiki(open)).toBe(true);
+    expect(circleCanHaveInbox(t.club)).toBe(false);
+    expect(circleCanHaveInbox(open)).toBe(true);
+    expect(circleCanHaveCircles(t.club)).toBe(false);
+    expect(circleCanHaveCircles(open)).toBe(true);
+    expect(hostCanShowTo(open, "city", () => "city")).toBe(true);
+    expect(hostCanShowTo(t.club, "city", () => "city")).toBe(false);
   });
   it("a group has a wiki and tasks once it switches them on", () => {
     const on = { ...t.club, features: ["wiki", "tasks"] as GroupFeature[] };

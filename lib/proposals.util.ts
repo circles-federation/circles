@@ -29,7 +29,7 @@ export const RESPONSE_LABEL: Record<ConsentResponse, string> = {
 
 // the changes a circle's members decide by consent, as Manage circle edits
 // them; anything else on its page is edited freely
-export const CONSENT_FIELDS = ["name", "tagline", "type", "parentId", "domain", "aims", "roles", "inbox", "features"] as const;
+export const CONSENT_FIELDS = ["name", "tagline", "type", "parentId", "domain", "aims", "roles", "inbox", "features", "public"] as const;
 
 const aimsOf = (c: Pick<Circle, "aims">) => c.aims ?? [];
 const sameAims = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);
@@ -53,6 +53,7 @@ export function changedFields(circle: Circle, draft: ProposalChanges): ProposalC
     if (!sameAims(aims, aimsOf(circle))) out.aims = aims;
   }
   if (draft.inbox !== undefined && draft.inbox !== !!circle.inbox) out.inbox = draft.inbox;
+  if (draft.public !== undefined && draft.public !== !!circle.public) out.public = draft.public;
   if (draft.features !== undefined) {
     const features = cleanFeatures(draft.features);
     if (JSON.stringify(features) !== JSON.stringify(cleanFeatures(circle.features ?? []))) out.features = features;
@@ -102,7 +103,12 @@ export function checkChanges(circle: Circle, changes: ProposalChanges, circles: 
     if (changes.aims.some((a) => a.length > CIRCLE_AIM_MAX)) return problem("aims", `Keep each aim to ${CIRCLE_AIM_MAX} characters.`);
   }
   // an Inbox only on a Circle, a collective or a co-op, as it is or becomes
-  if (changes.inbox && !circleCanHaveInbox({ type: changes.type ?? circle.type, parentId: circle.parentId })) return problem("inbox", "Only a Circle, a collective or a co-op can have an Inbox.");
+  if (changes.inbox && !circleCanHaveInbox({ type: changes.type ?? circle.type, parentId: circle.parentId, ...(circle.public ? { public: true } : {}) })) return problem("inbox", "Only a Circle, a collective or a co-op can have an Inbox.");
+  if (changes.public !== undefined) {
+    if (!isGroup(circle)) return problem("public", "Only a group can be made public or private.");
+    // circles inside it would show who it is
+    if (!changes.public && circles.some((c) => c.parentId === circle.id)) return problem("public", "It has circles inside it, which are public, so it can't be made private.");
+  }
   if (changes.features !== undefined && !isGroup(circle)) return problem("features", "Only a group has features to switch on.");
   if (changes.roles !== undefined) {
     if (!circleHasRoles(circle)) return problem("roles", "This circle doesn't have roles.");
@@ -152,6 +158,7 @@ export function describeChanges(circle: Circle, changes: ProposalChanges, circle
   if (changes.domain !== undefined) lines.push({ label: "Domain", before: circle.domain ?? "", after: changes.domain });
   if (changes.aims !== undefined) lines.push({ label: "Aims", before: aimsOf(circle).join("; "), after: changes.aims.join("; ") });
   if (changes.inbox !== undefined) lines.push({ label: "Inbox", before: circle.inbox ? "On" : "Off", after: changes.inbox ? "On" : "Off" });
+  if (changes.public !== undefined) lines.push({ label: "Visibility", before: circle.public ? "Public" : "Private", after: changes.public ? "Public" : "Private" });
   if (changes.features !== undefined) {
     const was = circle.features ?? [];
     for (const f of GROUP_FEATURES) {
@@ -288,8 +295,9 @@ export function proposalTitle(p: Pick<CircleProposal, "kind" | "changes" | "line
   if (p.kind === "new_circle") return `Start ${p.changes.name ?? "a Circle"}`;
   const c = p.changes;
   if (Object.keys(c).length === 1 && c.inbox !== undefined) return c.inbox ? "Turn on the Inbox" : "Turn off the Inbox";
+  if (Object.keys(c).length === 1 && c.public !== undefined) return c.public ? "Make the group public" : "Make the group private";
   if (Object.keys(c).length === 1 && c.features !== undefined) return "Change the features";
-  const parts = [c.name !== undefined && "name", c.tagline !== undefined && "tagline", c.type !== undefined && "type", c.parentId !== undefined && "parent circle", c.domain !== undefined && "domain", c.aims !== undefined && "aims", c.roles !== undefined && "roles", c.inbox !== undefined && "Inbox", c.features !== undefined && "features"].filter(
+  const parts = [c.name !== undefined && "name", c.tagline !== undefined && "tagline", c.type !== undefined && "type", c.parentId !== undefined && "parent circle", c.domain !== undefined && "domain", c.aims !== undefined && "aims", c.roles !== undefined && "roles", c.inbox !== undefined && "Inbox", c.features !== undefined && "features", c.public !== undefined && "visibility"].filter(
     (x): x is string => !!x
   );
   if (parts.length === 1 && c.name !== undefined) return `Rename to ${c.name}`;

@@ -97,6 +97,10 @@ export interface Circle {
   // a group's switched-on features, decided by its members' consent; absent
   // means none, and it's ignored on any other kind of circle
   features?: GroupFeature[];
+  // a group that its members have consented to make public: listed and open
+  // to everyone like any other circle. Absent means private, the default; it
+  // means nothing on any other kind of circle (lib/circles.util's circleIsPrivate)
+  public?: boolean;
   // its Inbox is on: anyone may write to it from its wiki, and its members
   // read what's written (decided by consent; lib/circles.util's circleHasInbox)
   inbox?: boolean;
@@ -252,6 +256,8 @@ export interface ProposalChanges {
   inbox?: boolean;
   // a group's switched-on features, the whole list as it should be
   features?: GroupFeature[];
+  // making a group public, or private again
+  public?: boolean;
   // a new circle started inside this one: its first member and delegate
   delegateId?: number;
 }

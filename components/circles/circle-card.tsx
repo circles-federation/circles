@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { HomeIcon } from "@heroicons/react/24/outline";
 import { Avatar, Eyebrow, CappedChip, PrivateLabel } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { CIRCLE_TYPE_LABEL, circleNeighborhood, isGroup, startedInside } from "@/lib/circles.util";
+import { CIRCLE_TYPE_LABEL, circleNeighborhood, circleIsPrivate, startedInside } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle } from "@/lib/types";
 
@@ -57,7 +57,7 @@ export function CircleCard({ c, onOpenCircle, showNeighborhoodChip = true, showK
       {showKindEyebrow && (
         <div className="mb-3 flex min-h-[26.5px] items-center justify-between gap-2">
           <Eyebrow className="shrink-0 text-soft">
-            {isGroup(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
+            {circleIsPrivate(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}
           </Eyebrow>
           {!isNeighborhood && showNeighborhoodChip && inside ? (
             <CappedChip title={`Inside ${inside.name}`}>{inside.name}</CappedChip>

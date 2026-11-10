@@ -180,6 +180,8 @@ export const circles = pgTable(
     // its Inbox is on (decided by consent): see circle_messages
     inbox: boolean("inbox_enabled").notNull().default(false),
     // a group's switched-on features (decided by consent); see GROUP_FEATURES
+    // a group its members have made public (decided by consent): see circleIsPrivate
+    public: boolean("is_public").notNull().default(false),
     features: text("features").array().$type<GroupFeature[]>().notNull().default(sql`'{}'::text[]`),
   },
   (t) => [

@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { EmptyState, FolderGrid, PageContainer, PrivateLabel, SearchWithFilter } from "@/components/shared";
+import { EmptyState, FolderGrid, PageContainer, SearchWithFilter } from "@/components/shared";
 import { CircleCard } from "./circle-card";
 import { MemberCard } from "./member-card";
 import { NeighborhoodBulletin } from "./neighborhood-bulletin";
 import { ParentCircle } from "./parent-circle";
 import { ProposalBanner } from "./proposal-banner";
 import { useAppState } from "@/components/providers/app-state-provider";
-import { circleChildren, circleDescendantIds, indexCircles, isGroup } from "@/lib/circles.util";
+import { circleChildren, circleDescendantIds, circleIsPrivate, indexCircles, isGroup } from "@/lib/circles.util";
 import type { Circle, Member, Profile } from "@/lib/types";
 
 const ENTITY_TYPES = ["Circles", "Groups", "Organizations", "People"] as const;
@@ -94,7 +94,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
   const showPeople = typeFilter.length === 0 || typeFilter.includes("People");
 
   // groups get their own grid, between the circles and the organizations
-  // (only a group's members ever receive it, so only they see it here)
+  // (a private group's members alone receive it, so only they see it here)
   const circleFolders = showCircles ? folders.filter((c) => c.type === "circle") : [];
   const groupFolders = showGroups ? folders.filter(isGroup) : [];
   const otherFolders = showOrgs ? folders.filter((c) => c.type !== "circle" && !isGroup(c)) : [];
@@ -138,10 +138,10 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
             )}
             {groupFolders.length > 0 && (
               <FolderGrid
-                label={<PrivateLabel>Groups</PrivateLabel>}
+                label="Groups"
                 items={groupFolders}
                 minWidth={300}
-                renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />}
+                renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={circleIsPrivate(c)} />}
               />
             )}
             {otherFolders.length > 0 && (

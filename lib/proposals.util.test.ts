@@ -154,6 +154,20 @@ describe("checkChanges", () => {
     });
   });
 
+  describe("public", () => {
+    const group = (over: Partial<Circle> = {}) => defined({ type: "group", ...over });
+    it("is a group's to decide, and a change only if it differs", () => {
+      expect(changedFields(group(), { public: true })).toEqual({ public: true });
+      expect(changedFields(group({ public: true }), { public: true })).toEqual({});
+      expect(check({ public: true })).toMatchObject({ field: "public" });
+      expect(check({ public: true }, group())).toBeNull();
+    });
+    it("reads as Visibility, and titles itself", () => {
+      expect(describeChanges(group(), { public: true }, [], () => "")).toEqual([{ label: "Visibility", before: "Private", after: "Public" }]);
+      expect(proposalTitle({ kind: "change", changes: { public: false }, lines: [] })).toBe("Make the group private");
+    });
+  });
+
   describe("features", () => {
     const group = (features: GroupFeature[] = []) => defined({ type: "group", features });
     it("are a group's to switch on, and only a change counts", () => {
