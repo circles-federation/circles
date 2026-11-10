@@ -17,6 +17,24 @@ const alias = { "@": path.resolve(import.meta.dirname) };
 
 export default defineConfig({
   test: {
+    coverage: {
+      provider: "v8",
+      include: ["lib/**/*.ts"],
+      // not logic under test: fixtures, test support, types and the browser's side
+      exclude: ["lib/**/*.test.ts", "lib/test/**", "lib/db/testing.ts", "lib/data.ts", "lib/types.ts", "lib/db/schema.ts"],
+      reporter: ["text-summary", "json-summary", "html"],
+      // a floor just under where each part is now, to only ever raise: a drop
+      // means new logic went in untested. The pure helpers and the data layer
+      // hold the rules, so they have their own.
+      thresholds: {
+        statements: 55,
+        branches: 52,
+        functions: 55,
+        lines: 57,
+        "lib/**/*.util.ts": { statements: 72, branches: 60, functions: 72, lines: 72 },
+        "lib/db/**/*.ts": { statements: 60, branches: 53, functions: 60, lines: 65 },
+      },
+    },
     projects: [
       {
         resolve: { alias },

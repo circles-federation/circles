@@ -30,7 +30,12 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
       - run: npm run build
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
