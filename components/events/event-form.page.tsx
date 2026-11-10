@@ -637,7 +637,7 @@ export function EventFormPage(props: EventFormPageProps) {
             </div>
           </div>
 
-          {gov && circleId && <MeetingAvailability circleId={circleId} date={date} start={start} end={end} />}
+          {gov && circleId && <MeetingAvailability circleId={circleId} date={date} start={start} end={end} eventId={event?.id} />}
 
           {mode === "create" ? (!gov && (
             <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">

@@ -60,8 +60,8 @@ export async function saveAvailabilityAction(windows: AvailabilityWindow[]) {
 }
 
 // the meeting form: who in a circle can make this time (members of it only)
-export async function meetingAvailabilityAction(circleId: string, date: string, start: string, end: string) {
-  return asMember((memberId) => availability.getMeetingAvailability(memberId, circleId, date, start, end));
+export async function meetingAvailabilityAction(circleId: string, date: string, start: string, end: string, excludeEventId?: string) {
+  return asMember((memberId) => availability.getMeetingAvailability(memberId, circleId, date, start, end, excludeEventId));
 }
 
 // like updateMemberAction, always the session member's own photo; the file

@@ -70,10 +70,11 @@ export type ReminderHours = 24 | 2 | 1;
 export type Profile = Member & { emailPublic: boolean; notifications: NotificationSettings; availability: AvailabilityWindow[] | null; pendingPhotoVersion?: number };
 
 // who in a circle can make a meeting's date and time, as the meeting form
-// shows it: `freeUntil` is minutes from midnight, for someone free as it begins
+// shows it: `freeUntil` is minutes from midnight, for someone free as it begins;
+// `busy` is someone going to another event at that time
 export interface MeetingAvailability {
   available: number[];
-  unavailable: { id: number; freeUntil?: number }[];
+  unavailable: { id: number; freeUntil?: number; busy?: true }[];
   unknown: number[];
 }
 
