@@ -5,7 +5,8 @@ import { MEETING_CHANNEL } from "./meeting-channel";
 import { createTask, getMeetingTasks, type TaskChange } from "./tasks";
 import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingSessions, meetingTopicNotes } from "./schema";
 import { MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
-import { canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, validateNotes } from "@/lib/meeting-session.util";
+import { eventEndsAt } from "@/lib/events.util";
+import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, validateNotes } from "@/lib/meeting-session.util";
 import type { TaskInput } from "@/lib/tasks.util";
 import type { AgendaItem, CircleTask, MeetingSession } from "@/lib/types";
 
@@ -295,4 +296,27 @@ export async function finishMeeting(memberId: number, eventId: string, now: Date
     assertFacilitator(session, memberId);
     await bump(tx, eventId, { status: "finished", finishedAt: now });
   });
+}
+
+/* A meeting no one finished is finished for them once its run window has
+   closed (a day after it ended: canRunMeeting), so it doesn't stay live for
+   ever and its minutes open to correction. Run by the notification poller;
+   each session is locked and checked again as it's closed. Returns how many. */
+export async function finishLapsedMeetings(now: Date = new Date()): Promise<number> {
+  const live = await db
+    .select({ eventId: meetingSessions.eventId, date: events.date, start: events.start, end: events.end })
+    .from(meetingSessions)
+    .innerJoin(events, eq(events.id, meetingSessions.eventId))
+    .where(eq(meetingSessions.status, "live"));
+  const lapsed = live.filter((m) => now.getTime() >= eventEndsAt(m).getTime() + MEETING_RUN_GRACE_MS);
+  let finished = 0;
+  for (const { eventId } of lapsed) {
+    await db.transaction(async (tx) => {
+      const [session] = await tx.select().from(meetingSessions).where(eq(meetingSessions.eventId, eventId)).for("update");
+      if (!session || session.status !== "live") return;
+      await bump(tx, eventId, { status: "finished", finishedAt: now });
+      finished++;
+    });
+  }
+  return finished;
 }

@@ -21,6 +21,7 @@ import { chatHub } from "@/lib/db/chat-stream";
 import { getMessageNoticeData } from "@/lib/db/messages";
 import { claimGuestNotifications, markGuestFailed, markGuestSent } from "@/lib/db/guest-notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
+import { finishLapsedMeetings } from "@/lib/db/meeting-sessions";
 import { closeDueProposals, withdrawLapsedEventProposals } from "@/lib/db/proposals";
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
@@ -370,6 +371,7 @@ export function startNotificationWorker(): void {
       lastPurge = Date.now();
       void purgeGuestData().catch((err) => console.error("Purging old guest data failed:", err));
       void purgeGuestMessageDrafts().catch((err) => console.error("Purging unconfirmed guest messages failed:", err));
+      void finishLapsedMeetings().catch((err) => console.error("Finishing lapsed meetings failed:", err));
     }
     void remindThenDeliver();
     void deliverAnnouncementNotifications();

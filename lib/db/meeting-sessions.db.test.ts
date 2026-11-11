@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { event } from "@/lib/test/factories";
 import { db } from "./client";
 import { insertEvent } from "./events";
-import { addMeetingTask, addTopic, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingSession, memberHasMeeting, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
+import { addMeetingTask, addTopic, finishLapsedMeetings, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingSession, memberHasMeeting, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
 import { addCircle, addMember, giveRole, join, resetDb } from "./testing";
 
 /* A live meeting: who may start it and when, who drives, who's there, and
@@ -343,6 +343,29 @@ describe("finishing", () => {
     await db.execute(sql`delete from events where id = 'm1'`);
     const { rows } = await db.execute<{ n: number }>(sql`select (select count(*) from meeting_sessions)::int + (select count(*) from meeting_topic_notes)::int as n`);
     expect(rows[0]?.n).toBe(0);
+  });
+});
+
+describe("a meeting no one finished", () => {
+  it("is finished once its run window has closed, and its minutes stay open to correct", async () => {
+    await startMeeting(1, "m1", during);
+    await saveTopicNotes(1, "m1", 0, "kept");
+    // it ended at 12:00; the window closes a day later
+    expect(await finishLapsedMeetings(new Date(2026, 10, 11, 11, 59))).toBe(0);
+    expect(await finishLapsedMeetings(new Date(2026, 10, 11, 12, 0))).toBe(1);
+    const s = await getMeetingSession(1, "m1");
+    expect(s).toMatchObject({ status: "finished", rev: 2 });
+    expect(s?.finishedAt).toBeDefined();
+    expect(await finishLapsedMeetings(new Date(2026, 10, 12))).toBe(0);
+    expect((await saveMinutes(2, "m1", [{ position: 0, notes: "corrected" }])).topics[0]?.notes).toBe("corrected");
+  });
+
+  it("leaves a finished one, and one that never started, alone", async () => {
+    await startMeeting(1, "m1", during);
+    await finishMeeting(1, "m1", new Date(2026, 10, 10, 11, 0));
+    await insertEvent(event({ id: "m2", circleId: "council", kind: "meeting", agenda: AGENDA }));
+    expect(await finishLapsedMeetings(new Date(2026, 10, 20))).toBe(0);
+    expect((await getMeetingSession(1, "m1"))?.finishedAt).toBe(new Date(2026, 10, 10, 11, 0).toISOString());
   });
 });
 
