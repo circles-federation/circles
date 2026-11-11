@@ -129,7 +129,6 @@ export function MeetingTasksStep({ session, circle, canAdd, memberId, onAdd }: {
                 )}
               </Select>
               {errorText("meeting-task-assignee-error", errors.assigneeId)}
-              {assignee && <p className="mt-1.5 font-serif text-sm text-soft">{assignee.name.split(" ")[0]} will be told.</p>}
             </div>
             <div>
               <Label htmlFor="meeting-task-due">Due (optional)</Label>
@@ -137,10 +136,11 @@ export function MeetingTasksStep({ session, circle, canAdd, memberId, onAdd }: {
               {errorText("meeting-task-due-error", errors.dueDate)}
             </div>
           </div>
-          <div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Button type="submit" variant="secondary" size="compact" disabled={adding}>
               {adding ? "Adding…" : "Add task"}
             </Button>
+            {assignee && <p className="m-0 font-serif text-sm text-soft">{assignee.name.split(" ")[0]} will be told.</p>}
           </div>
         </form>
       ) : (
