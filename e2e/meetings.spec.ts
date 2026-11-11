@@ -45,8 +45,15 @@ test("a circle holds a meeting together, live, and corrects its minutes", async 
   await expect(m.getByText("Saved")).toBeVisible();
   await expect(p.getByText("Balance is healthy.")).toBeVisible();
 
-  // Priya adds a task out of the meeting; Mira sees it
+  // Priya is still typing, never having clicked out, when Mira moves the meeting
+  // on: what she'd written isn't lost
+  await m.getByRole("button", { name: "Topic 2" }).click();
+  await expect(p.getByText("Approve the winter budget").first()).toBeVisible();
+  await p.locator(".cm-content").first().click();
+  await p.keyboard.type("Typed as the meeting moved on.");
   await m.getByRole("button", { name: "Tasks", exact: true }).click();
+
+  // Priya adds a task out of the meeting; Mira sees it
   await p.getByLabel("Title").fill("Book the hall");
   await p.getByRole("button", { name: "Add task" }).click();
   await expect(m.getByRole("link", { name: "Book the hall" })).toBeVisible();
@@ -60,6 +67,7 @@ test("a circle holds a meeting together, live, and corrects its minutes", async 
   // the minutes are on the event's page, and any member can correct them
   await p.goto(MEETING);
   await expect(p.getByText("Balance is healthy.")).toBeVisible();
+  await expect(p.getByText("Typed as the meeting moved on.")).toBeVisible();
   await expect(p.getByText("Book the hall")).toBeVisible();
   await p.getByRole("button", { name: "More" }).click();
   await p.getByRole("menuitem", { name: "Edit minutes" }).click();

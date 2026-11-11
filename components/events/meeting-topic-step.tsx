@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AgendaBadge } from "./agenda-section";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { MessageEditor } from "@/components/circles/message-editor";
@@ -19,6 +19,20 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
   // typed is lost
   const [held, setHeld] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  /* Saved if it goes while it's being typed in: the facilitator moving the
+     meeting on (or leaving the page) takes this topic's editor away mid-sentence,
+     which mustn't lose what's been written since it last lost focus. */
+  const pending = useRef({ draft, notes: topic.notes, onSave });
+  useEffect(() => {
+    pending.current = { draft, notes: topic.notes, onSave };
+  });
+  useEffect(
+    () => () => {
+      const { draft: unsaved, notes, onSave: save } = pending.current;
+      if (unsaved && unsaved.text !== notes) void save(unsaved.text);
+    },
+    [],
+  );
   const editing = draft !== null;
   const changedElsewhere = editing && topic.notes !== draft.base;
   const hint = AGENDA_CATEGORY[topic.category].hint;
