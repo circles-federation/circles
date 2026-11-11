@@ -29,6 +29,7 @@ export function MeetingMinutes({ session, collapseEmpty = false }: { session: Me
               <Eyebrow className="text-agenda">{AGENDA_CATEGORY[t.category].label}</Eyebrow>
             </div>
             <div className="mt-2 font-sans text-base leading-tight font-bold wrap-anywhere">{t.title}</div>
+            {t.details && <p className="mt-1 font-serif text-sm leading-normal whitespace-pre-line text-soft">{t.details}</p>}
             {t.notes.trim() ? (
               <div className="message-text mt-2 font-serif text-base leading-normal text-body" dangerouslySetInnerHTML={{ __html: messageHtml(t.notes) }} />
             ) : (

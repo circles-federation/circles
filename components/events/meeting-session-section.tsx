@@ -23,16 +23,7 @@ export function MeetingSessionSection({ event: e, session }: { event: Event; ses
   const [starting, setStarting] = useState(false);
   if (now === null || session === undefined) return null;
 
-  if (session?.status === "finished") {
-    return (
-      <section className="border-b border-faint py-8">
-        <Eyebrow className="text-soft">Minutes</Eyebrow>
-        <div className="mt-4">
-          <MeetingMinutes session={session} />
-        </div>
-      </section>
-    );
-  }
+  if (session?.status === "finished") return null;
 
   const live = session?.status === "live";
   if (!live && !canRunMeeting(e, new Date(now))) return null;
@@ -59,6 +50,19 @@ export function MeetingSessionSection({ event: e, session }: { event: Event; ses
       <Button variant="secondary" disabled={starting} onClick={go}>
         {live ? "Join meeting" : "Run meeting"}
       </Button>
+    </section>
+  );
+}
+
+/* Once it's finished the agenda and the minutes are one record: each topic as
+   it was on the agenda, its details, and what was written about it. */
+export function FinishedMeetingSection({ session }: { session: MeetingSession }) {
+  return (
+    <section className="border-b border-faint py-8">
+      <Eyebrow className="text-soft">Agenda &amp; minutes</Eyebrow>
+      <div className="mt-4">
+        <MeetingMinutes session={session} />
+      </div>
     </section>
   );
 }
