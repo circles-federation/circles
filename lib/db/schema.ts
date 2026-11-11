@@ -578,8 +578,46 @@ export const circleTasks = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     // when it was marked done, for the Done list's order
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    // the meeting it came out of, so its minutes can list it; the task outlives
+    // the meeting's event
+    meetingEventId: text("meeting_event_id").references(() => events.id, { onDelete: "set null" }),
   },
   (t) => [index("circle_tasks_circle_idx").on(t.circleId), index("circle_tasks_assignee_idx").on(t.assigneeId)]
+);
+
+/* A meeting being held, or held (lib/db/meeting-sessions.ts): one per meeting,
+   seen and changed by its circle's members alone. Attendance is the event's
+   RSVPs. `rev` counts every change so a client can tell it's out of date. */
+export const meetingSessions = pgTable(
+  "meeting_sessions",
+  {
+    eventId: text("event_id").primaryKey().references(() => events.id, { onDelete: "cascade" }),
+    status: text("status").$type<"live" | "finished">().notNull().default("live"),
+    step: integer("step").notNull().default(0),
+    facilitatorId: integer("facilitator_id").references(() => members.id, { onDelete: "set null" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    rev: integer("rev").notNull().default(0),
+    // who last changed the minutes, and when
+    minutesEditedBy: integer("minutes_edited_by").references(() => members.id, { onDelete: "set null" }),
+    minutesEditedAt: timestamp("minutes_edited_at", { withTimezone: true }),
+  },
+  (t) => [check("meeting_sessions_status", sql`${t.status} in ('live', 'finished')`)]
+);
+
+// a session's topics: the agenda as it stood when the meeting started, with
+// the notes taken on each (Markdown)
+export const meetingTopicNotes = pgTable(
+  "meeting_topic_notes",
+  {
+    eventId: text("event_id").notNull().references(() => meetingSessions.eventId, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    category: text("category").$type<AgendaCategory>().notNull(),
+    title: text("title").notNull(),
+    details: text("details"),
+    notes: text("notes").notNull().default(""),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.position] })]
 );
 
 /* Messages written to a circle from its wiki (lib/db/messages.ts), read in

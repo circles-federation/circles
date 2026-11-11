@@ -449,6 +449,13 @@
       "when": 1794343008916,
       "tag": "0063_circle_features_default",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1794356923695,
+      "tag": "0064_meeting_sessions",
+      "breakpoints": true
     }
   ]
 }
