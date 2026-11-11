@@ -4,6 +4,8 @@ import { AgendaBadge } from "./agenda-section";
 import { Eyebrow } from "@/components/shared";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { useMemberById } from "@/lib/hooks";
+import { localDay } from "@/lib/recurrence.util";
+import { dueCell } from "@/lib/tasks.util";
 import { messageHtml, messageWhen } from "@/lib/messages.util";
 import type { MeetingSession } from "@/lib/types";
 
@@ -30,6 +32,26 @@ export function MeetingMinutes({ session }: { session: MeetingSession }) {
           </li>
         ))}
       </ol>
+      {session.tasks.length > 0 && (
+        <div className="mt-8 border-t-[3px] border-t-ink pt-3">
+          <Eyebrow className="text-soft">Tasks</Eyebrow>
+          <ul className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
+            {session.tasks.map((t) => {
+              const who = t.assigneeId !== undefined ? memberById(t.assigneeId) : undefined;
+              const due = dueCell(t, localDay());
+              return (
+                <li key={t.id} className="font-serif text-base wrap-anywhere">
+                  <span className="font-sans font-bold">{t.title}</span>
+                  <span className="text-soft">
+                    {who ? ` · ${who.name}` : ""}
+                    {due ? ` · ${due.text}` : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       {session.minutesEditedAt && (
         <p className="mt-6 font-sans text-xs font-bold tracking-open text-soft">
           Last edited{editor ? ` by ${editor.name}` : ""} {messageWhen(session.minutesEditedAt)}

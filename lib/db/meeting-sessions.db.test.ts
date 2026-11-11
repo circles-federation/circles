@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { event } from "@/lib/test/factories";
 import { db } from "./client";
 import { insertEvent } from "./events";
-import { addTopic, finishMeeting, getMeetingForFanout, getMeetingSession, memberHasMeeting, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
+import { addMeetingTask, addTopic, finishMeeting, getMeetingForFanout, getMeetingSession, memberHasMeeting, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
 import { addCircle, addMember, giveRole, join, resetDb } from "./testing";
 
 /* A live meeting: who may start it and when, who drives, who's there, and
@@ -203,6 +203,48 @@ describe("reviewing the agenda", () => {
   it("is closed once the meeting has finished", async () => {
     await finishMeeting(1, "m1");
     await expect(addTopic(1, "m1", { category: "report", title: "x" })).rejects.toThrow("This meeting has finished.");
+  });
+});
+
+describe("tasks from the meeting", () => {
+  const input = { title: "Book the hall", description: "", status: "todo" as const, priority: "none" as const, dueDate: "2026-11-20", assigneeId: null as number | null };
+
+  beforeEach(async () => {
+    await startMeeting(1, "m1", during);
+  });
+
+  it("makes an ordinary task of the circle, marked as from the meeting and listed in its session", async () => {
+    const { session, task, assignedTo } = await addMeetingTask(1, "m1", input);
+    expect(task).toMatchObject({ circleId: "council", title: "Book the hall", dueDate: "2026-11-20", meetingEventId: "m1", createdBy: 1 });
+    expect(assignedTo).toBeNull();
+    expect(session.tasks.map((t) => t.id)).toEqual([task.id]);
+    expect(session.rev).toBe(1);
+    expect((await getMeetingSession(2, "m1"))?.tasks).toHaveLength(1);
+  });
+
+  it("says who it was given to, when it's someone other than the one adding it", async () => {
+    expect((await addMeetingTask(1, "m1", { ...input, assigneeId: 2 })).assignedTo).toBe(2);
+    expect((await addMeetingTask(1, "m1", { ...input, assigneeId: 1 })).assignedTo).toBeNull();
+  });
+
+  it("refuses an assignee outside the circle, and a task with no title", async () => {
+    await expect(addMeetingTask(1, "m1", { ...input, assigneeId: 4 })).rejects.toThrow(/members/);
+    await expect(addMeetingTask(1, "m1", { ...input, title: " " })).rejects.toThrow("Give the task a title.");
+    expect((await getMeetingSession(1, "m1"))?.tasks).toEqual([]);
+  });
+
+  it("is for those who are there, while it's live", async () => {
+    await expect(addMeetingTask(2, "m1", input)).rejects.toThrow("Mark yourself present to add tasks.");
+    await finishMeeting(1, "m1");
+    await expect(addMeetingTask(1, "m1", input)).rejects.toThrow("This meeting has finished.");
+  });
+
+  it("leaves the task in the circle's backlog when the meeting's event is gone", async () => {
+    const { task } = await addMeetingTask(1, "m1", input);
+    await db.execute(sql`delete from event_rsvps where event_id = 'm1'`);
+    await db.execute(sql`delete from events where id = 'm1'`);
+    const { rows } = await db.execute<{ meeting_event_id: string | null }>(sql`select meeting_event_id from circle_tasks where id = ${task.id}`);
+    expect(rows).toEqual([{ meeting_event_id: null }]);
   });
 });
 

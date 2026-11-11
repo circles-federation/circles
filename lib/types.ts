@@ -440,6 +440,8 @@ export interface CircleTask {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+  // the meeting it came out of (see MeetingSession.tasks)
+  meetingEventId?: string;
 }
 
 // one agenda topic as a live meeting holds it: copied from the agenda when the
@@ -465,6 +467,9 @@ export interface MeetingSession {
   // who's there: the event's RSVPs, which marking someone present writes
   attendees: number[];
   topics: MeetingTopic[];
+  // the tasks made in this meeting, oldest first: they live on in the circle's
+  // backlog, and are listed here so the minutes can say what came of it
+  tasks: CircleTask[];
   startedAt: string;
   finishedAt?: string;
   // counts every change, for whatever polls or streams the session

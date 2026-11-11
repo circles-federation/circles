@@ -203,6 +203,15 @@ export async function setMeetingStepAction(eventId: string, step: number) {
   return asMember((memberId) => meetingSessions.setStep(memberId, eventId, step));
 }
 
+// a task from the meeting: whoever it's given to is told once, as for any task
+export async function addMeetingTaskAction(eventId: string, input: TaskInput) {
+  const result = await asMember((memberId) => meetingSessions.addMeetingTask(memberId, eventId, input).then((r) => ({ ...r, assignedBy: memberId })));
+  if (!result.ok) return result;
+  const { session, task, assignedTo, assignedBy } = result.value;
+  if (assignedTo !== null) after(() => tellAssignee(task.id, assignedTo, assignedBy));
+  return { ok: true as const, value: { session, task } };
+}
+
 export async function addMeetingTopicAction(eventId: string, item: AgendaItem) {
   return asMember((memberId) => meetingSessions.addTopic(memberId, eventId, item));
 }

@@ -2,10 +2,12 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { MEETING_CHANNEL } from "./meeting-channel";
+import { createTask, getMeetingTasks, type TaskChange } from "./tasks";
 import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingSessions, meetingTopicNotes } from "./schema";
 import { MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
 import { canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, validateNotes } from "@/lib/meeting-session.util";
-import type { AgendaItem, MeetingSession } from "@/lib/types";
+import type { TaskInput } from "@/lib/tasks.util";
+import type { AgendaItem, CircleTask, MeetingSession } from "@/lib/types";
 
 /* A meeting being held, its circle's members' alone: this file is where that's
    held to. Every call checks the meeting is an approved, uncancelled meeting of
@@ -49,6 +51,7 @@ async function readSession(tx: Tx | typeof db, eventId: string): Promise<Meeting
     step: s.step,
     facilitatorId: s.facilitatorId,
     attendees: attendees.map((a) => a.id).sort((a, b) => a - b),
+    tasks: await getMeetingTasks(tx, eventId),
     topics: topics.map((t) => ({ position: t.position, category: t.category, title: t.title, ...(t.details !== null ? { details: t.details } : {}), notes: t.notes })),
     startedAt: s.startedAt.toISOString(),
     ...(s.finishedAt ? { finishedAt: s.finishedAt.toISOString() } : {}),
@@ -202,6 +205,22 @@ export async function removeTopic(memberId: number, eventId: string, position: n
     const count = await topicCount(tx, eventId);
     await bump(tx, eventId, { step: stepAfterTopicRemoved(session.step, count + 1, position) });
   });
+}
+
+/* A task that comes out of the meeting, made by anyone there: an ordinary task
+   of the meeting's circle (its rules and checks, lib/db/tasks.ts), marked as
+   from this meeting so the minutes can list it. Returns the session and the
+   task, with whoever it was just given to, for the caller to tell. */
+export async function addMeetingTask(memberId: number, eventId: string, input: TaskInput): Promise<{ session: MeetingSession; task: CircleTask; assignedTo: number | null }> {
+  let made: TaskChange | null = null;
+  const session = await change(memberId, eventId, async (tx, session, event) => {
+    assertLive(session);
+    if (!(await attends(tx, eventId, memberId))) throw new MeetingError("Mark yourself present to add tasks.");
+    made = await createTask(memberId, event.circleId, input, eventId);
+    await bump(tx, eventId);
+  });
+  const { task, assignedTo } = made as unknown as TaskChange;
+  return { session, task, assignedTo };
 }
 
 // any attendee can take over as facilitator, in case the usual one isn't there

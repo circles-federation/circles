@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { circleHasTasks } from "@/lib/circles.util";
-import { db } from "./client";
+import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleTasks, circles, members } from "./schema";
 import { TASK_STATUSES, validateTask, type TaskInput } from "@/lib/tasks.util";
@@ -33,6 +33,7 @@ function toTask(row: TaskRow): CircleTask {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     ...(row.completedAt ? { completedAt: row.completedAt.toISOString() } : {}),
+    ...(row.meetingEventId !== null ? { meetingEventId: row.meetingEventId } : {}),
   };
 }
 
@@ -79,11 +80,18 @@ export interface TaskChange {
   assignedBy: number;
 }
 
-export async function createTask(memberId: number, circleId: string, input: TaskInput): Promise<TaskChange> {
+// the tasks made in a meeting (lib/db/meeting-sessions.ts), oldest first
+export async function getMeetingTasks(tx: Tx | typeof db, eventId: string): Promise<CircleTask[]> {
+  const rows = await tx.select().from(circleTasks).where(eq(circleTasks.meetingEventId, eventId)).orderBy(asc(circleTasks.createdAt));
+  return rows.map(toTask);
+}
+
+// `meetingEventId`: the meeting it came out of, which has checked who may
+export async function createTask(memberId: number, circleId: string, input: TaskInput, meetingEventId?: string): Promise<TaskChange> {
   const fields = clean(input, await membersOf(memberId, circleId));
   const [row] = await db
     .insert(circleTasks)
-    .values({ id: randomUUID(), circleId, createdBy: memberId, ...fields, completedAt: fields.status === "done" ? new Date() : null })
+    .values({ id: randomUUID(), circleId, createdBy: memberId, ...fields, ...(meetingEventId ? { meetingEventId } : {}), completedAt: fields.status === "done" ? new Date() : null })
     .returning();
   const task = toTask(row!);
   return { task, assignedTo: task.assigneeId !== undefined && task.assigneeId !== memberId ? task.assigneeId : null, assignedBy: memberId };

@@ -9,9 +9,10 @@ import { MeetingStepper } from "./meeting-stepper";
 import { MeetingTasksStep } from "./meeting-tasks-step";
 import { MeetingTopicStep } from "./meeting-topic-step";
 import { Button, ConfirmModal, Eyebrow, PageContainer } from "@/components/shared";
+import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { useToast } from "@/components/shared/toast";
-import { addMeetingTopicAction, finishMeetingAction, removeMeetingTopicAction, saveMeetingNotesAction, setMeetingPresentAction, setMeetingStepAction, startMeetingAction, takeOverMeetingAction } from "@/lib/db/actions";
+import { addMeetingTaskAction, addMeetingTopicAction, finishMeetingAction, removeMeetingTopicAction, saveMeetingNotesAction, setMeetingPresentAction, setMeetingStepAction, startMeetingAction, takeOverMeetingAction } from "@/lib/db/actions";
 import { useGoBack } from "@/components/providers/back-handler-provider";
 import { useClock, useMemberById } from "@/lib/hooks";
 import { canRunMeeting, lastStep, stepAt } from "@/lib/meeting-session.util";
@@ -30,6 +31,7 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
   const memberById = useMemberById();
   const now = useClock();
   const goBack = useGoBack();
+  const { adoptTask } = useAppState();
   const [confirmFinish, setConfirmFinish] = useState(false);
 
   // whatever an action returns is adopted at once; a refusal is a toast
@@ -115,7 +117,24 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
         {step?.kind === "attendance" && <MeetingAttendanceStep session={session} circle={circle} memberId={memberId} onSetPresent={(id, present) => void run(setMeetingPresentAction(e.id, id, present))} />}
         {step?.kind === "agenda" && <MeetingAgendaStep session={session} canEdit={attending} onAdd={(item) => run(addMeetingTopicAction(e.id, item))} onRemove={(position) => void run(removeMeetingTopicAction(e.id, position))} />}
         {topic && <MeetingTopicStep key={topic.position} topic={topic} canWrite={attending} onSave={(notes) => run(saveMeetingNotesAction(e.id, topic.position, notes))} />}
-        {step?.kind === "tasks" && <MeetingTasksStep circle={circle} />}
+        {step?.kind === "tasks" && (
+          <MeetingTasksStep
+            session={session}
+            circle={circle}
+            canAdd={attending}
+            memberId={memberId}
+            onAdd={async (input) => {
+              const result = await addMeetingTaskAction(e.id, input);
+              if (!result.ok) {
+                showToast({ message: result.error, tone: "error" });
+                return false;
+              }
+              adopt(result.value.session);
+              adoptTask(result.value.task);
+              return true;
+            }}
+          />
+        )}
         {step?.kind === "wrapup" && (
           <div>
             <Eyebrow className="text-soft">Wrap-up</Eyebrow>
