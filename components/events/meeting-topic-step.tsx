@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { AgendaBadge } from "./agenda-section";
 import { CheckIcon } from "@heroicons/react/24/outline";
-import { Eyebrow, TextArea } from "@/components/shared";
+import { MessageEditor } from "@/components/circles/message-editor";
+import { Eyebrow } from "@/components/shared";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
-import { MEETING_NOTES_MAX } from "@/lib/meeting-session.util";
 import type { MeetingTopic } from "@/lib/types";
 
 /* One topic and the notes taken on it (Markdown; a decision is written in
@@ -33,9 +33,7 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
       <p className="mt-2 font-serif text-sm text-soft">{hint}</p>
       <div className="mt-6">
         <div className="flex items-baseline justify-between gap-3">
-          <Eyebrow className="text-soft">
-            <label htmlFor={`notes-${topic.position}`}>Notes</label>
-          </Eyebrow>
+          <Eyebrow className="text-soft">Notes</Eyebrow>
           <span aria-live="polite" className={status === "failed" ? "font-sans text-xs font-bold text-danger" : "inline-flex items-center gap-1 font-sans text-xs font-bold text-soft"}>
             {status === "saving" && "Saving…"}
             {status === "saved" && (
@@ -47,30 +45,30 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
             {status === "failed" && "Not saved"}
           </span>
         </div>
-        <TextArea
-          id={`notes-${topic.position}`}
-          className="mt-2 min-h-40"
-          value={draft?.text ?? held ?? topic.notes}
-          maxLength={MEETING_NOTES_MAX}
-          disabled={!canWrite}
-          placeholder={topic.category === "decide" ? "What was decided, and by whom…" : "What was said…"}
-          onFocus={() => setDraft({ text: held ?? topic.notes, base: topic.notes })}
-          onChange={(e) => {
-            setStatus("idle");
-            setDraft({ text: e.target.value, base: draft?.base ?? topic.notes });
-          }}
-          onBlur={async () => {
-            if (!draft) return;
-            const text = draft.text;
-            setDraft(null);
-            if (text === topic.notes) return setHeld(null);
-            setHeld(text);
-            setStatus("saving");
-            const ok = await onSave(text);
-            if (ok) setHeld(null);
-            setStatus(ok ? "saved" : "failed");
-          }}
-        />
+        <div className="mt-2">
+          <MessageEditor
+            id={`notes-${topic.position}`}
+            label={`Notes on ${topic.title}`}
+            value={draft?.text ?? held ?? topic.notes}
+            readOnly={!canWrite}
+            placeholder={topic.category === "decide" ? "What was decided, and by whom… Select text to format it." : "What was said… Select text to format it."}
+            onChange={(text) => {
+              setStatus("idle");
+              setDraft({ text, base: draft?.base ?? topic.notes });
+            }}
+            onBlur={async () => {
+              if (!draft) return;
+              const text = draft.text;
+              setDraft(null);
+              if (text === topic.notes) return setHeld(null);
+              setHeld(text);
+              setStatus("saving");
+              const ok = await onSave(text);
+              if (ok) setHeld(null);
+              setStatus(ok ? "saved" : "failed");
+            }}
+          />
+        </div>
       </div>
       {changedElsewhere && <p className="mt-2 font-sans text-xs font-bold text-flame">Someone else has changed these notes. Saving will replace their version.</p>}
       {!canWrite && <p className="mt-2 font-serif text-sm text-soft">Mark yourself present to take notes.</p>}

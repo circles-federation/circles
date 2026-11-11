@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { Button, Eyebrow, Input, Label, Select } from "@/components/shared";
-import { useMemberById } from "@/lib/hooks";
+import { useHistoryState, useMemberById } from "@/lib/hooks";
 import { circleHasTasks } from "@/lib/circles.util";
 import { localDay } from "@/lib/recurrence.util";
 import { TASK_TITLE_MAX, dueCell, validateTask, type TaskErrors, type TaskInput } from "@/lib/tasks.util";
@@ -21,7 +21,8 @@ const errorText = (id: string, text?: string) =>
 /* What needs doing after the meeting: anyone there adds a task (a title, who
    has it and when it's due), which goes into the circle's backlog like any
    other, marked as from this meeting. Whoever it's given to is told. Anything
-   more than that is the task's own page.
+   more than that is the task's own page, opened in place, so Back returns to
+   the meeting.
 
    The form leads and what's been added follows, newest first, so the field
    stays where the thumb is as others add theirs (a list growing above it would
@@ -29,7 +30,9 @@ const errorText = (id: string, text?: string) =>
    title is focused again, for the next one. */
 export function MeetingTasksStep({ session, circle, canAdd, memberId, onAdd }: { session: MeetingSession; circle: Circle; canAdd: boolean; memberId: number; onAdd: (input: TaskInput) => Promise<boolean> }) {
   const memberById = useMemberById();
-  const [draft, setDraft] = useState(BLANK);
+  // kept on the history entry, so a half-written task is still there when Back
+  // returns from opening one of the tasks below
+  const [draft, setDraft] = useHistoryState("meeting-task-draft", BLANK);
   const [errors, setErrors] = useState<TaskErrors>({});
   const [adding, setAdding] = useState(false);
   const [announce, setAnnounce] = useState("");
@@ -161,7 +164,7 @@ export function MeetingTasksStep({ session, circle, canAdd, memberId, onAdd }: {
               const due = dueCell(t, today);
               return (
                 <li key={t.id} className="border-b border-faint py-3 first:pt-0">
-                  <Link href={`/circles/${circle.id}/tasks/${t.id}`} target="_blank" className="font-sans text-base leading-tight font-bold underline wrap-anywhere">
+                  <Link href={`/circles/${circle.id}/tasks/${t.id}`} className="font-sans text-base leading-tight font-bold underline wrap-anywhere">
                     {t.title}
                   </Link>
                   <div className="mt-1 font-serif text-sm text-soft">

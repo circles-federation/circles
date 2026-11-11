@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
-import { EditorSelection, EditorState, type Range } from "@codemirror/state";
+import { Annotation, Compartment, EditorSelection, EditorState, type Range } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin, keymap, placeholder as placeholderText, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { syntaxTree } from "@codemirror/language";
@@ -20,6 +20,13 @@ interface MessageEditorProps {
   // written straight onto the page (the letter being written), rather than
   // in a field: no ground or rule, and set a size up
   bare?: boolean;
+  // what it's called for a screen reader (the message, by default)
+  label?: string;
+  // shown as it reads, but not to be changed (a field its writer can't write in yet)
+  readOnly?: boolean;
+  // the editor lost focus, to save what's been written (the formatting
+  // toolbar's link field takes focus too, so this can come mid-edit)
+  onBlur?: () => void;
 }
 
 /* What a message to a circle says, written in Markdown and shown as it will
@@ -35,7 +42,7 @@ interface MessageEditorProps {
    What's kept is the Markdown itself (lib/messages.util.ts reads it).
    CodeMirror, since it edits the text itself rather than a model of it,
    which is what lets the symbols be shown and edited at all. */
-export function MessageEditor({ id, value, onChange, placeholder, bare }: MessageEditorProps) {
+export function MessageEditor({ id, value, onChange, placeholder, bare, label = "Message", readOnly = false, onBlur }: MessageEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<EditorView | null>(null);
   const [bar, setBar] = useState<{ top: number; left: number; on: Formats } | null>(null);
@@ -47,9 +54,15 @@ export function MessageEditor({ id, value, onChange, placeholder, bare }: Messag
     linkingRef.current = linking;
   });
   const onChangeRef = useRef(onChange);
+  const onBlurRef = useRef(onBlur);
   useEffect(() => {
     onChangeRef.current = onChange;
+    onBlurRef.current = onBlur;
   });
+  // whether it's being typed in, and what makes it read-only or not, which can
+  // change while it's open
+  const [focused, setFocused] = useState(false);
+  const [editable] = useState(() => new Compartment());
 
   useEffect(() => {
     if (!host.current) return;
@@ -69,12 +82,18 @@ export function MessageEditor({ id, value, onChange, placeholder, bare }: Messag
           livePreview,
           EditorView.lineWrapping,
           placeholderText(placeholder ?? ""),
-          EditorView.contentAttributes.of({ ...(id ? { id } : {}), "aria-multiline": "true", "aria-label": "Message" }),
+          EditorView.contentAttributes.of({ ...(id ? { id } : {}), "aria-multiline": "true", "aria-label": label }),
+          editable.of(editableOptions(readOnly)),
           // earlier extensions win in CodeMirror, so the page's own look first
           ...(bare ? [bareTheme] : []),
           editorTheme,
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) onChangeRef.current(u.state.doc.toString());
+            // what's taken in from outside isn't something written
+            if (u.docChanged && !u.transactions.some((t) => t.annotation(fromOutside))) onChangeRef.current(u.state.doc.toString());
+            if (u.focusChanged) {
+              setFocused(u.view.hasFocus);
+              if (!u.view.hasFocus) onBlurRef.current?.();
+            }
             if (u.selectionSet || u.focusChanged || u.docChanged || u.geometryChanged) setBar((was) => (linkingRef.current !== null ? was : placeBar(u.view)));
           }),
         ],
@@ -85,6 +104,19 @@ export function MessageEditor({ id, value, onChange, placeholder, bare }: Messag
     // the editor is made once; later values are its own (a new message remounts it)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    view?.dispatch({ effects: editable.reconfigure(editableOptions(readOnly)) });
+  }, [view, editable, readOnly]);
+
+  /* The text can be changed from outside (what someone else saved to the same
+     notes): taken in unless it's being typed in, so it's never pulled from
+     under the cursor, and again when it's let go of. A parent that only
+     echoes what's written never sees this do anything. */
+  useEffect(() => {
+    if (!view || focused || view.state.doc.toString() === value) return;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value }, annotations: fromOutside.of(true) });
+  }, [view, focused, value]);
 
   return (
     <div className="relative">
@@ -104,6 +136,10 @@ export function MessageEditor({ id, value, onChange, placeholder, bare }: Messag
     </div>
   );
 }
+
+const fromOutside = Annotation.define<boolean>();
+
+const editableOptions = (readOnly: boolean) => [EditorView.editable.of(!readOnly), EditorState.readOnly.of(readOnly)];
 
 // what the selection is in, for the toolbar to show as on
 interface Formats {
@@ -314,7 +350,8 @@ const SYMBOLS = new Set(["EmphasisMark", "LinkMark", "URL", "LinkTitle"]);
 function preview(view: EditorView): DecorationSet {
   const { state } = view;
   const ranges: Range<Decoration>[] = [];
-  const touched = (from: number, to: number) => state.selection.ranges.some((r) => r.from <= to && r.to >= from);
+  // only while it's being typed in: left alone, the words read as they'll look
+  const touched = (from: number, to: number) => view.hasFocus && state.selection.ranges.some((r) => r.from <= to && r.to >= from);
   for (const { from, to } of view.visibleRanges) {
     syntaxTree(state).iterate({
       from,
@@ -341,7 +378,7 @@ const livePreview = ViewPlugin.fromClass(
       this.decorations = preview(view);
     }
     update(u: ViewUpdate) {
-      if (u.docChanged || u.selectionSet || u.viewportChanged) this.decorations = preview(u.view);
+      if (u.docChanged || u.selectionSet || u.viewportChanged || u.focusChanged) this.decorations = preview(u.view);
     }
   },
   { decorations: (v) => v.decorations },

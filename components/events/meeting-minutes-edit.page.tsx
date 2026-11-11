@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { AgendaBadge } from "./agenda-section";
-import { ConfirmModal, Eyebrow, PageContainer, TextArea } from "@/components/shared";
+import { MessageEditor } from "@/components/circles/message-editor";
+import { ConfirmModal, Eyebrow, PageContainer } from "@/components/shared";
 import { useBackHandler, useGoBack } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { useToast } from "@/components/shared/toast";
@@ -12,7 +13,6 @@ import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import { saveMeetingMinutesAction } from "@/lib/db/actions";
 import { useMemberById } from "@/lib/hooks";
 import { messageWhen } from "@/lib/messages.util";
-import { MEETING_NOTES_MAX } from "@/lib/meeting-session.util";
 import { useMeetingSession } from "@/lib/use-meeting-session";
 import type { Event, MeetingSession } from "@/lib/types";
 
@@ -92,17 +92,16 @@ function MinutesForm({ eventId, session }: { eventId: string; session: MeetingSe
                 <AgendaBadge category={t.category} />
                 <Eyebrow className="text-agenda">{AGENDA_CATEGORY[t.category].label}</Eyebrow>
               </div>
-              <label htmlFor={`minutes-${t.position}`} className="mt-2 block font-sans text-base leading-tight font-bold wrap-anywhere">
-                {t.title}
-              </label>
-              <TextArea
-                id={`minutes-${t.position}`}
-                className="mt-3 min-h-32"
-                value={edits[t.position] ?? t.notes}
-                maxLength={MEETING_NOTES_MAX}
-                placeholder="Nothing written."
-                onChange={(ev) => setEdits({ ...edits, [t.position]: ev.target.value })}
-              />
+              <div className="mt-2 font-sans text-base leading-tight font-bold wrap-anywhere">{t.title}</div>
+              <div className="mt-3">
+                <MessageEditor
+                  id={`minutes-${t.position}`}
+                  label={`Notes on ${t.title}`}
+                  value={edits[t.position] ?? t.notes}
+                  placeholder="Nothing written. Select text to format it."
+                  onChange={(text) => setEdits({ ...edits, [t.position]: text })}
+                />
+              </div>
               {elsewhere && <p className="mt-2 font-sans text-xs font-bold text-flame">Someone else has changed these notes. Saving will replace their version.</p>}
             </li>
           );
