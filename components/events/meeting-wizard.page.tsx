@@ -123,8 +123,8 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
 
       <div className="mt-8">
         {step?.kind === "attendance" && <MeetingAttendanceStep session={session} circle={circle} memberId={memberId} onSetPresent={(id, present) => void run(setMeetingPresentAction(e.id, id, present))} />}
-        {step?.kind === "agenda" && <MeetingAgendaStep session={session} canEdit={attending} onAdd={(item) => run(addMeetingTopicAction(e.id, item))} onRemove={(position) => void run(removeMeetingTopicAction(e.id, position))} />}
-        {topic && <MeetingTopicStep key={topic.position} topic={topic} canWrite={attending} onSave={(notes) => run(saveMeetingNotesAction(e.id, topic.position, notes))} />}
+        {step?.kind === "agenda" && <MeetingAgendaStep session={session} canEdit={attending} onAdd={(item) => run(addMeetingTopicAction(e.id, item))} onRemove={(topicId) => void run(removeMeetingTopicAction(e.id, topicId))} />}
+        {topic && <MeetingTopicStep key={topic.id} topic={topic} canWrite={attending} onSave={(notes) => run(saveMeetingNotesAction(e.id, topic.id, notes))} />}
         {step?.kind === "tasks" && (
           <MeetingTasksStep
             session={session}

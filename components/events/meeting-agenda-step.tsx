@@ -11,7 +11,7 @@ import type { AgendaItem, MeetingSession, MeetingTopic } from "@/lib/types";
 /* The agenda as the meeting will run it, for those there to read through and
    change before discussion starts: anyone present can add a topic or take one
    off. It's this meeting's copy; the event's own agenda is left as it was. */
-export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { session: MeetingSession; canEdit: boolean; onAdd: (item: AgendaItem) => Promise<boolean>; onRemove: (position: number) => void }) {
+export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { session: MeetingSession; canEdit: boolean; onAdd: (item: AgendaItem) => Promise<boolean>; onRemove: (topicId: string) => void }) {
   const [draft, setDraft] = useState<AgendaDraft>(BLANK_AGENDA_ITEM);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<MeetingTopic | null>(null);
@@ -38,7 +38,7 @@ export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { sessi
       ) : (
         <ol className="m-0 mt-6 flex list-none flex-col gap-4 p-0">
           {session.topics.map((t) => (
-            <li key={t.position} className="flex gap-3 border border-t-[3px] border-ink border-t-agenda bg-paper p-4">
+            <li key={t.id} className="flex gap-3 border border-t-[3px] border-ink border-t-agenda bg-paper p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <AgendaBadge category={t.category} />
@@ -53,7 +53,7 @@ export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { sessi
                   type="button"
                   title="Take off the agenda"
                   aria-label={`Take “${t.title}” off the agenda`}
-                  onClick={() => (t.notes.trim() ? setRemoving(t) : onRemove(t.position))}
+                  onClick={() => (t.notes.trim() ? setRemoving(t) : onRemove(t.id))}
                   className="hit -mt-1 -mr-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center self-start border-none bg-transparent p-0 text-soft hover:text-ink"
                 >
                   <XMarkIcon className="size-4" strokeWidth={2.5} />
@@ -101,7 +101,7 @@ export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { sessi
           cancelLabel="Keep it"
           onCancel={() => setRemoving(null)}
           onConfirm={() => {
-            onRemove(removing.position);
+            onRemove(removing.id);
             setRemoving(null);
           }}
         />

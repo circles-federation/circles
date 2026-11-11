@@ -586,8 +586,10 @@ export const circleTasks = pgTable(
 );
 
 /* A meeting being held, or held (lib/db/meeting-sessions.ts): one per meeting,
-   seen and changed by its circle's members alone. Attendance is the event's
-   RSVPs. `rev` counts every change so a client can tell it's out of date. */
+   seen and changed by its circle's members alone. Who's present is
+   meeting_attendance (marking someone present also RSVPs them, so the meeting's
+   "went" count is right, but an earlier RSVP, or consenting to the meeting,
+   doesn't make anyone present). `rev` counts every change so a client can tell it's out of date. */
 export const meetingSessions = pgTable(
   "meeting_sessions",
   {
@@ -611,13 +613,24 @@ export const meetingTopicNotes = pgTable(
   "meeting_topic_notes",
   {
     eventId: text("event_id").notNull().references(() => meetingSessions.eventId, { onDelete: "cascade" }),
+    // what a save names: a topic's position moves when another is removed
+    id: text("id").notNull().default(sql`gen_random_uuid()::text`),
     position: integer("position").notNull(),
     category: text("category").$type<AgendaCategory>().notNull(),
     title: text("title").notNull(),
     details: text("details"),
     notes: text("notes").notNull().default(""),
   },
-  (t) => [primaryKey({ columns: [t.eventId, t.position] })]
+  (t) => [primaryKey({ columns: [t.eventId, t.position] }), unique("meeting_topic_notes_event_id_id").on(t.eventId, t.id)]
+);
+
+export const meetingAttendance = pgTable(
+  "meeting_attendance",
+  {
+    eventId: text("event_id").notNull().references(() => meetingSessions.eventId, { onDelete: "cascade" }),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.memberId] })]
 );
 
 /* Messages written to a circle from its wiki (lib/db/messages.ts), read in

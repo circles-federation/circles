@@ -46,13 +46,13 @@ function MinutesForm({ eventId, session }: { eventId: string; session: MeetingSe
   const goBack = useGoBack();
   // the notes as they were when it opened, which is what's compared with, and
   // what someone else's change since is noticed against
-  const [base] = useState(() => new Map(session.topics.map((t) => [t.position, t.notes])));
-  const [edits, setEdits] = useState<Record<number, string>>({});
+  const [base] = useState(() => new Map(session.topics.map((t) => [t.id, t.notes])));
+  const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
-  const changed = session.topics.filter((t) => edits[t.position] !== undefined && edits[t.position] !== base.get(t.position));
+  const changed = session.topics.filter((t) => edits[t.id] !== undefined && edits[t.id] !== base.get(t.id));
   const dirty = changed.length > 0;
   const editor = session.minutesEditedBy !== undefined ? memberById(session.minutesEditedBy) : undefined;
 
@@ -62,7 +62,7 @@ function MinutesForm({ eventId, session }: { eventId: string; session: MeetingSe
     setError("");
     const result = await saveMeetingMinutesAction(
       eventId,
-      changed.map((t) => ({ position: t.position, notes: edits[t.position]! })),
+      changed.map((t) => ({ topicId: t.id, notes: edits[t.id]! })),
     );
     if (!result.ok) {
       setSaving(false);
@@ -85,9 +85,9 @@ function MinutesForm({ eventId, session }: { eventId: string; session: MeetingSe
       )}
       <ol className="m-0 flex list-none flex-col gap-8 p-0">
         {session.topics.map((t) => {
-          const elsewhere = changed.some((c) => c.position === t.position) && t.notes !== base.get(t.position);
+          const elsewhere = changed.some((c) => c.id === t.id) && t.notes !== base.get(t.id);
           return (
-            <li key={t.position} className="border-t-[3px] border-t-agenda pt-3">
+            <li key={t.id} className="border-t-[3px] border-t-agenda pt-3">
               <div className="flex items-center gap-2">
                 <AgendaBadge category={t.category} />
                 <Eyebrow className="text-agenda">{AGENDA_CATEGORY[t.category].label}</Eyebrow>
@@ -95,11 +95,11 @@ function MinutesForm({ eventId, session }: { eventId: string; session: MeetingSe
               <div className="mt-2 font-sans text-base leading-tight font-bold wrap-anywhere">{t.title}</div>
               <div className="mt-3">
                 <MessageEditor
-                  id={`minutes-${t.position}`}
+                  id={`minutes-${t.id}`}
                   label={`Notes on ${t.title}`}
-                  value={edits[t.position] ?? t.notes}
+                  value={edits[t.id] ?? t.notes}
                   placeholder="Nothing written. Select text to format it."
-                  onChange={(text) => setEdits({ ...edits, [t.position]: text })}
+                  onChange={(text) => setEdits({ ...edits, [t.id]: text })}
                 />
               </div>
               {elsewhere && <p className="mt-2 font-sans text-xs font-bold text-flame">Someone else has changed these notes. Saving will replace their version.</p>}

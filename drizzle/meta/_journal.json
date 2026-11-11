@@ -456,6 +456,13 @@
       "when": 1794356923695,
       "tag": "0064_meeting_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1794397310243,
+      "tag": "0065_meeting_topic_ids_attendance",
+      "breakpoints": true
     }
   ]
 }

@@ -23,7 +23,7 @@ export function MeetingMinutes({ session, collapseEmpty = false }: { session: Me
     <div>
       <ol className="m-0 flex list-none flex-col gap-6 p-0">
         {written.map((t) => (
-          <li key={t.position} className="border-t-[3px] border-t-agenda pt-3">
+          <li key={t.id} className="border-t-[3px] border-t-agenda pt-3">
             <div className="flex items-center gap-2">
               <AgendaBadge category={t.category} />
               <Eyebrow className="text-agenda">{AGENDA_CATEGORY[t.category].label}</Eyebrow>

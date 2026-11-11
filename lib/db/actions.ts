@@ -216,8 +216,8 @@ export async function addMeetingTopicAction(eventId: string, item: AgendaItem) {
   return asMember((memberId) => meetingSessions.addTopic(memberId, eventId, item));
 }
 
-export async function removeMeetingTopicAction(eventId: string, position: number) {
-  return asMember((memberId) => meetingSessions.removeTopic(memberId, eventId, position));
+export async function removeMeetingTopicAction(eventId: string, topicId: string) {
+  return asMember((memberId) => meetingSessions.removeTopic(memberId, eventId, topicId));
 }
 
 export async function takeOverMeetingAction(eventId: string) {
@@ -228,11 +228,11 @@ export async function setMeetingPresentAction(eventId: string, targetId: number,
   return asMember((memberId) => meetingSessions.setPresent(memberId, eventId, targetId, present));
 }
 
-export async function saveMeetingNotesAction(eventId: string, position: number, notes: string) {
-  return asMember((memberId) => meetingSessions.saveTopicNotes(memberId, eventId, position, notes));
+export async function saveMeetingNotesAction(eventId: string, topicId: string, notes: string) {
+  return asMember((memberId) => meetingSessions.saveTopicNotes(memberId, eventId, topicId, notes));
 }
 
-export async function saveMeetingMinutesAction(eventId: string, edits: { position: number; notes: string }[]) {
+export async function saveMeetingMinutesAction(eventId: string, edits: { topicId: string; notes: string }[]) {
   return asMember((memberId) => meetingSessions.saveMinutes(memberId, eventId, edits));
 }
 

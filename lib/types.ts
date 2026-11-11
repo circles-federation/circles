@@ -447,6 +447,8 @@ export interface CircleTask {
 // one agenda topic as a live meeting holds it: copied from the agenda when the
 // meeting starts, so the minutes stay as they were even if the agenda is edited
 export interface MeetingTopic {
+  // stable: a topic's position moves when another is removed
+  id: string;
   position: number;
   category: AgendaCategory;
   title: string;

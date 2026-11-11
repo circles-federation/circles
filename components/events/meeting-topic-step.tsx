@@ -61,7 +61,7 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
         </div>
         <div className="mt-2">
           <MessageEditor
-            id={`notes-${topic.position}`}
+            id={`notes-${topic.id}`}
             label={`Notes on ${topic.title}`}
             value={draft?.text ?? held ?? topic.notes}
             readOnly={!canWrite}

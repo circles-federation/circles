@@ -16,6 +16,12 @@ const AGENDA = [
 // the meeting is 2026-11-10, 10:00 to 12:00
 const during = new Date(2026, 10, 10, 10, 30);
 
+// a topic's id, by where it is now
+async function tid(position: number): Promise<string> {
+  const { rows } = await db.execute<{ id: string }>(sql`select id from meeting_topic_notes where event_id = 'm1' and position = ${position}`);
+  return rows[0]?.id ?? "no-such-topic";
+}
+
 beforeEach(async () => {
   await resetDb();
   for (const id of [1, 2, 3, 4]) await addMember(id);
@@ -30,8 +36,8 @@ describe("starting a meeting", () => {
     const s = await startMeeting(1, "m1", during);
     expect(s).toMatchObject({ status: "live", step: 0, facilitatorId: 1, attendees: [1], rev: 0 });
     expect(s.topics).toEqual([
-      { position: 0, category: "report", title: "Treasurer's report", notes: "" },
-      { position: 1, category: "decide", title: "Budget", details: "Next quarter", notes: "" },
+      { id: expect.any(String), position: 0, category: "report", title: "Treasurer's report", notes: "" },
+      { id: expect.any(String), position: 1, category: "decide", title: "Budget", details: "Next quarter", notes: "" },
     ]);
   });
 
@@ -152,9 +158,9 @@ describe("attendance", () => {
     await expect(setPresent(1, "m1", 4, true)).rejects.toThrow("They aren't a member of this circle.");
   });
 
-  it("starts from who had RSVPed", async () => {
+  it("starts with only the starter, whoever had RSVPed", async () => {
     await insertEvent(event({ id: "m2", circleId: "council", kind: "meeting", agenda: AGENDA, rsvps: [2, 3] }));
-    expect((await startMeeting(1, "m2", during)).attendees).toEqual([1, 2, 3]);
+    expect((await startMeeting(1, "m2", during)).attendees).toEqual([1]);
   });
 });
 
@@ -173,7 +179,7 @@ describe("reviewing the agenda", () => {
 
   it("is for those who are there, not those who haven't marked themselves", async () => {
     await expect(addTopic(2, "m1", { category: "report", title: "x" })).rejects.toThrow("Mark yourself present to change the agenda.");
-    await expect(removeTopic(2, "m1", 0)).rejects.toThrow("Mark yourself present to change the agenda.");
+    await expect(removeTopic(2, "m1", await tid(0))).rejects.toThrow("Mark yourself present to change the agenda.");
   });
 
   it("refuses a topic with no title, and one past the limit", async () => {
@@ -184,20 +190,20 @@ describe("reviewing the agenda", () => {
 
   it("takes a topic away with its notes and closes the gap", async () => {
     await addTopic(1, "m1", { category: "explore", title: "Third" });
-    await saveTopicNotes(1, "m1", 2, "third's notes");
-    const s = await removeTopic(1, "m1", 0);
+    await saveTopicNotes(1, "m1", await tid(2), "third's notes");
+    const s = await removeTopic(1, "m1", await tid(0));
     expect(s.topics.map((t) => [t.position, t.title])).toEqual([[0, "Budget"], [1, "Third"]]);
     expect(s.topics[1]?.notes).toBe("third's notes");
-    await expect(removeTopic(1, "m1", 5)).rejects.toThrow("There's no such topic.");
+    await expect(removeTopic(1, "m1", await tid(5))).rejects.toThrow("There's no such topic.");
   });
 
   it("keeps the wizard where it was: on the same topic, and tasks and the wrap-up after them", async () => {
     await setStep(1, "m1", 3);
-    expect((await removeTopic(1, "m1", 0)).step).toBe(2);
+    expect((await removeTopic(1, "m1", await tid(0))).step).toBe(2);
     expect((await addTopic(1, "m1", { category: "report", title: "New" })).step).toBe(2);
     await setStep(1, "m1", 5);
     expect((await addTopic(1, "m1", { category: "report", title: "Newer" })).step).toBe(6);
-    expect((await removeTopic(1, "m1", 1)).step).toBe(5);
+    expect((await removeTopic(1, "m1", await tid(1))).step).toBe(5);
   });
 
   it("is closed once the meeting has finished", async () => {
@@ -254,48 +260,48 @@ describe("notes", () => {
   });
 
   it("are written by those who are there while it's live, and record the editor", async () => {
-    await expect(saveTopicNotes(2, "m1", 0, "hi")).rejects.toThrow("Mark yourself present to take notes.");
-    const s = await saveTopicNotes(1, "m1", 1, "Decided: **yes**");
+    await expect(saveTopicNotes(2, "m1", await tid(0), "hi")).rejects.toThrow("Mark yourself present to take notes.");
+    const s = await saveTopicNotes(1, "m1", await tid(1), "Decided: **yes**");
     expect(s.topics[1]?.notes).toBe("Decided: **yes**");
     expect(s.minutesEditedBy).toBe(1);
     expect(s.minutesEditedAt).toBeDefined();
   });
 
   it("replace what was there", async () => {
-    await saveTopicNotes(1, "m1", 0, "first");
-    expect((await saveTopicNotes(1, "m1", 0, "second")).topics[0]?.notes).toBe("second");
+    await saveTopicNotes(1, "m1", await tid(0), "first");
+    expect((await saveTopicNotes(1, "m1", await tid(0), "second")).topics[0]?.notes).toBe("second");
   });
 
   it("refuse a missing topic and an over-long note", async () => {
-    await expect(saveTopicNotes(1, "m1", 9, "x")).rejects.toThrow("There's no such topic.");
-    await expect(saveTopicNotes(1, "m1", 0, "x".repeat(20_001))).rejects.toThrow(/up to 20,000/);
+    await expect(saveTopicNotes(1, "m1", await tid(9), "x")).rejects.toThrow("There's no such topic.");
+    await expect(saveTopicNotes(1, "m1", await tid(0), "x".repeat(20_001))).rejects.toThrow(/up to 20,000/);
   });
 
   it("can be corrected by any member once the meeting has finished", async () => {
-    await saveTopicNotes(1, "m1", 0, "first");
+    await saveTopicNotes(1, "m1", await tid(0), "first");
     await finishMeeting(1, "m1");
-    const s = await saveTopicNotes(2, "m1", 0, "corrected");
+    const s = await saveTopicNotes(2, "m1", await tid(0), "corrected");
     expect(s.topics[0]?.notes).toBe("corrected");
     expect(s.minutesEditedBy).toBe(2);
-    await expect(saveTopicNotes(4, "m1", 0, "no")).rejects.toThrow("That meeting doesn't exist.");
+    await expect(saveTopicNotes(4, "m1", await tid(0), "no")).rejects.toThrow("That meeting doesn't exist.");
   });
 });
 
 describe("correcting the minutes", () => {
   beforeEach(async () => {
     await startMeeting(1, "m1", during);
-    await saveTopicNotes(1, "m1", 0, "first");
-    await saveTopicNotes(1, "m1", 1, "second");
+    await saveTopicNotes(1, "m1", await tid(0), "first");
+    await saveTopicNotes(1, "m1", await tid(1), "second");
   });
 
   it("is for a meeting that has finished, not one that's going", async () => {
-    await expect(saveMinutes(1, "m1", [{ position: 0, notes: "x" }])).rejects.toThrow(/once the meeting has finished/);
+    await expect(saveMinutes(1, "m1", [{ topicId: await tid(0), notes: "x" }])).rejects.toThrow(/once the meeting has finished/);
   });
 
   it("saves the topics sent as one edit by the member, and leaves the others alone", async () => {
     await finishMeeting(1, "m1");
-    await saveMinutes(3, "m1", [{ position: 1, notes: "third's second" }]);
-    const s = await saveMinutes(2, "m1", [{ position: 0, notes: "second's first" }]);
+    await saveMinutes(3, "m1", [{ topicId: await tid(1), notes: "third's second" }]);
+    const s = await saveMinutes(2, "m1", [{ topicId: await tid(0), notes: "second's first" }]);
     expect(s.topics.map((t) => t.notes)).toEqual(["second's first", "third's second"]);
     expect(s.minutesEditedBy).toBe(2);
     expect(s.minutesEditedAt).toBeDefined();
@@ -304,16 +310,16 @@ describe("correcting the minutes", () => {
   it("counts once in the rev however many topics changed", async () => {
     await finishMeeting(1, "m1");
     const before = (await getMeetingSession(1, "m1"))!.rev;
-    expect((await saveMinutes(1, "m1", [{ position: 0, notes: "a" }, { position: 1, notes: "b" }])).rev).toBe(before + 1);
+    expect((await saveMinutes(1, "m1", [{ topicId: await tid(0), notes: "a" }, { topicId: await tid(1), notes: "b" }])).rev).toBe(before + 1);
   });
 
   it("is for the circle's members, and refuses a bad edit without saving any of it", async () => {
     await finishMeeting(1, "m1");
-    await expect(saveMinutes(4, "m1", [{ position: 0, notes: "x" }])).rejects.toThrow("That meeting doesn't exist.");
+    await expect(saveMinutes(4, "m1", [{ topicId: await tid(0), notes: "x" }])).rejects.toThrow("That meeting doesn't exist.");
     await expect(saveMinutes(1, "m1", [])).rejects.toThrow("There's nothing to save.");
-    await expect(saveMinutes(1, "m1", [{ position: 0, notes: "x" }, { position: 0, notes: "y" }])).rejects.toThrow("A topic can only be edited once.");
-    await expect(saveMinutes(1, "m1", [{ position: 0, notes: "changed" }, { position: 9, notes: "y" }])).rejects.toThrow("There's no such topic.");
-    await expect(saveMinutes(1, "m1", [{ position: 0, notes: "x".repeat(20_001) }])).rejects.toThrow(/up to 20,000/);
+    await expect(saveMinutes(1, "m1", [{ topicId: await tid(0), notes: "x" }, { topicId: await tid(0), notes: "y" }])).rejects.toThrow("A topic can only be edited once.");
+    await expect(saveMinutes(1, "m1", [{ topicId: await tid(0), notes: "changed" }, { topicId: await tid(9), notes: "y" }])).rejects.toThrow("There's no such topic.");
+    await expect(saveMinutes(1, "m1", [{ topicId: await tid(0), notes: "x".repeat(20_001) }])).rejects.toThrow(/up to 20,000/);
     expect((await getMeetingSession(1, "m1"))?.topics.map((t) => t.notes)).toEqual(["first", "second"]);
   });
 });
@@ -349,7 +355,7 @@ describe("finishing", () => {
 describe("a meeting no one finished", () => {
   it("is finished once its run window has closed, and its minutes stay open to correct", async () => {
     await startMeeting(1, "m1", during);
-    await saveTopicNotes(1, "m1", 0, "kept");
+    await saveTopicNotes(1, "m1", await tid(0), "kept");
     // it ended at 12:00; the window closes a day later
     expect(await finishLapsedMeetings(new Date(2026, 10, 11, 11, 59))).toBe(0);
     expect(await finishLapsedMeetings(new Date(2026, 10, 11, 12, 0))).toBe(1);
@@ -357,7 +363,7 @@ describe("a meeting no one finished", () => {
     expect(s).toMatchObject({ status: "finished", rev: 2 });
     expect(s?.finishedAt).toBeDefined();
     expect(await finishLapsedMeetings(new Date(2026, 10, 12))).toBe(0);
-    expect((await saveMinutes(2, "m1", [{ position: 0, notes: "corrected" }])).topics[0]?.notes).toBe("corrected");
+    expect((await saveMinutes(2, "m1", [{ topicId: await tid(0), notes: "corrected" }])).topics[0]?.notes).toBe("corrected");
   });
 
   it("leaves a finished one, and one that never started, alone", async () => {
@@ -387,5 +393,51 @@ describe("what the stream is built on", () => {
     await startMeeting(1, "m1", during);
     expect((await getMeetingForFanout("m1"))?.session?.status).toBe("live");
     expect(await getMeetingForFanout("nope")).toBeNull();
+  });
+});
+
+describe("topics are named by id, not position", () => {
+  it("saves a stale topic's notes onto that topic after another is removed", async () => {
+    await startMeeting(1, "m1", during);
+    await addTopic(1, "m1", { category: "explore", title: "Third" });
+    const third = await tid(2);
+    await removeTopic(1, "m1", await tid(0));
+    const s = await saveTopicNotes(1, "m1", third, "for the third");
+    expect(s.topics.map((t) => [t.title, t.notes])).toEqual([["Budget", ""], ["Third", "for the third"]]);
+  });
+
+  it("refuses a topic that's gone rather than writing to its neighbour", async () => {
+    await startMeeting(1, "m1", during);
+    const first = await tid(0);
+    await removeTopic(1, "m1", first);
+    await expect(saveTopicNotes(1, "m1", first, "late")).rejects.toThrow("There's no such topic.");
+  });
+});
+
+describe("who is present", () => {
+  it("isn't everyone who RSVPed or consented before it began", async () => {
+    await db.execute(sql`insert into event_rsvps (event_id, member_id) values ('m1', 2)`);
+    const s = await startMeeting(1, "m1", during);
+    expect(s.attendees).toEqual([1]);
+    await expect(saveTopicNotes(2, "m1", await tid(0), "x")).rejects.toThrow("Mark yourself present to take notes.");
+  });
+
+  it("marks someone present by RSVPing them, and unmarking leaves their RSVP", async () => {
+    await startMeeting(1, "m1", during);
+    await setPresent(2, "m1", 2, true);
+    await setPresent(1, "m1", 2, false);
+    expect((await getMeetingSession(1, "m1"))?.attendees).toEqual([1]);
+    const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from event_rsvps where event_id = 'm1' and member_id = 2`);
+    expect(rows[0]?.n).toBe(1);
+  });
+});
+
+describe("a task is made with the meeting's change", () => {
+  it("leaves no task behind when the change fails", async () => {
+    await startMeeting(1, "m1", during);
+    await db.execute(sql`alter table meeting_sessions add constraint fail_rev check (rev < 1)`);
+    await expect(addMeetingTask(1, "m1", { title: "x", description: "", status: "todo", priority: "none", dueDate: "", assigneeId: null })).rejects.toThrow();
+    const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from circle_tasks`);
+    expect(rows[0]?.n).toBe(0);
   });
 });

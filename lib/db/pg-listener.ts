@@ -36,7 +36,15 @@ export class PgListener {
     void this.listen();
     return () => {
       this.subscribers.delete(subscriber);
+      if (this.subscribers.size === 0) this.release();
     };
+  }
+
+  // nobody's listening: let the connection go rather than hold it for good
+  private release() {
+    const client = this.client;
+    if (!client) return;
+    this.lost(client);
   }
 
   private async listen() {
@@ -52,6 +60,8 @@ export class PgListener {
       await client.connect();
       await client.query(`LISTEN ${this.channel}`);
       this.client = client;
+      // the last listener may have gone while this was connecting
+      if (this.subscribers.size === 0) return this.release();
       this.watch(client);
       const reconnected = this.retryMs > 1000;
       this.retryMs = 1000;

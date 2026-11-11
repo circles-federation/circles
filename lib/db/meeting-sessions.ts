@@ -3,7 +3,7 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { MEETING_CHANNEL } from "./meeting-channel";
 import { createTask, getMeetingTasks, type TaskChange } from "./tasks";
-import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingSessions, meetingTopicNotes } from "./schema";
+import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingAttendance, meetingSessions, meetingTopicNotes } from "./schema";
 import { MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
 import { eventEndsAt } from "@/lib/events.util";
 import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, validateNotes } from "@/lib/meeting-session.util";
@@ -14,8 +14,8 @@ import type { AgendaItem, CircleTask, MeetingSession } from "@/lib/types";
    held to. Every call checks the meeting is an approved, uncancelled meeting of
    a circle the member belongs to, and to anyone else it doesn't exist. One
    facilitator moves it on and finishes it (the circle's Facilitator, unless
-   they're not there: any attendee can take over). Attendance is the event's
-   RSVPs. Notes are plain Markdown, last write wins. Like the rest of lib/db it
+   they're not there: any attendee can take over). Attendance is
+   marked present (meeting_attendance), which also RSVPs them. Notes are plain Markdown, last write wins. Like the rest of lib/db it
    takes the acting member's id and never reads the session itself. */
 
 export class MeetingError extends UserFacingError {}
@@ -45,7 +45,7 @@ async function readSession(tx: Tx | typeof db, eventId: string): Promise<Meeting
   const [s] = await tx.select().from(meetingSessions).where(eq(meetingSessions.eventId, eventId));
   if (!s) return null;
   const topics = await tx.select().from(meetingTopicNotes).where(eq(meetingTopicNotes.eventId, eventId)).orderBy(asc(meetingTopicNotes.position));
-  const attendees = await tx.select({ id: eventRsvps.memberId }).from(eventRsvps).where(eq(eventRsvps.eventId, eventId));
+  const attendees = await tx.select({ id: meetingAttendance.memberId }).from(meetingAttendance).where(eq(meetingAttendance.eventId, eventId));
   return {
     eventId,
     status: s.status,
@@ -53,7 +53,7 @@ async function readSession(tx: Tx | typeof db, eventId: string): Promise<Meeting
     facilitatorId: s.facilitatorId,
     attendees: attendees.map((a) => a.id).sort((a, b) => a - b),
     tasks: await getMeetingTasks(tx, eventId),
-    topics: topics.map((t) => ({ position: t.position, category: t.category, title: t.title, ...(t.details !== null ? { details: t.details } : {}), notes: t.notes })),
+    topics: topics.map((t) => ({ id: t.id, position: t.position, category: t.category, title: t.title, ...(t.details !== null ? { details: t.details } : {}), notes: t.notes })),
     startedAt: s.startedAt.toISOString(),
     ...(s.finishedAt ? { finishedAt: s.finishedAt.toISOString() } : {}),
     rev: s.rev,
@@ -94,7 +94,7 @@ function assertFacilitator(session: SessionRow, memberId: number) {
 }
 
 async function attends(tx: Tx, eventId: string, memberId: number): Promise<boolean> {
-  const [row] = await tx.select({ id: eventRsvps.memberId }).from(eventRsvps).where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.memberId, memberId)));
+  const [row] = await tx.select({ id: meetingAttendance.memberId }).from(meetingAttendance).where(and(eq(meetingAttendance.eventId, eventId), eq(meetingAttendance.memberId, memberId)));
   return !!row;
 }
 
@@ -151,6 +151,7 @@ export async function startMeeting(memberId: number, eventId: string, now: Date 
     const memberIds = (await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, event.circleId))).map((r) => r.id);
     await tx.insert(meetingSessions).values({ eventId, facilitatorId: defaultFacilitator(holder?.id ?? null, memberId, memberIds), startedAt: now });
     await tx.insert(meetingTopicNotes).values(agenda.map((a, position) => ({ eventId, position, category: a.category, title: a.title, details: a.details })));
+    await tx.insert(meetingAttendance).values({ eventId, memberId });
     await tx.insert(eventRsvps).values({ eventId, memberId }).onConflictDoNothing();
     await announce(tx, eventId);
     const started = await readSession(tx, eventId);
@@ -193,12 +194,13 @@ export async function addTopic(memberId: number, eventId: string, item: AgendaIt
 }
 
 // takes a topic off the agenda, with whatever was written on it, and closes the gap
-export async function removeTopic(memberId: number, eventId: string, position: number): Promise<MeetingSession> {
+export async function removeTopic(memberId: number, eventId: string, topicId: string): Promise<MeetingSession> {
   return change(memberId, eventId, async (tx, session) => {
     assertLive(session);
     if (!(await attends(tx, eventId, memberId))) throw new MeetingError("Mark yourself present to change the agenda.");
-    const removed = await tx.delete(meetingTopicNotes).where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.position, position))).returning({ position: meetingTopicNotes.position });
-    if (removed.length === 0) throw new MeetingError("There's no such topic.");
+    const [removed] = await tx.delete(meetingTopicNotes).where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.id, topicId))).returning({ position: meetingTopicNotes.position });
+    if (!removed) throw new MeetingError("There's no such topic.");
+    const position = removed.position;
     // the key is (event, position), so the topics after it close up by way of
     // negatives, where no two ever share a position part-way
     await tx.update(meetingTopicNotes).set({ position: sql`-${meetingTopicNotes.position}` }).where(and(eq(meetingTopicNotes.eventId, eventId), sql`${meetingTopicNotes.position} > ${position}`));
@@ -217,7 +219,7 @@ export async function addMeetingTask(memberId: number, eventId: string, input: T
   const session = await change(memberId, eventId, async (tx, session, event) => {
     assertLive(session);
     if (!(await attends(tx, eventId, memberId))) throw new MeetingError("Mark yourself present to add tasks.");
-    made = await createTask(memberId, event.circleId, input, eventId);
+    made = await createTask(memberId, event.circleId, input, eventId, tx);
     await bump(tx, eventId);
   });
   const { task, assignedTo } = made as unknown as TaskChange;
@@ -239,8 +241,13 @@ export async function setPresent(memberId: number, eventId: string, targetId: nu
     assertLive(session);
     if (targetId !== memberId) assertFacilitator(session, memberId);
     if (!(await isMember(tx, event.circleId, targetId))) throw new MeetingError("They aren't a member of this circle.");
-    if (present) await tx.insert(eventRsvps).values({ eventId, memberId: targetId }).onConflictDoNothing();
-    else await tx.delete(eventRsvps).where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.memberId, targetId)));
+    if (present) {
+      await tx.insert(meetingAttendance).values({ eventId, memberId: targetId }).onConflictDoNothing();
+      await tx.insert(eventRsvps).values({ eventId, memberId: targetId }).onConflictDoNothing();
+    } else {
+      // their RSVP stays: it may be theirs from before the meeting
+      await tx.delete(meetingAttendance).where(and(eq(meetingAttendance.eventId, eventId), eq(meetingAttendance.memberId, targetId)));
+    }
     await bump(tx, eventId);
   });
 }
@@ -248,7 +255,7 @@ export async function setPresent(memberId: number, eventId: string, targetId: nu
 /* Saves what's written about a topic, replacing it. While the meeting's live,
    its attendees write; once it's finished, any member of the circle can
    correct the minutes. Either way the editor and the time are recorded. */
-export async function saveTopicNotes(memberId: number, eventId: string, position: number, notes: string): Promise<MeetingSession> {
+export async function saveTopicNotes(memberId: number, eventId: string, topicId: string, notes: string): Promise<MeetingSession> {
   const problem = validateNotes(notes);
   if (problem) throw new MeetingError(problem);
   return change(memberId, eventId, async (tx, session) => {
@@ -256,8 +263,8 @@ export async function saveTopicNotes(memberId: number, eventId: string, position
     const updated = await tx
       .update(meetingTopicNotes)
       .set({ notes })
-      .where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.position, position)))
-      .returning({ position: meetingTopicNotes.position });
+      .where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.id, topicId)))
+      .returning({ id: meetingTopicNotes.id });
     if (updated.length === 0) throw new MeetingError("There's no such topic.");
     await bump(tx, eventId, { minutesEditedBy: memberId, minutesEditedAt: new Date() });
   });
@@ -268,21 +275,21 @@ export async function saveTopicNotes(memberId: number, eventId: string, position
    written, so someone else's correction to another topic isn't undone by a
    copy that was out of date. Any member of the circle may; while the meeting's
    live the wizard's own notes (saveTopicNotes) are what's written. */
-export async function saveMinutes(memberId: number, eventId: string, edits: { position: number; notes: string }[]): Promise<MeetingSession> {
+export async function saveMinutes(memberId: number, eventId: string, edits: { topicId: string; notes: string }[]): Promise<MeetingSession> {
   if (edits.length === 0) throw new MeetingError("There's nothing to save.");
-  if (new Set(edits.map((e) => e.position)).size !== edits.length) throw new MeetingError("A topic can only be edited once.");
+  if (new Set(edits.map((e) => e.topicId)).size !== edits.length) throw new MeetingError("A topic can only be edited once.");
   for (const edit of edits) {
     const problem = validateNotes(edit.notes);
     if (problem) throw new MeetingError(problem);
   }
   return change(memberId, eventId, async (tx, session) => {
     if (session.status !== "finished") throw new MeetingError("The minutes can be corrected once the meeting has finished.");
-    for (const { position, notes } of edits) {
+    for (const { topicId, notes } of edits) {
       const updated = await tx
         .update(meetingTopicNotes)
         .set({ notes })
-        .where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.position, position)))
-        .returning({ position: meetingTopicNotes.position });
+        .where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.id, topicId)))
+        .returning({ id: meetingTopicNotes.id });
       if (updated.length === 0) throw new MeetingError("There's no such topic.");
     }
     await bump(tx, eventId, { minutesEditedBy: memberId, minutesEditedAt: new Date() });
@@ -311,12 +318,17 @@ export async function finishLapsedMeetings(now: Date = new Date()): Promise<numb
   const lapsed = live.filter((m) => now.getTime() >= eventEndsAt(m).getTime() + MEETING_RUN_GRACE_MS);
   let finished = 0;
   for (const { eventId } of lapsed) {
-    await db.transaction(async (tx) => {
-      const [session] = await tx.select().from(meetingSessions).where(eq(meetingSessions.eventId, eventId)).for("update");
-      if (!session || session.status !== "live") return;
-      await bump(tx, eventId, { status: "finished", finishedAt: now });
-      finished++;
-    });
+    // one meeting's failure mustn't leave the rest of the batch live
+    try {
+      await db.transaction(async (tx) => {
+        const [session] = await tx.select().from(meetingSessions).where(eq(meetingSessions.eventId, eventId)).for("update");
+        if (!session || session.status !== "live") return;
+        await bump(tx, eventId, { status: "finished", finishedAt: now });
+        finished++;
+      });
+    } catch (error) {
+      console.error(`Finishing lapsed meeting ${eventId} failed`, error);
+    }
   }
   return finished;
 }
