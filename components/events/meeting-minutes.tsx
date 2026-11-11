@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { AgendaBadge } from "./agenda-section";
 import { Eyebrow } from "@/components/shared";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
@@ -11,13 +12,17 @@ import type { MeetingSession } from "@/lib/types";
 
 /* A meeting's minutes: each topic as it was on the agenda with what was
    written about it, and who last edited them and when. */
-export function MeetingMinutes({ session }: { session: MeetingSession }) {
+export function MeetingMinutes({ session, collapseEmpty = false }: { session: MeetingSession; collapseEmpty?: boolean }) {
   const memberById = useMemberById();
   const editor = session.minutesEditedBy !== undefined ? memberById(session.minutesEditedBy) : undefined;
+  // the wrap-up shows what was written and folds the rest into a line; the
+  // minutes themselves keep every topic, as a record of the agenda
+  const written = collapseEmpty ? session.topics.filter((t) => t.notes.trim()) : session.topics;
+  const empty = collapseEmpty ? session.topics.filter((t) => !t.notes.trim()) : [];
   return (
     <div>
       <ol className="m-0 flex list-none flex-col gap-6 p-0">
-        {session.topics.map((t) => (
+        {written.map((t) => (
           <li key={t.position} className="border-t-[3px] border-t-agenda pt-3">
             <div className="flex items-center gap-2">
               <AgendaBadge category={t.category} />
@@ -32,6 +37,12 @@ export function MeetingMinutes({ session }: { session: MeetingSession }) {
           </li>
         ))}
       </ol>
+      {empty.length > 0 && (
+        <p className={clsx("font-serif text-base text-soft", written.length > 0 && "mt-6")}>
+          {written.length === 0 ? "No notes were taken on " : "No notes on "}
+          {new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(empty.map((t) => `“${t.title}”`))}.
+        </p>
+      )}
       {session.tasks.length > 0 && (
         <div className="mt-8 border-t-[3px] border-t-ink pt-3">
           <Eyebrow className="text-soft">Tasks</Eyebrow>

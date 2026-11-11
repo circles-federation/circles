@@ -223,8 +223,9 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
             onClick={runPageOwn}
             disabled={pageOwn.disabled}
             aria-label={pageOwn.label}
-            className={clsx(ICON_BUTTON_SLOT, "cursor-pointer border-0 bg-transparent p-0 disabled:cursor-default")}
+            className={clsx(pageOwn.text ? "group -mr-0.5 flex h-11 shrink-0 items-center gap-2" : ICON_BUTTON_SLOT, "cursor-pointer border-0 bg-transparent p-0 disabled:cursor-default")}
           >
+            {pageOwn.text && <span className="font-sans text-xs font-bold tracking-caps text-ink uppercase group-disabled:text-soft">{pageOwn.text}</span>}
             <IconButtonCircle icon={pageOwn.icon} variant={pageOwn.variant} />
           </button>
         ) : pageOwn ? (

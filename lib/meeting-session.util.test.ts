@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, stepAt, validateNotes } from "./meeting-session.util";
+import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, stepAt, stepLabel, validateNotes } from "./meeting-session.util";
 
 const meeting = { date: "2026-11-10", start: "10:00", end: "12:00" };
 const at = (h: number, m = 0, day = 10) => new Date(2026, 10, day, h, m);
@@ -36,6 +36,13 @@ describe("stepAt", () => {
     expect(stepAt(-1, 2)).toBeNull();
     expect(stepAt(6, 2)).toBeNull();
     expect(stepAt(1.5, 2)).toBeNull();
+  });
+});
+
+describe("stepLabel", () => {
+  it("says where the meeting is in words", () => {
+    expect([0, 1, 2, 3, 4, 5].map((s) => stepLabel(s, 2))).toEqual(["Attendance", "Agenda", "Topic 1 of 2", "Topic 2 of 2", "Tasks", "Wrap-up"]);
+    expect(stepLabel(9, 2)).toBe("");
   });
 });
 

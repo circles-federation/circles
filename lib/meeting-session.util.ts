@@ -24,6 +24,13 @@ export function stepAt(step: number, topicCount: number): MeetingStep | null {
   return step === topicCount + 2 ? { kind: "tasks" } : { kind: "wrapup" };
 }
 
+// where the meeting is, in words: "Agenda", "Topic 2 of 3"
+export function stepLabel(step: number, topicCount: number): string {
+  const s = stepAt(step, topicCount);
+  if (!s) return "";
+  return s.kind === "attendance" ? "Attendance" : s.kind === "agenda" ? "Agenda" : s.kind === "topic" ? `Topic ${s.index + 1} of ${topicCount}` : s.kind === "tasks" ? "Tasks" : "Wrap-up";
+}
+
 /* Topics are added and removed while the meeting's going, so where it is has to
    follow what it was on: a topic added puts tasks and the wrap-up a step
    later; one removed takes them a step earlier, and those after it (the one

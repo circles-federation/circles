@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { MeetingAgendaStep } from "./meeting-agenda-step";
 import { MeetingAttendanceStep } from "./meeting-attendance-step";
@@ -8,6 +9,7 @@ import { MeetingMinutes } from "./meeting-minutes";
 import { MeetingStepper } from "./meeting-stepper";
 import { MeetingTasksStep } from "./meeting-tasks-step";
 import { MeetingTopicStep } from "./meeting-topic-step";
+import { MeetingWrapupStep } from "./meeting-wrapup-step";
 import { Button, ConfirmModal, Eyebrow, PageContainer } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
@@ -32,7 +34,9 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
   const now = useClock();
   const goBack = useGoBack();
   const { adoptTask } = useAppState();
+  const router = useRouter();
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [confirmTakeOver, setConfirmTakeOver] = useState(false);
 
   // whatever an action returns is adopted at once; a refusal is a toast
   const run = async (action: Promise<Result>): Promise<boolean> => {
@@ -51,8 +55,8 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
   useTopBarAction(
     facilitating
       ? atEnd
-        ? { label: "Finish meeting", icon: CheckIcon, variant: "primary", onAction: () => setConfirmFinish(true) }
-        : { label: "Next step", icon: ArrowRightIcon, variant: "primary", onAction: () => void run(setMeetingStepAction(e.id, session.step + 1)) }
+        ? { label: "Finish meeting", text: "Finish", icon: CheckIcon, variant: "primary", onAction: () => setConfirmFinish(true) }
+        : { label: "Next step", text: "Next", icon: ArrowRightIcon, variant: "primary", onAction: () => void run(setMeetingStepAction(e.id, session.step + 1)) }
       : null,
   );
 
@@ -84,7 +88,8 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
         <div className="mt-6">
           <MeetingMinutes session={session} />
         </div>
-        <div className="mt-8">
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Button onClick={() => router.push(`/events/${e.id}/minutes`)}>Edit minutes</Button>
           <Button variant="secondary" onClick={() => goBack()}>
             Back to the event
           </Button>
@@ -100,17 +105,20 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
 
   return (
     <PageContainer size="compact">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <MeetingStepper session={session} canMove={facilitating} onStep={(s) => void run(setMeetingStepAction(e.id, s))} />
-        {!facilitating && attending && (
-          <Button size="compact" variant="secondary" onClick={() => void run(takeOverMeetingAction(e.id))}>
-            Take over as facilitator
-          </Button>
-        )}
-      </div>
-      <p className="mt-3 font-serif text-sm text-soft">
+      <MeetingStepper session={session} canMove={facilitating} onStep={(s) => void run(setMeetingStepAction(e.id, s))} />
+      <p className="mt-4 font-serif text-sm text-soft">
         {facilitating ? "You’re the facilitator" : facilitator ? `${facilitator.name} is the facilitator` : "There’s no facilitator"}
         {session.facilitatorId !== null && !session.attendees.includes(session.facilitatorId) ? `, but ${facilitating ? "you aren’t" : "isn’t"} marked present.` : "."}
+        {/* a quiet link and not a button, and asked about first: it takes the
+            meeting out of someone else's hands for everyone */}
+        {!facilitating && attending && (
+          <>
+            {" "}
+            <button type="button" onClick={() => setConfirmTakeOver(true)} className="hit cursor-pointer border-0 bg-transparent p-0 font-serif text-sm font-bold text-ink underline">
+              Take over
+            </button>
+          </>
+        )}
       </p>
 
       <div className="mt-8">
@@ -135,16 +143,23 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
             }}
           />
         )}
-        {step?.kind === "wrapup" && (
-          <div>
-            <Eyebrow className="text-soft">Wrap-up</Eyebrow>
-            <p className="mt-2 mb-6 font-serif text-base text-soft">
-              {session.attendees.length} here. {facilitating ? "Finishing closes the meeting; its minutes stay open to correct." : "The facilitator finishes the meeting."}
-            </p>
-            <MeetingMinutes session={session} />
-          </div>
-        )}
+        {step?.kind === "wrapup" && <MeetingWrapupStep session={session} facilitating={facilitating} />}
       </div>
+
+      {confirmTakeOver && (
+        <ConfirmModal
+          title="Take over as facilitator?"
+          message={`${facilitator ? facilitator.name : "The facilitator"} will no longer move the meeting on; only you will. Anyone attending can take it back.`}
+          confirmLabel="Take over"
+          cancelLabel="Cancel"
+          tone="ink"
+          onCancel={() => setConfirmTakeOver(false)}
+          onConfirm={() => {
+            setConfirmTakeOver(false);
+            void run(takeOverMeetingAction(e.id));
+          }}
+        />
+      )}
 
       {confirmFinish && (
         <ConfirmModal
@@ -152,7 +167,7 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
           message="Attendance and the steps close. The circle’s members can still correct the minutes."
           confirmLabel="Finish"
           cancelLabel="Keep going"
-          tone="flame"
+          tone="ink"
           onCancel={() => setConfirmFinish(false)}
           onConfirm={() => {
             setConfirmFinish(false);
