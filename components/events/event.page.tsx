@@ -8,6 +8,7 @@ import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";
 import { HostRsvpRow } from "./host-rsvp-row";
 
+import { MeetingSessionSection } from "./meeting-session-section";
 import { RoleSlotsSection } from "./role-slots-section";
 import { useEventSharing } from "./event-sharing";
 import { ShiftStatusBanner } from "./shift-status-banner";
@@ -87,6 +88,8 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
       />
 
       {sharing.dialogs}
+
+      {isMeeting(e) && <MeetingSessionSection event={e} />}
 
       {/* a meeting has its agenda where another event has its description */}
       {isMeeting(e) ? <AgendaSection event={e} /> : <EventDetailsSection event={e} />}

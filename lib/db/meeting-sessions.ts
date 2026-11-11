@@ -1,6 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
+import { MEETING_CHANNEL } from "./meeting-channel";
 import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingSessions, meetingTopicNotes } from "./schema";
 import { canRunMeeting, defaultFacilitator, lastStep, validateNotes } from "@/lib/meeting-session.util";
 import type { MeetingSession } from "@/lib/types";
@@ -56,8 +57,14 @@ async function readSession(tx: Tx | typeof db, eventId: string): Promise<Meeting
   };
 }
 
-const bump = (tx: Tx, eventId: string, set: Partial<typeof meetingSessions.$inferInsert> = {}) =>
-  tx.update(meetingSessions).set({ ...set, rev: sql`${meetingSessions.rev} + 1` }).where(eq(meetingSessions.eventId, eventId));
+// announces a change to whoever's streaming the meeting (lib/db/meeting-stream.ts);
+// sent inside the writing transaction, so only a committed change is heard
+const announce = (tx: Tx, eventId: string) => tx.execute(sql`select pg_notify(${MEETING_CHANNEL}, ${eventId})`);
+
+async function bump(tx: Tx, eventId: string, set: Partial<typeof meetingSessions.$inferInsert> = {}) {
+  await tx.update(meetingSessions).set({ ...set, rev: sql`${meetingSessions.rev} + 1` }).where(eq(meetingSessions.eventId, eventId));
+  await announce(tx, eventId);
+}
 
 /* Runs a change to a started meeting under a lock on its session, and returns
    the session as it is afterwards. */
@@ -84,6 +91,26 @@ function assertFacilitator(session: SessionRow, memberId: number) {
 async function attends(tx: Tx, eventId: string, memberId: number): Promise<boolean> {
   const [row] = await tx.select({ id: eventRsvps.memberId }).from(eventRsvps).where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.memberId, memberId)));
   return !!row;
+}
+
+// whether the member may see this meeting at all, started or not (the stream's
+// gate: to anyone else it doesn't exist)
+export async function memberHasMeeting(memberId: number, eventId: string): Promise<boolean> {
+  return db.transaction((tx) =>
+    loadMeeting(tx, memberId, eventId).then(
+      () => true,
+      () => false
+    )
+  );
+}
+
+// a meeting's session (null before it starts) and who may see it, for the hub
+// to hand on to those streaming it; null if there's no such meeting
+export async function getMeetingForFanout(eventId: string): Promise<{ session: MeetingSession | null; memberIds: number[] } | null> {
+  const [row] = await db.select().from(events).where(eq(events.id, eventId));
+  if (!row || row.kind !== "meeting" || row.approvedAt === null || row.cancelledAt !== null) return null;
+  const memberIds = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, row.circleId))).map((r) => r.id);
+  return { session: await readSession(db, eventId), memberIds };
 }
 
 // the session, if the member is in the meeting's circle and it has started
@@ -120,6 +147,7 @@ export async function startMeeting(memberId: number, eventId: string, now: Date 
     await tx.insert(meetingSessions).values({ eventId, facilitatorId: defaultFacilitator(holder?.id ?? null, memberId, memberIds), startedAt: now });
     await tx.insert(meetingTopicNotes).values(agenda.map((a, position) => ({ eventId, position, category: a.category, title: a.title, details: a.details })));
     await tx.insert(eventRsvps).values({ eventId, memberId }).onConflictDoNothing();
+    await announce(tx, eventId);
     const started = await readSession(tx, eventId);
     if (!started) throw new MeetingError(GONE);
     return started;

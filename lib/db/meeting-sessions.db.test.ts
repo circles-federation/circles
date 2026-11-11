@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { event } from "@/lib/test/factories";
 import { db } from "./client";
 import { insertEvent } from "./events";
-import { finishMeeting, getMeetingSession, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
+import { finishMeeting, getMeetingForFanout, getMeetingSession, memberHasMeeting, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
 import { addCircle, addMember, giveRole, join, resetDb } from "./testing";
 
 /* A live meeting: who may start it and when, who drives, who's there, and
@@ -222,5 +222,20 @@ describe("finishing", () => {
 describe("actions before the meeting starts", () => {
   it("are refused", async () => {
     await expect(setStep(1, "m1", 1)).rejects.toThrow("This meeting hasn't started.");
+  });
+});
+
+describe("what the stream is built on", () => {
+  it("lets a circle's member see a meeting before it starts, and no one else", async () => {
+    expect(await memberHasMeeting(1, "m1")).toBe(true);
+    expect(await memberHasMeeting(4, "m1")).toBe(false);
+    expect(await memberHasMeeting(1, "nope")).toBe(false);
+  });
+
+  it("hands the hub the session, or none yet, with who may see it", async () => {
+    expect(await getMeetingForFanout("m1")).toEqual({ session: null, memberIds: expect.arrayContaining([1, 2, 3]) });
+    await startMeeting(1, "m1", during);
+    expect((await getMeetingForFanout("m1"))?.session?.status).toBe("live");
+    expect(await getMeetingForFanout("nope")).toBeNull();
   });
 });

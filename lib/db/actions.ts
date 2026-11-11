@@ -11,6 +11,7 @@ import { UserFacingError } from "./errors";
 import * as eventShares from "./event-shares";
 import * as events from "./events";
 import * as invitations from "./invitations";
+import * as meetingSessions from "./meeting-sessions";
 import * as messages from "./messages";
 import * as members from "./members";
 import * as neighborhoodPosts from "./neighborhood-posts";
@@ -189,6 +190,33 @@ export async function getChatUnreadAction() {
 
 export async function markChatReadAction(circleId: string, lastReadId: number) {
   return asMember((memberId) => chat.markChatRead(memberId, circleId, lastReadId));
+}
+
+/* A live meeting (lib/db/meeting-sessions.ts checks who may do what). Each
+   hands back the session as it is afterwards; whoever else is watching hears
+   of it over the meeting's stream. */
+export async function startMeetingAction(eventId: string) {
+  return asMember((memberId) => meetingSessions.startMeeting(memberId, eventId));
+}
+
+export async function setMeetingStepAction(eventId: string, step: number) {
+  return asMember((memberId) => meetingSessions.setStep(memberId, eventId, step));
+}
+
+export async function takeOverMeetingAction(eventId: string) {
+  return asMember((memberId) => meetingSessions.takeOverFacilitator(memberId, eventId));
+}
+
+export async function setMeetingPresentAction(eventId: string, targetId: number, present: boolean) {
+  return asMember((memberId) => meetingSessions.setPresent(memberId, eventId, targetId, present));
+}
+
+export async function saveMeetingNotesAction(eventId: string, position: number, notes: string) {
+  return asMember((memberId) => meetingSessions.saveTopicNotes(memberId, eventId, position, notes));
+}
+
+export async function finishMeetingAction(eventId: string) {
+  return asMember((memberId) => meetingSessions.finishMeeting(memberId, eventId));
 }
 
 async function asMember<T>(run: (memberId: number) => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; error: string }> {

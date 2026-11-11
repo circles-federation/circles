@@ -86,6 +86,12 @@ const CALLS: Record<string, unknown[]> = {
   savePushSubscriptionAction: [{ endpoint: "https://fcm.googleapis.com/x", keys: { p256dh: "k", auth: "a" } }],
   deletePushSubscriptionAction: ["https://fcm.googleapis.com/x"],
   sendTestPushAction: [],
+  startMeetingAction: ["x"],
+  setMeetingStepAction: ["x", 1],
+  takeOverMeetingAction: ["x"],
+  setMeetingPresentAction: ["x", 1, true],
+  saveMeetingNotesAction: ["x", 0, "notes"],
+  finishMeetingAction: ["x"],
 };
 
 const call = (name: string) => (actions as unknown as Record<string, (...args: unknown[]) => Promise<{ ok: boolean }>>)[name]!(...CALLS[name]!);
