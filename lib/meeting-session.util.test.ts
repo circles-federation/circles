@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAt, validateNotes } from "./meeting-session.util";
+import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, stepAt, validateNotes } from "./meeting-session.util";
 
 const meeting = { date: "2026-11-10", start: "10:00", end: "12:00" };
 const at = (h: number, m = 0, day = 10) => new Date(2026, 10, day, h, m);
@@ -20,10 +20,11 @@ describe("canRunMeeting", () => {
 });
 
 describe("stepAt", () => {
-  it("runs attendance, each topic, tasks, then the wrap-up", () => {
-    expect(lastStep(2)).toBe(4);
-    expect([0, 1, 2, 3, 4].map((s) => stepAt(s, 2))).toEqual([
+  it("runs attendance, the agenda, each topic, tasks, then the wrap-up", () => {
+    expect(lastStep(2)).toBe(5);
+    expect([0, 1, 2, 3, 4, 5].map((s) => stepAt(s, 2))).toEqual([
       { kind: "attendance" },
+      { kind: "agenda" },
       { kind: "topic", index: 0 },
       { kind: "topic", index: 1 },
       { kind: "tasks" },
@@ -33,8 +34,26 @@ describe("stepAt", () => {
 
   it("has no step outside that", () => {
     expect(stepAt(-1, 2)).toBeNull();
-    expect(stepAt(5, 2)).toBeNull();
+    expect(stepAt(6, 2)).toBeNull();
     expect(stepAt(1.5, 2)).toBeNull();
+  });
+});
+
+describe("following the meeting when topics are added or removed", () => {
+  // 3 topics: steps 0 attendance, 1 agenda, 2-4 topics, 5 tasks, 6 wrap-up
+  it("moves tasks and the wrap-up a step on when a topic is added, and leaves the rest", () => {
+    expect([0, 1, 2, 4, 5, 6].map((s) => stepAfterTopicAdded(s, 3))).toEqual([0, 1, 2, 4, 6, 7]);
+  });
+
+  it("moves them back when one is removed", () => {
+    expect([5, 6].map((s) => stepAfterTopicRemoved(s, 3, 0))).toEqual([4, 5]);
+  });
+
+  it("keeps the topic on screen when an earlier one goes, and moves to what followed when it's the one", () => {
+    expect(stepAfterTopicRemoved(4, 3, 0)).toBe(3);
+    expect(stepAfterTopicRemoved(4, 3, 2)).toBe(4);
+    expect(stepAfterTopicRemoved(3, 3, 2)).toBe(3);
+    expect(stepAfterTopicRemoved(1, 3, 0)).toBe(1);
   });
 });
 

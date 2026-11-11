@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { MeetingAgendaStep } from "./meeting-agenda-step";
 import { MeetingAttendanceStep } from "./meeting-attendance-step";
 import { MeetingMinutes } from "./meeting-minutes";
 import { MeetingStepper } from "./meeting-stepper";
@@ -10,7 +11,7 @@ import { MeetingTopicStep } from "./meeting-topic-step";
 import { Button, ConfirmModal, Eyebrow, PageContainer } from "@/components/shared";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { useToast } from "@/components/shared/toast";
-import { finishMeetingAction, saveMeetingNotesAction, setMeetingPresentAction, setMeetingStepAction, startMeetingAction, takeOverMeetingAction } from "@/lib/db/actions";
+import { addMeetingTopicAction, finishMeetingAction, removeMeetingTopicAction, saveMeetingNotesAction, setMeetingPresentAction, setMeetingStepAction, startMeetingAction, takeOverMeetingAction } from "@/lib/db/actions";
 import { useGoBack } from "@/components/providers/back-handler-provider";
 import { useClock, useMemberById } from "@/lib/hooks";
 import { canRunMeeting, lastStep, stepAt } from "@/lib/meeting-session.util";
@@ -32,10 +33,11 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
   const [confirmFinish, setConfirmFinish] = useState(false);
 
   // whatever an action returns is adopted at once; a refusal is a toast
-  const run = async (action: Promise<Result>) => {
+  const run = async (action: Promise<Result>): Promise<boolean> => {
     const result = await action;
     if (result.ok) adopt(result.value);
     else showToast({ message: result.error, tone: "error" });
+    return result.ok;
   };
 
   const live = session?.status === "live";
@@ -104,11 +106,15 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
           </Button>
         )}
       </div>
-      <p className="mt-3 font-serif text-sm text-soft">{facilitating ? "You’re facilitating." : facilitator ? `${facilitator.name} is facilitating.` : "No one is facilitating."}</p>
+      <p className="mt-3 font-serif text-sm text-soft">
+        {facilitating ? "You’re the facilitator" : facilitator ? `${facilitator.name} is the facilitator` : "There’s no facilitator"}
+        {session.facilitatorId !== null && !session.attendees.includes(session.facilitatorId) ? `, but ${facilitating ? "you aren’t" : "isn’t"} marked present.` : "."}
+      </p>
 
       <div className="mt-8">
         {step?.kind === "attendance" && <MeetingAttendanceStep session={session} circle={circle} memberId={memberId} onSetPresent={(id, present) => void run(setMeetingPresentAction(e.id, id, present))} />}
-        {topic && <MeetingTopicStep key={topic.position} topic={topic} canWrite={attending} onSave={(notes) => void run(saveMeetingNotesAction(e.id, topic.position, notes))} />}
+        {step?.kind === "agenda" && <MeetingAgendaStep session={session} canEdit={attending} onAdd={(item) => run(addMeetingTopicAction(e.id, item))} onRemove={(position) => void run(removeMeetingTopicAction(e.id, position))} />}
+        {topic && <MeetingTopicStep key={topic.position} topic={topic} canWrite={attending} onSave={(notes) => run(saveMeetingNotesAction(e.id, topic.position, notes))} />}
         {step?.kind === "tasks" && <MeetingTasksStep circle={circle} />}
         {step?.kind === "wrapup" && (
           <div>

@@ -34,7 +34,7 @@ import { newCircleDecider } from "@/lib/proposals.util";
 import { indexCircles } from "@/lib/circles.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { MessageInput } from "@/lib/messages.util";
-import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges, TaskStatus } from "@/lib/types";
+import type { AgendaItem, AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges, TaskStatus } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
    connection — Drizzle's Postgres driver is Node-only. These thin wrappers
@@ -201,6 +201,14 @@ export async function startMeetingAction(eventId: string) {
 
 export async function setMeetingStepAction(eventId: string, step: number) {
   return asMember((memberId) => meetingSessions.setStep(memberId, eventId, step));
+}
+
+export async function addMeetingTopicAction(eventId: string, item: AgendaItem) {
+  return asMember((memberId) => meetingSessions.addTopic(memberId, eventId, item));
+}
+
+export async function removeMeetingTopicAction(eventId: string, position: number) {
+  return asMember((memberId) => meetingSessions.removeTopic(memberId, eventId, position));
 }
 
 export async function takeOverMeetingAction(eventId: string) {

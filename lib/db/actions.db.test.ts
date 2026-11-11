@@ -89,6 +89,8 @@ const CALLS: Record<string, unknown[]> = {
   startMeetingAction: ["x"],
   setMeetingStepAction: ["x", 1],
   takeOverMeetingAction: ["x"],
+  addMeetingTopicAction: ["x", { category: "explore", title: "More" }],
+  removeMeetingTopicAction: ["x", 0],
   setMeetingPresentAction: ["x", 1, true],
   saveMeetingNotesAction: ["x", 0, "notes"],
   finishMeetingAction: ["x"],

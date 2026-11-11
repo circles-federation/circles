@@ -3,8 +3,9 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { MEETING_CHANNEL } from "./meeting-channel";
 import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingSessions, meetingTopicNotes } from "./schema";
-import { canRunMeeting, defaultFacilitator, lastStep, validateNotes } from "@/lib/meeting-session.util";
-import type { MeetingSession } from "@/lib/types";
+import { MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
+import { canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, validateNotes } from "@/lib/meeting-session.util";
+import type { AgendaItem, MeetingSession } from "@/lib/types";
 
 /* A meeting being held, its circle's members' alone: this file is where that's
    held to. Every call checks the meeting is an approved, uncancelled meeting of
@@ -154,14 +155,52 @@ export async function startMeeting(memberId: number, eventId: string, now: Date 
   });
 }
 
+async function topicCount(tx: Tx, eventId: string): Promise<number> {
+  const [row] = await tx.select({ count: sql<number>`count(*)::int` }).from(meetingTopicNotes).where(eq(meetingTopicNotes.eventId, eventId));
+  return row?.count ?? 0;
+}
+
 // the facilitator moves the wizard to a step (see stepAt)
 export async function setStep(memberId: number, eventId: string, step: number): Promise<MeetingSession> {
   return change(memberId, eventId, async (tx, session) => {
     assertLive(session);
     assertFacilitator(session, memberId);
-    const [{ count }] = (await tx.select({ count: sql<number>`count(*)::int` }).from(meetingTopicNotes).where(eq(meetingTopicNotes.eventId, eventId))) as [{ count: number }];
+    const count = await topicCount(tx, eventId);
     if (!Number.isInteger(step) || step < 0 || step > lastStep(count)) throw new MeetingError("There's no such step.");
     await bump(tx, eventId, { step });
+  });
+}
+
+/* Adds a topic to the end of the agenda as it stands in this meeting (the
+   event's own agenda is left alone), for the people there to review before
+   discussing. Any attendee may; where the wizard is follows (stepAfterTopicAdded). */
+export async function addTopic(memberId: number, eventId: string, item: AgendaItem): Promise<MeetingSession> {
+  const problem = validateAgendaItem(item);
+  if (problem) throw new MeetingError(problem);
+  return change(memberId, eventId, async (tx, session) => {
+    assertLive(session);
+    if (!(await attends(tx, eventId, memberId))) throw new MeetingError("Mark yourself present to change the agenda.");
+    const count = await topicCount(tx, eventId);
+    if (count >= MAX_AGENDA_ITEMS) throw new MeetingError(`Keep the agenda to ${MAX_AGENDA_ITEMS} topics or fewer.`);
+    const details = item.details?.trim();
+    await tx.insert(meetingTopicNotes).values({ eventId, position: count, category: item.category, title: item.title.trim(), details: details ? details : null });
+    await bump(tx, eventId, { step: stepAfterTopicAdded(session.step, count) });
+  });
+}
+
+// takes a topic off the agenda, with whatever was written on it, and closes the gap
+export async function removeTopic(memberId: number, eventId: string, position: number): Promise<MeetingSession> {
+  return change(memberId, eventId, async (tx, session) => {
+    assertLive(session);
+    if (!(await attends(tx, eventId, memberId))) throw new MeetingError("Mark yourself present to change the agenda.");
+    const removed = await tx.delete(meetingTopicNotes).where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.position, position))).returning({ position: meetingTopicNotes.position });
+    if (removed.length === 0) throw new MeetingError("There's no such topic.");
+    // the key is (event, position), so the topics after it close up by way of
+    // negatives, where no two ever share a position part-way
+    await tx.update(meetingTopicNotes).set({ position: sql`-${meetingTopicNotes.position}` }).where(and(eq(meetingTopicNotes.eventId, eventId), sql`${meetingTopicNotes.position} > ${position}`));
+    await tx.update(meetingTopicNotes).set({ position: sql`-${meetingTopicNotes.position} - 1` }).where(and(eq(meetingTopicNotes.eventId, eventId), sql`${meetingTopicNotes.position} < 0`));
+    const count = await topicCount(tx, eventId);
+    await bump(tx, eventId, { step: stepAfterTopicRemoved(session.step, count + 1, position) });
   });
 }
 

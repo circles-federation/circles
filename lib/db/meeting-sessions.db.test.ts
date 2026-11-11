@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { event } from "@/lib/test/factories";
 import { db } from "./client";
 import { insertEvent } from "./events";
-import { finishMeeting, getMeetingForFanout, getMeetingSession, memberHasMeeting, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
+import { addTopic, finishMeeting, getMeetingForFanout, getMeetingSession, memberHasMeeting, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
 import { addCircle, addMember, giveRole, join, resetDb } from "./testing";
 
 /* A live meeting: who may start it and when, who drives, who's there, and
@@ -104,8 +104,8 @@ describe("moving through the steps", () => {
   });
 
   it("stays between attendance and the wrap-up", async () => {
-    expect((await setStep(1, "m1", 4)).step).toBe(4);
-    await expect(setStep(1, "m1", 5)).rejects.toThrow("There's no such step.");
+    expect((await setStep(1, "m1", 5)).step).toBe(5);
+    await expect(setStep(1, "m1", 6)).rejects.toThrow("There's no such step.");
     await expect(setStep(1, "m1", -1)).rejects.toThrow("There's no such step.");
   });
 
@@ -155,6 +155,54 @@ describe("attendance", () => {
   it("starts from who had RSVPed", async () => {
     await insertEvent(event({ id: "m2", circleId: "council", kind: "meeting", agenda: AGENDA, rsvps: [2, 3] }));
     expect((await startMeeting(1, "m2", during)).attendees).toEqual([1, 2, 3]);
+  });
+});
+
+describe("reviewing the agenda", () => {
+  beforeEach(async () => {
+    await startMeeting(1, "m1", during);
+  });
+
+  it("lets an attendee add a topic to the end, leaving the event's own agenda alone", async () => {
+    const s = await addTopic(1, "m1", { category: "explore", title: "  Winter coats ", details: "  who has spares " });
+    expect(s.topics.map((t) => t.title)).toEqual(["Treasurer's report", "Budget", "Winter coats"]);
+    expect(s.topics[2]).toMatchObject({ position: 2, category: "explore", details: "who has spares", notes: "" });
+    const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from event_agenda_items where event_id = 'm1'`);
+    expect(rows[0]?.n).toBe(2);
+  });
+
+  it("is for those who are there, not those who haven't marked themselves", async () => {
+    await expect(addTopic(2, "m1", { category: "report", title: "x" })).rejects.toThrow("Mark yourself present to change the agenda.");
+    await expect(removeTopic(2, "m1", 0)).rejects.toThrow("Mark yourself present to change the agenda.");
+  });
+
+  it("refuses a topic with no title, and one past the limit", async () => {
+    await expect(addTopic(1, "m1", { category: "report", title: "  " })).rejects.toThrow("Give the topic a title.");
+    for (let i = 2; i < 30; i++) await addTopic(1, "m1", { category: "report", title: `t${i}` });
+    await expect(addTopic(1, "m1", { category: "report", title: "one more" })).rejects.toThrow(/30 topics/);
+  });
+
+  it("takes a topic away with its notes and closes the gap", async () => {
+    await addTopic(1, "m1", { category: "explore", title: "Third" });
+    await saveTopicNotes(1, "m1", 2, "third's notes");
+    const s = await removeTopic(1, "m1", 0);
+    expect(s.topics.map((t) => [t.position, t.title])).toEqual([[0, "Budget"], [1, "Third"]]);
+    expect(s.topics[1]?.notes).toBe("third's notes");
+    await expect(removeTopic(1, "m1", 5)).rejects.toThrow("There's no such topic.");
+  });
+
+  it("keeps the wizard where it was: on the same topic, and tasks and the wrap-up after them", async () => {
+    await setStep(1, "m1", 3);
+    expect((await removeTopic(1, "m1", 0)).step).toBe(2);
+    expect((await addTopic(1, "m1", { category: "report", title: "New" })).step).toBe(2);
+    await setStep(1, "m1", 5);
+    expect((await addTopic(1, "m1", { category: "report", title: "Newer" })).step).toBe(6);
+    expect((await removeTopic(1, "m1", 1)).step).toBe(5);
+  });
+
+  it("is closed once the meeting has finished", async () => {
+    await finishMeeting(1, "m1");
+    await expect(addTopic(1, "m1", { category: "report", title: "x" })).rejects.toThrow("This meeting has finished.");
   });
 });
 

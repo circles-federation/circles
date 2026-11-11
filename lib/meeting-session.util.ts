@@ -11,16 +11,31 @@ export function canRunMeeting(e: Pick<Event, "date" | "start" | "end">, now: Dat
   return now >= eventStartsAt(e) && now.getTime() < eventEndsAt(e).getTime() + MEETING_RUN_GRACE_MS;
 }
 
-export type MeetingStep = { kind: "attendance" } | { kind: "topic"; index: number } | { kind: "tasks" } | { kind: "wrapup" };
+export type MeetingStep = { kind: "attendance" } | { kind: "agenda" } | { kind: "topic"; index: number } | { kind: "tasks" } | { kind: "wrapup" };
 
-// attendance, a step per topic, tasks, then the wrap-up
-export const lastStep = (topicCount: number): number => topicCount + 2;
+// attendance, the agenda's review, a step per topic, tasks, then the wrap-up
+export const lastStep = (topicCount: number): number => topicCount + 3;
 
 export function stepAt(step: number, topicCount: number): MeetingStep | null {
   if (!Number.isInteger(step) || step < 0 || step > lastStep(topicCount)) return null;
   if (step === 0) return { kind: "attendance" };
-  if (step <= topicCount) return { kind: "topic", index: step - 1 };
-  return step === topicCount + 1 ? { kind: "tasks" } : { kind: "wrapup" };
+  if (step === 1) return { kind: "agenda" };
+  if (step <= topicCount + 1) return { kind: "topic", index: step - 2 };
+  return step === topicCount + 2 ? { kind: "tasks" } : { kind: "wrapup" };
+}
+
+/* Topics are added and removed while the meeting's going, so where it is has to
+   follow what it was on: a topic added puts tasks and the wrap-up a step
+   later; one removed takes them a step earlier, and those after it (the one
+   on screen included, if it's the one that goes, which moves to what
+   followed it). */
+export function stepAfterTopicAdded(step: number, topicCount: number): number {
+  return step >= topicCount + 2 ? step + 1 : step;
+}
+
+export function stepAfterTopicRemoved(step: number, topicCount: number, position: number): number {
+  if (step >= topicCount + 2) return step - 1;
+  return step >= 2 && position < step - 2 ? step - 1 : step;
 }
 
 // the circle's Facilitator if they're still a member, otherwise whoever started it
