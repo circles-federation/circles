@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { event } from "@/lib/test/factories";
 import { db } from "./client";
 import { insertEvent } from "./events";
-import { addMeetingTask, addTopic, finishMeeting, getMeetingForFanout, getMeetingSession, memberHasMeeting, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
+import { addMeetingTask, addTopic, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingSession, memberHasMeeting, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
 import { addCircle, addMember, giveRole, join, resetDb } from "./testing";
 
 /* A live meeting: who may start it and when, who drives, who's there, and
@@ -278,6 +278,43 @@ describe("notes", () => {
     expect(s.topics[0]?.notes).toBe("corrected");
     expect(s.minutesEditedBy).toBe(2);
     await expect(saveTopicNotes(4, "m1", 0, "no")).rejects.toThrow("That meeting doesn't exist.");
+  });
+});
+
+describe("correcting the minutes", () => {
+  beforeEach(async () => {
+    await startMeeting(1, "m1", during);
+    await saveTopicNotes(1, "m1", 0, "first");
+    await saveTopicNotes(1, "m1", 1, "second");
+  });
+
+  it("is for a meeting that has finished, not one that's going", async () => {
+    await expect(saveMinutes(1, "m1", [{ position: 0, notes: "x" }])).rejects.toThrow(/once the meeting has finished/);
+  });
+
+  it("saves the topics sent as one edit by the member, and leaves the others alone", async () => {
+    await finishMeeting(1, "m1");
+    await saveMinutes(3, "m1", [{ position: 1, notes: "third's second" }]);
+    const s = await saveMinutes(2, "m1", [{ position: 0, notes: "second's first" }]);
+    expect(s.topics.map((t) => t.notes)).toEqual(["second's first", "third's second"]);
+    expect(s.minutesEditedBy).toBe(2);
+    expect(s.minutesEditedAt).toBeDefined();
+  });
+
+  it("counts once in the rev however many topics changed", async () => {
+    await finishMeeting(1, "m1");
+    const before = (await getMeetingSession(1, "m1"))!.rev;
+    expect((await saveMinutes(1, "m1", [{ position: 0, notes: "a" }, { position: 1, notes: "b" }])).rev).toBe(before + 1);
+  });
+
+  it("is for the circle's members, and refuses a bad edit without saving any of it", async () => {
+    await finishMeeting(1, "m1");
+    await expect(saveMinutes(4, "m1", [{ position: 0, notes: "x" }])).rejects.toThrow("That meeting doesn't exist.");
+    await expect(saveMinutes(1, "m1", [])).rejects.toThrow("There's nothing to save.");
+    await expect(saveMinutes(1, "m1", [{ position: 0, notes: "x" }, { position: 0, notes: "y" }])).rejects.toThrow("A topic can only be edited once.");
+    await expect(saveMinutes(1, "m1", [{ position: 0, notes: "changed" }, { position: 9, notes: "y" }])).rejects.toThrow("There's no such topic.");
+    await expect(saveMinutes(1, "m1", [{ position: 0, notes: "x".repeat(20_001) }])).rejects.toThrow(/up to 20,000/);
+    expect((await getMeetingSession(1, "m1"))?.topics.map((t) => t.notes)).toEqual(["first", "second"]);
   });
 });
 

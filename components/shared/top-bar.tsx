@@ -101,6 +101,7 @@ function pageTitle(pathname: string, circles: Circle[], events: Event[], members
     if (id === "new") return "New event";
     if (sub === "edit") return "Edit event";
     if (sub === "live") return "Meeting";
+    if (sub === "minutes") return "Edit minutes";
     return events.find((e) => e.id === id)?.title ?? "Events";
   }
   if (section === "profile") {

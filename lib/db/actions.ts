@@ -232,6 +232,10 @@ export async function saveMeetingNotesAction(eventId: string, position: number, 
   return asMember((memberId) => meetingSessions.saveTopicNotes(memberId, eventId, position, notes));
 }
 
+export async function saveMeetingMinutesAction(eventId: string, edits: { position: number; notes: string }[]) {
+  return asMember((memberId) => meetingSessions.saveMinutes(memberId, eventId, edits));
+}
+
 export async function finishMeetingAction(eventId: string) {
   return asMember((memberId) => meetingSessions.finishMeeting(memberId, eventId));
 }

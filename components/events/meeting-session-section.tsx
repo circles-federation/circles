@@ -6,28 +6,22 @@ import { MeetingMinutes } from "./meeting-minutes";
 import { Button, Eyebrow } from "@/components/shared";
 import { useToast } from "@/components/shared/toast";
 import { startMeetingAction } from "@/lib/db/actions";
-import { awaitingConsent } from "@/lib/governance.util";
 import { useClock, useMemberById } from "@/lib/hooks";
 import { canRunMeeting } from "@/lib/meeting-session.util";
-import { eventStartsAt } from "@/lib/events.util";
-import { useMeetingSession } from "@/lib/use-meeting-session";
-import type { Event } from "@/lib/types";
+import type { Event, MeetingSession } from "@/lib/types";
 
 /* What a meeting's page says about its being held, for the circle's members:
    from its start time, a card to run it, or while it's going to join it (the
    same wizard, for everyone), and once it's finished its minutes. The meeting
-   itself is /events/[id]/live. */
-export function MeetingSessionSection({ event: e }: { event: Event }) {
+   itself is /events/[id]/live. The page holds the session (from the meeting's
+   stream, opened only once it could have begun), `undefined` until it's read. */
+export function MeetingSessionSection({ event: e, session }: { event: Event; session: MeetingSession | null | undefined }) {
   const now = useClock();
   const router = useRouter();
   const { showToast } = useToast();
   const memberById = useMemberById();
   const [starting, setStarting] = useState(false);
-  // the stream is opened only once the meeting could have begun, so the page
-  // of one still to come holds no connection
-  const open = !e.cancelled && !awaitingConsent(e) && now !== null && now >= eventStartsAt(e).getTime();
-  const { session } = useMeetingSession(e.id, open);
-  if (!open || session === undefined) return null;
+  if (now === null || session === undefined) return null;
 
   if (session?.status === "finished") {
     return (

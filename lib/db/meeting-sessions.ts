@@ -262,6 +262,32 @@ export async function saveTopicNotes(memberId: number, eventId: string, position
   });
 }
 
+/* Corrects the minutes of a meeting that's finished: the notes of the topics
+   that changed, saved together as one edit by this member. Only what's sent is
+   written, so someone else's correction to another topic isn't undone by a
+   copy that was out of date. Any member of the circle may; while the meeting's
+   live the wizard's own notes (saveTopicNotes) are what's written. */
+export async function saveMinutes(memberId: number, eventId: string, edits: { position: number; notes: string }[]): Promise<MeetingSession> {
+  if (edits.length === 0) throw new MeetingError("There's nothing to save.");
+  if (new Set(edits.map((e) => e.position)).size !== edits.length) throw new MeetingError("A topic can only be edited once.");
+  for (const edit of edits) {
+    const problem = validateNotes(edit.notes);
+    if (problem) throw new MeetingError(problem);
+  }
+  return change(memberId, eventId, async (tx, session) => {
+    if (session.status !== "finished") throw new MeetingError("The minutes can be corrected once the meeting has finished.");
+    for (const { position, notes } of edits) {
+      const updated = await tx
+        .update(meetingTopicNotes)
+        .set({ notes })
+        .where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.position, position)))
+        .returning({ position: meetingTopicNotes.position });
+      if (updated.length === 0) throw new MeetingError("There's no such topic.");
+    }
+    await bump(tx, eventId, { minutesEditedBy: memberId, minutesEditedAt: new Date() });
+  });
+}
+
 // the facilitator closes the meeting; its minutes stay editable
 export async function finishMeeting(memberId: number, eventId: string, now: Date = new Date()): Promise<MeetingSession> {
   return change(memberId, eventId, async (tx, session) => {

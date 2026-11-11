@@ -95,6 +95,7 @@ const CALLS: Record<string, unknown[]> = {
   setMeetingPresentAction: ["x", 1, true],
   saveMeetingNotesAction: ["x", 0, "notes"],
   finishMeetingAction: ["x"],
+  saveMeetingMinutesAction: ["x", [{ position: 0, notes: "n" }]],
 };
 
 const call = (name: string) => (actions as unknown as Record<string, (...args: unknown[]) => Promise<{ ok: boolean }>>)[name]!(...CALLS[name]!);
