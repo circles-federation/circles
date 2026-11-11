@@ -49,7 +49,7 @@ export function MeetingSessionSection({ event: e, session }: { event: Event; ses
   };
 
   return (
-    <section className="mt-6 flex flex-wrap items-center justify-between gap-4 bg-ink p-6 text-paper">
+    <section className="my-6 flex flex-wrap items-center justify-between gap-4 bg-ink p-6 text-paper">
       <div className="min-w-0">
         <Eyebrow className="text-paper">{live ? "Meeting in progress" : "Ready to begin"}</Eyebrow>
         <p className="mt-1 font-serif text-base">

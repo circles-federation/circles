@@ -86,6 +86,9 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
 
       {!e.cancelled && <ShiftStatusBanner event={e} />}
 
+      {/* the meeting card is the page's main job once it's time, so it leads the RSVP */}
+      {isMeeting(e) && <MeetingSessionSection event={e} session={session} />}
+
       <HostRsvpRow
         event={e}
         going={rsvpState[e.id]}
@@ -96,8 +99,6 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
       />
 
       {sharing.dialogs}
-
-      {isMeeting(e) && <MeetingSessionSection event={e} session={session} />}
 
       {/* a meeting has its agenda where another event has its description */}
       {isMeeting(e) ? <AgendaSection event={e} /> : <EventDetailsSection event={e} />}
