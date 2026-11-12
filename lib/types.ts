@@ -440,6 +440,44 @@ export interface CircleTask {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+  // the meeting it came out of (see MeetingSession.tasks)
+  meetingEventId?: string;
+}
+
+// one agenda topic as a live meeting holds it: copied from the agenda when the
+// meeting starts, so the minutes stay as they were even if the agenda is edited
+export interface MeetingTopic {
+  // stable: a topic's position moves when another is removed
+  id: string;
+  position: number;
+  category: AgendaCategory;
+  title: string;
+  details?: string;
+  // Markdown; decisions are written here
+  notes: string;
+}
+
+// a meeting being held, or held (lib/db/meeting-sessions.ts): seen and changed
+// by the meeting's circle's members alone
+export interface MeetingSession {
+  eventId: string;
+  status: "live" | "finished";
+  // where the wizard is: see stepAt in lib/meeting-session.util.ts
+  step: number;
+  // the only one who moves it on and finishes it; any attendee can take over
+  facilitatorId: number | null;
+  // who's there: the event's RSVPs, which marking someone present writes
+  attendees: number[];
+  topics: MeetingTopic[];
+  // the tasks made in this meeting, oldest first: they live on in the circle's
+  // backlog, and are listed here so the minutes can say what came of it
+  tasks: CircleTask[];
+  startedAt: string;
+  finishedAt?: string;
+  // counts every change, for whatever polls or streams the session
+  rev: number;
+  minutesEditedBy?: number;
+  minutesEditedAt?: string;
 }
 
 /* A post on a neighborhood's bulletin, by one of the Circles in it, seen only

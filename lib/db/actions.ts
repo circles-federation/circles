@@ -11,6 +11,7 @@ import { UserFacingError } from "./errors";
 import * as eventShares from "./event-shares";
 import * as events from "./events";
 import * as invitations from "./invitations";
+import * as meetingSessions from "./meeting-sessions";
 import * as messages from "./messages";
 import * as members from "./members";
 import * as neighborhoodPosts from "./neighborhood-posts";
@@ -33,7 +34,7 @@ import { newCircleDecider } from "@/lib/proposals.util";
 import { indexCircles } from "@/lib/circles.util";
 import type { ResourceInput } from "@/lib/resources.util";
 import type { MessageInput } from "@/lib/messages.util";
-import type { AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges, TaskStatus } from "@/lib/types";
+import type { AgendaItem, AvailabilityWindow, Circle, ConsentResponse, NotificationSettings, ProposalChanges, TaskStatus } from "@/lib/types";
 
 /* AppStateProvider is a Client Component and can't hold a real DB
    connection — Drizzle's Postgres driver is Node-only. These thin wrappers
@@ -189,6 +190,54 @@ export async function getChatUnreadAction() {
 
 export async function markChatReadAction(circleId: string, lastReadId: number) {
   return asMember((memberId) => chat.markChatRead(memberId, circleId, lastReadId));
+}
+
+/* A live meeting (lib/db/meeting-sessions.ts checks who may do what). Each
+   hands back the session as it is afterwards; whoever else is watching hears
+   of it over the meeting's stream. */
+export async function startMeetingAction(eventId: string) {
+  return asMember((memberId) => meetingSessions.startMeeting(memberId, eventId));
+}
+
+export async function setMeetingStepAction(eventId: string, step: number) {
+  return asMember((memberId) => meetingSessions.setStep(memberId, eventId, step));
+}
+
+// a task from the meeting: whoever it's given to is told once, as for any task
+export async function addMeetingTaskAction(eventId: string, input: TaskInput) {
+  const result = await asMember((memberId) => meetingSessions.addMeetingTask(memberId, eventId, input).then((r) => ({ ...r, assignedBy: memberId })));
+  if (!result.ok) return result;
+  const { session, task, assignedTo, assignedBy } = result.value;
+  if (assignedTo !== null) after(() => tellAssignee(task.id, assignedTo, assignedBy));
+  return { ok: true as const, value: { session, task } };
+}
+
+export async function addMeetingTopicAction(eventId: string, item: AgendaItem) {
+  return asMember((memberId) => meetingSessions.addTopic(memberId, eventId, item));
+}
+
+export async function removeMeetingTopicAction(eventId: string, topicId: string) {
+  return asMember((memberId) => meetingSessions.removeTopic(memberId, eventId, topicId));
+}
+
+export async function takeOverMeetingAction(eventId: string) {
+  return asMember((memberId) => meetingSessions.takeOverFacilitator(memberId, eventId));
+}
+
+export async function setMeetingPresentAction(eventId: string, targetId: number, present: boolean) {
+  return asMember((memberId) => meetingSessions.setPresent(memberId, eventId, targetId, present));
+}
+
+export async function saveMeetingNotesAction(eventId: string, topicId: string, notes: string) {
+  return asMember((memberId) => meetingSessions.saveTopicNotes(memberId, eventId, topicId, notes));
+}
+
+export async function saveMeetingMinutesAction(eventId: string, edits: { topicId: string; notes: string }[]) {
+  return asMember((memberId) => meetingSessions.saveMinutes(memberId, eventId, edits));
+}
+
+export async function finishMeetingAction(eventId: string) {
+  return asMember((memberId) => meetingSessions.finishMeeting(memberId, eventId));
 }
 
 async function asMember<T>(run: (memberId: number) => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; error: string }> {

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { circleHasTasks } from "@/lib/circles.util";
-import { db } from "./client";
+import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { circleMembers, circleTasks, circles, members } from "./schema";
 import { TASK_STATUSES, validateTask, type TaskInput } from "@/lib/tasks.util";
@@ -33,6 +33,7 @@ function toTask(row: TaskRow): CircleTask {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     ...(row.completedAt ? { completedAt: row.completedAt.toISOString() } : {}),
+    ...(row.meetingEventId !== null ? { meetingEventId: row.meetingEventId } : {}),
   };
 }
 
@@ -50,10 +51,10 @@ export async function getTasksForMember(memberId: number): Promise<CircleTask[]>
 /* The circle's members, if `memberId` is one of them and it's a circle with
    tasks (circleHasTasks: not a neighborhood or the city, whose members are
    their residents, too many for one backlog, nor a group that hasn't switched them on); refused otherwise. */
-async function membersOf(memberId: number, circleId: string): Promise<number[]> {
-  const [circle] = await db.select({ type: circles.type, parentId: circles.parentId, features: circles.features }).from(circles).where(eq(circles.id, circleId));
+async function membersOf(memberId: number, circleId: string, tx: Tx | typeof db = db): Promise<number[]> {
+  const [circle] = await tx.select({ type: circles.type, parentId: circles.parentId, features: circles.features }).from(circles).where(eq(circles.id, circleId));
   if (!circle || !circleHasTasks(circle)) throw new TaskError("That circle doesn't have tasks.");
-  const ids = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.id);
+  const ids = (await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, circleId))).map((r) => r.id);
   if (!ids.includes(memberId)) throw new TaskError("Only the circle's members can see or change its tasks.");
   return ids;
 }
@@ -79,11 +80,18 @@ export interface TaskChange {
   assignedBy: number;
 }
 
-export async function createTask(memberId: number, circleId: string, input: TaskInput): Promise<TaskChange> {
-  const fields = clean(input, await membersOf(memberId, circleId));
-  const [row] = await db
+// the tasks made in a meeting (lib/db/meeting-sessions.ts), oldest first
+export async function getMeetingTasks(tx: Tx | typeof db, eventId: string): Promise<CircleTask[]> {
+  const rows = await tx.select().from(circleTasks).where(eq(circleTasks.meetingEventId, eventId)).orderBy(asc(circleTasks.createdAt));
+  return rows.map(toTask);
+}
+
+// `meetingEventId`: the meeting it came out of, which has checked who may
+export async function createTask(memberId: number, circleId: string, input: TaskInput, meetingEventId?: string, tx: Tx | typeof db = db): Promise<TaskChange> {
+  const fields = clean(input, await membersOf(memberId, circleId, tx));
+  const [row] = await tx
     .insert(circleTasks)
-    .values({ id: randomUUID(), circleId, createdBy: memberId, ...fields, completedAt: fields.status === "done" ? new Date() : null })
+    .values({ id: randomUUID(), circleId, createdBy: memberId, ...fields, ...(meetingEventId ? { meetingEventId } : {}), completedAt: fields.status === "done" ? new Date() : null })
     .returning();
   const task = toTask(row!);
   return { task, assignedTo: task.assigneeId !== undefined && task.assigneeId !== memberId ? task.assigneeId : null, assignedBy: memberId };

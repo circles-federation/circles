@@ -32,3 +32,13 @@ export function validateAgenda(items: AgendaItem[]): string | null {
   }
   return null;
 }
+
+// the first problem with one topic added to a meeting under way, or null
+export function validateAgendaItem(item: AgendaItem): string | null {
+  const title = item.title.trim();
+  if (!AGENDA_CATEGORIES.includes(item.category)) return "Pick Report, Explore or Decide.";
+  if (!title) return "Give the topic a title.";
+  if (title.length > AGENDA_TITLE_MAX) return `Keep the title under ${AGENDA_TITLE_MAX} characters.`;
+  if ((item.details ?? "").length > AGENDA_DETAILS_MAX) return `Keep the details under ${AGENDA_DETAILS_MAX} characters.`;
+  return null;
+}

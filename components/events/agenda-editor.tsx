@@ -16,6 +16,44 @@ export interface AgendaDraft {
 
 export const BLANK_AGENDA_ITEM: AgendaDraft = { category: "explore", title: "", details: "" };
 
+/* Report, Explore or Decide as three choices, with a line on what the chosen
+   one means so the choice is easy to make. */
+export function AgendaCategoryChoice({ value, onChange, label }: { value: AgendaCategory; onChange: (category: AgendaCategory) => void; label: string }) {
+  return (
+    <>
+      <div role="radiogroup" aria-label={label} className="grid grid-cols-3 gap-2">
+        {AGENDA_CATEGORIES.map((c) => {
+          const chosen = value === c;
+          return (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={chosen}
+              onClick={() => onChange(c)}
+              title={AGENDA_CATEGORY[c].label}
+              className={clsx(
+                "ink-press flex cursor-pointer items-center justify-center gap-2 border bg-paper px-2 py-1.5 font-sans text-sm font-bold min-[480px]:justify-start",
+                chosen ? "border-agenda text-agenda" : "border-faint text-soft",
+              )}
+            >
+              <AgendaBadge category={c} outline={!chosen} />
+              {/* just the letter on a phone, where three labels don't fit
+                  side by side; the hint below names the chosen one */}
+              <span className="sr-only min-[480px]:not-sr-only">{AGENDA_CATEGORY[c].label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+        {/* named here on a phone, where the buttons show only letters */}
+        <strong className="font-bold text-agenda min-[480px]:hidden">{AGENDA_CATEGORY[value].label}: </strong>
+        {AGENDA_CATEGORY[value].hint}
+      </p>
+    </>
+  );
+}
+
 /* The event form's agenda for a meeting: an ordered list of items, each
    marked Report, Explore or Decide (see lib/agenda.util.ts), with a line on
    what the chosen one means so the choice is easy to make. Items can be
@@ -51,35 +89,7 @@ export function AgendaEditor({ items, onChange }: { items: AgendaDraft[]; onChan
             </div>
           </div>
 
-          <div role="radiogroup" aria-label={`Topic ${i + 1}: what the circle will do with it`} className="grid grid-cols-3 gap-2">
-            {AGENDA_CATEGORIES.map((c) => {
-              const chosen = item.category === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={chosen}
-                  onClick={() => set(i, { category: c })}
-                  title={AGENDA_CATEGORY[c].label}
-                  className={clsx(
-                    "ink-press flex cursor-pointer items-center justify-center gap-2 border bg-paper px-2 py-1.5 font-sans text-sm font-bold min-[480px]:justify-start",
-                    chosen ? "border-agenda text-agenda" : "border-faint text-soft",
-                  )}
-                >
-                  <AgendaBadge category={c} outline={!chosen} />
-                  {/* just the letter on a phone, where three labels don't fit
-                      side by side; the hint below names the chosen one */}
-                  <span className="sr-only min-[480px]:not-sr-only">{AGENDA_CATEGORY[c].label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
-            {/* named here on a phone, where the buttons show only letters */}
-            <strong className="font-bold text-agenda min-[480px]:hidden">{AGENDA_CATEGORY[item.category].label}: </strong>
-            {AGENDA_CATEGORY[item.category].hint}
-          </p>
+          <AgendaCategoryChoice value={item.category} onChange={(category) => set(i, { category })} label={`Topic ${i + 1}: what the circle will do with it`} />
 
           <div className="mt-3 flex flex-col gap-3">
             <Input value={item.title} onChange={(e) => set(i, { title: e.target.value })} placeholder="Topic (e.g. Repair budget)" aria-label={`Topic ${i + 1} title`} />

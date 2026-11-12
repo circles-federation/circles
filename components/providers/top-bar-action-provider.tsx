@@ -14,6 +14,9 @@ export interface TopBarAction {
   // proposes the change for its circle's consent rather than making it
   // (Manage circle's Details and Roles). The default is a plain icon.
   variant?: "plain" | "primary" | "propose";
+  // a word beside the circle, for an action that's easy to miss or costly to
+  // mistake for another (a wizard's Next and Finish)
+  text?: string;
 }
 
 type Shown = Omit<TopBarAction, "onAction">;
@@ -69,11 +72,12 @@ export function useTopBarAction(action: TopBarAction | null) {
   const icon = action?.icon;
   const disabled = action?.disabled;
   const variant = action?.variant;
+  const text = action?.text;
   useEffect(() => {
     if (!setShown || !label || !icon) return;
-    setShown({ label, icon, disabled, variant });
+    setShown({ label, icon, disabled, variant, text });
     return () => setShown(null);
-  }, [setShown, label, icon, disabled, variant]);
+  }, [setShown, label, icon, disabled, variant, text]);
 }
 
 /* A page's own menu for TopBar's right-hand slot, where what it offers runs

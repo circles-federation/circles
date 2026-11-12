@@ -8,16 +8,18 @@ import { EventDetailsSection } from "./event-details-section";
 import { EventMasthead } from "./event-masthead";
 import { HostRsvpRow } from "./host-rsvp-row";
 
+import { FinishedMeetingSection, MeetingSessionSection } from "./meeting-session-section";
 import { RoleSlotsSection } from "./role-slots-section";
 import { useEventSharing } from "./event-sharing";
 import { ShiftStatusBanner } from "./shift-status-banner";
-import { ArrowUpTrayIcon, CalendarDaysIcon, LinkSlashIcon, PencilIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, CalendarDaysIcon, DocumentTextIcon, LinkSlashIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import type { TopBarMenuItem } from "@/components/shared";
 import { indexCircles } from "@/lib/circles.util";
 import { isPastEvent } from "@/lib/format.util";
-import { isAttending } from "@/lib/events.util";
-import { useEventEnded } from "@/lib/hooks";
+import { useClock, useEventEnded } from "@/lib/hooks";
+import { eventStartsAt, isAttending } from "@/lib/events.util";
+import { useMeetingSession } from "@/lib/use-meeting-session";
 import { awaitingConsent, canManageEvent, isMeeting } from "@/lib/governance.util";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { ProposalBanner } from "@/components/circles/proposal-banner";
@@ -53,6 +55,11 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
      calendar, which can be chosen once you're going: the phone offers to add the file
      (app/api/events/[id]/calendar), but not while its circle is deciding it,
      since consenting marks you going and it may never be held. */
+  // a meeting's session, kept current by its stream, which is opened only once
+  // it could have begun, so the page of one still to come holds no connection
+  const now = useClock();
+  const meetingOpen = isMeeting(e) && !e.cancelled && !awaitingConsent(e) && now !== null && now >= eventStartsAt(e).getTime();
+  const { session } = useMeetingSession(e.id, meetingOpen);
   const live = !e.cancelled && !ended && !awaitingConsent(e);
   const canEdit = canManageEvent(e, profile, indexCircles(circles)) && !e.cancelled && !isPastEvent(e) && !awaitingConsent(e);
   const sharing = useEventSharing(e.id, e.title, live && !isMeeting(e));
@@ -62,6 +69,8 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
     menu.push({ label: "Share", icon: ArrowUpTrayIcon, onSelect: sharing.share });
     if (sharing.stop) menu.push({ label: "Stop sharing", icon: LinkSlashIcon, onSelect: sharing.stop });
   }
+  // once it's finished, its circle's members can correct the minutes
+  if (session?.status === "finished") menu.push({ label: "Edit minutes", href: `/events/${e.id}/minutes`, icon: DocumentTextIcon });
   // shown before you're going, but only to be chosen once you are
   if (live) menu.push({ label: "Add to calendar", href: `/api/events/${e.id}/calendar`, file: true, icon: CalendarDaysIcon, disabled: !(isAttending(e, profile.id) || rsvpState[e.id]) });
   useTopBarMenu(menu);
@@ -77,6 +86,9 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
 
       {!e.cancelled && <ShiftStatusBanner event={e} />}
 
+      {/* the meeting card is the page's main job once it's time, so it leads the RSVP */}
+      {isMeeting(e) && <MeetingSessionSection event={e} session={session} />}
+
       <HostRsvpRow
         event={e}
         going={rsvpState[e.id]}
@@ -89,7 +101,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
       {sharing.dialogs}
 
       {/* a meeting has its agenda where another event has its description */}
-      {isMeeting(e) ? <AgendaSection event={e} /> : <EventDetailsSection event={e} />}
+      {isMeeting(e) ? session?.status === "finished" ? <FinishedMeetingSection session={session} /> : <AgendaSection event={e} /> : <EventDetailsSection event={e} />}
 
       <RoleSlotsSection event={e} profile={profile} onToggleRoleSlot={onToggleRoleSlot} onOpenMember={onOpenMember} />
 

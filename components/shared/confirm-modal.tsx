@@ -14,7 +14,8 @@ interface ConfirmModalProps {
   onCancel: () => void;
   // danger for something lost (discarding, cancelling); flame for sending
   // something to a circle's members to decide
-  tone?: "danger" | "flame";
+  // (ink for a change that loses nothing and sends nothing: taking a role over)
+  tone?: "danger" | "flame" | "ink";
 }
 
 /* Generic "are you sure" dialog — currently only used to guard discarding
@@ -42,7 +43,7 @@ export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConf
           data-pressed={pressed("confirm")}
           className={clsx(
             "flex-1 cursor-pointer bg-paper py-4 font-sans text-xs font-bold uppercase tracking-caps",
-            tone === "flame" ? "flame-press text-flame" : "danger-press text-danger"
+            tone === "flame" ? "flame-press text-flame" : tone === "ink" ? "ink-press text-ink" : "danger-press text-danger"
           )}
         >
           {confirmLabel}

@@ -113,6 +113,9 @@ export interface AppStateValue {
   // only its status (the table's round button), saying so in a toast if refused
   setTaskStatus(id: string, status: TaskStatus): Promise<MutationResult>;
   removeTask(id: string): Promise<MutationResult>;
+  // a task a live meeting made (it checks and saves them itself): taken into
+  // state so the circle's Tasks and Home show it without waiting for a refresh
+  adoptTask(task: CircleTask): void;
   // a circle's Inbox: writing to it (the form shows a refusal itself), and a
   // member opening a message, handling it, or filing it as Done
   sendMessage(circleId: string, input: MessageInput): Promise<MutationResult>;
@@ -569,6 +572,10 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true };
   }
 
+  function adoptTask(task: CircleTask) {
+    setTasks((prev) => (prev.some((t) => t.id === task.id) ? prev : [...prev, task]));
+  }
+
   async function removeTask(id: string): Promise<MutationResult> {
     const result = await dbDeleteTask(id).catch(unreachable);
     if (!result.ok) {
@@ -822,6 +829,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         updateTask: tracked(updateTask),
         setTaskStatus: tracked(setTaskStatus),
         removeTask: tracked(removeTask),
+        adoptTask: tracked(adoptTask),
         sendMessage: tracked(sendMessage),
         markMessageRead: tracked(markMessageRead),
         assignMessage: tracked(assignMessage),
