@@ -24,7 +24,6 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
   const gov = awaitingConsent(e);
   const govAccent = "flame";
   const past = isPastEvent(e);
-  const topBorderClass = past ? "border-t-soft" : gov ? "border-t-flame" : "border-t-ink";
 
   const link = meetingLink(e.location);
   const govLabel = gov && <span className="text-flame-text">Proposed</span>;
@@ -43,12 +42,7 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
        Wide, the date tile sits to the left of all that and the eyebrow is the
        time; on a phone there's no room for the tile, so the eyebrow is the
        date, with the time on a line of its own beneath it. */
-    <div
-      className={clsx(
-        "relative isolate grid grid-cols-1 border-t-[3px] border-b border-b-ink pt-5 pb-6 min-[720px]:grid-cols-[auto_minmax(0,1fr)] min-[720px]:gap-x-6",
-        topBorderClass
-      )}
-    >
+    <div className="relative isolate grid grid-cols-1 border-b border-b-ink pt-5 pb-6 min-[720px]:grid-cols-[auto_minmax(0,1fr)] min-[720px]:gap-x-6">
       <MastheadGlow />
       <div className="hidden min-[720px]:col-start-1 min-[720px]:row-span-3 min-[720px]:row-start-1 min-[720px]:block">
         <DateTile iso={e.date} large accent={gov ? govAccent : undefined} />

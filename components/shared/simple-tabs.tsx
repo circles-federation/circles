@@ -22,12 +22,11 @@ interface SimpleTabsProps {
 
 /* A plain, left-aligned tab row for switching between content blocks the
    caller renders itself — gray inactive labels, the active one a bold label
-   on a filled ink block, all sitting on a single hairline. Navigation only.
+   on a filled ink block, all sitting on a single hairline (the top bar's lower edge). Navigation only.
 
    On a phone too narrow for every tab (a member of a circle has five), the
    row scrolls sideways, its scrollbar hidden, and the active tab is brought
-   into view; the hairline is drawn inside the scrolling row so it
-   scrolls with the tabs. */
+   into view. */
 export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProps) {
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +50,7 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
           labels would otherwise allow */}
       <div
         ref={rowRef}
-        className="-mt-3 flex gap-2 overflow-x-auto overflow-y-hidden pt-3 pb-3 shadow-[inset_0_-1px_0_var(--color-faint)] [scrollbar-width:none] min-[720px]:gap-3 [&::-webkit-scrollbar]:hidden"
+        className="-mt-3 flex gap-2 overflow-x-auto overflow-y-hidden pt-3 pb-3 [scrollbar-width:none] min-[720px]:gap-3 [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map((t) => {
           const on = t.key === active;

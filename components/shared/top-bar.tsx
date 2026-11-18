@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
+import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, EllipsisHorizontalIcon, HandRaisedIcon, HomeIcon, InboxIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UserPlusIcon, UsersIcon } from "@heroicons/react/24/outline";
@@ -31,7 +31,7 @@ const TABS: [string, string][] = [
   ["/events", "Events"],
 ];
 
-const NAV_LINK = "border-b-2 py-1 font-sans text-xs font-semibold tracking-caps text-ink uppercase no-underline";
+const NAV_LINK = "px-3 py-2 font-sans text-xs font-semibold tracking-caps uppercase no-underline";
 
 interface PageAction {
   href: string;
@@ -181,6 +181,19 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // notch). In a browser tab it's sticky over the scrolling page to the same
   // effect, and the variable goes unused.
   const barRef = useRef<HTMLDivElement>(null);
+  // transparent over the page (and a masthead's wash) until it scrolls, then
+  // solid, so what scrolls under it doesn't show through the title. The scroll
+  // is the document's in a browser tab and <main>'s in the installed app, so it
+  // listens to both (scroll doesn't bubble, hence capture).
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = (e: globalThis.Event) => {
+      const el = e.target instanceof Element ? e.target : document.scrollingElement;
+      setScrolled((el?.scrollTop ?? 0) > 4);
+    };
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", onScroll, { capture: true });
+  }, []);
   useEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
@@ -197,10 +210,8 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
     <div
       ref={barRef}
       className={clsx(
-        "app-chrome sticky top-0 z-50 pt-[env(safe-area-inset-top)] standalone:absolute standalone:inset-x-0",
-        // with a tab row it's solid, the row's hairline its edge; otherwise it
-        // fades from white behind the title to clear at its foot
-        tabs ? "bg-page" : "bg-linear-to-b from-page from-55% via-page/80 via-80% to-transparent",
+        "app-chrome sticky top-0 z-50 border-b border-ink pt-[env(safe-area-inset-top)] transition-colors duration-(--motion-small) standalone:absolute standalone:inset-x-0",
+        scrolled ? "bg-page" : "bg-transparent",
       )}
     >
       {/* the title on the left, the page's action on the right, and on desktop the
@@ -209,7 +220,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
       <div className="relative mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1 min-[720px]:max-w-[calc(50%-9rem)]">
           {!isTabRoot && <GhostIconButton icon={ArrowLeftIcon} label="Back" onClick={goBack} className="-ml-3" />}
-          <span className="truncate font-sans text-xl font-bold tracking-heading">
+          <span className="truncate font-sans text-xl font-extrabold tracking-heading">
             {pageTitle(pathname, circles, events, members, resources)}
           </span>
           {isHomeNeighborhood && <HomeIcon className="ml-1 size-5 shrink-0 text-teal" strokeWidth={2} aria-label="Your neighborhood" />}
@@ -266,10 +277,11 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
                 e.preventDefault();
                 onReselect();
               }}
-              className={clsx(NAV_LINK, "relative", currentTab === href ? "border-b-ink" : "border-b-transparent")}
+              aria-current={currentTab === href ? "page" : undefined}
+              className={clsx(NAV_LINK, "relative", currentTab === href ? "bg-ink text-page" : "text-ink")}
             >
               {label}
-              {href === "/home" && needsAttention && <AttentionDot className="top-0 -right-3" />}
+              {href === "/home" && needsAttention && <AttentionDot className="top-1 right-0.5" />}
             </Link>
           ))}
         </nav>

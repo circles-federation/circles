@@ -31,7 +31,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
 
   return (
     <PageContainer size="normal">
-      <div className="relative isolate border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-6">
+      <div className="relative isolate border-b border-b-ink pt-4 pb-6">
         <MastheadGlow />
         <div className="flex items-center justify-between gap-3">
           {/* as they wrote them, not in small caps */}

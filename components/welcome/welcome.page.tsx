@@ -85,10 +85,10 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-page px-6 py-16">
+    <div className="flex min-h-dvh items-center justify-center overflow-x-clip bg-page px-6 py-16">
       <OfflineBanner className="fixed inset-x-0 top-0 z-50 pt-[calc(0.5rem+env(safe-area-inset-top))]" />
       <div className="w-full max-w-md">
-        <div className="relative isolate border-t-[3px] border-t-ink pt-5">
+        <div className="relative isolate pt-5">
           <MastheadGlow />
           <Eyebrow className="text-soft">Welcome to</Eyebrow>
           <h1 className="mt-3 font-serif text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
