@@ -287,10 +287,10 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         </nav>
       </div>
       {tabs && (
-        // its sections, in line with the page beneath (PageContainer's normal
+        // its sections, in line with the page beneath (PageContainer's wide
         // width). Switching replaces the URL rather than adding a step for
         // Back to retrace; the section showing goes back to its top.
-        <div className="mx-auto max-w-220 px-6">
+        <div className="mx-auto max-w-270 px-6">
           <SimpleTabs
             tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key], icon: CIRCLE_SECTION_ICON[key], count: sectionCount(key, tabs.circle.id) }))}
             active={tabs.active}
