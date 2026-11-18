@@ -132,7 +132,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
               <FolderGrid
                 label="Circles"
                 items={circleFolders}
-                minWidth={300}
+                minWidth={420}
                 renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={false} />}
               />
             )}
@@ -140,7 +140,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
               <FolderGrid
                 label="Groups"
                 items={groupFolders}
-                minWidth={300}
+                minWidth={420}
                 renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} showKindEyebrow={circleIsPrivate(c)} />}
               />
             )}
@@ -148,7 +148,7 @@ export function NeighborhoodPage({ circle, circles, members, profile, onOpenCirc
               <FolderGrid
                 label="Organizations"
                 items={otherFolders}
-                minWidth={300}
+                minWidth={420}
                 renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showNeighborhoodChip={false} />}
               />
             )}

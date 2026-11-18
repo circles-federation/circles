@@ -42,18 +42,18 @@ export function CirclesRootPage({ circles, onOpenCircle }: CirclesRootPageProps)
 
   const sections: Section[] = [
     {
-      key: "neighborhoods", label: "Neighborhoods", minWidth: 300,
+      key: "neighborhoods", label: "Neighborhoods", minWidth: 420,
       items: folders.filter((c) => c.type === "neighborhood"),
       renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow={false} />,
     },
     // groups, in their own grid: a private one (which only its members receive) is marked with a lock
     {
-      key: "groups", label: "Groups", minWidth: 300,
+      key: "groups", label: "Groups", minWidth: 420,
       items: folders.filter(isGroup),
       renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow={circleIsPrivate(c)} />,
     },
     {
-      key: "circles", label: "Organizations", minWidth: 300,
+      key: "circles", label: "Organizations", minWidth: 420,
       items: folders.filter((c) => c.type !== "neighborhood" && !isGroup(c)),
       renderItem: (c: Circle) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} />,
     },
