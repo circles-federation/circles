@@ -4,7 +4,7 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { CheckCircleIcon, CheckIcon, HandRaisedIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import type { MutationResult } from "@/components/providers/app-state-provider";
-import { Button, ConfirmModal, Eyebrow, EyebrowGroup, CappedChip, PageContainer, Section, SectionGroup, TextArea, useToast } from "@/components/shared";
+import { Button, ConfirmModal, Eyebrow, EyebrowGroup, CappedChip, PageContainer, TextArea, useToast } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
 import { useMemberById } from "@/lib/hooks";
 import { OBJECTION_REASON_MAX, RESPONSE_LABEL, isEventProposal, proposalTitle, responseOf } from "@/lib/proposals.util";
@@ -84,13 +84,13 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
   }
 
   return (
-    <PageContainer size="normal">
+    <PageContainer size="wide">
       <div className="pb-2">
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="text-soft">Proposal</Eyebrow>
           <CappedChip onClick={onOpenCircle}>{circle.name}</CappedChip>
         </div>
-        <h1 className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-display">{proposalTitle(p)}</h1>
+        <h1 className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-display min-[960px]:text-[56px]">{proposalTitle(p)}</h1>
         <p className="mt-3 font-serif text-sm text-soft">
           Proposed by{" "}
           {proposer ? (
@@ -107,8 +107,12 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
 
       <Outcome proposal={p} objectorName={objector?.name} />
 
-      <SectionGroup>
-        <Section>
+      {/* two columns from 960px: the change and everyone's answers on the
+          left, yours on the right. On a phone one run, in the order the
+          sections come (`order` over `contents` columns), apart by space */}
+      <div className="mt-8 flex flex-col gap-10 min-[960px]:grid min-[960px]:grid-cols-2 min-[960px]:items-start min-[960px]:gap-x-12">
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
+        <section className="order-1">
           <EyebrowGroup label={ABOUT[p.kind]}>
             <div className="border border-ink bg-paper px-4">
               {p.lines.map((l) => (
@@ -135,10 +139,47 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
               </button>
             )}
           </EyebrowGroup>
-        </Section>
+        </section>
 
+        <section className="order-3">
+          <EyebrowGroup label="Answers">
+            <div className="border border-ink bg-paper px-4">
+              {deciders
+                .map((id) => memberById(id))
+                .filter((m): m is Member => !!m)
+                .map((m) => {
+                  const r = responseOf(p, m.id);
+                  return (
+                    <div key={m.id} className="border-b border-ink py-3 last:border-b-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <button type="button" onClick={() => onOpenMember(m)} className="hit cursor-pointer border-0 bg-transparent p-0 text-left font-sans text-base font-bold text-ink">
+                          {m.name}
+                        </button>
+                        <span className="flex shrink-0 items-center gap-2 font-sans text-sm text-soft">
+                          <span aria-hidden className={clsx("size-2.5 rounded-full", r ? ANSWER_STYLE[r.response].dot : "border border-soft")} />
+                          {r ? RESPONSE_LABEL[r.response] : open ? "No answer yet" : "Didn't answer"}
+                        </span>
+                      </div>
+                      {r?.reason && <p className="mt-1.5 font-serif text-sm leading-snug italic text-body">&ldquo;{r.reason}&rdquo;</p>}
+                    </div>
+                  );
+                })}
+            </div>
+          </EyebrowGroup>
+        </section>
+        {onWithdraw && (
+          <section className="order-4">
+            <p className="mb-3 font-serif text-sm leading-snug text-soft">Withdrawing it means {WITHDRAWN[p.kind]}, and closes this proposal.</p>
+            <Button variant="danger" disabled={withdrawing} onClick={() => setWithdrawing(true)} className="w-full min-[480px]:w-auto">
+              Withdraw
+            </Button>
+            {withdrawError && <p className="mt-3 font-sans text-sm font-bold text-danger">{withdrawError}</p>}
+          </section>
+        )}
+        </div>
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
         {open && (
-          <Section>
+          <section className="order-2">
             <EyebrowGroup label="Your answer">
               {!canAnswer ? (
                 <p className="font-serif text-base text-soft">You proposed this, so you&rsquo;ve consented{consentIsRsvp && <>, and you&rsquo;re down as going</>}.</p>
@@ -146,7 +187,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                 <>
                   {mine && <p className="mb-3 font-serif text-base">You answered: <strong className="font-sans">{RESPONSE_LABEL[mine.response]}</strong>. You can change it until it closes.</p>}
                   {consentIsRsvp && <p className="mb-3 font-serif text-sm leading-snug text-soft">Liking or accepting it also marks you as going.</p>}
-                  <div className="grid grid-cols-1 gap-3 min-[720px]:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
                     {(["like", "accept", "object"] as const).map((r) => {
                       const Icon = ANSWER_STYLE[r].icon;
                       // the black outline is only ever your answer as it stands; red
@@ -196,45 +237,11 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                 </>
               )}
             </EyebrowGroup>
-          </Section>
+          </section>
         )}
 
-        <Section>
-          <EyebrowGroup label="Answers">
-            <div className="border border-ink bg-paper px-4">
-              {deciders
-                .map((id) => memberById(id))
-                .filter((m): m is Member => !!m)
-                .map((m) => {
-                  const r = responseOf(p, m.id);
-                  return (
-                    <div key={m.id} className="border-b border-ink py-3 last:border-b-0">
-                      <div className="flex items-center justify-between gap-3">
-                        <button type="button" onClick={() => onOpenMember(m)} className="hit cursor-pointer border-0 bg-transparent p-0 text-left font-sans text-base font-bold text-ink">
-                          {m.name}
-                        </button>
-                        <span className="flex shrink-0 items-center gap-2 font-sans text-sm text-soft">
-                          <span aria-hidden className={clsx("size-2.5 rounded-full", r ? ANSWER_STYLE[r.response].dot : "border border-soft")} />
-                          {r ? RESPONSE_LABEL[r.response] : open ? "No answer yet" : "Didn't answer"}
-                        </span>
-                      </div>
-                      {r?.reason && <p className="mt-1.5 font-serif text-sm leading-snug italic text-body">&ldquo;{r.reason}&rdquo;</p>}
-                    </div>
-                  );
-                })}
-            </div>
-          </EyebrowGroup>
-        </Section>
-        {onWithdraw && (
-          <Section>
-            <p className="mb-3 font-serif text-sm leading-snug text-soft">Withdrawing it means {WITHDRAWN[p.kind]}, and closes this proposal.</p>
-            <Button variant="danger" disabled={withdrawing} onClick={() => setWithdrawing(true)} className="w-full min-[480px]:w-auto">
-              Withdraw
-            </Button>
-            {withdrawError && <p className="mt-3 font-sans text-sm font-bold text-danger">{withdrawError}</p>}
-          </Section>
-        )}
-      </SectionGroup>
+        </div>
+      </div>
 
       {withdrawing && onWithdraw && (
         <ConfirmModal
@@ -279,20 +286,23 @@ function Outcome({ proposal: p, objectorName }: { proposal: CircleProposal; obje
   const { made, done, notDone } = WORDS[p.kind];
   const [Icon, tone, heading, text] =
     p.status === "open"
-      ? [HandRaisedIcon, "border-l-ink", `Open until ${fmtDateTime(new Date(p.closesAt))}`, `If no one objects by then, it's ${made}. It's ${made} sooner if everyone consents.`]
+      ? [HandRaisedIcon, "bg-flame text-on-action", `Open until ${fmtDateTime(new Date(p.closesAt))}`, `If no one objects by then, it's ${made}. It's ${made} sooner if everyone consents.`]
       : p.status === "passed"
-        ? [CheckCircleIcon, "border-l-leaf", "Passed", `No one objected, so ${done}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
+        ? [CheckCircleIcon, "bg-tint-leaf text-on-action", "Passed", `No one objected, so ${done}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
         : p.status === "withdrawn"
           ? p.lapsed
-            ? [XCircleIcon, "border-l-soft", "Withdrawn automatically", "Its start time came before the circle had decided, so it was withdrawn and the event won't be held. It can be proposed again for another time."]
-            : [XCircleIcon, "border-l-soft", "Withdrawn", `It was withdrawn before it was decided, so it won't be ${notDone}. It can be proposed again.`]
-          : [XCircleIcon, "border-l-danger", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${notDone}. It can be proposed again, changed to meet the objection.`];
+            ? [XCircleIcon, "bg-wash text-soft", "Withdrawn automatically", "Its start time came before the circle had decided, so it was withdrawn and the event won't be held. It can be proposed again for another time."]
+            : [XCircleIcon, "bg-wash text-soft", "Withdrawn", `It was withdrawn before it was decided, so it won't be ${notDone}. It can be proposed again.`]
+          : [XCircleIcon, "bg-tint-danger text-on-action", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${notDone}. It can be proposed again, changed to meet the objection.`];
   return (
-    <div role="status" className={clsx("mt-6 flex items-start gap-3 border border-ink border-l-4 px-5 py-4", tone)}>
-      <Icon className="mt-px size-5 shrink-0" strokeWidth={2} />
+    <div role="status" className="mt-6 flex items-start gap-3 border border-ink bg-paper px-4 py-3">
+      {/* the state in a tile: flame while it waits, as everywhere a decision does */}
+      <span className={clsx("flex size-9 shrink-0 items-center justify-center border border-ink", tone)}>
+        <Icon className="size-5" strokeWidth={2} />
+      </span>
       <div>
         <div className="font-sans text-sm font-extrabold tracking-open">{heading}</div>
-        <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">{text}</p>
+        <p className="mt-1 font-serif text-sm leading-relaxed text-body">{text}</p>
       </div>
     </div>
   );
