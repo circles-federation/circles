@@ -51,14 +51,18 @@ export function mentionsIn(text: string, picked: MentionTarget[]): number[] {
 
 /* A message's rendered HTML (lib/messages.util.ts) with the @names it was
    addressed to picked out. Only text is touched, never a tag's attributes. */
-export function highlightMentions(html: string, names: string[]): string {
+export function highlightMentions(html: string, names: string[], you?: string): string {
   if (names.length === 0) return html;
+  const escapeHtml = (n: string) => n.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const escaped = names
-    .map((n) => n.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/'/g, "(?:'|&#39;)"))
+    .map((n) => escapeHtml(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/'/g, "(?:'|&#39;)"))
     .sort((a, b) => b.length - a.length);
   const pattern = new RegExp(`@(?:${escaped.join("|")})(?![\\p{L}\\p{N}])`, "gu");
+  // a tag of the viewer is marked apart, whichever way the apostrophe was written
+  const plain = (m: string) => m.replace(/&#39;/g, "'");
+  const mine = you === undefined ? null : `@${escapeHtml(you)}`.replace(/&#39;/g, "'");
   return html
     .split(/(<[^>]*>)/)
-    .map((part) => (part.startsWith("<") ? part : part.replace(pattern, (m) => `<span class="chat-mention">${m}</span>`)))
+    .map((part) => (part.startsWith("<") ? part : part.replace(pattern, (m) => `<span class="chat-mention${mine !== null && plain(m) === mine ? " chat-mention-you" : ""}">${m}</span>`)))
     .join("");
 }

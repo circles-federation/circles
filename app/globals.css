@@ -405,16 +405,11 @@ body {
     font-weight: 700;
     color: var(--color-ink);
   }
-  /* a bubble of your own is teal with paper text, so what is ink elsewhere
-     reads in its colour */
-  .chat-bubble-mine .message-text a,
-  .chat-bubble-mine .message-text strong,
-  .chat-bubble-mine .chat-mention {
-    color: inherit;
-  }
-  .chat-bubble-mine .chat-mention {
-    text-decoration: underline;
-    text-underline-offset: 2px;
+  /* a tag of you: a pale yellow marker, black on it in either theme */
+  .chat-mention-you {
+    padding: 0 3px;
+    background: var(--color-tint-warn);
+    color: var(--color-on-action);
   }
   .message-text a {
     color: var(--color-ink);

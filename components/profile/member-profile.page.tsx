@@ -119,7 +119,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         {(m.skills.length > 0 || m.interests.length > 0) && (
           <Section className="flex flex-col gap-6">
             {m.skills.length > 0 && (
-              <EyebrowGroup label="Skills offered">
+              <EyebrowGroup label="Skills">
                 {m.skills.map((s) => <Tag key={s}>{s}</Tag>)}
               </EyebrowGroup>
             )}
