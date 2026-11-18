@@ -343,6 +343,10 @@ body {
    white text on white. This makes it invert against the card instead: a white
    badge with black text. More specific than that rule, so it wins. */
 .ink-press[data-pressed] .ink-press-badge { color: var(--color-ink) !important; }
+/* a date tile inside a pressed row turns with it: clear ground, and its month
+   badge keeps the paper fill with ink text */
+.ink-press[data-pressed] .date-tile { background: transparent !important; }
+.ink-press[data-pressed] .date-tile-badge { background: var(--color-paper) !important; color: var(--color-ink) !important; }
 /* ink-press for a destructive control: it fills red rather than black */
 .danger-press { transition: background var(--motion-press), color var(--motion-press); }
 .danger-press[data-pressed] { background: var(--color-danger) !important; color: var(--color-paper) !important; }

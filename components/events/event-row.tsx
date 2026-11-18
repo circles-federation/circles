@@ -41,7 +41,11 @@ const ROW_ACCENT: Record<RowAccent, string> = {
    this only owns the shape and the accent treatment. */
 export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent", tags, title, titleMuted = false, meta, metaMuted = false, right }: EventRowProps) {
   return (
-    <div className={clsx(
+    <div
+      onClick={() => onOpenEvent(e)}
+      className={clsx(
+      // the whole row is the way in, and inverts while pressed like a card
+      "ink-press cursor-pointer",
       // border-b-faint (not the border-faint shorthand) on purpose: the
       // shorthand also sets border-left-color, which would fight
       // the accent's border below over the same property. Ink between
@@ -53,7 +57,6 @@ export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent"
     )}>
       <DateTile iso={e.date} accent={dateAccent} />
       <button
-        onClick={() => onOpenEvent(e)}
         className="flex-1 cursor-pointer border-none bg-transparent p-0 text-left"
       >
         <div className="flex flex-wrap items-center gap-2">{tags}</div>

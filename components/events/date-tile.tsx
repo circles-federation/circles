@@ -24,10 +24,10 @@ export function DateTile({ iso, large, accent = "ink" }: DateTileProps) {
   const d = parseDay(iso);
   const valid = iso && !isNaN(d.getTime());
   const { border, bg, text } = ACCENT[accent];
-  const tileClass = clsx("shrink-0 border bg-paper text-center", large ? "w-30" : "w-14.5", border);
+  const tileClass = clsx("date-tile shrink-0 border bg-paper text-center", large ? "w-30" : "w-14.5", border);
   // the small tile's month and weekday are the one place under the 11px
   // minimum: any larger and the tile grows too tall for a list on a phone
-  const badgeClass = clsx("font-sans font-bold uppercase tracking-[0.18em]", text, bg, large ? "py-1.5 text-eyebrow" : "py-1 text-[9px]");
+  const badgeClass = clsx("date-tile-badge font-sans font-bold uppercase tracking-[0.18em]", text, bg, large ? "py-1.5 text-eyebrow" : "py-1 text-[9px]");
 
   if (!valid) {
     return (
