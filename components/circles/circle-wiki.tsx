@@ -60,14 +60,12 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
         {lastEdited}
       </div>
 
-      {/* its quick facts right under the masthead, as a small table: each
-          fact's own label is its heading. Before the sections rather than one
-          of them, since it ends on its own ink rule and needs no hairline
-          after it */}
+      {/* its quick facts right under the masthead, each a solid card on the
+          same grey as a tag, a gap between them: its own label is its heading */}
       {c.facts.length > 0 && (
-        <div className="grid grid-cols-2 gap-px border-y border-ink bg-faint min-[720px]:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 min-[720px]:grid-cols-4">
           {c.facts.map(([k, v]) => (
-            <div key={k} className="bg-paper px-4 py-4">
+            <div key={k} className="bg-wash px-4 py-4">
               <Eyebrow className="text-soft">{k}</Eyebrow>
               <div className="mt-2 font-sans text-lg font-extrabold tracking-snug">{v}</div>
             </div>
