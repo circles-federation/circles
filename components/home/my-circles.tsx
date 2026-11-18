@@ -29,10 +29,10 @@ export function MyCircles() {
       ) : (
         // bleeds into the page's padding, so the cards run off the edge; py-1
         // keeps a card's keyboard focus ring from being clipped
-        <ul className="-mx-6 flex snap-x snap-mandatory scroll-px-6 gap-3 overflow-x-auto px-6 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="-mx-6 flex snap-x snap-mandatory scroll-px-6 gap-3 overflow-x-auto px-6 py-1 [scrollbar-width:none] min-[960px]:mx-0 min-[960px]:grid min-[960px]:grid-cols-2 min-[960px]:overflow-visible min-[960px]:px-0 min-[960px]:py-0 [&::-webkit-scrollbar]:hidden">
           {mine.map((c) => (
-            <li key={c.id} className="shrink-0 snap-start">
-              <button type="button" onClick={() => nav.openCircle(c)} className="ink-press flex h-32 w-52 cursor-pointer flex-col items-stretch border border-ink bg-paper p-3 text-left text-ink">
+            <li key={c.id} className="shrink-0 snap-start min-[960px]:shrink">
+              <button type="button" onClick={() => nav.openCircle(c)} className="ink-press flex h-32 w-52 cursor-pointer min-[960px]:w-full flex-col items-stretch border border-ink bg-paper p-3 text-left text-ink">
                 <Eyebrow className="block truncate text-soft">{circleIsPrivate(c) ? <PrivateLabel>{CIRCLE_TYPE_LABEL[c.type]}</PrivateLabel> : CIRCLE_TYPE_LABEL[c.type]}</Eyebrow>
                 <span className="mt-1.5 line-clamp-2 font-sans text-base leading-tight font-extrabold tracking-snug">
                   {c.name}
