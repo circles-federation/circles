@@ -36,8 +36,6 @@ export function ProfileMenu() {
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- the member's own photo, by version */}
             <img src={avatarFor(profile)} alt="" className="size-full object-cover" />
-            {/* a ring drawn inside the circle, over the photo, so it keeps its size */}
-            <span aria-hidden className="absolute inset-0 rounded-full border border-ink" />
           </>
         }
         items={[
