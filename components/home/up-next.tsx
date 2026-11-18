@@ -49,7 +49,7 @@ export function UpNext() {
   return (
     <HomeSection label="Up next" more={{ label: "My events", href: "/events?show=mine" }}>
       {mine.length > 0 ? (
-        <div className="border-t border-ink">
+        <div className="border border-ink bg-paper px-4">
           {mine.map((e) => (
             <LinkRow
               key={e.id}
@@ -63,7 +63,7 @@ export function UpNext() {
       ) : suggested.length > 0 ? (
         <>
           <p className="m-0 mb-3 font-serif text-base text-soft">You’re not going to anything yet. Coming up in your circles:</p>
-          <div className="border-t border-ink">
+          <div className="border border-ink bg-paper px-4">
             {suggested.map((e) => (
               <LinkRow
                 key={e.id}

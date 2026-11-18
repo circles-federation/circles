@@ -24,7 +24,7 @@ export function ReviewPage({ applications, photos }: { applications: PendingAppl
             {applications.length === 0 ? (
               <p className="font-serif text-base text-soft">None waiting. New applications appear here once the applicant has confirmed their email.</p>
             ) : (
-              <div className="border-t border-ink">
+              <div className="border border-ink bg-paper px-4">
                 {applications.map((a) => (
                   <LinkRow
                     key={a.id}
@@ -44,7 +44,7 @@ export function ReviewPage({ applications, photos }: { applications: PendingAppl
             {photos.length === 0 ? (
               <p className="font-serif text-base text-soft">None waiting. A member&apos;s new photo appears here before anyone else sees it.</p>
             ) : (
-              <div className="border-t border-ink">
+              <div className="border border-ink bg-paper px-4">
                 {photos.map((p) => (
                   <LinkRow
                     key={p.memberId}

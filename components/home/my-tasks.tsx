@@ -25,13 +25,13 @@ export function MyTasks() {
 
   return (
     <HomeSection label="My tasks" count={mine.filter((t) => t.status !== "done").length}>
-      <div className="border-t border-ink">
+      <div className="border border-ink bg-paper px-4">
         {mine.map((t) => {
           const done = t.status === "done";
           const due = dueCell(t, today);
           const priority = taskPriority(t.priority);
           return (
-            <div key={t.id} className="flex items-center gap-4 border-b border-faint last:border-b-ink">
+            <div key={t.id} className="flex items-center gap-4 border-b border-ink last:border-b-0">
               <button
                 type="button"
                 onClick={() => toggle(t)}

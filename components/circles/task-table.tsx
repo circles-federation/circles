@@ -22,7 +22,7 @@ interface TaskTableProps {
 
 /* Tasks as one table, whatever their status (what's live, then the back
    burner, then what's done, each soonest due first), under a header
-   row in ink, its rows alternately white and grey: a round button that marks
+   row in ink, one box with ink lines between its rows: a square button that marks
    each done (or not), then its title, status, priority (a column with no
    heading, since each row's mark says what it is), when it's due and who has
    it. A phone keeps the title, priority and due date,
@@ -44,13 +44,13 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
   const today = localDay();
 
   // every heading centred on the header row's height, label or not
-  const heading = clsx(CELL, "py-3 text-left align-middle font-sans text-label leading-none font-bold tracking-caps text-on-chrome uppercase");
+  const heading = clsx(CELL, "py-3 text-left align-middle font-sans text-label leading-none font-bold tracking-caps text-page uppercase");
 
   return (
     // fixed widths, so a long title wraps rather than squeezing the rest
-    <table className="w-full table-fixed border-collapse" aria-label={label}>
-      {/* the header row in chrome (ink, in Sol); on-chrome sets keyboard focus to match */}
-      <thead className="on-chrome bg-chrome">
+    <table className="w-full table-fixed border-collapse border border-ink bg-paper" aria-label={label}>
+      {/* the header row in ink, its text the page colour so it reads in either theme */}
+      <thead className="bg-ink">
         <tr>
           <th scope="col" className="w-11 py-3 pl-3 align-middle">
             <span className="sr-only">Done</span>
@@ -72,8 +72,8 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
           const priority = taskPriority(t.priority);
           const assignee = t.assigneeId !== undefined ? memberById(t.assigneeId) : undefined;
           return (
-            // alternate rows white and grey, darker under the pointer
-            <tr key={t.id} onClick={() => onOpen(t)} className="cursor-pointer align-middle odd:bg-paper even:bg-wash hover:bg-faint">
+            // ink lines between rows, grey under the pointer
+            <tr key={t.id} onClick={() => onOpen(t)} className="cursor-pointer border-t border-ink align-middle hover:bg-wash">
               <td className="py-3 pl-3">
                 <button
                   type="button"
@@ -83,7 +83,7 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                   }}
                   aria-label={done ? `Mark “${t.title}” not done` : `Mark “${t.title}” done`}
                   aria-pressed={done}
-                  className={clsx("hit flex size-6 cursor-pointer items-center justify-center rounded-full border-2 border-ink", done ? "btn-invert btn-ink bg-ink text-paper" : "ink-press bg-paper text-ink")}
+                  className={clsx("hit flex size-6 cursor-pointer items-center justify-center border border-ink", done ? "ink-press border-tint-leaf bg-tint-leaf text-on-action" : "ink-press bg-paper text-ink")}
                 >
                   {done && <CheckIcon className="size-4" strokeWidth={3} aria-hidden />}
                 </button>
@@ -104,8 +104,15 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                     shows in the round button and the struck title) */}
                 {t.status === "doing" && <span className="mt-0.5 block font-serif text-sm text-soft min-[720px]:hidden">In progress</span>}
               </td>
-              <td className={clsx(CELL, "py-3 font-serif text-sm whitespace-nowrap", t.status === "doing" ? "text-ink" : "text-soft", WIDE)}>
-                {TASK_STATUSES.find((s) => s.key === t.status)?.label}
+              <td className={clsx(CELL, "py-3", WIDE)}>
+                <span
+                  className={clsx(
+                    "inline-block border px-2 py-0.5 font-sans text-xs font-bold whitespace-nowrap",
+                    t.status === "doing" ? "border-tint-warn bg-tint-warn text-on-action" : t.status === "done" ? "border-tint-leaf bg-tint-leaf text-on-action" : "border-ink text-ink",
+                  )}
+                >
+                  {TASK_STATUSES.find((s) => s.key === t.status)?.label}
+                </span>
               </td>
               <td className={clsx(CELL, "py-3")}>
                 <span title={priority.label} className="text-lg leading-none">
@@ -113,9 +120,9 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                   <span className="sr-only">{priority.label}</span>
                 </span>
               </td>
-              <td className={clsx(CELL, "py-3 font-serif text-sm whitespace-nowrap", due?.overdue ? "font-bold text-danger" : "text-soft")}>
+              <td className={clsx(CELL, "py-3 whitespace-nowrap")}>
                 {due ? (
-                  <>
+                  <span className={clsx("inline-block border px-2 py-0.5 font-sans text-xs font-bold", due.overdue ? "border-tint-danger bg-tint-danger text-on-action" : "border-ink text-ink")}>
                     {/* a phone leaves out the weekday: "Oct 24" */}
                     {due.text.includes(", ") ? (
                       <>
@@ -126,9 +133,9 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                       due.text
                     )}
                     {due.overdue && <span className="sr-only"> (overdue)</span>}
-                  </>
+                  </span>
                 ) : (
-                  <span className="text-ghost">–</span>
+                  <span className="text-soft">–</span>
                 )}
               </td>
               <td className={clsx(CELL, "py-3 pr-3", WIDE)}>
@@ -138,7 +145,7 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                     <span className="truncate">{assignee.name}</span>
                   </span>
                 ) : (
-                  <span className="font-serif text-sm text-ghost">No one yet</span>
+                  <span className="font-serif text-sm text-soft">No one yet</span>
                 )}
               </td>
             </tr>

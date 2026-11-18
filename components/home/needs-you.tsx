@@ -27,7 +27,7 @@ export function NeedsYou() {
 
   return (
     <HomeSection label={needed > 0 ? "Needs you" : "Your proposals"} {...(needed > 0 ? { count: needed, attention: true } : {})}>
-      <div className="border-t border-ink">
+      <div className="border border-ink bg-paper px-4">
         {reviews > 0 && (
           <LinkRow
             href="/admin/review"
