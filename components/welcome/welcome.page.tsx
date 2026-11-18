@@ -85,11 +85,11 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center overflow-x-clip bg-page px-6 py-16">
+    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-x-clip bg-page px-6 py-16">
+      <MastheadGlow tall />
       <OfflineBanner className="fixed inset-x-0 top-0 z-50 pt-[calc(0.5rem+env(safe-area-inset-top))]" />
       <div className="w-full max-w-md">
-        <div className="relative isolate pt-5">
-          <MastheadGlow />
+        <div className="pt-5">
           <Eyebrow className="text-soft">Welcome to</Eyebrow>
           <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
             Circles
@@ -100,7 +100,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
         </div>
 
         {step === "email" ? (
-          <form onSubmit={handleSendCode}>
+          <form onSubmit={handleSendCode} className="border border-ink bg-paper p-5">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -118,7 +118,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
             </Button>
           </form>
         ) : (
-          <form onSubmit={handleVerify}>
+          <form onSubmit={handleVerify} className="border border-ink bg-paper p-5">
             <p className="mb-4 font-serif text-sm text-soft">
               We sent a code to <strong className="text-ink">{email}</strong>.
             </p>

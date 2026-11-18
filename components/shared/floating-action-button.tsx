@@ -10,8 +10,8 @@ interface FloatingActionButtonProps extends Omit<ComponentPropsWithoutRef<"butto
 }
 
 /* The app's floating action button: round (an icon button, one of the
-   design's exceptions to square corners), the top bar's frosted-glass white
-   with an ink rule and a soft shadow, so it floats over a page as the bar
+   design's exceptions to square corners), teal like the top bar's primary
+   action, with an ink rule and a soft shadow, so it floats over a page as the bar
    does, placed by its caller: the welcome page's Demo accounts. Inside the
    app, what a page offers is in the top bar's menu instead (TopBarMenu). */
 export function FloatingActionButton({ icon: Icon, label, className, type = "button", ...rest }: FloatingActionButtonProps) {
@@ -21,7 +21,7 @@ export function FloatingActionButton({ icon: Icon, label, className, type = "but
       title={label}
       aria-label={label}
       className={clsx(
-        "app-chrome flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink bg-paper/80 text-ink backdrop-blur-md transition-transform duration-(--motion-press) active:scale-95",
+        "app-chrome flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink bg-action text-on-action transition-transform duration-(--motion-press) active:scale-95",
         "size-14 shadow-float",
         className
       )}

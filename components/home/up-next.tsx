@@ -1,6 +1,6 @@
 "use client";
 
-import { EmptyState, LinkRow } from "@/components/shared";
+import { EmptyState, LinkRow, StatusPill } from "@/components/shared";
 import { DateTile } from "@/components/events/date-tile";
 import { RsvpButton } from "@/components/events/rsvp-button";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -56,7 +56,12 @@ export function UpNext() {
               href={`/events/${e.id}`}
               image={<DateTile iso={e.date} accent={e.cancelled ? "soft" : "ink"} />}
               title={e.cancelled ? <span className="text-soft line-through">{e.title}</span> : e.title}
-              detail={[e.cancelled ? "Cancelled" : hosting(e, profile.id) ? "Hosting" : isAttending(e, profile.id) || rsvpState[e.id] ? "Going" : "Organizing", fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}
+              detail={[fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}
+              badge={
+                <StatusPill tone={e.cancelled ? "danger" : hosting(e, profile.id) ? "action" : isAttending(e, profile.id) || rsvpState[e.id] ? "leaf" : "warn"}>
+                  {e.cancelled ? "Cancelled" : hosting(e, profile.id) ? "Hosting" : isAttending(e, profile.id) || rsvpState[e.id] ? "Going" : "Organizing"}
+                </StatusPill>
+              }
             />
           ))}
         </div>

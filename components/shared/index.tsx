@@ -17,6 +17,7 @@ export { ICON_BUTTON_SLOT, IconButtonCircle } from "./icon-button-circle";
 export { ConfirmModal } from "./confirm-modal";
 export { EmptyState } from "./empty-state";
 export { Eyebrow } from "./eyebrow";
+export { StatusPill } from "./status-pill";
 export { MastheadGlow } from "./masthead-glow";
 export { EyebrowGroup } from "./eyebrow-group";
 export { FloatingActionButton } from "./floating-action-button";

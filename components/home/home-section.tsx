@@ -21,11 +21,11 @@ export function HomeSection({ label, count, attention, more, children }: HomeSec
   return (
     <section>
       <div className="mb-3 flex items-baseline justify-between gap-4">
-        <Eyebrow className="relative text-soft">
-          {label}
-          {count !== undefined && ` · ${count}`}
-          {attention && <AttentionDot className="top-1/2 -right-3.5 -translate-y-1/2" />}
-        </Eyebrow>
+        <div className="flex items-center gap-2.5">
+          <Eyebrow>{label}</Eyebrow>
+          {count !== undefined && <span className="border border-ink bg-paper px-1.5 py-0.5 font-sans text-label leading-none font-bold tabular-nums">{count}</span>}
+          {attention && <span className="relative size-2.5"><AttentionDot className="top-0 left-0" /></span>}
+        </div>
         {more && (
           <Link href={more.href} className="hit flex shrink-0 items-center gap-0.5 font-sans text-label font-bold tracking-caps text-ink uppercase no-underline">
             {more.label}

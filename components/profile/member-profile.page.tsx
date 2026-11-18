@@ -43,7 +43,16 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
           )}
         </div>
         <div className="mt-4 flex items-center gap-5">
-          <Avatar member={m} size={96} showPending />
+          {/* the decade is a tilted sticker laid over the photo's corner */}
+          <div className="relative shrink-0">
+            <Avatar member={m} size={96} showPending />
+            {m.birthDecade !== undefined && (
+              <span className="absolute -bottom-3 -left-3 -rotate-6 border border-ink bg-action px-2.5 pt-1 pb-0.5 text-center text-on-action shadow-float">
+                <span className="block font-sans text-label leading-none font-bold tracking-caps uppercase">Born in the</span>
+                <span className="block font-sans text-xl leading-tight font-extrabold tracking-[-0.03em]">{birthDecadeLabel(m.birthDecade)}</span>
+              </span>
+            )}
+          </div>
           <div className="min-w-0">
             <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display">{m.name}</h1>
             {/* as a member card shows it, under the name in sentence case (it's
@@ -56,26 +65,15 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
       </div>
 
       <SectionGroup>
-        {/* the playful one: the decade as a big, tilted sticker */}
-        {m.birthDecade !== undefined && (
-          <Section>
-            <EyebrowGroup label="Born in the">
-              <span className="inline-block -rotate-3 bg-ink px-4 pt-2 pb-1.5 font-sans text-title leading-none font-extrabold tracking-[-0.04em] text-paper">
-                {birthDecadeLabel(m.birthDecade)}
-              </span>
-            </EyebrowGroup>
-          </Section>
-        )}
-
         {m.languages && m.languages.length > 0 && (
           <Section>
             <EyebrowGroup label="Languages">
-              <div className="border-t border-ink">
+              <div className="border border-ink bg-paper px-4">
                 {m.languages.map((l) => {
                   const endonym = languageEndonym(l.code);
                   const english = languageName(l.code);
                   return (
-                    <div key={l.code} className="flex items-center gap-4 border-b border-faint py-3 last:border-b-ink">
+                    <div key={l.code} className="flex items-center gap-4 border-b border-ink py-3 last:border-b-0">
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-sans text-lg leading-tight font-extrabold tracking-snug">{endonym}</div>
                         {/* always a second line, so every row is the same height: the
@@ -107,9 +105,11 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
             <EyebrowGroup label="Get in touch">
               <a
                 href={`mailto:${m.email}`}
-                className="ink-press inline-flex min-h-11 items-center gap-2 border border-ink px-3 py-2 font-sans text-sm font-bold break-all text-ink"
+                className="ink-press flex min-h-11 items-center gap-3 border border-ink bg-paper px-4 py-3 font-sans text-sm font-bold break-all text-ink"
               >
-                <EnvelopeIcon className="size-4 shrink-0" strokeWidth={2} />
+                <span className="flex size-8 shrink-0 items-center justify-center border border-ink bg-email text-on-action">
+                  <EnvelopeIcon className="size-4" strokeWidth={2} />
+                </span>
                 {m.email}
               </a>
             </EyebrowGroup>

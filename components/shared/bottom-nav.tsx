@@ -62,7 +62,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
         const active = currentTab === href;
         const Icon = active ? Solid : Outline;
-        const color = active ? "text-on-action" : "text-soft";
+        const color = active ? "text-on-action" : "text-ink";
         return (
           <Link
             key={href}
@@ -73,13 +73,13 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
               e.preventDefault();
               onReselect();
             }}
-            className={clsx("flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 transition-colors duration-(--motion-small)", active && "bg-action")}
+            className={clsx("flex items-center justify-center gap-2 rounded-full border py-3.5 transition-[flex-grow,background-color] duration-(--motion-small)", active ? "flex-[1.7] border-ink bg-action" : "flex-1 border-transparent")}
           >
             <span className="relative">
               <Icon className={clsx("size-6", color)} />
               {href === "/home" && needsAttention && <AttentionDot className="-top-0.5 -right-1.5" />}
             </span>
-            <span className={clsx("font-sans text-label tracking-caps uppercase font-bold", color)}>{label}</span>
+            <span className={clsx("font-sans text-label tracking-caps uppercase font-bold", color, !active && "sr-only")}>{label}</span>
           </Link>
         );
       })}

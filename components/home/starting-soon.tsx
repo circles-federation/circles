@@ -56,7 +56,7 @@ export function StartingSoon({ events, memberId, rsvpState }: { events: Event[];
             {meetingLink(e.location) ? "Online" : e.location} · {fmtTime(e.start)}
           </div>
         </div>
-        <span aria-hidden className="shrink-0 -rotate-4 bg-paper px-3 py-1.5 font-sans text-base leading-none font-extrabold tracking-heading whitespace-nowrap text-ink">
+        <span aria-hidden className="shrink-0 -rotate-4 border border-ink bg-action px-3 py-1.5 font-sans text-base leading-none font-extrabold tracking-heading whitespace-nowrap text-on-action shadow-float">
           {countdown(ms)}
         </span>
       </div>

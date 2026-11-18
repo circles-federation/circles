@@ -183,7 +183,7 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
 // secondary actions
 export function MenuIconFace({ icon: Icon }: { icon: ComponentType<SVGProps<SVGSVGElement>> }) {
   return (
-    <span className="flex size-full items-center justify-center bg-chrome text-on-chrome">
+    <span className="flex size-full items-center justify-center bg-paper text-ink">
       <Icon className="size-5" strokeWidth={2.5} />
     </span>
   );

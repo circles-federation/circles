@@ -1,5 +1,3 @@
-import clsx from "clsx";
-import { DateTile } from "./date-tile";
 import { VideoCameraIcon } from "@heroicons/react/24/outline";
 import { ButtonLink, Eyebrow, CappedChip, MastheadGlow } from "@/components/shared";
 import { meetingLink } from "@/lib/events.util";
@@ -13,7 +11,7 @@ interface EventMastheadProps {
   event: Event;
 }
 
-/* Date tile, kind/exclusivity badges, title, and location — the header
+/* Kind, circle chip, title and its When and Where — the header
    block every event detail page opens with. Editing it is the top bar's
    pencil, for its organizer (see TopBar's pageAction). */
 export function EventMasthead({ event: e }: EventMastheadProps) {
@@ -36,49 +34,43 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
   const dateLabel = e.date && !isNaN(day.getTime()) ? `${WEEKDAYS[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()}` : "Date TBD";
 
   return (
-    /* Laid out like a circle page's masthead: an eyebrow opposite the circle
-       (who can see this event — a place chip, so it reads the same as
-       everywhere else a circle's name appears), then the title and location.
-       Wide, the date tile sits to the left of all that and the eyebrow is the
-       time; on a phone there's no room for the tile, so the eyebrow is the
-       date, with the time on a line of its own beneath it. */
-    <div className="relative isolate grid grid-cols-1 border-b border-b-ink pt-5 pb-6 min-[720px]:grid-cols-[auto_minmax(0,1fr)] min-[720px]:gap-x-6">
+    /* Laid out like a circle page's masthead: the kind opposite the circle
+       (who can see this event: a place chip, so it reads the same as everywhere
+       else a circle's name appears), the title, then When and Where as a boxed
+       pair of facts, each its own label. The wash behind it is the page's
+       (MastheadGlow). */
+    <div className="relative isolate pb-6">
       <MastheadGlow />
-      <div className="hidden min-[720px]:col-start-1 min-[720px]:row-span-3 min-[720px]:row-start-1 min-[720px]:block">
-        <DateTile iso={e.date} large accent={gov ? govAccent : undefined} />
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <Eyebrow className="shrink-0 pt-1.5">{govLabel || (past ? "Past event" : "Event")}</Eyebrow>
+        {/* capped, so a long circle name ends in "…" */}
+        {circle ? <CappedChip max="max-w-[60%]" title={`${circle.name}: who can see this event`}>{circle.name}</CappedChip> : <span />}
       </div>
-      {/* the eyebrow lines as one block, with the chip opposite its top */}
-      <div className="row-start-1 flex min-w-0 items-start justify-between gap-3 min-[720px]:col-start-2">
-        <div className="min-w-0">
-          {/* when it is, which is what people come to an event's page for:
-              in sentence case, the date first and confident on a phone (which
-              has no room for the tile), then the time and how it repeats.
-              Wide, the tile has the date, so it's the time line alone. A
-              proposal's status, a label rather than information, stays in caps */}
-          {govLabel && <Eyebrow className="mb-1.5 block">{govLabel}</Eyebrow>}
-          <div className="font-sans text-lg leading-snug font-bold text-ink min-[720px]:hidden">{dateLabel}</div>
-          <div className="mt-0.5 font-sans text-base leading-snug font-semibold text-soft min-[720px]:mt-0">
+      <h1 className="mt-4 font-sans text-title leading-[0.95] font-extrabold tracking-display wrap-anywhere">{e.title}</h1>
+      <div className="mt-6 grid grid-cols-1 border border-ink bg-paper min-[480px]:grid-cols-2">
+        <div className="px-4 py-4 min-[480px]:border-r min-[480px]:border-ink">
+          <Eyebrow className="text-soft">When</Eyebrow>
+          <div className="mt-2 font-sans text-lg leading-snug font-extrabold tracking-snug">{dateLabel}</div>
+          <div className="mt-0.5 font-serif text-sm text-soft">
             {time}
             {repeats && ` · ${repeats}`}
           </div>
         </div>
-        {/* capped, so a long circle name ends in "…" instead of squeezing the time */}
-        {circle ? <CappedChip max="max-w-[45%]" title={`${circle.name}: who can see this event`}>{circle.name}</CappedChip> : <span />}
-      </div>
-      <h1 className="row-start-2 mt-4 min-[720px]:mt-3 font-sans text-heading leading-[0.95] font-extrabold tracking-display min-[720px]:col-start-2 min-[720px]:text-title">
-        {e.title}
-      </h1>
-      {/* an online event's location is its link: a button to it, not the address */}
-      {link ? (
-        <div className="row-start-3 mt-4 min-[720px]:col-start-2">
-          <ButtonLink href={link} target="_blank" rel="noopener noreferrer">
-            <VideoCameraIcon className="size-4" strokeWidth={2.5} aria-hidden />
-            Join meeting
-          </ButtonLink>
+        <div className="border-t border-ink px-4 py-4 min-[480px]:border-t-0">
+          <Eyebrow className="text-soft">Where</Eyebrow>
+          {/* an online event's location is its link: a button to it, not the address */}
+          {link ? (
+            <div className="mt-2">
+              <ButtonLink href={link} target="_blank" rel="noopener noreferrer" size="compact">
+                <VideoCameraIcon className="size-4" strokeWidth={2.5} aria-hidden />
+                Join meeting
+              </ButtonLink>
+            </div>
+          ) : (
+            <div className="mt-2 font-sans text-lg leading-snug font-extrabold tracking-snug">{e.location}</div>
+          )}
         </div>
-      ) : (
-        <p className="row-start-3 mt-3 font-serif text-lg text-body min-[720px]:col-start-2">{e.location}</p>
-      )}
+      </div>
     </div>
   );
 }
