@@ -148,10 +148,6 @@
     }
   }
 
-  /* a chat message's bubble: round on every corner but the one by its author
-     (the only radius besides round icon buttons and the circle chip) */
-  --radius-bubble: 1.25rem;
-
   /* the actions under a chat message you tapped, easing out from it */
   --animate-tray-in: tray-in var(--motion-small) var(--ease-enter) both;
   @keyframes tray-in {

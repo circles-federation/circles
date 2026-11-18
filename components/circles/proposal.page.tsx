@@ -203,7 +203,8 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                           disabled={busy}
                           onClick={() => {
                             setError(null);
-                            setChoice((c) => (c === r ? null : r));
+                            // your own answer needs no confirming: choosing it again clears the choice
+                            setChoice((c) => (c === r || r === mine?.response ? null : r));
                           }}
                           aria-pressed={selected}
                           className={clsx(

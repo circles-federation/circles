@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Circles",
   description: "A federated coordination tool for neighborhoods and organizations.",
   // iOS still reads these rather than the manifest when added to the Home
-  // Screen. "default" keeps a white status bar above the page, like the top bar.
+  // Screen. "default" keeps a status bar in the page colour above the page, like the top bar.
   appleWebApp: { capable: true, title: "Circles", statusBarStyle: "default", startupImage: startupImages },
 };
 

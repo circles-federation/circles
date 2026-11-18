@@ -571,7 +571,7 @@ function Composer({ circleName, people, onSend, onHeight }: { circleName: string
       <form
         onSubmit={submit}
         className={clsx(
-          "mx-auto max-w-220 px-6 pt-3 max-[719px]:mx-4 max-[719px]:rounded-3xl max-[719px]:border max-[719px]:border-ink max-[719px]:bg-paper max-[719px]:p-1.5 max-[719px]:shadow-overlay",
+          "mx-auto max-w-220 px-6 pt-3 max-[719px]:mx-4 max-[719px]:rounded-full max-[719px]:border max-[719px]:border-ink max-[719px]:bg-paper max-[719px]:p-1.5 max-[719px]:shadow-overlay",
           keyboard ? "pb-3 max-[719px]:mb-3" : "pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[719px]:mb-[max(0.75rem,env(safe-area-inset-bottom))]",
         )}
       >

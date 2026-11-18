@@ -184,12 +184,16 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // transparent over the page (and a masthead's wash) until it scrolls, then
   // solid, so what scrolls under it doesn't show through the title. The scroll
   // is the document's in a browser tab and <main>'s in the installed app, so it
-  // listens to both (scroll doesn't bubble, hence capture).
+  // listens to both (scroll doesn't bubble, hence capture) and ignores any other element's.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
+    // only the page's own scroll counts: the document's, or <main>'s in the
+    // installed app. A shelf, a tab row or a list scrolling inside the page
+    // says nothing about whether the page is under the bar.
     const onScroll = (e: globalThis.Event) => {
-      const el = e.target instanceof Element ? e.target : document.scrollingElement;
-      setScrolled((el?.scrollTop ?? 0) > 4);
+      const t = e.target;
+      const page = t === document ? document.scrollingElement : t instanceof HTMLElement && t.tagName === "MAIN" ? t : null;
+      if (page) setScrolled(page.scrollTop > 4);
     };
     document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => document.removeEventListener("scroll", onScroll, { capture: true });
