@@ -1,7 +1,7 @@
 "use client";
 
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Section, SectionGroup, Tag, MastheadGlow } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Tag, MastheadGlow } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { circlesForMember } from "@/lib/circles.util";
@@ -30,10 +30,10 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
   const ownHidden = m.id === profile.id && !profile.emailPublic;
 
   return (
-    <PageContainer size="normal">
-      <div className="relative isolate border-b border-b-ink pt-4 pb-6">
+    <PageContainer size="wide">
+      <div className="relative isolate pt-4 pb-6">
         <MastheadGlow />
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 min-[960px]:justify-start min-[960px]:gap-4">
           {/* as they wrote them, not in small caps */}
           <span className="shrink-0 font-sans text-sm font-semibold text-soft">{m.pronouns}</span>
           {home && (
@@ -42,10 +42,15 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
             </CappedChip>
           )}
         </div>
-        <div className="mt-4 flex items-center gap-5">
+        <div className="mt-4 flex items-center gap-5 min-[960px]:items-end min-[960px]:gap-8">
           {/* the decade is a tilted sticker laid over the photo's corner */}
           <div className="relative shrink-0">
-            <Avatar member={m} size={96} showPending />
+            <div className="min-[960px]:hidden">
+              <Avatar member={m} size={96} showPending />
+            </div>
+            <div className="hidden min-[960px]:block">
+              <Avatar member={m} size={176} showPending />
+            </div>
             {m.birthDecade !== undefined && (
               <span className="absolute -bottom-3 -left-3 -rotate-6 border border-ink bg-action px-2.5 pt-1 pb-0.5 text-center text-on-action shadow-float">
                 <span className="block font-sans text-label leading-none font-bold tracking-caps uppercase">Born in the</span>
@@ -54,7 +59,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display">{m.name}</h1>
+            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display min-[960px]:text-[64px] min-[960px]:leading-[1.02]">{m.name}</h1>
             {/* as a member card shows it, under the name in sentence case (it's
                 information, not a label), a size up for the larger name; a new
                 member may not have filled it in yet */}
@@ -64,9 +69,13 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         {m.bio && <p className="mt-5 font-serif text-xl text-body italic">{m.bio}</p>}
       </div>
 
-      <SectionGroup>
+      {/* two columns from 960px: languages, skills and interests on the left,
+          how to get in touch and the circles they're in on the right; on a
+          phone one run (`order` over `contents` columns), apart by space */}
+      <div className="mt-8 flex flex-col gap-10 min-[960px]:grid min-[960px]:grid-cols-2 min-[960px]:items-start min-[960px]:gap-x-12">
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
         {m.languages && m.languages.length > 0 && (
-          <Section>
+          <section className="order-1">
             <EyebrowGroup label="Languages">
               <div className="border border-ink bg-paper px-4">
                 {m.languages.map((l) => {
@@ -88,20 +97,37 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
                 })}
               </div>
             </EyebrowGroup>
-          </Section>
+          </section>
         )}
 
+        {(m.skills.length > 0 || m.interests.length > 0) && (
+          <section className="order-3 flex flex-col gap-6">
+            {m.skills.length > 0 && (
+              <EyebrowGroup label="Skills">
+                {m.skills.map((s) => <Tag key={s}>{s}</Tag>)}
+              </EyebrowGroup>
+            )}
+            {m.interests.length > 0 && (
+              <EyebrowGroup label="Interests">
+                {m.interests.map((s) => <Tag key={s}>{s}</Tag>)}
+              </EyebrowGroup>
+            )}
+          </section>
+        )}
+
+        </div>
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
         {ownHidden ? (
-          <Section>
+          <section className="order-2">
             <EyebrowGroup label="Get in touch">
               <p className="inline-flex items-center gap-2 font-serif text-base text-soft">
                 <LockClosedIcon className="size-4 shrink-0" strokeWidth={2} />
                 Your email is hidden from other members.
               </p>
             </EyebrowGroup>
-          </Section>
+          </section>
         ) : m.email && (
-          <Section>
+          <section className="order-2">
             <EyebrowGroup label="Get in touch">
               <a
                 href={`mailto:${m.email}`}
@@ -113,35 +139,21 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
                 {m.email}
               </a>
             </EyebrowGroup>
-          </Section>
-        )}
-
-        {(m.skills.length > 0 || m.interests.length > 0) && (
-          <Section className="flex flex-col gap-6">
-            {m.skills.length > 0 && (
-              <EyebrowGroup label="Skills">
-                {m.skills.map((s) => <Tag key={s}>{s}</Tag>)}
-              </EyebrowGroup>
-            )}
-            {m.interests.length > 0 && (
-              <EyebrowGroup label="Interests">
-                {m.interests.map((s) => <Tag key={s}>{s}</Tag>)}
-              </EyebrowGroup>
-            )}
-          </Section>
+          </section>
         )}
 
         {memberCircles.length > 0 && (
-          <Section>
+          <section className="order-4">
             <FolderGrid
               label="Member of"
               items={memberCircles}
               minWidth={300}
               renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow />}
             />
-          </Section>
+          </section>
         )}
-      </SectionGroup>
+        </div>
+      </div>
     </PageContainer>
   );
 }
