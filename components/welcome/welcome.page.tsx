@@ -85,13 +85,14 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
   }
 
   return (
-    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-x-clip bg-page px-6 py-16">
+    <div className="relative isolate flex min-h-dvh [--top-bar-height:0px] items-center justify-center overflow-x-clip bg-page px-6 py-16">
       <MastheadGlow tall />
       <OfflineBanner className="fixed inset-x-0 top-0 z-50 pt-[calc(0.5rem+env(safe-area-inset-top))]" />
-      <div className="w-full max-w-md">
+      {/* from 960px the wordmark and the app's line are on the left, the sign-in on the right */}
+      <div className="w-full max-w-md min-[960px]:grid min-[960px]:max-w-5xl min-[960px]:grid-cols-2 min-[960px]:items-center min-[960px]:gap-x-24">
         <div className="pt-5">
           <Eyebrow className="text-soft">Welcome to</Eyebrow>
-          <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
+          <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9] min-[960px]:text-[104px]">
             Circles
           </h1>
           <p className="mt-4 mb-7 font-serif text-lg leading-normal text-body">
@@ -99,6 +100,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
           </p>
         </div>
 
+        <div>
         {step === "email" ? (
           <form onSubmit={handleSendCode} className="border border-ink bg-paper p-5">
             <Label htmlFor="email">Email</Label>
@@ -159,6 +161,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
         )}
 
         <InstallPrompt />
+        </div>
       </div>
 
       {demoMembers.length > 0 && (
