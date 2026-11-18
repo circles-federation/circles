@@ -1,7 +1,6 @@
-import clsx from "clsx";
-import { DateTile } from "./date-tile";
 import { VideoCameraIcon } from "@heroicons/react/24/outline";
-import { ButtonLink, Eyebrow, CappedChip } from "@/components/shared";
+import { DateTile } from "./date-tile";
+import { ButtonLink, Eyebrow, CappedChip, MastheadGlow } from "@/components/shared";
 import { meetingLink } from "@/lib/events.util";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
 import { awaitingConsent } from "@/lib/governance.util";
@@ -13,77 +12,78 @@ interface EventMastheadProps {
   event: Event;
 }
 
-/* Date tile, kind/exclusivity badges, title, and location — the header
-   block every event detail page opens with. Editing it is the top bar's
-   pencil, for its organizer (see TopBar's pageAction). */
+function whenOf(e: Event) {
+  const past = isPastEvent(e);
+  const link = meetingLink(e.location);
+  const time = `${fmtTime(e.start)}–${fmtTime(e.end)}`;
+  // how it repeats, unless its series ended before this date (it was
+  // cancelled along with the rest)
+  const repeats = e.repeat && !endedBefore(e.repeat, e.date) ? repeatSummary(e.repeat) : null;
+  const day = parseDay(e.date);
+  const dateLabel = e.date && !isNaN(day.getTime()) ? `${WEEKDAYS[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()}` : "Date TBD";
+  return { past, link, time, repeats, dateLabel };
+}
+
+/* When and Where as a boxed pair of facts, each its own label: the event page
+   puts it first in its right-hand column from 960px, and under the header and
+   any notices on a phone. */
+export function EventFacts({ event: e }: { event: Event }) {
+  const { link, time, repeats, dateLabel } = whenOf(e);
+  return (
+    <div className="grid grid-cols-1 border border-ink bg-paper min-[480px]:grid-cols-2">
+      <div className="px-4 py-4 min-[480px]:border-r min-[480px]:border-ink">
+        <Eyebrow className="text-soft">When</Eyebrow>
+        <div className="mt-2 font-sans text-lg leading-snug font-extrabold tracking-snug">{dateLabel}</div>
+        <div className="mt-0.5 font-serif text-sm text-soft">
+          {time}
+          {repeats && ` · ${repeats}`}
+        </div>
+      </div>
+      <div className="border-t border-ink px-4 py-4 min-[480px]:border-t-0">
+        <Eyebrow className="text-soft">Where</Eyebrow>
+        {/* an online event's location is its link: a button to it, not the address */}
+        {link ? (
+          <div className="mt-2">
+            <ButtonLink href={link} target="_blank" rel="noopener noreferrer" size="compact">
+              <VideoCameraIcon className="size-4" strokeWidth={2.5} aria-hidden />
+              Join meeting
+            </ButtonLink>
+          </div>
+        ) : (
+          <div className="mt-2 font-sans text-lg leading-snug font-extrabold tracking-snug">{e.location}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* Kind, circle chip and title — the header block every event detail page
+   opens with. From 960px the title is larger and the date a big tile at the
+   right. Its When and Where (EventFacts) follow it on the page. Editing it is the top bar's pencil, for its organizer (see TopBar's
+   pageAction). The wash behind it is the page's (MastheadGlow). */
 export function EventMasthead({ event: e }: EventMastheadProps) {
   const byId = useCirclesById();
   const circle = byId[e.circleId];
   // a meeting or circle-hosted event still awaiting its circle's consent — a
   // decided one is settled and reads like any other event
   const gov = awaitingConsent(e);
-  const govAccent = "flame";
-  const past = isPastEvent(e);
-  const topBorderClass = past ? "border-t-soft" : gov ? "border-t-flame" : "border-t-ink";
-
-  const link = meetingLink(e.location);
-  const govLabel = gov && <span className="text-flame">Proposed</span>;
-  const time = `${fmtTime(e.start)}–${fmtTime(e.end)}`;
-  // how it repeats, unless its series ended before this date (it was
-  // cancelled along with the rest)
-  const repeats = e.repeat && !endedBefore(e.repeat, e.date) ? repeatSummary(e.repeat) : null;
-  // the date in words, for a phone, which has no room for the tile
-  const day = parseDay(e.date);
-  const dateLabel = e.date && !isNaN(day.getTime()) ? `${WEEKDAYS[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()}` : "Date TBD";
+  const { past } = whenOf(e);
+  const govLabel = gov && <span className="text-flame-text">Proposed</span>;
 
   return (
-    /* Laid out like a circle page's masthead: an eyebrow opposite the circle
-       (who can see this event — a place chip, so it reads the same as
-       everywhere else a circle's name appears), then the title and location.
-       Wide, the date tile sits to the left of all that and the eyebrow is the
-       time; on a phone there's no room for the tile, so the eyebrow is the
-       date, with the time on a line of its own beneath it. */
-    <div
-      className={clsx(
-        "grid grid-cols-1 border-t-[3px] border-b border-b-ink pt-5 pb-6 min-[720px]:grid-cols-[auto_minmax(0,1fr)] min-[720px]:gap-x-6",
-        topBorderClass
-      )}
-    >
-      <div className="hidden min-[720px]:col-start-1 min-[720px]:row-span-3 min-[720px]:row-start-1 min-[720px]:block">
-        <DateTile iso={e.date} large accent={gov ? govAccent : undefined} />
-      </div>
-      {/* the eyebrow lines as one block, with the chip opposite its top */}
-      <div className="row-start-1 flex min-w-0 items-start justify-between gap-3 min-[720px]:col-start-2">
-        <div className="min-w-0">
-          {/* when it is, which is what people come to an event's page for:
-              in sentence case, the date first and confident on a phone (which
-              has no room for the tile), then the time and how it repeats.
-              Wide, the tile has the date, so it's the time line alone. A
-              proposal's status, a label rather than information, stays in caps */}
-          {govLabel && <Eyebrow className="mb-1.5 block">{govLabel}</Eyebrow>}
-          <div className="font-sans text-lg leading-snug font-bold text-ink min-[720px]:hidden">{dateLabel}</div>
-          <div className="mt-0.5 font-sans text-base leading-snug font-semibold text-soft min-[720px]:mt-0">
-            {time}
-            {repeats && ` · ${repeats}`}
-          </div>
+    <div className="relative isolate pb-6 min-[960px]:grid min-[960px]:grid-cols-[1fr_auto] min-[960px]:items-end min-[960px]:gap-x-12 min-[960px]:pt-4">
+      <MastheadGlow />
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-start justify-between gap-3 min-[960px]:items-center min-[960px]:justify-start min-[960px]:gap-4">
+          <Eyebrow className="shrink-0 pt-1.5 min-[960px]:pt-0">{govLabel || (past ? "Past event" : "Event")}</Eyebrow>
+          {/* capped, so a long circle name ends in "…" */}
+          {circle ? <CappedChip max="max-w-[60%]" title={`${circle.name}: who can see this event`}>{circle.name}</CappedChip> : <span />}
         </div>
-        {/* capped, so a long circle name ends in "…" instead of squeezing the time */}
-        {circle ? <CappedChip max="max-w-[45%]" title={`${circle.name}: who can see this event`}>{circle.name}</CappedChip> : <span />}
+        <h1 className="mt-4 font-sans text-title leading-[0.95] font-extrabold tracking-display wrap-anywhere min-[960px]:text-[64px] min-[960px]:leading-[1.02]">{e.title}</h1>
       </div>
-      <h1 className="row-start-2 mt-4 min-[720px]:mt-3 font-sans text-heading leading-[0.95] font-extrabold tracking-display min-[720px]:col-start-2 min-[720px]:text-title">
-        {e.title}
-      </h1>
-      {/* an online event's location is its link: a button to it, not the address */}
-      {link ? (
-        <div className="row-start-3 mt-4 min-[720px]:col-start-2">
-          <ButtonLink href={link} target="_blank" rel="noopener noreferrer">
-            <VideoCameraIcon className="size-4" strokeWidth={2.5} aria-hidden />
-            Join meeting
-          </ButtonLink>
-        </div>
-      ) : (
-        <p className="row-start-3 mt-3 font-serif text-lg text-body min-[720px]:col-start-2">{e.location}</p>
-      )}
+      <div className="hidden min-[960px]:block">
+        <DateTile iso={e.date} large accent={gov ? "flame" : undefined} />
+      </div>
     </div>
   );
 }

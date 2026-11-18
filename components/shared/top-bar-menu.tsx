@@ -122,7 +122,7 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
         {/* raised like the bar's other actions, and pressed in while its menu is open */}
         <span
           className={clsx(
-            "relative flex size-10 items-center justify-center overflow-hidden rounded-full transition-[box-shadow,transform] duration-(--motion-press) group-active:scale-95",
+            "relative flex size-10 items-center justify-center overflow-hidden rounded-full border border-ink transition-[box-shadow,transform] duration-(--motion-press) group-active:scale-95",
             open ? "scale-95 shadow-none" : "shadow-float",
           )}
         >
@@ -179,11 +179,11 @@ export function TopBarMenu({ label, face, items }: TopBarMenuProps) {
   );
 }
 
-// a menu button's face when it's an icon: on chrome (white on ink, in Sol), like the bar's other
-// secondary actions
+// a menu button's face when it's an icon: paper with an ink icon, like the bar's other
+// secondary actions (the button itself carries the ink outline)
 export function MenuIconFace({ icon: Icon }: { icon: ComponentType<SVGProps<SVGSVGElement>> }) {
   return (
-    <span className="flex size-full items-center justify-center bg-chrome text-on-chrome">
+    <span className="flex size-full items-center justify-center bg-paper text-ink">
       <Icon className="size-5" strokeWidth={2.5} />
     </span>
   );

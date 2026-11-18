@@ -75,6 +75,16 @@ describe("highlightMentions", () => {
     const html = '<a href="https://x.org/@Ada" title="@Ada">@Ada</a>';
     expect(highlightMentions(html, ["Ada"])).toBe('<a href="https://x.org/@Ada" title="@Ada"><span class="chat-mention">@Ada</span></a>');
   });
+  it("marks a tag of the viewer apart from the others", () => {
+    expect(highlightMentions("<p>@Ada and @Bo</p>", ["Ada", "Bo"], "Ada")).toBe('<p><span class="chat-mention chat-mention-you">@Ada</span> and <span class="chat-mention">@Bo</span></p>');
+  });
+  it("marks the viewer whose name needs escaping, as the message HTML writes it", () => {
+    expect(highlightMentions("<p>@O&#39;Brien and @Bo</p>", ["O'Brien", "Bo"], "O'Brien")).toBe('<p><span class="chat-mention chat-mention-you">@O&#39;Brien</span> and <span class="chat-mention">@Bo</span></p>');
+    expect(highlightMentions("<p>@A &amp; B</p>", ["A & B"], "A & B")).toBe('<p><span class="chat-mention chat-mention-you">@A &amp; B</span></p>');
+  });
+  it("marks nobody as the viewer without a viewer", () => {
+    expect(highlightMentions("<p>@Ada</p>", ["Ada"])).not.toContain("chat-mention-you");
+  });
   it("doesn't match a longer word that merely starts with the name", () => {
     expect(highlightMentions("<p>@Adams</p>", ["Ada"])).toBe("<p>@Adams</p>");
   });

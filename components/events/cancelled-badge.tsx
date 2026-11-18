@@ -6,6 +6,6 @@ import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 // the word is for screen readers.
 export function CancelledBadge() {
   return (
-    <ExclamationTriangleIcon role="img" aria-label="Cancelled" className="size-5 shrink-0 text-flame min-[720px]:size-4" strokeWidth={2} />
+    <ExclamationTriangleIcon role="img" aria-label="Cancelled" className="size-5 shrink-0 text-flame-text min-[720px]:size-4" strokeWidth={2} />
   );
 }

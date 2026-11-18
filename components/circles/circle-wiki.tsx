@@ -4,7 +4,7 @@ import { useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps
 import Link from "next/link";
 import { EnvelopeIcon, GlobeAltIcon, MapIcon, PencilSquareIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Eyebrow, EyebrowGroup, CappedChip, PrivateLabel, Section, SectionGroup, Tag, type ChipTone } from "@/components/shared";
+import { Eyebrow, EyebrowGroup, CappedChip, PrivateLabel, Tag, type ChipTone, MastheadGlow, BOXED_LIST } from "@/components/shared";
 import { CIRCLE_TYPE_LABEL, circleContact, circleWebsiteUrl, circleIsPrivate } from "@/lib/circles.util";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
 import type { Circle } from "@/lib/types";
@@ -42,7 +42,8 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
 
   return (
     <>
-      <div className={clsx("pb-6", ruled && "border-b border-ink")}>
+      <div className={clsx("relative isolate pb-6", ruled && "border-b border-ink")}>
+        <MastheadGlow />
         {/* where it sits in the tree: its parent, as a chip opposite the type */}
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="shrink-0 text-soft">
@@ -54,19 +55,17 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
             </CappedChip>
           )}
         </div>
-        <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display">{c.name}</h1>
+        <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display min-[960px]:text-[72px] min-[960px]:leading-none">{c.name}</h1>
         <p className="mt-4 font-serif text-xl text-body italic">{c.tagline}</p>
         {lastEdited}
       </div>
 
-      {/* its quick facts right under the masthead, as a small table: each
-          fact's own label is its heading. Before the sections rather than one
-          of them, since it ends on its own ink rule and needs no hairline
-          after it */}
+      {/* its quick facts right under the masthead, each a solid card on the
+          same grey as a tag, a gap between them: its own label is its heading */}
       {c.facts.length > 0 && (
-        <div className="grid grid-cols-2 gap-px border-y border-ink bg-faint min-[720px]:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 min-[720px]:grid-cols-4">
           {c.facts.map(([k, v]) => (
-            <div key={k} className="bg-paper px-4 py-4">
+            <div key={k} className="bg-wash px-4 py-4">
               <Eyebrow className="text-soft">{k}</Eyebrow>
               <div className="mt-2 font-sans text-lg font-extrabold tracking-snug">{v}</div>
             </div>
@@ -74,39 +73,53 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
         </div>
       )}
 
-      <SectionGroup>
-        <Section>
-          <EyebrowGroup label="About">
-            <p className="max-w-[40em] font-serif text-lg leading-[1.55]">{c.about}</p>
-          </EyebrowGroup>
-        </Section>
-
-        {c.offers.length > 0 && (
-          <Section>
-            <EyebrowGroup label="What they offer">
-              {c.offers.map((s) => (
-                <Tag key={s}>{s}</Tag>
-              ))}
+      {/* two columns from 960px: About, offers, needs and how to join on the
+          left, the squares, open hours and circles on the right. On a phone the
+          columns dissolve (contents) and `order` puts the sections back in one
+          run, apart by space rather than rules */}
+      <div className="mt-8 flex flex-col gap-10 min-[960px]:grid min-[960px]:grid-cols-2 min-[960px]:items-start min-[960px]:gap-x-12">
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
+          <section className="order-1">
+            <EyebrowGroup label="About">
+              <p className="max-w-[40em] font-serif text-lg leading-[1.55]">{c.about}</p>
             </EyebrowGroup>
-          </Section>
-        )}
+          </section>
 
-        {c.needs.length > 0 && (
-          <Section>
-            <EyebrowGroup label="What they need">
-              {c.needs.map((s) => (
-                <Tag key={s}>{s}</Tag>
-              ))}
-            </EyebrowGroup>
-          </Section>
-        )}
+          {c.offers.length > 0 && (
+            <section className="order-2">
+              <EyebrowGroup label="What we offer">
+                {c.offers.map((s) => (
+                  <Tag key={s}>{s}</Tag>
+                ))}
+              </EyebrowGroup>
+            </section>
+          )}
 
-        {/* where to find it online, in person and to get in touch: a square
-            each, opening its website, its address in the visitor's maps app,
-            or an email or a call to it, and in the app, writing to it */}
-        {(c.website || c.address || c.contact || writeHref) && (
-          <Section>
-            <div className="flex flex-wrap gap-3 min-[720px]:gap-x-10 min-[720px]:gap-y-4">
+          {c.needs.length > 0 && (
+            <section className="order-3">
+              <EyebrowGroup label="What we need">
+                {c.needs.map((s) => (
+                  <Tag key={s}>{s}</Tag>
+                ))}
+              </EyebrowGroup>
+            </section>
+          )}
+
+          {c.join && (
+            <section className="order-6">
+              <EyebrowGroup label="How to join">
+                <p className="max-w-[40em] font-serif text-base leading-normal text-body">{c.join}</p>
+              </EyebrowGroup>
+            </section>
+          )}
+        </div>
+
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
+          {/* where to find it online, in person and to get in touch: a square
+              each, opening its website, its address in the visitor's maps app,
+              or an email or a call to it, and in the app, writing to it */}
+          {(c.website || c.address || c.contact || writeHref) && (
+            <section className="order-4 flex flex-wrap gap-3 min-[720px]:flex-col min-[720px]:gap-4">
               {websiteUrl ? (
                 <VisitLink href={websiteUrl.href} newTab icon={GlobeAltIcon} tone="action" label="Website" value={websiteUrl.hostname.replace(/^www\./, "")} />
               ) : c.website ? (
@@ -135,43 +148,35 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
                 </div>
               ) : null}
               {writeHref && <VisitLink href={writeHref} internal icon={PencilSquareIcon} tone="ink" label="Message" value={`Write to ${c.name}`} />}
-            </div>
-          </Section>
-        )}
+            </section>
+          )}
 
-        {c.hours && c.hours.length > 0 && (
-          <Section>
-            <EyebrowGroup label="Open hours">
-              <div className="max-w-90">
-                {c.hours.map(([d, t]) => (
-                  <div key={d} className="flex justify-between gap-3 border-b border-faint py-2 font-serif text-base text-body last:border-b-0">
-                    <span className="text-soft">{d}</span>
-                    <span>{t}</span>
-                  </div>
-                ))}
-              </div>
-            </EyebrowGroup>
-          </Section>
-        )}
+          {c.hours && c.hours.length > 0 && (
+            <section className="order-5">
+              <EyebrowGroup label="Open hours">
+                <div className={`max-w-90 ${BOXED_LIST}`}>
+                  {c.hours.map(([d, t]) => (
+                    <div key={d} className="flex justify-between gap-3 border-b border-ink py-3 font-serif text-base text-body last:border-b-0">
+                      <span className="text-soft">{d}</span>
+                      <span>{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </EyebrowGroup>
+            </section>
+          )}
 
-        {c.join && (
-          <Section>
-            <EyebrowGroup label="How to join">
-              <p className="max-w-[40em] font-serif text-base leading-normal text-body">{c.join}</p>
-            </EyebrowGroup>
-          </Section>
-        )}
-
-        {/* last, since there may be many and they'd push how to reach and
-            join it down the page */}
-        {subCircles && (
-          <Section>
-            <Eyebrow className="text-soft">Circles</Eyebrow>
-            {/* the grid's own border-t is the header rule, as on the Members tab */}
-            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">{subCircles}</div>
-          </Section>
-        )}
-      </SectionGroup>
+          {/* last, since there may be many and they'd push how to reach and
+              join it down the page */}
+          {subCircles && (
+            <section className="order-7">
+              <Eyebrow>Circles</Eyebrow>
+              {/* the grid's own border-t is the header rule, as on the Members tab */}
+              <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] border-t border-l border-ink">{subCircles}</div>
+            </section>
+          )}
+        </div>
+      </div>
     </>
   );
 }
@@ -210,11 +215,12 @@ function MapsLink({ address }: { address: string }) {
 }
 
 const VISIT_TONE = {
-  ink: "border-ink bg-ink [--press-color:var(--color-ink)]",
-  action: "border-action bg-action [--press-color:var(--color-action)]",
-  leaf: "border-leaf bg-leaf [--press-color:var(--color-leaf)]",
-  phone: "border-phone bg-phone [--press-color:var(--color-phone)]",
-  email: "border-email bg-email [--press-color:var(--color-email)]",
+  ink: "bg-ink text-paper [--press-color:var(--color-ink)]",
+  // the action colour is light, so its icon is black
+  action: "bg-action text-on-action [--press-color:var(--color-action)]",
+  leaf: "bg-leaf text-paper [--press-color:var(--color-leaf)]",
+  phone: "bg-phone text-paper [--press-color:var(--color-phone)]",
+  email: "bg-email text-paper [--press-color:var(--color-email)]",
 };
 
 /* A filled square with an icon, for one way to reach a circle (its website,
@@ -233,7 +239,7 @@ function VisitLink({ href, newTab, internal, icon: Icon, tone, label, value, nam
       title={plain ?? name}
       className="fill-press flex items-start gap-4 text-ink no-underline"
     >
-      <span className={clsx("fill-press-square flex size-16 shrink-0 items-center justify-center border-2 text-paper", VISIT_TONE[tone])}>
+      <span className={clsx("fill-press-square flex size-16 shrink-0 items-center justify-center border border-ink shadow-float", VISIT_TONE[tone])}>
         <Icon className="size-8" strokeWidth={1.75} aria-hidden />
       </span>
       <div className="hidden min-w-0 min-[720px]:block" aria-hidden>

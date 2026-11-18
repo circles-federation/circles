@@ -15,11 +15,11 @@ interface LanguageLevelProps {
 }
 
 /* How well someone speaks a language: five segments, filled up to their
-   level, like a résumé's bar — never numbered. Read-only on a profile, and on
+   level, like a résumé's bar, teal as it fills — never numbered. Read-only on a profile, and on
    Edit myself each segment is a button choosing that level. Screen readers get
    the level's word (Beginner … Native). */
 export function LanguageLevelBar({ level, onChange, language }: LanguageLevelProps) {
-  const segment = (step: LanguageLevel) => clsx("h-2.5 w-6", step <= level ? "bg-ink" : "bg-faint");
+  const segment = (step: LanguageLevel) => clsx("h-3 w-6 border border-ink", step <= level ? "bg-action" : "bg-paper");
   if (!onChange) {
     return (
       <span role="img" aria-label={`${language}: ${LANGUAGE_LEVELS[level]}`} title={LANGUAGE_LEVELS[level]} className="flex shrink-0 gap-1">

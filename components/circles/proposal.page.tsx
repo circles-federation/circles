@@ -4,7 +4,7 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { CheckCircleIcon, CheckIcon, HandRaisedIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import type { MutationResult } from "@/components/providers/app-state-provider";
-import { Button, ConfirmModal, Eyebrow, EyebrowGroup, CappedChip, PageContainer, Section, SectionGroup, TextArea, useToast } from "@/components/shared";
+import { Button, ConfirmModal, Eyebrow, EyebrowGroup, CappedChip, PageContainer, TextArea, useToast, BOXED_LIST } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
 import { useMemberById } from "@/lib/hooks";
 import { OBJECTION_REASON_MAX, RESPONSE_LABEL, isEventProposal, proposalTitle, responseOf } from "@/lib/proposals.util";
@@ -39,9 +39,9 @@ interface ProposalPageProps {
 // each answer's look: green, thumb up, likes it; yellow, a check, accepts it
 // (both consent); red, thumb down, objects
 const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon: ComponentType<SVGProps<SVGSVGElement>> }> = {
-  like: { button: "btn-invert btn-leaf border-leaf bg-leaf text-paper", dot: "bg-leaf", icon: HandThumbUpIcon },
-  accept: { button: "btn-invert btn-accept border-accept bg-accept text-ink", dot: "bg-accept", icon: CheckIcon },
-  object: { button: "btn-invert btn-danger border-danger bg-danger text-paper", dot: "bg-danger", icon: HandThumbDownIcon },
+  like: { button: "ink-press border-ink bg-tint-leaf text-on-action", dot: "bg-leaf", icon: HandThumbUpIcon },
+  accept: { button: "ink-press border-ink bg-tint-warn text-on-action", dot: "bg-accept", icon: CheckIcon },
+  object: { button: "danger-press border-danger bg-paper text-danger", dot: "bg-danger", icon: HandThumbDownIcon },
 };
 
 /* A proposed change to a circle, for its members to answer by consent (see
@@ -66,7 +66,9 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
   const mine = responseOf(p, memberId);
   const open = p.status === "open";
   const canAnswer = open && p.proposerId !== memberId;
-  const [objecting, setObjecting] = useState(false);
+  // the answer being weighed, before it's confirmed: every answer is asked to be
+  // confirmed, an objection with its reason
+  const [choice, setChoice] = useState<ConsentResponse | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,18 +81,18 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
     const result = await onRespond(response, response === "object" ? reason : undefined);
     setBusy(false);
     if (!result.ok) return setError(result.error);
-    setObjecting(false);
+    setChoice(null);
     showToast({ tone: "success", message: response === "object" ? "Your objection is in. Everyone's been told." : "Your answer is in." });
   }
 
   return (
-    <PageContainer size="normal">
-      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5">
+    <PageContainer size="wide">
+      <div className="pb-2">
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="text-soft">Proposal</Eyebrow>
           <CappedChip onClick={onOpenCircle}>{circle.name}</CappedChip>
         </div>
-        <h1 className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-display">{proposalTitle(p)}</h1>
+        <h1 className="mt-3 font-sans text-title leading-[0.95] font-extrabold tracking-display min-[960px]:text-[56px]">{proposalTitle(p)}</h1>
         <p className="mt-3 font-serif text-sm text-soft">
           Proposed by{" "}
           {proposer ? (
@@ -107,12 +109,16 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
 
       <Outcome proposal={p} objectorName={objector?.name} />
 
-      <SectionGroup>
-        <Section>
+      {/* two columns from 960px: the change and everyone's answers on the
+          left, yours on the right. On a phone one run, in the order the
+          sections come (`order` over `contents` columns), apart by space */}
+      <div className="mt-8 flex flex-col gap-10 min-[960px]:grid min-[960px]:grid-cols-2 min-[960px]:items-start min-[960px]:gap-x-12">
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
+        <section className="order-1">
           <EyebrowGroup label={ABOUT[p.kind]}>
-            <div className="border-t border-ink">
+            <div className={BOXED_LIST}>
               {p.lines.map((l) => (
-                <div key={l.label} className="border-b border-faint py-3 last:border-b-ink">
+                <div key={l.label} className="border-b border-ink py-4 last:border-b-0">
                   <Eyebrow className="text-soft">{l.label}</Eyebrow>
                   {l.after && <div className="mt-1 font-serif text-lg leading-snug whitespace-pre-line">{l.after}</div>}
                   {l.before && <div className="mt-0.5 font-serif text-base leading-snug text-soft line-through">{l.before}</div>}
@@ -135,80 +141,18 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
               </button>
             )}
           </EyebrowGroup>
-        </Section>
+        </section>
 
-        {open && (
-          <Section>
-            <EyebrowGroup label="Your answer">
-              {!canAnswer ? (
-                <p className="font-serif text-base text-soft">You proposed this, so you&rsquo;ve consented{consentIsRsvp && <>, and you&rsquo;re down as going</>}.</p>
-              ) : (
-                <>
-                  {mine && <p className="mb-3 font-serif text-base">You answered: <strong className="font-sans">{RESPONSE_LABEL[mine.response]}</strong>. You can change it until it closes.</p>}
-                  {consentIsRsvp && <p className="mb-3 font-serif text-sm leading-snug text-soft">Liking or accepting it also marks you as going.</p>}
-                  <div className="grid grid-cols-1 gap-3 min-[720px]:grid-cols-3">
-                    {(["like", "accept", "object"] as const).map((r) => {
-                      const Icon = ANSWER_STYLE[r].icon;
-                      // the black outline is only ever your answer as it stands; red
-                      // goes hollow while an objection is being written, until it's sent
-                      const chosen = mine?.response === r;
-                      const drafting = r === "object" && objecting;
-                      return (
-                      <button
-                        key={r}
-                        type="button"
-                        disabled={busy}
-                        onClick={() => (r === "object" ? setObjecting((o) => !o) : answer(r))}
-                        aria-pressed={r === "object" ? undefined : chosen}
-                        aria-expanded={r === "object" ? objecting : undefined}
-                        className={clsx(
-                          "inline-flex cursor-pointer items-center justify-center gap-2 border-2 px-4 py-4 font-sans text-sm font-extrabold tracking-open disabled:cursor-default disabled:opacity-60",
-                          drafting ? "danger-press border-danger bg-paper text-danger" : ANSWER_STYLE[r].button,
-                          chosen && "outline-3 outline-offset-2 outline-ink"
-                        )}
-                      >
-                        <Icon className="size-5 shrink-0" strokeWidth={2} aria-hidden />
-                        {RESPONSE_LABEL[r]}
-                      </button>
-                      );
-                    })}
-                  </div>
-                  {objecting && (
-                    <div className="mt-4 border-l-4 border-danger pl-4">
-                      <label htmlFor="objection" className="block font-sans text-sm font-extrabold">
-                        Why do you object?
-                      </label>
-                      <p className="mt-1 font-serif text-sm leading-snug text-soft">
-                        An objection stops the proposal. Say what would need to change for you to consent.
-                      </p>
-                      <TextArea id="objection" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={OBJECTION_REASON_MAX} rows={3} className="mt-3" />
-                      <div className="mt-3 flex gap-3">
-                        <Button variant="danger" disabled={busy || !reason.trim()} onClick={() => answer("object")}>
-                          Object
-                        </Button>
-                        <Button variant="secondary" disabled={busy} onClick={() => setObjecting(false)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {error && <p className="mt-3 font-sans text-sm font-bold text-danger">{error}</p>}
-                </>
-              )}
-            </EyebrowGroup>
-          </Section>
-        )}
-
-        <Section>
+        <section className="order-3">
           <EyebrowGroup label="Answers">
-            <div className="border-t border-ink">
+            <div className={BOXED_LIST}>
               {deciders
                 .map((id) => memberById(id))
                 .filter((m): m is Member => !!m)
                 .map((m) => {
                   const r = responseOf(p, m.id);
                   return (
-                    <div key={m.id} className="border-b border-faint py-3 last:border-b-ink">
+                    <div key={m.id} className="border-b border-ink py-3 last:border-b-0">
                       <div className="flex items-center justify-between gap-3">
                         <button type="button" onClick={() => onOpenMember(m)} className="hit cursor-pointer border-0 bg-transparent p-0 text-left font-sans text-base font-bold text-ink">
                           {m.name}
@@ -224,17 +168,103 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                 })}
             </div>
           </EyebrowGroup>
-        </Section>
+        </section>
         {onWithdraw && (
-          <Section>
+          <section className="order-4">
             <p className="mb-3 font-serif text-sm leading-snug text-soft">Withdrawing it means {WITHDRAWN[p.kind]}, and closes this proposal.</p>
             <Button variant="danger" disabled={withdrawing} onClick={() => setWithdrawing(true)} className="w-full min-[480px]:w-auto">
               Withdraw
             </Button>
             {withdrawError && <p className="mt-3 font-sans text-sm font-bold text-danger">{withdrawError}</p>}
-          </Section>
+          </section>
         )}
-      </SectionGroup>
+        </div>
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
+        {open && (
+          <section className="order-2">
+            <EyebrowGroup label="Your answer">
+              {!canAnswer ? (
+                <p className="font-serif text-base text-soft">You proposed this, so you&rsquo;ve consented{consentIsRsvp && <>, and you&rsquo;re down as going</>}.</p>
+              ) : (
+                <>
+                  {mine && <p className="mb-3 font-serif text-base">You answered: <strong className="font-sans">{RESPONSE_LABEL[mine.response]}</strong>. You can change it until it closes.</p>}
+                  {consentIsRsvp && <p className="mb-3 font-serif text-sm leading-snug text-soft">Liking or accepting it also marks you as going.</p>}
+                  <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3" role="group" aria-label="Your answer">
+                    {(["like", "accept", "object"] as const).map((r) => {
+                      const Icon = ANSWER_STYLE[r].icon;
+                      // the one being weighed, or else your answer as it stands: ringed
+                      // in ink inside its own edge, the others stepping back
+                      const shown = choice ?? mine?.response ?? null;
+                      const selected = shown === r;
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setError(null);
+                            // your own answer needs no confirming: choosing it again clears the choice
+                            setChoice((c) => (c === r || r === mine?.response ? null : r));
+                          }}
+                          aria-pressed={selected}
+                          className={clsx(
+                            "inline-flex cursor-pointer items-center justify-center gap-2 border px-4 py-4 font-sans text-sm font-extrabold tracking-open transition-opacity duration-(--motion-small) disabled:cursor-default disabled:opacity-60",
+                            ANSWER_STYLE[r].button,
+                            selected && "shadow-[inset_0_0_0_2px_var(--color-ink)]",
+                            shown !== null && !selected && "opacity-60",
+                          )}
+                        >
+                          <Icon className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+                          {RESPONSE_LABEL[r]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {choice === "object" ? (
+                    <div className="mt-4 border-l-4 border-danger pl-4">
+                      <label htmlFor="objection" className="block font-sans text-sm font-extrabold">
+                        Why do you object?
+                      </label>
+                      <p className="mt-1 font-serif text-sm leading-snug text-soft">
+                        An objection stops the proposal. Say what would need to change for you to consent.
+                      </p>
+                      <TextArea id="objection" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={OBJECTION_REASON_MAX} rows={3} className="mt-3" />
+                      <div className="mt-3 flex gap-3">
+                        <Button variant="danger" disabled={busy || !reason.trim()} onClick={() => answer("object")}>
+                          Object
+                        </Button>
+                        <Button variant="secondary" disabled={busy} onClick={() => setChoice(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    choice !== null && (
+                      <div className="mt-4 border border-ink bg-paper p-4">
+                        <div className="font-sans text-sm font-extrabold">{choice === "like" ? "Confirm that you like this" : "Confirm that you accept this"}</div>
+                        <p className="mt-1 font-serif text-sm leading-snug text-soft">
+                          {choice === "like" ? "You consent, and you’re glad of it." : "You consent, though it isn’t your first choice."} You can change your answer until it closes.
+                        </p>
+                        <div className="mt-3 flex gap-3">
+                          <Button disabled={busy || mine?.response === choice} onClick={() => answer(choice)}>
+                            Confirm
+                          </Button>
+                          <Button variant="secondary" disabled={busy} onClick={() => setChoice(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  )}
+                  {error && <p className="mt-3 font-sans text-sm font-bold text-danger">{error}</p>}
+                </>
+              )}
+            </EyebrowGroup>
+          </section>
+        )}
+
+        </div>
+      </div>
 
       {withdrawing && onWithdraw && (
         <ConfirmModal
@@ -279,20 +309,23 @@ function Outcome({ proposal: p, objectorName }: { proposal: CircleProposal; obje
   const { made, done, notDone } = WORDS[p.kind];
   const [Icon, tone, heading, text] =
     p.status === "open"
-      ? [HandRaisedIcon, "border-l-ink", `Open until ${fmtDateTime(new Date(p.closesAt))}`, `If no one objects by then, it's ${made}. It's ${made} sooner if everyone consents.`]
+      ? [HandRaisedIcon, "bg-flame text-on-action", `Open until ${fmtDateTime(new Date(p.closesAt))}`, `If no one objects by then, it's ${made}. It's ${made} sooner if everyone consents.`]
       : p.status === "passed"
-        ? [CheckCircleIcon, "border-l-leaf", "Passed", `No one objected, so ${done}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
+        ? [CheckCircleIcon, "bg-tint-leaf text-on-action", "Passed", `No one objected, so ${done}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
         : p.status === "withdrawn"
           ? p.lapsed
-            ? [XCircleIcon, "border-l-soft", "Withdrawn automatically", "Its start time came before the circle had decided, so it was withdrawn and the event won't be held. It can be proposed again for another time."]
-            : [XCircleIcon, "border-l-soft", "Withdrawn", `It was withdrawn before it was decided, so it won't be ${notDone}. It can be proposed again.`]
-          : [XCircleIcon, "border-l-danger", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${notDone}. It can be proposed again, changed to meet the objection.`];
+            ? [XCircleIcon, "bg-wash text-soft", "Withdrawn automatically", "Its start time came before the circle had decided, so it was withdrawn and the event won't be held. It can be proposed again for another time."]
+            : [XCircleIcon, "bg-wash text-soft", "Withdrawn", `It was withdrawn before it was decided, so it won't be ${notDone}. It can be proposed again.`]
+          : [XCircleIcon, "bg-tint-danger text-on-action", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${notDone}. It can be proposed again, changed to meet the objection.`];
   return (
-    <div role="status" className={clsx("mt-6 flex items-start gap-3 border border-ink border-l-4 px-5 py-4", tone)}>
-      <Icon className="mt-px size-5 shrink-0" strokeWidth={2} />
+    <div role="status" className="mt-6 flex items-start gap-3 border border-ink bg-paper px-4 py-3">
+      {/* the state in a tile: flame while it waits, as everywhere a decision does */}
+      <span className={clsx("flex size-9 shrink-0 items-center justify-center border border-ink", tone)}>
+        <Icon className="size-5" strokeWidth={2} />
+      </span>
       <div>
         <div className="font-sans text-sm font-extrabold tracking-open">{heading}</div>
-        <p className="mt-1.5 font-serif text-sm leading-relaxed text-body">{text}</p>
+        <p className="mt-1 font-serif text-sm leading-relaxed text-body">{text}</p>
       </div>
     </div>
   );

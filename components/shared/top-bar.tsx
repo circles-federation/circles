@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ComponentType, type SVGProps } from "react";
+import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeftIcon, BookOpenIcon, CalendarIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, EllipsisHorizontalIcon, HandRaisedIcon, HomeIcon, InboxIcon, MegaphoneIcon, PencilIcon, PlusIcon, UserGroupIcon, UserPlusIcon, UsersIcon } from "@heroicons/react/24/outline";
@@ -31,7 +31,7 @@ const TABS: [string, string][] = [
   ["/events", "Events"],
 ];
 
-const NAV_LINK = "border-b-2 py-1 font-sans text-xs font-semibold tracking-caps text-ink uppercase no-underline";
+const NAV_LINK = "px-3 py-2 font-sans text-xs font-semibold tracking-caps uppercase no-underline";
 
 interface PageAction {
   href: string;
@@ -181,6 +181,23 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // notch). In a browser tab it's sticky over the scrolling page to the same
   // effect, and the variable goes unused.
   const barRef = useRef<HTMLDivElement>(null);
+  // transparent over the page (and a masthead's wash) until it scrolls, then
+  // solid, so what scrolls under it doesn't show through the title. The scroll
+  // is the document's in a browser tab and <main>'s in the installed app, so it
+  // listens to both (scroll doesn't bubble, hence capture) and ignores any other element's.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    // only the page's own scroll counts: the document's, or <main>'s in the
+    // installed app. A shelf, a tab row or a list scrolling inside the page
+    // says nothing about whether the page is under the bar.
+    const onScroll = (e: globalThis.Event) => {
+      const t = e.target;
+      const page = t === document ? document.scrollingElement : t instanceof HTMLElement && t.tagName === "MAIN" ? t : null;
+      if (page) setScrolled(page.scrollTop > 4);
+    };
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", onScroll, { capture: true });
+  }, []);
   useEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
@@ -197,10 +214,8 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
     <div
       ref={barRef}
       className={clsx(
-        "app-chrome sticky top-0 z-50 pt-[env(safe-area-inset-top)] standalone:absolute standalone:inset-x-0",
-        // with a tab row it's solid, the row's hairline its edge; otherwise it
-        // fades from white behind the title to clear at its foot
-        tabs ? "bg-paper" : "bg-linear-to-b from-paper from-55% via-paper/80 via-80% to-transparent",
+        "app-chrome sticky top-0 z-50 border-b border-ink pt-[env(safe-area-inset-top)] transition-colors duration-(--motion-small) standalone:absolute standalone:inset-x-0",
+        scrolled ? "bg-page" : "bg-transparent",
       )}
     >
       {/* the title on the left, the page's action on the right, and on desktop the
@@ -209,7 +224,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
       <div className="relative mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1 min-[720px]:max-w-[calc(50%-9rem)]">
           {!isTabRoot && <GhostIconButton icon={ArrowLeftIcon} label="Back" onClick={goBack} className="-ml-3" />}
-          <span className="truncate font-sans text-lg font-extrabold tracking-heading">
+          <span className="truncate font-sans text-xl font-extrabold tracking-heading">
             {pageTitle(pathname, circles, events, members, resources)}
           </span>
           {isHomeNeighborhood && <HomeIcon className="ml-1 size-5 shrink-0 text-teal" strokeWidth={2} aria-label="Your neighborhood" />}
@@ -266,19 +281,20 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
                 e.preventDefault();
                 onReselect();
               }}
-              className={clsx(NAV_LINK, "relative", currentTab === href ? "border-b-ink" : "border-b-transparent")}
+              aria-current={currentTab === href ? "page" : undefined}
+              className={clsx(NAV_LINK, "relative", currentTab === href ? "bg-ink text-page" : "text-ink")}
             >
               {label}
-              {href === "/home" && needsAttention && <AttentionDot className="top-0 -right-3" />}
+              {href === "/home" && needsAttention && <AttentionDot className="top-1 right-0.5" />}
             </Link>
           ))}
         </nav>
       </div>
       {tabs && (
-        // its sections, in line with the page beneath (PageContainer's normal
+        // its sections, in line with the page beneath (PageContainer's wide
         // width). Switching replaces the URL rather than adding a step for
         // Back to retrace; the section showing goes back to its top.
-        <div className="mx-auto max-w-220 px-6">
+        <div className="mx-auto max-w-270 px-6">
           <SimpleTabs
             tabs={tabs.sections.map((key) => ({ key, label: CIRCLE_SECTION_LABEL[key], icon: CIRCLE_SECTION_ICON[key], count: sectionCount(key, tabs.circle.id) }))}
             active={tabs.active}

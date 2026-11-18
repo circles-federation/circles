@@ -16,7 +16,10 @@ export { FederationExplorerField, useFederationExplorer } from "./federation-exp
 export { ICON_BUTTON_SLOT, IconButtonCircle } from "./icon-button-circle";
 export { ConfirmModal } from "./confirm-modal";
 export { EmptyState } from "./empty-state";
+export { BOXED_LIST, BOXED_ROWS } from "./boxed-list";
 export { Eyebrow } from "./eyebrow";
+export { StatusPill } from "./status-pill";
+export { MastheadGlow } from "./masthead-glow";
 export { EyebrowGroup } from "./eyebrow-group";
 export { FloatingActionButton } from "./floating-action-button";
 export { FolderGrid } from "./folder-grid";
@@ -47,7 +50,6 @@ export { Select } from "./select";
 export { SimpleTabs } from "./simple-tabs";
 export { Switch } from "./switch";
 export { RowShell, SettingRow, SettingRows } from "./setting-row";
-export { TabbedPanel } from "./tabbed-panel";
 export { Tag } from "./tag";
 export { TextArea } from "./text-area";
 export { useToast, ToastProvider } from "./toast";

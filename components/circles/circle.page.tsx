@@ -117,7 +117,7 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
   ]);
 
   return (
-    <PageContainer size="normal">
+    <PageContainer size="wide">
       {section === "bulletin" && (
         <SectionGroup>
           <Section className="pt-0">

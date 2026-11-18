@@ -27,13 +27,13 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
   const disabled = past || full || !!e.cancelled;
 
   return (
-    <div className={clsx("border px-5 py-4", unmet ? "border-ink" : "border-faint")}>
+    <div className={clsx("border bg-paper px-5 py-4", unmet ? "border-ink" : "border-faint")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-sans text-lg font-extrabold">{role.label}</span>
             {role.min > 0 ? (
-              <span className={clsx("border px-2 py-0.5 font-sans text-label font-bold uppercase tracking-caps", unmet ? "border-ink bg-ink text-paper" : "border-leaf text-leaf")}>
+              <span className={clsx("border px-2 py-0.5 font-sans text-label font-bold uppercase tracking-caps", unmet ? "border-tint-warn bg-tint-warn text-on-action" : "border-tint-leaf bg-tint-leaf text-on-action")}>
                 {unmet ? "Needed" : "Filled"}
               </span>
             ) : (
@@ -72,7 +72,7 @@ function RoleSlotCard({ role, event: e, profile, onToggleRoleSlot, onOpenMember 
             <button
               key={m.id}
               onClick={() => onOpenMember(m)}
-              className={clsx("ink-press flex cursor-pointer items-center gap-2 border border-ink py-1.5 pr-3 pl-1.5", m.id === profile.id ? "bg-wash" : "bg-paper")}
+              className={clsx("ink-press flex cursor-pointer items-center gap-2 border border-ink py-1.5 pr-3 pl-1.5", m.id === profile.id ? "bg-tint-leaf text-on-action" : "bg-paper")}
             >
               <Avatar member={m} size={28} />
               <span className="font-sans text-xs font-bold">{m.name}{m.id === profile.id ? " (you)" : ""}</span>

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { CheckIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { StatusPill, BOXED_ROWS } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useCirclesById, useTaskTick } from "@/lib/hooks";
 import { localDay } from "@/lib/recurrence.util";
@@ -25,19 +26,19 @@ export function MyTasks() {
 
   return (
     <HomeSection label="My tasks" count={mine.filter((t) => t.status !== "done").length}>
-      <div className="border-t border-ink">
+      <div className={BOXED_ROWS}>
         {mine.map((t) => {
           const done = t.status === "done";
           const due = dueCell(t, today);
           const priority = taskPriority(t.priority);
           return (
-            <div key={t.id} className="flex items-center gap-4 border-b border-faint last:border-b-ink">
+            <div key={t.id} className="ink-press flex items-center gap-4 border-b border-ink px-4 last:border-b-0">
               <button
                 type="button"
                 onClick={() => toggle(t)}
                 aria-label={done ? `Mark “${t.title}” not done` : `Mark “${t.title}” done`}
                 aria-pressed={done}
-                className={clsx("hit flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-ink", done ? "btn-invert btn-ink bg-ink text-paper" : "ink-press bg-paper text-ink")}
+                className={clsx("hit flex size-6 shrink-0 cursor-pointer items-center justify-center border border-ink", done ? "ink-press border-tint-leaf bg-tint-leaf text-on-action" : "ink-press bg-paper text-ink")}
               >
                 {done && <CheckIcon className="size-4" strokeWidth={3} aria-hidden />}
               </button>
@@ -45,7 +46,6 @@ export function MyTasks() {
                 <div className="min-w-0 flex-1">
                   <div className={clsx("truncate font-sans text-base font-bold", done && "text-soft line-through")}>{t.title}</div>
                   <div className="mt-0.5 truncate font-serif text-sm text-soft">
-                    {due && <span className={clsx(due.overdue && "font-bold text-danger")}>{due.text}{due.overdue && <span className="sr-only"> (overdue)</span>} · </span>}
                     {t.status === "doing" && "In progress · "}
                     {byId[t.circleId]?.name}
                   </div>
@@ -56,7 +56,12 @@ export function MyTasks() {
                     <span className="sr-only">{priority.label}</span>
                   </span>
                 )}
-                <ChevronRightIcon className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                {due && (
+                  <StatusPill tone={due.overdue ? "danger" : "outline"}>
+                    {due.text}
+                    {due.overdue && <span className="sr-only"> (overdue)</span>}
+                  </StatusPill>
+                )}
               </Link>
             </div>
           );

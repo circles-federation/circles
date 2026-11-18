@@ -147,7 +147,7 @@ interface FederationExplorerFieldProps {
 }
 
 /* A field for choosing a circle: shows the one chosen, its icon and name
-   with where it sits under it, and opens the Federation Explorer to change
+   in an outlined tile with where it sits under it, and opens the Federation Explorer to change
    it (useFederationExplorer). */
 export function FederationExplorerField({ id, circles, value, onOpen, placeholder = "Choose a circle", disabled }: FederationExplorerFieldProps) {
   const byId = useMemo(() => indexCircles(circles), [circles]);
@@ -161,13 +161,15 @@ export function FederationExplorerField({ id, circles, value, onOpen, placeholde
       aria-haspopup="dialog"
       disabled={disabled}
       onClick={onOpen}
-      className={clsx("relative flex w-full items-center gap-3 py-3 pr-9 pl-3 text-left", disabled ? DISABLED_FIELD : clsx("cursor-pointer", FIELD))}
+      className={clsx("relative flex w-full items-center gap-3 py-2 pr-9 pl-2 text-left", disabled ? DISABLED_FIELD : clsx("cursor-pointer", FIELD))}
     >
       {chosen ? (
         <>
-          <CircleTypeIcon circle={chosen} className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+          <span className="flex size-9 shrink-0 items-center justify-center border border-ink bg-paper text-ink">
+            <CircleTypeIcon circle={chosen} className="size-5" strokeWidth={2} aria-hidden />
+          </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-sans text-base font-bold">{chosen.name}</span>
+            <span className="block truncate font-sans text-base leading-tight font-extrabold tracking-snug">{chosen.name}</span>
             <span className="block truncate font-sans text-sm text-soft">{path}</span>
           </span>
         </>

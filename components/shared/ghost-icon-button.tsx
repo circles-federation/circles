@@ -11,7 +11,7 @@ interface GhostIconButtonProps {
 
 /* An icon with no fill of its own — the top bar's Back, a modal's close, the
    + at the end of a tab row. A 44px tap area round a 40px circle, which shows
-   faintly while pressed so a tap visibly lands. */
+   as a see-through wash of ink while pressed (black in Sol, so it sits right on the page's colour wash; light in Luna), so a tap visibly lands. */
 export function GhostIconButton({ icon: Icon, label, onClick, className }: GhostIconButtonProps) {
   return (
     <button
@@ -21,7 +21,7 @@ export function GhostIconButton({ icon: Icon, label, onClick, className }: Ghost
       title={label}
       className={clsx("group flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-ink", className)}
     >
-      <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-(--motion-press) group-active:scale-95 group-active:bg-faint">
+      <span className="flex size-10 items-center justify-center rounded-full transition-[background-color,transform] duration-(--motion-press) group-active:scale-95 group-active:bg-ink/10">
         <Icon className="size-6" strokeWidth={2} />
       </span>
     </button>

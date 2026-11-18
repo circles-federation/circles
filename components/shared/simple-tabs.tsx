@@ -21,15 +21,12 @@ interface SimpleTabsProps {
 }
 
 /* A plain, left-aligned tab row for switching between content blocks the
-   caller renders itself — gray inactive labels, a bold black label plus a
-   thin underline for the active one, all sitting on a single hairline.
-   Unlike TabbedPanel (a boxed panel with equal-width tabs, a colored accent
-   bar, and an attached content box), this is navigation only.
+   caller renders itself — ink inactive labels, the active one a bold label
+   on a filled ink block, all sitting on a single hairline (the top bar's lower edge). Navigation only.
 
    On a phone too narrow for every tab (a member of a circle has five), the
    row scrolls sideways, its scrollbar hidden, and the active tab is brought
-   into view; the hairline is drawn inside the scrolling row so the active
-   tab's underline still sits on it. */
+   into view. */
 export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProps) {
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +50,7 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
           labels would otherwise allow */}
       <div
         ref={rowRef}
-        className="-mt-3 flex gap-5 overflow-x-auto overflow-y-hidden pt-3 shadow-[inset_0_-1px_0_var(--color-faint)] [scrollbar-width:none] min-[720px]:gap-6 [&::-webkit-scrollbar]:hidden"
+        className="-mt-3 flex gap-2 overflow-x-auto overflow-y-hidden pt-3 pb-3 [scrollbar-width:none] min-[720px]:gap-3 [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map((t) => {
           const on = t.key === active;
@@ -65,8 +62,8 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
               className={clsx(
                 // z-10: over the tab's content, which would otherwise cover the
                 // bottom of its tap area (hit)
-                "hit z-10 flex shrink-0 cursor-pointer items-center gap-2 border-0 border-b-2 bg-transparent pb-3 font-sans text-base whitespace-nowrap",
-                on ? "border-b-ink font-bold text-ink" : "border-b-transparent font-normal text-soft hover:text-ink",
+                "hit z-10 flex shrink-0 cursor-pointer items-center gap-2 border-0 px-3 py-1.5 font-sans text-base whitespace-nowrap",
+                on ? "bg-ink font-bold text-paper" : "bg-transparent font-semibold text-ink",
               )}
             >
               {t.icon && <t.icon className="hidden size-4 shrink-0 min-[600px]:block" strokeWidth={on ? 2.5 : 2} aria-hidden />}
@@ -74,7 +71,7 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
               {/* a bare grey number after the label, as the app counts things
                   ("Open · 3"): read as part of it, not something calling out */}
               {!!t.count && (
-                <span className="font-normal text-soft tabular-nums">
+                <span className={clsx("font-normal tabular-nums", on ? "text-paper" : "text-soft")}>
                   {t.count > 99 ? "99+" : t.count}
                   <span className="sr-only"> new</span>
                 </span>

@@ -20,6 +20,8 @@ interface MessageEditorProps {
   // written straight onto the page (the letter being written), rather than
   // in a field: no ground or rule, and set a size up
   bare?: boolean;
+  // in a bordered paper box rather than a filled field (a meeting's notes)
+  boxed?: boolean;
   // what it's called for a screen reader (the message, by default)
   label?: string;
   // shown as it reads, but not to be changed (a field its writer can't write in yet)
@@ -42,7 +44,7 @@ interface MessageEditorProps {
    What's kept is the Markdown itself (lib/messages.util.ts reads it).
    CodeMirror, since it edits the text itself rather than a model of it,
    which is what lets the symbols be shown and edited at all. */
-export function MessageEditor({ id, value, onChange, placeholder, bare, label = "Message", readOnly = false, onBlur }: MessageEditorProps) {
+export function MessageEditor({ id, value, onChange, placeholder, bare, boxed, label = "Message", readOnly = false, onBlur }: MessageEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<EditorView | null>(null);
   const [bar, setBar] = useState<{ top: number; left: number; on: Formats } | null>(null);
@@ -120,7 +122,7 @@ export function MessageEditor({ id, value, onChange, placeholder, bare, label = 
 
   return (
     <div className="relative">
-      <div ref={host} className={bare ? "block" : clsx(FIELD_ROW, "block has-[.cm-focused]:border-ink has-[.cm-focused]:shadow-[inset_0_-1px_0_var(--color-ink)]")} />
+      <div ref={host} className={bare ? "block" : boxed ? "block border border-ink bg-paper has-[.cm-focused]:shadow-[inset_0_0_0_1px_var(--color-ink)]" : clsx(FIELD_ROW, "block has-[.cm-focused]:border-ink has-[.cm-focused]:shadow-[inset_0_-1px_0_var(--color-ink)]")} />
       {view && bar && (
         <FormatBar
           view={view}

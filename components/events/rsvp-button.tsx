@@ -1,6 +1,5 @@
 import { CheckIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { togglePress } from "@/components/shared";
 
 interface RsvpButtonProps {
   going?: boolean;
@@ -20,7 +19,7 @@ export function RsvpButton({ going, onToggle, big, past }: RsvpButtonProps) {
       <div
         title="This event has already happened"
         className={clsx(
-          "inline-flex cursor-not-allowed items-center gap-3 border border-faint bg-paper font-sans text-xs font-bold tracking-caps whitespace-nowrap text-soft uppercase",
+          "ink-press-badge inline-flex cursor-not-allowed items-center gap-3 border border-faint bg-paper font-sans text-xs font-bold tracking-caps whitespace-nowrap text-soft uppercase",
           sizeClasses,
         )}
       >
@@ -37,8 +36,9 @@ export function RsvpButton({ going, onToggle, big, past }: RsvpButtonProps) {
       className={clsx(
         "inline-flex cursor-pointer items-center gap-3 border border-ink font-sans text-xs font-bold tracking-caps whitespace-nowrap uppercase",
         sizeClasses,
-        togglePress(!!going),
-        going ? "bg-ink text-paper" : "bg-paper text-ink",
+        "ink-press",
+        // inside a pressed row (Up next) it keeps its own fill and text colour
+        going ? "status-pill-pale bg-tint-leaf text-on-action" : "ink-press-badge bg-paper text-ink",
       )}
     >
       <span className="inline-flex items-center gap-1">

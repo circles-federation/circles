@@ -1,7 +1,7 @@
 "use client";
 
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Tag, MastheadGlow, BOXED_LIST } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { circlesForMember } from "@/lib/circles.util";
@@ -30,9 +30,10 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
   const ownHidden = m.id === profile.id && !profile.emailPublic;
 
   return (
-    <PageContainer size="normal">
-      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-6">
-        <div className="flex items-center justify-between gap-3">
+    <PageContainer size="wide">
+      <div className="relative isolate pt-4 pb-6">
+        <MastheadGlow />
+        <div className="flex items-center justify-between gap-3 min-[960px]:justify-start min-[960px]:gap-4">
           {/* as they wrote them, not in small caps */}
           <span className="shrink-0 font-sans text-sm font-semibold text-soft">{m.pronouns}</span>
           {home && (
@@ -41,10 +42,19 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
             </CappedChip>
           )}
         </div>
-        <div className="mt-4 flex items-center gap-5">
-          <Avatar member={m} size={96} showPending />
+        <div className="mt-4 flex items-center gap-5 min-[960px]:items-end min-[960px]:gap-8">
+          {/* the decade is a tilted sticker laid over the photo's corner */}
+          <div className="relative shrink-0">
+            <Avatar member={m} sizeClassName="size-24 min-[960px]:size-44" showPending />
+            {m.birthDecade !== undefined && (
+              <span className="absolute -bottom-3 -left-3 -rotate-6 border border-ink bg-action px-3 pt-1 pb-0.5 text-center text-on-action shadow-float">
+                <span className="block font-sans text-label leading-none font-bold tracking-caps uppercase">Born in the</span>
+                <span className="block font-sans text-xl leading-tight font-extrabold tracking-[-0.03em]">{birthDecadeLabel(m.birthDecade)}</span>
+              </span>
+            )}
+          </div>
           <div className="min-w-0">
-            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display">{m.name}</h1>
+            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display min-[960px]:text-[64px] min-[960px]:leading-[1.02]">{m.name}</h1>
             {/* as a member card shows it, under the name in sentence case (it's
                 information, not a label), a size up for the larger name; a new
                 member may not have filled it in yet */}
@@ -54,27 +64,20 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         {m.bio && <p className="mt-5 font-serif text-xl text-body italic">{m.bio}</p>}
       </div>
 
-      <SectionGroup>
-        {/* the playful one: the decade as a big, tilted sticker */}
-        {m.birthDecade !== undefined && (
-          <Section>
-            <EyebrowGroup label="Born in the">
-              <span className="inline-block -rotate-3 bg-ink px-4 pt-2 pb-1.5 font-sans text-title leading-none font-extrabold tracking-[-0.04em] text-paper">
-                {birthDecadeLabel(m.birthDecade)}
-              </span>
-            </EyebrowGroup>
-          </Section>
-        )}
-
+      {/* two columns from 960px: languages, skills and interests on the left,
+          how to get in touch and the circles they're in on the right; on a
+          phone one run (`order` over `contents` columns), apart by space */}
+      <div className="mt-8 flex flex-col gap-10 min-[960px]:grid min-[960px]:grid-cols-2 min-[960px]:items-start min-[960px]:gap-x-12">
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
         {m.languages && m.languages.length > 0 && (
-          <Section>
+          <section className="order-1">
             <EyebrowGroup label="Languages">
-              <div className="border-t border-ink">
+              <div className={BOXED_LIST}>
                 {m.languages.map((l) => {
                   const endonym = languageEndonym(l.code);
                   const english = languageName(l.code);
                   return (
-                    <div key={l.code} className="flex items-center gap-4 border-b border-faint py-3 last:border-b-ink">
+                    <div key={l.code} className="flex items-center gap-4 border-b border-ink py-3 last:border-b-0">
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-sans text-lg leading-tight font-extrabold tracking-snug">{endonym}</div>
                         {/* always a second line, so every row is the same height: the
@@ -89,36 +92,13 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
                 })}
               </div>
             </EyebrowGroup>
-          </Section>
-        )}
-
-        {ownHidden ? (
-          <Section>
-            <EyebrowGroup label="Get in touch">
-              <p className="inline-flex items-center gap-2 font-serif text-base text-soft">
-                <LockClosedIcon className="size-4 shrink-0" strokeWidth={2} />
-                Your email is hidden from other members.
-              </p>
-            </EyebrowGroup>
-          </Section>
-        ) : m.email && (
-          <Section>
-            <EyebrowGroup label="Get in touch">
-              <a
-                href={`mailto:${m.email}`}
-                className="ink-press inline-flex min-h-11 items-center gap-2 border border-ink px-3 py-2 font-sans text-sm font-bold break-all text-ink"
-              >
-                <EnvelopeIcon className="size-4 shrink-0" strokeWidth={2} />
-                {m.email}
-              </a>
-            </EyebrowGroup>
-          </Section>
+          </section>
         )}
 
         {(m.skills.length > 0 || m.interests.length > 0) && (
-          <Section className="flex flex-col gap-6">
+          <section className="order-3 flex flex-col gap-6">
             {m.skills.length > 0 && (
-              <EyebrowGroup label="Skills offered">
+              <EyebrowGroup label="Skills">
                 {m.skills.map((s) => <Tag key={s}>{s}</Tag>)}
               </EyebrowGroup>
             )}
@@ -127,20 +107,48 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
                 {m.interests.map((s) => <Tag key={s}>{s}</Tag>)}
               </EyebrowGroup>
             )}
-          </Section>
+          </section>
+        )}
+
+        </div>
+        <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
+        {ownHidden ? (
+          <section className="order-2">
+            <EyebrowGroup label="Get in touch">
+              <p className="inline-flex items-center gap-2 font-serif text-base text-soft">
+                <LockClosedIcon className="size-4 shrink-0" strokeWidth={2} />
+                Your email is hidden from other members.
+              </p>
+            </EyebrowGroup>
+          </section>
+        ) : m.email && (
+          <section className="order-2">
+            <EyebrowGroup label="Get in touch">
+              <a
+                href={`mailto:${m.email}`}
+                className="ink-press flex min-h-11 items-center gap-3 border border-ink bg-paper px-4 py-3 font-sans text-sm font-bold break-all text-ink"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center border border-ink bg-email text-on-action">
+                  <EnvelopeIcon className="size-4" strokeWidth={2} />
+                </span>
+                {m.email}
+              </a>
+            </EyebrowGroup>
+          </section>
         )}
 
         {memberCircles.length > 0 && (
-          <Section>
+          <section className="order-4">
             <FolderGrid
               label="Member of"
               items={memberCircles}
               minWidth={300}
               renderItem={(c) => <CircleCard key={c.id} c={c} onOpenCircle={onOpenCircle} showKindEyebrow />}
             />
-          </Section>
+          </section>
         )}
-      </SectionGroup>
+        </div>
+      </div>
     </PageContainer>
   );
 }

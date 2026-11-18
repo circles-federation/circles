@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo } from "react";
+import { useMemo } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Button, EmptyState, Eyebrow } from "@/components/shared";
 import { OrdinaryRow } from "./ordinary-row";
@@ -20,8 +20,8 @@ interface EventFeedProps {
 
 /* A single chronological event feed: upcoming events first (soonest at top).
    Past events are hidden by default (wherever this is reused — the Events
-   page and the Home dashboard) and only join the list, oldest last, once
-   revealed via the link below. Paginates with "Load more", which appends
+   page and the Home dashboard) and, once revealed via the button below, are
+   a "Past events" section of their own after the upcoming list, most recent first. Paginates with "Load more", which appends
    older events. Spacing above the list is the caller's job (e.g.
    home.page.jsx wraps this in an EyebrowGroup), not this component's. */
 export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No events yet.", emptyAction }: EventFeedProps) {
@@ -44,9 +44,9 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
 
   const visible = ordered.slice(0, shownCount);
   const remaining = ordered.length - visible.length;
-  // the "now" seam sits between the last upcoming and first past event — show it
-  // only once past events are revealed and there are events on both sides
-  const showSeam = showPast && upcoming.length > 0 && upcoming.length < ordered.length && upcoming.length <= visible.length;
+  // past events, once shown, are a section of their own after the upcoming ones
+  const upcomingVisible = visible.slice(0, upcoming.length);
+  const pastVisible = visible.slice(upcoming.length);
 
   if (ordered.length === 0) {
     return (
@@ -70,20 +70,23 @@ export function EventFeed({ events, onOpenEvent, pageSize = 12, emptyText = "No 
 
   return (
     <>
-      <div className="border-t border-ink">
-        {visible.map((e, i) => (
-          <Fragment key={e.id}>
-            {showSeam && i === upcoming.length && (
-              <div aria-label="Past events below" className="flex items-center gap-3 border-b border-faint px-4 py-4">
-                <span className="h-px flex-1 bg-faint" />
-                <Eyebrow className="text-soft">Past</Eyebrow>
-                <span className="h-px flex-1 bg-faint" />
-              </div>
-            )}
-            <OrdinaryRow e={e} onOpenEvent={onOpenEvent} />
-          </Fragment>
-        ))}
-      </div>
+      {upcomingVisible.length > 0 && (
+        <div className="border border-ink bg-paper">
+          {upcomingVisible.map((e) => (
+            <OrdinaryRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
+          ))}
+        </div>
+      )}
+      {pastVisible.length > 0 && (
+        <section className={upcomingVisible.length > 0 ? "mt-10" : undefined} aria-label="Past events">
+          <Eyebrow className="mb-3 block text-soft">Past events · {past.length}</Eyebrow>
+          <div className="border border-ink bg-paper">
+            {pastVisible.map((e) => (
+              <OrdinaryRow key={e.id} e={e} onOpenEvent={onOpenEvent} />
+            ))}
+          </div>
+        </section>
+      )}
       {remaining > 0 && (
         <Button variant="secondary" onClick={() => setFeed({ showPast, shownCount: shownCount + pageSize })} className="mt-4 w-full">
           Load older events

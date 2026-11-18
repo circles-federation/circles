@@ -41,21 +41,22 @@ const ROW_ACCENT: Record<RowAccent, string> = {
    this only owns the shape and the accent treatment. */
 export function EventRow({ e, onOpenEvent, dateAccent, rowAccent = "transparent", tags, title, titleMuted = false, meta, metaMuted = false, right }: EventRowProps) {
   return (
-    <div className={clsx(
+    <div
+      onClick={() => onOpenEvent(e)}
+      className={clsx(
+      // the whole row is the way in, and inverts while pressed like a card
+      "ink-press cursor-pointer",
       // border-b-faint (not the border-faint shorthand) on purpose: the
       // shorthand also sets border-left-color, which would fight
-      // the accent's border below over the same property. Grey between
+      // the accent's border below over the same property. Ink between
       // rows, ink under the last, as Home's rows (LinkRow) are ruled.
-      "flex items-start gap-5 border-b border-b-faint py-5 last:border-b-ink",
-      // a plain row has no side edges, so no side padding either (as circle
-      // resources' rows): its content runs flush with the list. Only an
-      // accented one is inset, and only on its left, beside its bar: the right
-      // stays flush, so its status (Attending, ...) lines up with the others'.
-      rowAccent !== "transparent" && ["border-l-4 pl-4", ROW_ACCENT[rowAccent]],
+      "flex items-start gap-5 border-b border-b-ink px-4 py-5 last:border-b-0",
+      // a row sits in its list's box, padded on every side; an accented one
+      // has a bar down its left edge, which takes the place of that padding
+      rowAccent !== "transparent" && ["border-l-4 pl-3", ROW_ACCENT[rowAccent]],
     )}>
       <DateTile iso={e.date} accent={dateAccent} />
       <button
-        onClick={() => onOpenEvent(e)}
         className="flex-1 cursor-pointer border-none bg-transparent p-0 text-left"
       >
         <div className="flex flex-wrap items-center gap-2">{tags}</div>

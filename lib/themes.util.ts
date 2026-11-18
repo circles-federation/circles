@@ -11,15 +11,15 @@ export const THEMES = [
     key: "sol",
     label: "Sol",
     description: "Ink on paper.",
-    browserColor: "#ffffff",
-    preview: { paper: "#ffffff", ink: "#0a0a0a", soft: "#6b6b6b", faint: "#e4e4e4", chrome: "#0a0a0a", accent: "#0f7d77" },
+    browserColor: "#f8f4f0",
+    preview: { paper: "#f8f4f0", ink: "#0a0a0a", soft: "#6b6b6b", faint: "#e6e0d8", chrome: "#0a0a0a", accent: "#3fcfc0" },
   },
   {
     key: "luna",
     label: "Luna",
     description: "Paper on ink, for the evening.",
-    browserColor: "#131313",
-    preview: { paper: "#131313", ink: "#edebe6", soft: "#9a9893", faint: "#31302e", chrome: "#3a3a38", accent: "#2bb3a9" },
+    browserColor: "#0f0d0b",
+    preview: { paper: "#0f0d0b", ink: "#f1ece4", soft: "#b3aca1", faint: "#38332d", chrome: "#2e2924", accent: "#2fe0cd" },
   },
 ] as const;
 

@@ -27,9 +27,9 @@ export function proxy(request: NextRequest) {
   }
 }
 
-// the manifest, app icons and service worker are skipped too: a browser
+// the manifest, app icons, grain tile and service worker are skipped too: a browser
 // fetches them without cookies, so gating them would hand it the welcome page
 // instead and quietly break installing the app (or push notifications)
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|manifest\\.webmanifest|icons/|icon\\.svg|apple-icon\\.png|sw\\.js).*)"],
+  matcher: ["/((?!_next/static|_next/image|manifest\\.webmanifest|icons/|icon\\.svg|apple-icon\\.png|grain\\.png|sw\\.js).*)"],
 };

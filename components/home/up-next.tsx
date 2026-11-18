@@ -1,6 +1,6 @@
 "use client";
 
-import { EmptyState, LinkRow } from "@/components/shared";
+import { EmptyState, LinkRow, StatusPill, BOXED_ROWS } from "@/components/shared";
 import { DateTile } from "@/components/events/date-tile";
 import { RsvpButton } from "@/components/events/rsvp-button";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -49,23 +49,30 @@ export function UpNext() {
   return (
     <HomeSection label="Up next" more={{ label: "My events", href: "/events?show=mine" }}>
       {mine.length > 0 ? (
-        <div className="border-t border-ink">
+        <div className={BOXED_ROWS}>
           {mine.map((e) => (
             <LinkRow
+              press
               key={e.id}
               href={`/events/${e.id}`}
               image={<DateTile iso={e.date} accent={e.cancelled ? "soft" : "ink"} />}
               title={e.cancelled ? <span className="text-soft line-through">{e.title}</span> : e.title}
-              detail={[e.cancelled ? "Cancelled" : hosting(e, profile.id) ? "Hosting" : isAttending(e, profile.id) || rsvpState[e.id] ? "Going" : "Organizing", fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}
+              detail={[fmtTime(e.start), where(e)].filter(Boolean).join(" · ")}
+              badge={
+                <StatusPill tone={e.cancelled ? "danger" : hosting(e, profile.id) ? "action" : isAttending(e, profile.id) || rsvpState[e.id] ? "leaf" : "warn"}>
+                  {e.cancelled ? "Cancelled" : hosting(e, profile.id) ? "Hosting" : isAttending(e, profile.id) || rsvpState[e.id] ? "Going" : "Organizing"}
+                </StatusPill>
+              }
             />
           ))}
         </div>
       ) : suggested.length > 0 ? (
         <>
           <p className="m-0 mb-3 font-serif text-base text-soft">You’re not going to anything yet. Coming up in your circles:</p>
-          <div className="border-t border-ink">
+          <div className={BOXED_ROWS}>
             {suggested.map((e) => (
               <LinkRow
+              press
                 key={e.id}
                 href={`/events/${e.id}`}
                 image={<DateTile iso={e.date} />}

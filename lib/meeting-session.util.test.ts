@@ -41,7 +41,7 @@ describe("stepAt", () => {
 
 describe("stepLabel", () => {
   it("says where the meeting is in words", () => {
-    expect([0, 1, 2, 3, 4, 5].map((s) => stepLabel(s, 2))).toEqual(["Attendance", "Agenda", "Topic 1 of 2", "Topic 2 of 2", "Tasks", "Wrap-up"]);
+    expect([0, 1, 2, 3, 4, 5].map((s) => stepLabel(s, 2))).toEqual(["Attendance", "Agenda", "Topic 1 of 2", "Topic 2 of 2", "Tasks", "Finish"]);
     expect(stepLabel(9, 2)).toBe("");
   });
 });

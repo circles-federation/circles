@@ -43,7 +43,7 @@ async function startupImage(width: number, height: number, ratio: number) {
   const px = { width: width * ratio, height: height * ratio };
   const image = new ImageResponse(
     (
-      <div style={{ ...px, display: "flex", alignItems: "center", justifyContent: "center", background: "#ffffff" }}>
+      <div style={{ ...px, display: "flex", alignItems: "center", justifyContent: "center", background: "#f8f4f0" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} width={mark} height={mark} alt="" />
       </div>

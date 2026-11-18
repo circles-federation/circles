@@ -11,7 +11,7 @@ type ButtonSize = "default" | "compact" | "inline";
 
 const PRIMARY_ACCENTS: Record<ButtonAccent, string> = {
   ink: "btn-invert btn-ink border-ink bg-ink text-paper",
-  flame: "btn-invert btn-flame border-flame bg-flame text-paper",
+  flame: "btn-invert btn-flame border-flame bg-flame text-on-action",
   teal: "btn-invert btn-teal border-teal bg-teal text-paper",
 };
 

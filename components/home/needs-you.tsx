@@ -1,16 +1,28 @@
 "use client";
 
 import type { ReactNode } from "react";
+import clsx from "clsx";
 import { EnvelopeIcon, HandRaisedIcon, InboxIcon, InboxStackIcon } from "@heroicons/react/24/outline";
-import { LinkRow } from "@/components/shared";
+import { LinkRow, BOXED_LIST } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
 import { useCirclesById, useMemberById, useNeedsYou } from "@/lib/hooks";
 import { proposalTitle } from "@/lib/proposals.util";
 import { HomeSection } from "./home-section";
 
 // a row's icon, in the room LinkRow keeps for a picture
-function RowIcon({ children }: { children: ReactNode }) {
-  return <span className="flex w-6 shrink-0 justify-center">{children}</span>;
+function RowIcon({ children, tone = "paper" }: { children: ReactNode; tone?: "flame" | "paper" | "quiet" }) {
+  return (
+    <span
+      className={clsx(
+        "flex size-9 shrink-0 items-center justify-center border",
+        tone === "flame" && "border-ink bg-flame text-on-action",
+        tone === "paper" && "border-ink bg-paper text-ink",
+        tone === "quiet" && "border-faint bg-wash text-soft",
+      )}
+    >
+      {children}
+    </span>
+  );
 }
 
 /* Everything on Home that's waiting on someone, as one list: first what's
@@ -27,7 +39,7 @@ export function NeedsYou() {
 
   return (
     <HomeSection label={needed > 0 ? "Needs you" : "Your proposals"} {...(needed > 0 ? { count: needed, attention: true } : {})}>
-      <div className="border-t border-ink">
+      <div className={BOXED_LIST}>
         {reviews > 0 && (
           <LinkRow
             href="/admin/review"
@@ -40,7 +52,7 @@ export function NeedsYou() {
           <LinkRow
             key={p.id}
             href={`/proposals/${p.id}`}
-            image={<RowIcon><HandRaisedIcon className="size-5 text-flame" strokeWidth={2} aria-hidden /></RowIcon>}
+            image={<RowIcon tone="flame"><HandRaisedIcon className="size-5" strokeWidth={2} aria-hidden /></RowIcon>}
             title={proposalTitle(p)}
             detail={`${byId[p.circleId]?.name ?? "A circle"} · answer by ${fmtDateTime(new Date(p.closesAt))}`}
           />
@@ -49,7 +61,7 @@ export function NeedsYou() {
           <LinkRow
             key={`inbox-${circleId}`}
             href={`/circles/${circleId}/inbox`}
-            image={<RowIcon><InboxStackIcon className="size-5 text-action" strokeWidth={2} aria-hidden /></RowIcon>}
+            image={<RowIcon><InboxStackIcon className="size-5" strokeWidth={2} aria-hidden /></RowIcon>}
             title={count === 1 ? "1 new message" : `${count} new messages`}
             detail={`To ${byId[circleId]?.name ?? "your circle"}`}
           />
@@ -70,7 +82,7 @@ export function NeedsYou() {
           <LinkRow
             key={p.id}
             href={`/proposals/${p.id}`}
-            image={<RowIcon><HandRaisedIcon className="size-5 text-ghost" strokeWidth={2} aria-hidden /></RowIcon>}
+            image={<RowIcon tone="quiet"><HandRaisedIcon className="size-5" strokeWidth={2} aria-hidden /></RowIcon>}
             title={<span className="font-semibold">{proposalTitle(p)}</span>}
             detail={`Waiting on ${byId[p.circleId]?.name ?? "its circle"} · yours`}
           />

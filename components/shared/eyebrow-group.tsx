@@ -20,7 +20,7 @@ interface EyebrowGroupProps {
 export function EyebrowGroup({ label, children }: EyebrowGroupProps) {
   return (
     <div>
-      <Eyebrow className="text-soft">{label}</Eyebrow>
+      <Eyebrow>{label}</Eyebrow>
       <div className="mt-4">{children}</div>
     </div>
   );

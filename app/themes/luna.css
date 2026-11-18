@@ -10,15 +10,23 @@
 @media not print {
   [data-theme="luna"] {
     color-scheme: dark;
-    --color-ink: #edebe6;
-    --color-paper: #131313;
-    --color-body: #d4d2cc;
-    --color-ghost: #6e6c68;
+    --color-ink: #f1ece4;
+    --color-paper: #1a1714;
+    --color-page: #0f0d0b;
+    --color-body: #d8d2c8;
+    --color-ghost: #7d776e;
     --color-attention: #ff453a;
-    --color-soft: #9a9893;
-    --color-faint: #31302e;
-    --color-wash: #1c1c1b;
+    --color-soft: #b3aca1;
+    --color-faint: #38332d;
+    --color-wash: #231f1b;
     --color-flame: #ff7a3d;
+    --color-flame-text: #ff7a3d;
+    --color-tint-leaf: #7fe39a;
+    --color-tint-warn: #ffd23c;
+    --color-tint-danger: #ff7a7a;
+    --color-glow-teal: #0a6f66;
+    --color-glow-warm: #8a5d12;
+    --color-glow-coral: #a8364d;
     --color-leaf: #5cb860;
     --color-teal: #2bb3a9;
     --color-danger: #ff5a4e;
@@ -30,14 +38,15 @@
     --color-agenda: #2bc1ba;
     --color-phone: #ff5a4e;
     --color-email: #6cb8ff;
-    --color-action: #3d8bff;
+    --color-action: #2fe0cd;
+    --color-on-action: #0a0a0a;
     --color-accept: #ffc93c;
-    --color-chrome: #3a3a38;
-    --color-on-chrome: #edebe6;
-    --color-raised: #242423;
+    --color-chrome: #2e2924;
+    --color-on-chrome: #f1ece4;
+    --color-raised: #241f1b;
     --color-scrim: #000000;
     --color-warning: #ffc93c;
-    --shadow-float: 0 4px 14px rgba(0, 0, 0, 0.55);
-    --shadow-overlay: 0 6px 22px rgba(0, 0, 0, 0.65);
+    --shadow-float: 0 4px 22px rgba(47, 224, 205, 0.45);
+    --shadow-overlay: 0 10px 36px rgba(47, 224, 205, 0.28);
   }
 }

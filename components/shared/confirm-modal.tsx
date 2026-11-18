@@ -43,7 +43,7 @@ export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConf
           data-pressed={pressed("confirm")}
           className={clsx(
             "flex-1 cursor-pointer bg-paper py-4 font-sans text-xs font-bold uppercase tracking-caps",
-            tone === "flame" ? "flame-press text-flame" : tone === "ink" ? "ink-press text-ink" : "danger-press text-danger"
+            tone === "flame" ? "flame-press text-flame-text" : tone === "ink" ? "ink-press text-ink" : "danger-press text-danger"
           )}
         >
           {confirmLabel}

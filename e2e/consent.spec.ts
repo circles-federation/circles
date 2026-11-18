@@ -22,8 +22,10 @@ test("a change to a circle passes once every member consents", async ({ browser 
   for (const email of [FELIX, PRIYA]) {
     const { context, page: member } = await pageFor(browser, email);
     await member.goto(proposalUrl);
-    const answered = member.waitForResponse((r) => r.request().method() === "POST");
+    // an answer is chosen, then confirmed
     await member.getByRole("button", { name: "Like this" }).click();
+    const answered = member.waitForResponse((r) => r.request().method() === "POST");
+    await member.getByRole("button", { name: "Confirm" }).click();
     await answered;
     await context.close();
   }

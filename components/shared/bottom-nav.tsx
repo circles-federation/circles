@@ -54,7 +54,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
     <nav
       inert={away}
       className={clsx(
-        "app-chrome on-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-chrome/85 px-3 backdrop-blur-md shadow-overlay",
+        "app-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full border border-ink bg-paper/90 p-1.5 backdrop-blur-md shadow-overlay",
         "transition-[translate,opacity] duration-(--motion-screen) ease-(--ease-enter) motion-reduce:transition-none",
         away && "pointer-events-none translate-y-[calc(100%+var(--bottom-nav-gap))] opacity-0"
       )}
@@ -62,7 +62,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
         const active = currentTab === href;
         const Icon = active ? Solid : Outline;
-        const color = active ? "text-on-chrome" : "text-on-chrome/60";
+        const color = active ? "text-on-action" : "text-ink";
         return (
           <Link
             key={href}
@@ -73,13 +73,13 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
               e.preventDefault();
               onReselect();
             }}
-            className="flex-1 flex flex-col items-center justify-center gap-1 py-3"
+            className={clsx("flex items-center justify-center gap-2 rounded-full border py-3 transition-[flex-grow,background-color] duration-(--motion-small)", active ? "flex-[1.7] border-ink bg-action" : "flex-1 border-transparent")}
           >
             <span className="relative">
               <Icon className={clsx("size-6", color)} />
               {href === "/home" && needsAttention && <AttentionDot className="-top-0.5 -right-1.5" />}
             </span>
-            <span className={clsx("font-sans text-label tracking-caps uppercase font-bold", color)}>{label}</span>
+            <span className={clsx("font-sans text-label tracking-caps uppercase font-bold", color, !active && "sr-only")}>{label}</span>
           </Link>
         );
       })}

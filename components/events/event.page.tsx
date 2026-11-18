@@ -5,7 +5,7 @@ import { AttendeesSection } from "./attendees-section";
 import { CancelledBanner } from "./cancelled-banner";
 import { PageContainer } from "@/components/shared";
 import { EventDetailsSection } from "./event-details-section";
-import { EventMasthead } from "./event-masthead";
+import { EventFacts, EventMasthead } from "./event-masthead";
 import { HostRsvpRow } from "./host-rsvp-row";
 
 import { FinishedMeetingSection, MeetingSessionSection } from "./meeting-session-section";
@@ -76,7 +76,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
   useTopBarMenu(menu);
 
   return (
-    <PageContainer size="normal">
+    <PageContainer size="wide">
       <EventMasthead event={e} />
 
       <CancelledBanner event={e} />
@@ -89,23 +89,43 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
       {/* the meeting card is the page's main job once it's time, so it leads the RSVP */}
       {isMeeting(e) && <MeetingSessionSection event={e} session={session} />}
 
-      <HostRsvpRow
-        event={e}
-        going={rsvpState[e.id]}
-        attendeeCount={e.rsvps.length + (e.guests?.length ?? 0)}
-        onOpenCircle={onOpenCircle}
-        onOpenMember={onOpenMember}
-        onToggleRsvp={() => toggleRsvp(e.id)}
-      />
+      {/* two columns from 960px: its details and roles on the left, its When
+          and Where, host and RSVP, and who's going on the right. On a phone the
+          columns dissolve (contents) and `order` puts the sections back in one
+          run (When and Where first, under the masthead and any notices). */}
+      <div className="flex flex-col min-[960px]:grid min-[960px]:grid-cols-[1.15fr_1fr] min-[960px]:items-start min-[960px]:gap-x-12">
+        <div className="contents min-[960px]:flex min-[960px]:flex-col">
+          {/* a meeting has its agenda where another event has its description */}
+          <div className="order-2 empty:hidden">
+            {isMeeting(e) ? session?.status === "finished" ? <FinishedMeetingSection session={session} /> : <AgendaSection event={e} /> : <EventDetailsSection event={e} />}
+          </div>
+          <div className="order-3 empty:hidden">
+            <RoleSlotsSection event={e} profile={profile} onToggleRoleSlot={onToggleRoleSlot} onOpenMember={onOpenMember} />
+          </div>
+        </div>
+        <div className="contents min-[960px]:flex min-[960px]:flex-col">
+          {/* once, for every width: first in the right column from 960px, and on a
+              phone, with no order, ahead of everything that has one */}
+          <div className="mt-2 min-[960px]:mt-0">
+            <EventFacts event={e} />
+          </div>
+          <div className="order-1">
+            <HostRsvpRow
+              event={e}
+              going={rsvpState[e.id]}
+              attendeeCount={e.rsvps.length + (e.guests?.length ?? 0)}
+              onOpenCircle={onOpenCircle}
+              onOpenMember={onOpenMember}
+              onToggleRsvp={() => toggleRsvp(e.id)}
+            />
+          </div>
+          <div className="order-4 empty:hidden">
+            <AttendeesSection event={e} profile={profile} onOpenMember={onOpenMember} />
+          </div>
+        </div>
+      </div>
 
       {sharing.dialogs}
-
-      {/* a meeting has its agenda where another event has its description */}
-      {isMeeting(e) ? session?.status === "finished" ? <FinishedMeetingSection session={session} /> : <AgendaSection event={e} /> : <EventDetailsSection event={e} />}
-
-      <RoleSlotsSection event={e} profile={profile} onToggleRoleSlot={onToggleRoleSlot} onOpenMember={onOpenMember} />
-
-      <AttendeesSection event={e} profile={profile} onOpenMember={onOpenMember} />
     </PageContainer>
   );
 }
