@@ -1,6 +1,6 @@
 "use client";
 
-import { PageContainer } from "@/components/shared";
+import { PageContainer, MastheadGlow } from "@/components/shared";
 import { Greeting } from "./greeting";
 import { HomePrompts } from "./home-prompts";
 import { MyCircles } from "./my-circles";
@@ -26,7 +26,8 @@ export function Home({ profile, events, rsvpState }: HomeProps) {
     <PageContainer size="wide">
       {/* each section takes itself out when it has nothing to show, so the
           gap is the one rhythm between whatever's left */}
-      <div className="flex flex-col gap-10">
+      <div className="relative isolate flex flex-col gap-10">
+        <MastheadGlow />
         <Greeting name={profile.name} />
         <MyCircles />
         <StartingSoon events={events} memberId={profile.id} rsvpState={rsvpState} />

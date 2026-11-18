@@ -1,7 +1,7 @@
 "use client";
 
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Section, SectionGroup, Tag } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Section, SectionGroup, Tag, MastheadGlow } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { circlesForMember } from "@/lib/circles.util";
@@ -31,7 +31,8 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
 
   return (
     <PageContainer size="normal">
-      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-6">
+      <div className="relative isolate border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-6">
+        <MastheadGlow />
         <div className="flex items-center justify-between gap-3">
           {/* as they wrote them, not in small caps */}
           <span className="shrink-0 font-sans text-sm font-semibold text-soft">{m.pronouns}</span>

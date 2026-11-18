@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UsersIcon } from "@heroicons/react/24/outline";
-import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, OfflineBanner, useToast } from "@/components/shared";
+import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, OfflineBanner, useToast, MastheadGlow } from "@/components/shared";
 import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
 import { InstallPrompt } from "./install-prompt";
 import { EMAIL_SHAPE } from "@/lib/applications.util";
@@ -88,7 +88,8 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
     <div className="flex min-h-dvh items-center justify-center bg-page px-6 py-16">
       <OfflineBanner className="fixed inset-x-0 top-0 z-50 pt-[calc(0.5rem+env(safe-area-inset-top))]" />
       <div className="w-full max-w-md">
-        <div className="border-t-[3px] border-t-ink pt-5">
+        <div className="relative isolate border-t-[3px] border-t-ink pt-5">
+          <MastheadGlow />
           <Eyebrow className="text-soft">Welcome to</Eyebrow>
           <h1 className="mt-3 font-serif text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
             Circles

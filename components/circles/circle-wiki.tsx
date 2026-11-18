@@ -4,7 +4,7 @@ import { useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps
 import Link from "next/link";
 import { EnvelopeIcon, GlobeAltIcon, MapIcon, PencilSquareIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Eyebrow, EyebrowGroup, CappedChip, PrivateLabel, Section, SectionGroup, Tag, type ChipTone } from "@/components/shared";
+import { Eyebrow, EyebrowGroup, CappedChip, PrivateLabel, Section, SectionGroup, Tag, type ChipTone, MastheadGlow } from "@/components/shared";
 import { CIRCLE_TYPE_LABEL, circleContact, circleWebsiteUrl, circleIsPrivate } from "@/lib/circles.util";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
 import type { Circle } from "@/lib/types";
@@ -42,7 +42,8 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
 
   return (
     <>
-      <div className={clsx("pb-6", ruled && "border-b border-ink")}>
+      <div className={clsx("relative isolate pb-6", ruled && "border-b border-ink")}>
+        <MastheadGlow />
         {/* where it sits in the tree: its parent, as a chip opposite the type */}
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="shrink-0 text-soft">

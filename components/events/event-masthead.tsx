@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
 import { VideoCameraIcon } from "@heroicons/react/24/outline";
-import { ButtonLink, Eyebrow, CappedChip } from "@/components/shared";
+import { ButtonLink, Eyebrow, CappedChip, MastheadGlow } from "@/components/shared";
 import { meetingLink } from "@/lib/events.util";
 import { MONTHS, WEEKDAYS, fmtTime, isPastEvent, parseDay } from "@/lib/format.util";
 import { awaitingConsent } from "@/lib/governance.util";
@@ -45,10 +45,11 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
        date, with the time on a line of its own beneath it. */
     <div
       className={clsx(
-        "grid grid-cols-1 border-t-[3px] border-b border-b-ink pt-5 pb-6 min-[720px]:grid-cols-[auto_minmax(0,1fr)] min-[720px]:gap-x-6",
+        "relative isolate grid grid-cols-1 border-t-[3px] border-b border-b-ink pt-5 pb-6 min-[720px]:grid-cols-[auto_minmax(0,1fr)] min-[720px]:gap-x-6",
         topBorderClass
       )}
     >
+      <MastheadGlow />
       <div className="hidden min-[720px]:col-start-1 min-[720px]:row-span-3 min-[720px]:row-start-1 min-[720px]:block">
         <DateTile iso={e.date} large accent={gov ? govAccent : undefined} />
       </div>
