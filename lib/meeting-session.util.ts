@@ -28,7 +28,7 @@ export function stepAt(step: number, topicCount: number): MeetingStep | null {
 export function stepLabel(step: number, topicCount: number): string {
   const s = stepAt(step, topicCount);
   if (!s) return "";
-  return s.kind === "attendance" ? "Attendance" : s.kind === "agenda" ? "Agenda" : s.kind === "topic" ? `Topic ${s.index + 1} of ${topicCount}` : s.kind === "tasks" ? "Tasks" : "Wrap-up";
+  return s.kind === "attendance" ? "Attendance" : s.kind === "agenda" ? "Agenda" : s.kind === "topic" ? `Topic ${s.index + 1} of ${topicCount}` : s.kind === "tasks" ? "Tasks" : "Finish";
 }
 
 /* Topics are added and removed while the meeting's going, so where it is has to

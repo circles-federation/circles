@@ -4,7 +4,7 @@ import { MeetingMinutes } from "./meeting-minutes";
 import { useMemberById } from "@/lib/hooks";
 import type { MeetingSession } from "@/lib/types";
 
-/* The last step, under the stepper's "Wrap-up": what the meeting came to, at a
+/* The last step, under the stepper's "Finish": what the meeting came to, at a
    glance (who was here, how many topics have notes, how many tasks), then what
    was written, with the topics nothing was written on folded into one line
    rather than listed empty. */
