@@ -25,9 +25,11 @@ export function ProposalBanner({ proposal: p, memberId, circleName, className }:
   return (
     <Link
       href={`/proposals/${p.id}`}
-      className={clsx("flame-press flex items-center gap-3 border border-flame border-l-4 border-l-flame px-5 py-4 text-ink no-underline", className)}
+      className={clsx("flame-press flex items-center gap-3 border border-ink bg-paper px-4 py-3 text-ink no-underline", className)}
     >
-      <HandRaisedIcon className="size-5 shrink-0 text-flame-text" strokeWidth={2} />
+      <span className="flex size-9 shrink-0 items-center justify-center border border-ink bg-flame text-on-action">
+        <HandRaisedIcon className="size-5" strokeWidth={2} />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="font-sans text-sm font-extrabold text-flame-text">{waiting ? "Your answer is needed" : "Open proposal"}</span>
         <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">

@@ -39,9 +39,9 @@ interface ProposalPageProps {
 // each answer's look: green, thumb up, likes it; yellow, a check, accepts it
 // (both consent); red, thumb down, objects
 const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon: ComponentType<SVGProps<SVGSVGElement>> }> = {
-  like: { button: "btn-invert btn-leaf border-leaf bg-leaf text-paper", dot: "bg-leaf", icon: HandThumbUpIcon },
-  accept: { button: "btn-invert btn-accept border-accept bg-accept text-on-action", dot: "bg-accept", icon: CheckIcon },
-  object: { button: "btn-invert btn-danger border-danger bg-danger text-paper", dot: "bg-danger", icon: HandThumbDownIcon },
+  like: { button: "ink-press border-ink bg-tint-leaf text-on-action", dot: "bg-leaf", icon: HandThumbUpIcon },
+  accept: { button: "ink-press border-ink bg-tint-warn text-on-action", dot: "bg-accept", icon: CheckIcon },
+  object: { button: "danger-press border-danger bg-paper text-danger", dot: "bg-danger", icon: HandThumbDownIcon },
 };
 
 /* A proposed change to a circle, for its members to answer by consent (see
@@ -85,7 +85,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
 
   return (
     <PageContainer size="normal">
-      <div className="border-t-[3px] border-t-ink border-b border-b-ink pt-4 pb-5">
+      <div className="pb-2">
         <div className="flex items-center justify-between gap-3">
           <Eyebrow className="text-soft">Proposal</Eyebrow>
           <CappedChip onClick={onOpenCircle}>{circle.name}</CappedChip>
@@ -110,9 +110,9 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
       <SectionGroup>
         <Section>
           <EyebrowGroup label={ABOUT[p.kind]}>
-            <div className="border-t border-ink">
+            <div className="border border-ink bg-paper px-4">
               {p.lines.map((l) => (
-                <div key={l.label} className="border-b border-faint py-3 last:border-b-ink">
+                <div key={l.label} className="border-b border-ink py-4 last:border-b-0">
                   <Eyebrow className="text-soft">{l.label}</Eyebrow>
                   {l.after && <div className="mt-1 font-serif text-lg leading-snug whitespace-pre-line">{l.after}</div>}
                   {l.before && <div className="mt-0.5 font-serif text-base leading-snug text-soft line-through">{l.before}</div>}
@@ -201,14 +201,14 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
 
         <Section>
           <EyebrowGroup label="Answers">
-            <div className="border-t border-ink">
+            <div className="border border-ink bg-paper px-4">
               {deciders
                 .map((id) => memberById(id))
                 .filter((m): m is Member => !!m)
                 .map((m) => {
                   const r = responseOf(p, m.id);
                   return (
-                    <div key={m.id} className="border-b border-faint py-3 last:border-b-ink">
+                    <div key={m.id} className="border-b border-ink py-3 last:border-b-0">
                       <div className="flex items-center justify-between gap-3">
                         <button type="button" onClick={() => onOpenMember(m)} className="hit cursor-pointer border-0 bg-transparent p-0 text-left font-sans text-base font-bold text-ink">
                           {m.name}

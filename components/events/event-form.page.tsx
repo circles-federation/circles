@@ -598,7 +598,7 @@ export function EventFormPage(props: EventFormPageProps) {
 
       <div className="mt-6 flex flex-col gap-6">
         <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
-          <Eyebrow className="text-soft">Details</Eyebrow>
+          <Eyebrow>Details</Eyebrow>
           <div>
             <Label htmlFor="title">Title</Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={gov ? "What is this meeting about?" : "What's happening?"} />
@@ -616,7 +616,7 @@ export function EventFormPage(props: EventFormPageProps) {
         </section>
 
         <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
-          <Eyebrow className="text-soft">When</Eyebrow>
+          <Eyebrow>When</Eyebrow>
           <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">
             <div>
               <Label htmlFor="date">Date</Label>
@@ -728,7 +728,7 @@ export function EventFormPage(props: EventFormPageProps) {
         </section>
 
         <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
-          <Eyebrow className="text-soft">Who</Eyebrow>
+          <Eyebrow>Who</Eyebrow>
           {!gov && (
           <div>
             <Label htmlFor="circle">Shown to</Label>

@@ -26,8 +26,10 @@ export function AttendeesSection({ event: e, profile, onOpenMember }: AttendeesS
   return (
     <section className="pt-8">
       <div className="flex items-baseline justify-between">
-        <Eyebrow className="text-soft">Who’s going</Eyebrow>
-        <span className="font-sans text-xs font-extrabold">{attendees.length + guests.length}</span>
+        <div className="flex items-center gap-2.5">
+          <Eyebrow>Who’s going</Eyebrow>
+          <span className="border border-ink bg-paper px-1.5 py-0.5 font-sans text-label leading-none font-bold tabular-nums">{attendees.length + guests.length}</span>
+        </div>
       </div>
       <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] gap-0 border-t border-l border-ink">
         {attendees.map((m) => (
