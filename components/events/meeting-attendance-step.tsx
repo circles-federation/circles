@@ -33,7 +33,7 @@ export function MeetingAttendanceStep({ session, circle, memberId, onSetPresent 
                   <span className="flex flex-wrap items-center gap-2 font-sans text-sm font-bold">
                     {m.name}
                     {mine ? " (you)" : ""}
-                    {m.id === session.facilitatorId && <Badge>Facilitator</Badge>}
+                    {m.id === session.facilitatorId && <Badge variant="action">Facilitator</Badge>}
                   </span>
                   <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{here ? "Here" : "Not here"}</span>
                 </span>

@@ -269,6 +269,8 @@ body {
    other isn't). Base layer lets Tailwind's utilities layer — which comes
    after base — correctly override this default, same as its own resets. */
 @layer base {
+  /* soft, not the browser's pale grey, which misses 4.5:1 on a filled field */
+  ::placeholder { color: var(--color-soft); opacity: 1; }
   /* Motion: three durations and two curves. Press is a press's feedback;
      small, a small change in place (a spacing, a fade); screen, something
      moving on or off or across the screen (a nav, a sheet, a card, a toast,
