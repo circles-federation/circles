@@ -27,7 +27,7 @@ export function Home({ profile, events, rsvpState }: HomeProps) {
       {/* each section takes itself out when it has nothing to show, so the
           gap is the one rhythm between whatever's left */}
       <div className="relative isolate flex flex-col gap-10">
-        <MastheadGlow />
+        <MastheadGlow tall />
         <Greeting name={profile.name} />
         <MyCircles />
         <StartingSoon events={events} memberId={profile.id} rsvpState={rsvpState} />

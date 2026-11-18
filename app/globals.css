@@ -457,17 +457,24 @@ body {
 }
 
 /* The wash behind a masthead (MastheadGlow): three soft blobs of the glow
-   tokens, faded out towards the page, under a grain tile. Never printed. */
+   tokens under a grain tile, faded out at both ends so it never shows an edge.
+   It fills the masthead it's in, and no more, so it can't lie over what follows
+   it; the tall one is for Home and starts at the top of the page. Never printed. */
 .masthead-glow {
   position: absolute;
-  inset: -80px -24px auto;
-  height: 440px;
+  inset: -40px -24px 0;
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(ellipse 60% 70% at 5% 15%, var(--color-glow-teal), transparent 70%),
-    radial-gradient(ellipse 50% 60% at 55% 0%, var(--color-glow-warm), transparent 70%),
-    radial-gradient(ellipse 55% 65% at 100% 25%, var(--color-glow-coral), transparent 70%);
+    radial-gradient(ellipse 60% 80% at 5% 40%, var(--color-glow-teal), transparent 70%),
+    radial-gradient(ellipse 50% 70% at 55% 20%, var(--color-glow-warm), transparent 70%),
+    radial-gradient(ellipse 55% 80% at 100% 50%, var(--color-glow-coral), transparent 70%);
+  -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 55%, transparent);
+  mask-image: linear-gradient(transparent, #000 30%, #000 55%, transparent);
+}
+.masthead-glow-tall {
+  inset: -80px -24px auto;
+  height: 440px;
   -webkit-mask-image: linear-gradient(#000 45%, transparent);
   mask-image: linear-gradient(#000 45%, transparent);
 }
@@ -477,7 +484,21 @@ body {
   inset: 0;
   background: url("/grain.png") 0 0 / 160px 160px;
   mix-blend-mode: multiply;
-  opacity: 0.35;
+  opacity: 0.14;
 }
-[data-theme="luna"] .masthead-glow::after { mix-blend-mode: screen; opacity: 0.2; }
+[data-theme="luna"] .masthead-glow::after { mix-blend-mode: screen; opacity: 0.1; }
+/* wide, the glow stops short of the page's column rather than ending in a hard edge */
+@media (min-width: 720px) {
+  .masthead-glow {
+    -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 55%, transparent), linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 64px), transparent);
+    mask-image: linear-gradient(transparent, #000 30%, #000 55%, transparent), linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 64px), transparent);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .masthead-glow-tall {
+    -webkit-mask-image: linear-gradient(#000 45%, transparent), linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 64px), transparent);
+    mask-image: linear-gradient(#000 45%, transparent), linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 64px), transparent);
+  }
+}
+[data-theme="luna"] .masthead-glow { opacity: 0.6; }
 @media print { .masthead-glow { display: none; } }
