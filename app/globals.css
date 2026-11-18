@@ -458,7 +458,9 @@ body {
 /* The wash behind a masthead (MastheadGlow): three soft blobs of the glow
    tokens under a grain tile, the width of the screen whatever the page's
    column, reaching up behind the top bar (which is transparent until the page
-   scrolls) and faded out at the foot so it never shows an edge. It fills the
+   scrolls) and faded out at the foot so it never shows an edge. Its colour blobs
+   are set by pixels from the top edge, not by percentages of its height, so the
+   colour is strongest right behind the top bar however tall the masthead is. It fills the
    masthead it's in; the tall one is for Home and starts at the top of the page.
    The shell clips the overflow sideways (overflow-x: clip, which unlike hidden
    leaves the sticky bar alone). Never printed. */
@@ -473,9 +475,9 @@ body {
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(ellipse 45% 85% at 8% 45%, var(--color-glow-teal), transparent 70%),
-    radial-gradient(ellipse 40% 75% at 50% 25%, var(--color-glow-warm), transparent 70%),
-    radial-gradient(ellipse 45% 85% at 95% 55%, var(--color-glow-coral), transparent 70%);
+    radial-gradient(ellipse 45% 300px at 8% 100px, var(--color-glow-teal), transparent 70%),
+    radial-gradient(ellipse 40% 260px at 50% 30px, var(--color-glow-warm), transparent 70%),
+    radial-gradient(ellipse 45% 300px at 95% 170px, var(--color-glow-coral), transparent 70%);
   -webkit-mask-image: linear-gradient(#000 60%, transparent);
   mask-image: linear-gradient(#000 60%, transparent);
 }

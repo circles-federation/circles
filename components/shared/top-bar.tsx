@@ -181,6 +181,11 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
   // notch). In a browser tab it's sticky over the scrolling page to the same
   // effect, and the variable goes unused.
   const barRef = useRef<HTMLDivElement>(null);
+  // Installed, a 6px page-coloured strip is pinned over the very top of the
+  // screen (root layout, for iOS's status bar). Where the system gives no top
+  // inset the strip would lie over the top of this bar's own row, so the bar
+  // reserves at least those 6px (standalone:pt-[max(…,6px)]) and its title
+  // stays centred in the part you can see.
   // transparent over the page (and a masthead's wash) until it scrolls, then
   // solid, so what scrolls under it doesn't show through the title. The scroll
   // is the document's in a browser tab and <main>'s in the installed app, so it
@@ -214,7 +219,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
     <div
       ref={barRef}
       className={clsx(
-        "app-chrome sticky top-0 z-50 border-b border-ink pt-[env(safe-area-inset-top)] transition-colors duration-(--motion-small) standalone:absolute standalone:inset-x-0",
+        "app-chrome sticky top-0 z-50 border-b border-ink pt-[env(safe-area-inset-top)] standalone:pt-[max(env(safe-area-inset-top),6px)] transition-colors duration-(--motion-small) standalone:absolute standalone:inset-x-0",
         scrolled ? "bg-page" : "bg-transparent",
       )}
     >
