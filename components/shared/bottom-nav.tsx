@@ -54,7 +54,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
     <nav
       inert={away}
       className={clsx(
-        "app-chrome on-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full bg-chrome/85 px-3 backdrop-blur-md shadow-overlay",
+        "app-chrome flex min-[720px]:hidden fixed bottom-(--bottom-nav-gap) left-[calc(var(--bottom-nav-gap)+env(safe-area-inset-left))] right-[calc(var(--bottom-nav-gap)+env(safe-area-inset-right))] z-50 rounded-full border border-ink bg-paper/90 p-1.5 backdrop-blur-md shadow-overlay",
         "transition-[translate,opacity] duration-(--motion-screen) ease-(--ease-enter) motion-reduce:transition-none",
         away && "pointer-events-none translate-y-[calc(100%+var(--bottom-nav-gap))] opacity-0"
       )}
@@ -62,7 +62,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
       {TABS.map(({ href, label, outline: Outline, solid: Solid }) => {
         const active = currentTab === href;
         const Icon = active ? Solid : Outline;
-        const color = active ? "text-on-chrome" : "text-on-chrome/60";
+        const color = active ? "text-on-action" : "text-soft";
         return (
           <Link
             key={href}
@@ -73,7 +73,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
               e.preventDefault();
               onReselect();
             }}
-            className="flex-1 flex flex-col items-center justify-center gap-1 py-3"
+            className={clsx("flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 transition-colors duration-(--motion-small)", active && "bg-action")}
           >
             <span className="relative">
               <Icon className={clsx("size-6", color)} />
