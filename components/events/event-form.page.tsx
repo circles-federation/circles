@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BellAlertIcon, CheckIcon, ClipboardDocumentListIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
+import { BellAlertIcon, CheckIcon, ClipboardDocumentListIcon, ExclamationTriangleIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-editor";
 import { MeetingAvailability } from "./meeting-availability";
 import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
-import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, FederationExplorerField, Section, SectionGroup, Select, SettingRow, SettingRows, useFederationExplorer, TextArea } from "@/components/shared";
+import { Avatar, Button, ConfirmModal, Eyebrow, Input, Label, MenuRow, PageContainer, FederationExplorerField, Select, SettingRow, SettingRows, useFederationExplorer, TextArea } from "@/components/shared";
 import { audienceLabel, circleCanHoldMeetings, circlesForAudience, circlesForMember, indexCircles, isCircleMember, memberCirclesWithPaths, hostCanShowTo, circleIsPrivate, isRootCircle, isWithinCircle } from "@/lib/circles.util";
 import { approvingRole } from "@/lib/circle-roles.util";
 import { DEFAULT_REMINDERS, REMINDERS, attendeeIds, availableReminders, defaultReminders, defaultEventTimes, endAfterStartMoves, remindersSummary, validateEventDraft, type EventDetails, type EventDraft, type RoleDraft, type SeriesScope } from "@/lib/events.util";
@@ -596,13 +596,27 @@ export function EventFormPage(props: EventFormPageProps) {
         </div>
       )}
 
-      <SectionGroup>
-        <Section className="py-6">
-          <Label htmlFor="title">Title</Label>
-          <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={gov ? "What is this meeting about?" : "What's happening?"} />
-        </Section>
+      <div className="mt-6 flex flex-col gap-6">
+        <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
+          <Eyebrow className="text-soft">Details</Eyebrow>
+          <div>
+            <Label htmlFor="title">Title</Label>
+            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={gov ? "What is this meeting about?" : "What's happening?"} />
+          </div>
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" />
+          </div>
+          {!gov && (
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="What's it about, what to bring, who it's for…" />
+          </div>
+          )}
+        </section>
 
-        <Section className="flex flex-col gap-5 py-6">
+        <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
+          <Eyebrow className="text-soft">When</Eyebrow>
           <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">
             <div>
               <Label htmlFor="date">Date</Label>
@@ -690,14 +704,9 @@ export function EventFormPage(props: EventFormPageProps) {
               )}
             </div>
           )}
+        </section>
 
-          <div>
-            <Label htmlFor="location">Location</Label>
-            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" />
-          </div>
-        </Section>
-
-        <Section className="flex flex-col gap-4 py-6">
+        <section className="flex flex-col gap-4">
           {gov ? (
             <MenuRow
               onClick={() => openView("agenda")}
@@ -707,10 +716,6 @@ export function EventFormPage(props: EventFormPageProps) {
             />
           ) : (
             <>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="What's it about, what to bring, who it's for…" />
-              </div>
               <MenuRow
                 onClick={() => openView("slots")}
                 icon={HandRaisedIcon}
@@ -720,9 +725,10 @@ export function EventFormPage(props: EventFormPageProps) {
             </>
           )}
           <MenuRow onClick={() => openView("reminders")} icon={BellAlertIcon} label="Reminders" detail={remindersSummary(chosen.filter((h) => available.includes(h)))} />
-        </Section>
+        </section>
 
-        <Section className="flex flex-col gap-5 py-6">
+        <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
+          <Eyebrow className="text-soft">Who</Eyebrow>
           {!gov && (
           <div>
             <Label htmlFor="circle">Shown to</Label>
@@ -764,11 +770,12 @@ export function EventFormPage(props: EventFormPageProps) {
               )}
             </div>
           )}
-        </Section>
-      </SectionGroup>
+        </section>
+      </div>
 
       {error && (
-        <div ref={errorRef} className={clsx("border-l-[3px] pl-3 font-sans text-xs font-semibold", accent.border, accent.text)}>
+        <div ref={errorRef} role="alert" className="mt-6 flex items-start gap-2 border border-ink bg-tint-danger px-4 py-3 font-sans text-sm font-semibold text-on-action">
+          <ExclamationTriangleIcon className="mt-0.5 size-4 shrink-0" strokeWidth={2.5} aria-hidden />
           {error}
         </div>
       )}
