@@ -4,7 +4,7 @@ import { useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps
 import Link from "next/link";
 import { EnvelopeIcon, GlobeAltIcon, MapIcon, PencilSquareIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Eyebrow, EyebrowGroup, CappedChip, PrivateLabel, Tag, type ChipTone, MastheadGlow } from "@/components/shared";
+import { Eyebrow, EyebrowGroup, CappedChip, PrivateLabel, Tag, type ChipTone, MastheadGlow, BOXED_LIST } from "@/components/shared";
 import { CIRCLE_TYPE_LABEL, circleContact, circleWebsiteUrl, circleIsPrivate } from "@/lib/circles.util";
 import { mapsPlatform, mapsUrl, type MapsPlatform } from "@/lib/maps.util";
 import type { Circle } from "@/lib/types";
@@ -154,7 +154,7 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
           {c.hours && c.hours.length > 0 && (
             <section className="order-5">
               <EyebrowGroup label="Open hours">
-                <div className="max-w-90 border border-ink bg-paper px-4">
+                <div className={`max-w-90 ${BOXED_LIST}`}>
                   {c.hours.map(([d, t]) => (
                     <div key={d} className="flex justify-between gap-3 border-b border-ink py-3 font-serif text-base text-body last:border-b-0">
                       <span className="text-soft">{d}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { EmptyState, LinkRow, StatusPill } from "@/components/shared";
+import { EmptyState, LinkRow, StatusPill, BOXED_LIST } from "@/components/shared";
 import { DateTile } from "@/components/events/date-tile";
 import { RsvpButton } from "@/components/events/rsvp-button";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -49,7 +49,7 @@ export function UpNext() {
   return (
     <HomeSection label="Up next" more={{ label: "My events", href: "/events?show=mine" }}>
       {mine.length > 0 ? (
-        <div className="border border-ink bg-paper px-4">
+        <div className={BOXED_LIST}>
           {mine.map((e) => (
             <LinkRow
               key={e.id}
@@ -68,7 +68,7 @@ export function UpNext() {
       ) : suggested.length > 0 ? (
         <>
           <p className="m-0 mb-3 font-serif text-base text-soft">You’re not going to anything yet. Coming up in your circles:</p>
-          <div className="border border-ink bg-paper px-4">
+          <div className={BOXED_LIST}>
             {suggested.map((e) => (
               <LinkRow
                 key={e.id}

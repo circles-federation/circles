@@ -1,7 +1,7 @@
 "use client";
 
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Tag, MastheadGlow } from "@/components/shared";
+import { Avatar, Eyebrow, EyebrowGroup, FolderGrid, CappedChip, PageContainer, Tag, MastheadGlow, BOXED_LIST } from "@/components/shared";
 import { CircleCard } from "@/components/circles/circle-card";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { circlesForMember } from "@/lib/circles.util";
@@ -45,14 +45,9 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         <div className="mt-4 flex items-center gap-5 min-[960px]:items-end min-[960px]:gap-8">
           {/* the decade is a tilted sticker laid over the photo's corner */}
           <div className="relative shrink-0">
-            <div className="min-[960px]:hidden">
-              <Avatar member={m} size={96} showPending />
-            </div>
-            <div className="hidden min-[960px]:block">
-              <Avatar member={m} size={176} showPending />
-            </div>
+            <Avatar member={m} sizeClassName="size-24 min-[960px]:size-44" showPending />
             {m.birthDecade !== undefined && (
-              <span className="absolute -bottom-3 -left-3 -rotate-6 border border-ink bg-action px-2.5 pt-1 pb-0.5 text-center text-on-action shadow-float">
+              <span className="absolute -bottom-3 -left-3 -rotate-6 border border-ink bg-action px-3 pt-1 pb-0.5 text-center text-on-action shadow-float">
                 <span className="block font-sans text-label leading-none font-bold tracking-caps uppercase">Born in the</span>
                 <span className="block font-sans text-xl leading-tight font-extrabold tracking-[-0.03em]">{birthDecadeLabel(m.birthDecade)}</span>
               </span>
@@ -77,7 +72,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         {m.languages && m.languages.length > 0 && (
           <section className="order-1">
             <EyebrowGroup label="Languages">
-              <div className="border border-ink bg-paper px-4">
+              <div className={BOXED_LIST}>
                 {m.languages.map((l) => {
                   const endonym = languageEndonym(l.code);
                   const english = languageName(l.code);

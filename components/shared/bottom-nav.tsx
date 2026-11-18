@@ -73,7 +73,7 @@ export function BottomNav({ onReselect, away }: { onReselect: () => void; away: 
               e.preventDefault();
               onReselect();
             }}
-            className={clsx("flex items-center justify-center gap-2 rounded-full border py-3.5 transition-[flex-grow,background-color] duration-(--motion-small)", active ? "flex-[1.7] border-ink bg-action" : "flex-1 border-transparent")}
+            className={clsx("flex items-center justify-center gap-2 rounded-full border py-3 transition-[flex-grow,background-color] duration-(--motion-small)", active ? "flex-[1.7] border-ink bg-action" : "flex-1 border-transparent")}
           >
             <span className="relative">
               <Icon className={clsx("size-6", color)} />

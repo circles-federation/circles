@@ -21,7 +21,7 @@ export function HomeSection({ label, count, attention, more, children }: HomeSec
   return (
     <section>
       <div className="mb-3 flex items-baseline justify-between gap-4">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <Eyebrow>{label}</Eyebrow>
           {count !== undefined && <span className="border border-ink bg-paper px-1.5 py-0.5 font-sans text-label leading-none font-bold tabular-nums">{count}</span>}
           {attention && <span className="relative size-2.5"><AttentionDot className="top-0 left-0" /></span>}

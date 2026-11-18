@@ -1,12 +1,14 @@
 import clsx from "clsx";
 import type { ReactNode } from "react";
+import { PALE_FILL } from "./tones";
 
 const TONES = {
   outline: "border-ink bg-paper text-ink",
-  leaf: "border-tint-leaf bg-tint-leaf text-on-action",
-  warn: "border-tint-warn bg-tint-warn text-on-action",
-  danger: "border-tint-danger bg-tint-danger text-on-action",
-  action: "border-ink bg-action text-on-action",
+  // a pale fill needs no outline of its own; the action colour keeps its ink one
+  leaf: `border-transparent ${PALE_FILL.leaf}`,
+  warn: `border-transparent ${PALE_FILL.warn}`,
+  danger: `border-transparent ${PALE_FILL.danger}`,
+  action: `border-ink ${PALE_FILL.action}`,
 };
 
 /* A small status in sentence case, a pale fill with black text (Going,

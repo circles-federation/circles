@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import clsx from "clsx";
 import { EnvelopeIcon, HandRaisedIcon, InboxIcon, InboxStackIcon } from "@heroicons/react/24/outline";
-import { LinkRow } from "@/components/shared";
+import { LinkRow, BOXED_LIST } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
 import { useCirclesById, useMemberById, useNeedsYou } from "@/lib/hooks";
 import { proposalTitle } from "@/lib/proposals.util";
@@ -39,7 +39,7 @@ export function NeedsYou() {
 
   return (
     <HomeSection label={needed > 0 ? "Needs you" : "Your proposals"} {...(needed > 0 ? { count: needed, attention: true } : {})}>
-      <div className="border border-ink bg-paper px-4">
+      <div className={BOXED_LIST}>
         {reviews > 0 && (
           <LinkRow
             href="/admin/review"

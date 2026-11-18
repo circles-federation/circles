@@ -186,7 +186,7 @@ function ChatPost({ first, authorName, avatar, mine, children }: { first: ChatMe
   const now = useClock();
   return (
     <article className={clsx("border border-ink", mine ? "bg-wash" : "bg-paper")}>
-      <header className="flex items-center gap-2.5 px-4 pt-3 pb-1">
+      <header className="flex items-center gap-3 px-4 pt-3 pb-1">
         {avatar}
         <span className="truncate font-sans text-base font-extrabold tracking-snug">{authorName}</span>
         {/* the browser's own time and day, so not drawn on the server */}
@@ -342,7 +342,7 @@ function ChatRow({ message: m, circleName, mentioned, you, selected, onSelect }:
       {content}
 
       {selected && hasActions && (
-        <div className="flex items-center gap-4 border-t border-ink px-4 py-2.5 animate-tray-in">
+        <div className="flex items-center gap-4 border-t border-ink px-4 py-3 animate-tray-in">
           {canEdit && (
             <button type="button" className={clsx(TRAY_BUTTON, "text-body hover:text-ink")} onClick={() => { onSelect(false); setEditing(m.body); }}>
               <PencilIcon className="size-4" strokeWidth={2} aria-hidden />

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { StatusPill } from "@/components/shared";
+import { StatusPill, BOXED_LIST } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useCirclesById, useTaskTick } from "@/lib/hooks";
 import { localDay } from "@/lib/recurrence.util";
@@ -26,7 +26,7 @@ export function MyTasks() {
 
   return (
     <HomeSection label="My tasks" count={mine.filter((t) => t.status !== "done").length}>
-      <div className="border border-ink bg-paper px-4">
+      <div className={BOXED_LIST}>
         {mine.map((t) => {
           const done = t.status === "done";
           const due = dueCell(t, today);

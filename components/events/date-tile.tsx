@@ -43,10 +43,10 @@ export function DateTile({ iso, large, accent = "ink" }: DateTileProps) {
   return (
     <div className={tileClass}>
       <div className={badgeClass}>{MONTHS[d.getMonth()]}</div>
-      <div className={clsx("font-sans font-extrabold tracking-tight leading-[1.1]", large ? "pt-3.5 pb-1 text-[52px]" : "pt-0.75 text-[26px]")}>
+      <div className={clsx("font-sans font-extrabold tracking-tight leading-[1.1]", large ? "pt-3 pb-1 text-[52px]" : "pt-0.75 text-[26px]")}>
         {d.getDate()}
       </div>
-      <div className={clsx("font-sans font-semibold text-soft uppercase tracking-[0.16em]", large ? "pb-2.5 text-label" : "pb-1 text-[8px]")}>
+      <div className={clsx("font-sans font-semibold text-soft uppercase tracking-[0.16em]", large ? "pb-3 text-label" : "pb-1 text-[8px]")}>
         {WEEKDAYS[d.getDay()]}
       </div>
     </div>

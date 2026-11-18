@@ -92,7 +92,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
       {/* two columns from 960px: its details and roles on the left, its When
           and Where, host and RSVP, and who's going on the right. On a phone the
           columns dissolve (contents) and `order` puts the sections back in one
-          run (When and Where are in the masthead there). */}
+          run (When and Where first, under the masthead and any notices). */}
       <div className="flex flex-col min-[960px]:grid min-[960px]:grid-cols-[1.15fr_1fr] min-[960px]:items-start min-[960px]:gap-x-12">
         <div className="contents min-[960px]:flex min-[960px]:flex-col">
           {/* a meeting has its agenda where another event has its description */}
@@ -104,7 +104,9 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
           </div>
         </div>
         <div className="contents min-[960px]:flex min-[960px]:flex-col">
-          <div className="hidden min-[960px]:block">
+          {/* once, for every width: first in the right column from 960px, and on a
+              phone, with no order, ahead of everything that has one */}
+          <div className="mt-2 min-[960px]:mt-0">
             <EventFacts event={e} />
           </div>
           <div className="order-1">

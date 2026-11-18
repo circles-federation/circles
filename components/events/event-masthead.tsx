@@ -12,7 +12,7 @@ interface EventMastheadProps {
   event: Event;
 }
 
-function useWhen(e: Event) {
+function whenOf(e: Event) {
   const past = isPastEvent(e);
   const link = meetingLink(e.location);
   const time = `${fmtTime(e.start)}–${fmtTime(e.end)}`;
@@ -24,11 +24,11 @@ function useWhen(e: Event) {
   return { past, link, time, repeats, dateLabel };
 }
 
-/* When and Where as a boxed pair of facts, each its own label. Under the title
-   on a phone (EventMasthead draws it there); from 960px the page puts it at
-   the head of the right-hand column instead. */
+/* When and Where as a boxed pair of facts, each its own label: the event page
+   puts it first in its right-hand column from 960px, and under the header and
+   any notices on a phone. */
 export function EventFacts({ event: e }: { event: Event }) {
-  const { link, time, repeats, dateLabel } = useWhen(e);
+  const { link, time, repeats, dateLabel } = whenOf(e);
   return (
     <div className="grid grid-cols-1 border border-ink bg-paper min-[480px]:grid-cols-2">
       <div className="px-4 py-4 min-[480px]:border-r min-[480px]:border-ink">
@@ -57,10 +57,9 @@ export function EventFacts({ event: e }: { event: Event }) {
   );
 }
 
-/* Kind, circle chip, title and, on a phone, its When and Where — the header
-   block every event detail page opens with. From 960px the title is larger,
-   the date a big tile at the right, and the facts move down to the page's right
-   column. Editing it is the top bar's pencil, for its organizer (see TopBar's
+/* Kind, circle chip and title — the header block every event detail page
+   opens with. From 960px the title is larger and the date a big tile at the
+   right. Its When and Where (EventFacts) follow it on the page. Editing it is the top bar's pencil, for its organizer (see TopBar's
    pageAction). The wash behind it is the page's (MastheadGlow). */
 export function EventMasthead({ event: e }: EventMastheadProps) {
   const byId = useCirclesById();
@@ -68,7 +67,7 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
   // a meeting or circle-hosted event still awaiting its circle's consent — a
   // decided one is settled and reads like any other event
   const gov = awaitingConsent(e);
-  const { past } = useWhen(e);
+  const { past } = whenOf(e);
   const govLabel = gov && <span className="text-flame-text">Proposed</span>;
 
   return (
@@ -81,9 +80,6 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
           {circle ? <CappedChip max="max-w-[60%]" title={`${circle.name}: who can see this event`}>{circle.name}</CappedChip> : <span />}
         </div>
         <h1 className="mt-4 font-sans text-title leading-[0.95] font-extrabold tracking-display wrap-anywhere min-[960px]:text-[64px] min-[960px]:leading-[1.02]">{e.title}</h1>
-        <div className="mt-6 min-[960px]:hidden">
-          <EventFacts event={e} />
-        </div>
       </div>
       <div className="hidden min-[960px]:block">
         <DateTile iso={e.date} large accent={gov ? "flame" : undefined} />

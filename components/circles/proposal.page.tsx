@@ -4,7 +4,7 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { CheckCircleIcon, CheckIcon, HandRaisedIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import type { MutationResult } from "@/components/providers/app-state-provider";
-import { Button, ConfirmModal, Eyebrow, EyebrowGroup, CappedChip, PageContainer, TextArea, useToast } from "@/components/shared";
+import { Button, ConfirmModal, Eyebrow, EyebrowGroup, CappedChip, PageContainer, TextArea, useToast, BOXED_LIST } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
 import { useMemberById } from "@/lib/hooks";
 import { OBJECTION_REASON_MAX, RESPONSE_LABEL, isEventProposal, proposalTitle, responseOf } from "@/lib/proposals.util";
@@ -116,7 +116,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
         <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
         <section className="order-1">
           <EyebrowGroup label={ABOUT[p.kind]}>
-            <div className="border border-ink bg-paper px-4">
+            <div className={BOXED_LIST}>
               {p.lines.map((l) => (
                 <div key={l.label} className="border-b border-ink py-4 last:border-b-0">
                   <Eyebrow className="text-soft">{l.label}</Eyebrow>
@@ -145,7 +145,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
 
         <section className="order-3">
           <EyebrowGroup label="Answers">
-            <div className="border border-ink bg-paper px-4">
+            <div className={BOXED_LIST}>
               {deciders
                 .map((id) => memberById(id))
                 .filter((m): m is Member => !!m)

@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import type { ReactNode } from "react";
+import { PALE_FILL } from "./tones";
 
 /* A small outlined label in caps: a member's role in a circle. Outlined in
    ink by default (the circle's Members grid), where inside a card that
@@ -10,10 +11,10 @@ const VARIANTS = {
   default: "ink-press-badge border-ink bg-paper text-ink",
   subtle: "border-faint text-soft",
   // pale status fills, black text, an ink outline (Facilitator, Overdue)
-  leaf: "border-ink bg-tint-leaf text-on-action",
-  warn: "border-ink bg-tint-warn text-on-action",
-  danger: "border-ink bg-tint-danger text-on-action",
-  action: "border-ink bg-action text-on-action",
+  leaf: `border-ink ${PALE_FILL.leaf}`,
+  warn: `border-ink ${PALE_FILL.warn}`,
+  danger: `border-ink ${PALE_FILL.danger}`,
+  action: `border-ink ${PALE_FILL.action}`,
 };
 
 export function Badge({ children, title, variant = "default" }: { children: ReactNode; title?: string; variant?: keyof typeof VARIANTS }) {
