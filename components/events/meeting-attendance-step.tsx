@@ -13,7 +13,7 @@ export function MeetingAttendanceStep({ session, circle, memberId, onSetPresent 
   const facilitating = session.facilitatorId === memberId;
   return (
     <div>
-      <Eyebrow className="text-soft">Who’s here · {session.attendees.length}</Eyebrow>
+      <Eyebrow>Who’s here · {session.attendees.length}</Eyebrow>
       <p className="mt-2 font-serif text-base text-soft">{facilitating ? "Tap a name to mark someone here or not." : "Tap your name to say you’re here. The facilitator marks everyone else."}</p>
       <ul className="m-0 mt-4 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] gap-0 border-t border-l border-ink p-0">
         {people.map((m) => {
@@ -37,7 +37,11 @@ export function MeetingAttendanceStep({ session, circle, memberId, onSetPresent 
                   </span>
                   <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{here ? "Here" : "Not here"}</span>
                 </span>
-                {here && <CheckIcon className="size-5 shrink-0 text-leaf" strokeWidth={2.5} aria-hidden />}
+                {here && (
+                  <span className="flex size-6 shrink-0 items-center justify-center border border-ink bg-tint-leaf text-on-action">
+                    <CheckIcon className="size-4" strokeWidth={2.5} aria-hidden />
+                  </span>
+                )}
               </button>
             </li>
           );

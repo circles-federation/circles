@@ -30,7 +30,7 @@ export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { sessi
 
   return (
     <div>
-      <Eyebrow className="text-soft">Agenda · {session.topics.length}</Eyebrow>
+      <Eyebrow>Agenda · {session.topics.length}</Eyebrow>
       <p className="mt-2 font-serif text-base text-soft">Read it through. Add anything that’s missing, or take off what won’t be discussed.</p>
 
       {session.topics.length === 0 ? (

@@ -38,16 +38,20 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
   const hint = AGENDA_CATEGORY[topic.category].hint;
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <AgendaBadge category={topic.category} />
-        <Eyebrow className="text-agenda">{AGENDA_CATEGORY[topic.category].label}</Eyebrow>
+      {/* the topic as the agenda draws it: a boxed card ruled along its top in
+          the agenda colour */}
+      <div className="border border-t-[3px] border-ink border-t-agenda bg-paper p-4">
+        <div className="flex items-center gap-2">
+          <AgendaBadge category={topic.category} />
+          <Eyebrow className="text-agenda">{AGENDA_CATEGORY[topic.category].label}</Eyebrow>
+        </div>
+        <h2 className="mt-3 font-sans text-xl leading-tight font-extrabold tracking-heading wrap-anywhere">{topic.title}</h2>
+        {topic.details && <p className="mt-2 font-serif text-base whitespace-pre-line text-body">{topic.details}</p>}
+        <p className="mt-2 font-serif text-sm text-soft">{hint}</p>
       </div>
-      <h2 className="mt-3 font-sans text-xl leading-tight font-extrabold tracking-heading wrap-anywhere">{topic.title}</h2>
-      {topic.details && <p className="mt-2 font-serif text-base whitespace-pre-line text-body">{topic.details}</p>}
-      <p className="mt-2 font-serif text-sm text-soft">{hint}</p>
       <div className="mt-6">
         <div className="flex items-baseline justify-between gap-3">
-          <Eyebrow className="text-soft">Notes</Eyebrow>
+          <Eyebrow>Notes</Eyebrow>
           <span aria-live="polite" className={status === "failed" ? "font-sans text-xs font-bold text-danger" : "inline-flex items-center gap-1 font-sans text-xs font-bold text-soft"}>
             {status === "saving" && "Saving…"}
             {status === "saved" && (
@@ -61,6 +65,7 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
         </div>
         <div className="mt-2">
           <MessageEditor
+            boxed
             id={`notes-${topic.id}`}
             label={`Notes on ${topic.title}`}
             value={draft?.text ?? held ?? topic.notes}
