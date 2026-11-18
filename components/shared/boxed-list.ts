@@ -4,3 +4,6 @@
    field classes in input.tsx, a class string rather than a component, since
    each caller's rows and the box's own extras differ. */
 export const BOXED_LIST = "border border-ink bg-paper px-4";
+// the same box for rows that carry their own side padding, because the whole
+// row inverts when pressed and so must reach the box's edges
+export const BOXED_ROWS = "border border-ink bg-paper";

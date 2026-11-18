@@ -19,7 +19,7 @@ export function RsvpButton({ going, onToggle, big, past }: RsvpButtonProps) {
       <div
         title="This event has already happened"
         className={clsx(
-          "inline-flex cursor-not-allowed items-center gap-3 border border-faint bg-paper font-sans text-xs font-bold tracking-caps whitespace-nowrap text-soft uppercase",
+          "ink-press-badge inline-flex cursor-not-allowed items-center gap-3 border border-faint bg-paper font-sans text-xs font-bold tracking-caps whitespace-nowrap text-soft uppercase",
           sizeClasses,
         )}
       >
@@ -37,7 +37,8 @@ export function RsvpButton({ going, onToggle, big, past }: RsvpButtonProps) {
         "inline-flex cursor-pointer items-center gap-3 border border-ink font-sans text-xs font-bold tracking-caps whitespace-nowrap uppercase",
         sizeClasses,
         "ink-press",
-        going ? "bg-tint-leaf text-on-action" : "bg-paper text-ink",
+        // inside a pressed row (Up next) it keeps its own fill and text colour
+        going ? "status-pill-pale bg-tint-leaf text-on-action" : "ink-press-badge bg-paper text-ink",
       )}
     >
       <span className="inline-flex items-center gap-1">

@@ -16,7 +16,7 @@ export { FederationExplorerField, useFederationExplorer } from "./federation-exp
 export { ICON_BUTTON_SLOT, IconButtonCircle } from "./icon-button-circle";
 export { ConfirmModal } from "./confirm-modal";
 export { EmptyState } from "./empty-state";
-export { BOXED_LIST } from "./boxed-list";
+export { BOXED_LIST, BOXED_ROWS } from "./boxed-list";
 export { Eyebrow } from "./eyebrow";
 export { StatusPill } from "./status-pill";
 export { MastheadGlow } from "./masthead-glow";

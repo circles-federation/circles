@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 import { PALE_FILL } from "./tones";
 
 const TONES = {
-  outline: "border-ink bg-paper text-ink",
+  outline: "ink-press-badge border-ink bg-paper text-ink",
   // a pale fill needs no outline of its own; the action colour keeps its ink one
-  leaf: `border-transparent ${PALE_FILL.leaf}`,
-  warn: `border-transparent ${PALE_FILL.warn}`,
-  danger: `border-transparent ${PALE_FILL.danger}`,
-  action: `border-ink ${PALE_FILL.action}`,
+  leaf: `status-pill-pale border-transparent ${PALE_FILL.leaf}`,
+  warn: `status-pill-pale border-transparent ${PALE_FILL.warn}`,
+  danger: `status-pill-pale border-transparent ${PALE_FILL.danger}`,
+  action: `status-pill-pale border-ink ${PALE_FILL.action}`,
 };
 
 /* A small status in sentence case, a pale fill with black text (Going,

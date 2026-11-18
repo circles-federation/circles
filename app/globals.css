@@ -338,7 +338,11 @@ body {
    card turns black on press, so the blanket white-text rule above would leave
    white text on white. This makes it invert against the card instead: a white
    badge with black text. More specific than that rule, so it wins. */
-.ink-press[data-pressed] .ink-press-badge { color: var(--color-ink) !important; }
+.ink-press[data-pressed] .ink-press-badge, .ink-press[data-pressed] .ink-press-badge * { color: var(--color-ink) !important; }
+/* a pale status pill inside a pressed row keeps its fill and its black text
+   (the blanket paper-text rule would leave paper on pale) */
+.ink-press[data-pressed] .status-pill-pale, .ink-press[data-pressed] .status-pill-pale * { color: var(--color-on-action) !important; }
+.ink-press[data-pressed] .status-pill-pale { border-color: transparent !important; }
 /* a date tile inside a pressed row turns with it: clear ground, and its month
    badge keeps the paper fill with ink text */
 .ink-press[data-pressed] .date-tile { background: transparent !important; }
