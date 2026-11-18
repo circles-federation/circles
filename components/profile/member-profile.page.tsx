@@ -45,7 +45,7 @@ export function MemberProfilePage({ member: m, onOpenCircle }: MemberProfilePage
         <div className="mt-4 flex items-center gap-5">
           <Avatar member={m} size={96} showPending />
           <div className="min-w-0">
-            <h1 className="font-serif text-title leading-[0.92] font-extrabold tracking-display">{m.name}</h1>
+            <h1 className="font-sans text-title leading-[0.92] font-extrabold tracking-display">{m.name}</h1>
             {/* as a member card shows it, under the name in sentence case (it's
                 information, not a label), a size up for the larger name; a new
                 member may not have filled it in yet */}

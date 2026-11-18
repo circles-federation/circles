@@ -31,7 +31,7 @@ export function SharedEventPage({ event: e, guest }: SharedEventPageProps) {
           <div className="mt-0.5 font-sans text-base leading-snug font-semibold text-soft">
             {fmtTime(e.start)}–{fmtTime(e.end)}
           </div>
-          <h1 className="mt-4 font-serif text-heading leading-[0.95] font-extrabold tracking-display min-[720px]:text-title">{e.title}</h1>
+          <h1 className="mt-4 font-sans text-heading leading-[0.95] font-extrabold tracking-display min-[720px]:text-title">{e.title}</h1>
           <p className="mt-3 font-serif text-lg text-body">{e.location}</p>
         </div>
 

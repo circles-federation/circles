@@ -78,7 +78,7 @@ export function WriteMessagePage({ circle, onDone }: WriteMessagePageProps) {
           maxLength={MESSAGE_SUBJECT_MAX}
           placeholder="Subject"
           aria-label="Subject"
-          className="mt-5 block w-full resize-none border-0 bg-transparent p-0 font-serif text-title leading-[1.05] font-extrabold tracking-display text-ink outline-none [field-sizing:content] placeholder:text-ghost"
+          className="mt-5 block w-full resize-none border-0 bg-transparent p-0 font-sans text-title leading-[1.05] font-extrabold tracking-display text-ink outline-none [field-sizing:content] placeholder:text-ghost"
         />
         <div className="mt-4">
           <MessageEditor value={body} onChange={setBody} placeholder="Write your message. Select text to format it." bare />

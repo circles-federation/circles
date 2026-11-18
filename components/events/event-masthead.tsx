@@ -65,7 +65,7 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
         {/* capped, so a long circle name ends in "…" instead of squeezing the time */}
         {circle ? <CappedChip max="max-w-[45%]" title={`${circle.name}: who can see this event`}>{circle.name}</CappedChip> : <span />}
       </div>
-      <h1 className="row-start-2 mt-4 min-[720px]:mt-3 font-serif text-heading leading-[0.95] font-extrabold tracking-display min-[720px]:col-start-2 min-[720px]:text-title">
+      <h1 className="row-start-2 mt-4 min-[720px]:mt-3 font-sans text-heading leading-[0.95] font-extrabold tracking-display min-[720px]:col-start-2 min-[720px]:text-title">
         {e.title}
       </h1>
       {/* an online event's location is its link: a button to it, not the address */}
