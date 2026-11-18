@@ -66,7 +66,9 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
   const mine = responseOf(p, memberId);
   const open = p.status === "open";
   const canAnswer = open && p.proposerId !== memberId;
-  const [objecting, setObjecting] = useState(false);
+  // the answer being weighed, before it's confirmed: every answer is asked to be
+  // confirmed, an objection with its reason
+  const [choice, setChoice] = useState<ConsentResponse | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
     const result = await onRespond(response, response === "object" ? reason : undefined);
     setBusy(false);
     if (!result.ok) return setError(result.error);
-    setObjecting(false);
+    setChoice(null);
     showToast({ tone: "success", message: response === "object" ? "Your objection is in. Everyone's been told." : "Your answer is in." });
   }
 
@@ -187,34 +189,37 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                 <>
                   {mine && <p className="mb-3 font-serif text-base">You answered: <strong className="font-sans">{RESPONSE_LABEL[mine.response]}</strong>. You can change it until it closes.</p>}
                   {consentIsRsvp && <p className="mb-3 font-serif text-sm leading-snug text-soft">Liking or accepting it also marks you as going.</p>}
-                  <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3" role="group" aria-label="Your answer">
                     {(["like", "accept", "object"] as const).map((r) => {
                       const Icon = ANSWER_STYLE[r].icon;
-                      // the black outline is only ever your answer as it stands; red
-                      // goes hollow while an objection is being written, until it's sent
-                      const chosen = mine?.response === r;
-                      const drafting = r === "object" && objecting;
+                      // the one being weighed, or else your answer as it stands: ringed
+                      // in ink inside its own edge, the others stepping back
+                      const shown = choice ?? mine?.response ?? null;
+                      const selected = shown === r;
                       return (
-                      <button
-                        key={r}
-                        type="button"
-                        disabled={busy}
-                        onClick={() => (r === "object" ? setObjecting((o) => !o) : answer(r))}
-                        aria-pressed={r === "object" ? undefined : chosen}
-                        aria-expanded={r === "object" ? objecting : undefined}
-                        className={clsx(
-                          "inline-flex cursor-pointer items-center justify-center gap-2 border-2 px-4 py-4 font-sans text-sm font-extrabold tracking-open disabled:cursor-default disabled:opacity-60",
-                          drafting ? "danger-press border-danger bg-paper text-danger" : ANSWER_STYLE[r].button,
-                          chosen && "outline-3 outline-offset-2 outline-ink"
-                        )}
-                      >
-                        <Icon className="size-5 shrink-0" strokeWidth={2} aria-hidden />
-                        {RESPONSE_LABEL[r]}
-                      </button>
+                        <button
+                          key={r}
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setError(null);
+                            setChoice((c) => (c === r ? null : r));
+                          }}
+                          aria-pressed={selected}
+                          className={clsx(
+                            "inline-flex cursor-pointer items-center justify-center gap-2 border px-4 py-4 font-sans text-sm font-extrabold tracking-open transition-opacity duration-(--motion-small) disabled:cursor-default disabled:opacity-60",
+                            ANSWER_STYLE[r].button,
+                            selected && "shadow-[inset_0_0_0_2px_var(--color-ink)]",
+                            shown !== null && !selected && "opacity-60",
+                          )}
+                        >
+                          <Icon className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+                          {RESPONSE_LABEL[r]}
+                        </button>
                       );
                     })}
                   </div>
-                  {objecting && (
+                  {choice === "object" ? (
                     <div className="mt-4 border-l-4 border-danger pl-4">
                       <label htmlFor="objection" className="block font-sans text-sm font-extrabold">
                         Why do you object?
@@ -227,11 +232,28 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                         <Button variant="danger" disabled={busy || !reason.trim()} onClick={() => answer("object")}>
                           Object
                         </Button>
-                        <Button variant="secondary" disabled={busy} onClick={() => setObjecting(false)}>
+                        <Button variant="secondary" disabled={busy} onClick={() => setChoice(null)}>
                           Cancel
                         </Button>
                       </div>
                     </div>
+                  ) : (
+                    choice !== null && (
+                      <div className="mt-4 border border-ink bg-paper p-4">
+                        <div className="font-sans text-sm font-extrabold">{choice === "like" ? "Confirm that you like this" : "Confirm that you accept this"}</div>
+                        <p className="mt-1 font-serif text-sm leading-snug text-soft">
+                          {choice === "like" ? "You consent, and you’re glad of it." : "You consent, though it isn’t your first choice."} You can change your answer until it closes.
+                        </p>
+                        <div className="mt-3 flex gap-3">
+                          <Button disabled={busy || mine?.response === choice} onClick={() => answer(choice)}>
+                            Confirm
+                          </Button>
+                          <Button variant="secondary" disabled={busy} onClick={() => setChoice(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )
                   )}
                   {error && <p className="mt-3 font-sans text-sm font-bold text-danger">{error}</p>}
                 </>
