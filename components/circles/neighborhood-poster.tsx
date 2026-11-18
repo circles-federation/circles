@@ -53,7 +53,7 @@ export function NeighborhoodPoster({ neighborhood, city, applyUrl }: Neighborhoo
           <Eyebrow className="shrink-0 text-soft">Neighborhood</Eyebrow>
           <ChipView tone="federation">{city}</ChipView>
         </div>
-        <h1 className={clsx("mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display wrap-break-word", printNameSize(neighborhood.name))}>{neighborhood.name}</h1>
+        <h1 className={clsx("mt-3 font-serif text-title leading-[0.92] font-extrabold tracking-display wrap-break-word", printNameSize(neighborhood.name))}>{neighborhood.name}</h1>
         <p className="mt-4 font-serif text-xl text-body italic print:text-2xl">Join your neighborhood circle.</p>
       </div>
 

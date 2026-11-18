@@ -60,7 +60,7 @@ export function MessagePage({ message: m, circle, onOpenMember }: MessagePagePro
         to={<span className="font-bold text-ink">{circle.name}</span>}
         date={fmtDateTime(new Date(m.createdAt))}
       >
-        <h1 className="mt-5 font-sans text-title leading-[1.05] font-extrabold tracking-display wrap-break-word">{m.subject}</h1>
+        <h1 className="mt-5 font-serif text-title leading-[1.05] font-extrabold tracking-display wrap-break-word">{m.subject}</h1>
 
         {/* HTML made safe by messageHtml: anything typed as HTML is shown as
             text, and only web and mail links are links */}

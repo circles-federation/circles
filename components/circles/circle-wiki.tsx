@@ -54,7 +54,7 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
             </CappedChip>
           )}
         </div>
-        <h1 className="mt-3 font-sans text-title leading-[0.92] font-extrabold tracking-display">{c.name}</h1>
+        <h1 className="mt-3 font-serif text-title leading-[0.92] font-extrabold tracking-display">{c.name}</h1>
         <p className="mt-4 font-serif text-xl text-body italic">{c.tagline}</p>
         {lastEdited}
       </div>

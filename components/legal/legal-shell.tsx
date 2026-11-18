@@ -20,7 +20,7 @@ export function LegalShell({ title, children }: { title: string; children: React
         </Link>
         <div className="mt-6 border-t-[3px] border-t-ink pt-5">
           <Eyebrow className="text-soft">Circles beta · Updated {updated}</Eyebrow>
-          <h1 className="mt-3 mb-5 font-sans text-title font-extrabold tracking-[-0.04em] leading-[0.95]">{title}</h1>
+          <h1 className="mt-3 mb-5 font-serif text-title font-extrabold tracking-[-0.04em] leading-[0.95]">{title}</h1>
         </div>
         {children}
       </div>

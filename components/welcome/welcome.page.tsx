@@ -90,7 +90,7 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
       <div className="w-full max-w-md">
         <div className="border-t-[3px] border-t-ink pt-5">
           <Eyebrow className="text-soft">Welcome to</Eyebrow>
-          <h1 className="mt-3 font-sans text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
+          <h1 className="mt-3 font-serif text-hero font-extrabold tracking-[-0.04em] leading-[0.9]">
             Circles
           </h1>
           <p className="mt-4 mb-7 font-serif text-lg leading-normal text-body">

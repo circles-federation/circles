@@ -209,7 +209,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
       <div className="relative mx-auto flex h-14.5 max-w-270 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1 min-[720px]:max-w-[calc(50%-9rem)]">
           {!isTabRoot && <GhostIconButton icon={ArrowLeftIcon} label="Back" onClick={goBack} className="-ml-3" />}
-          <span className="truncate font-sans text-lg font-extrabold tracking-heading">
+          <span className="truncate font-sans text-xl font-bold tracking-heading">
             {pageTitle(pathname, circles, events, members, resources)}
           </span>
           {isHomeNeighborhood && <HomeIcon className="ml-1 size-5 shrink-0 text-teal" strokeWidth={2} aria-label="Your neighborhood" />}
