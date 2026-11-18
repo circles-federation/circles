@@ -45,7 +45,7 @@ export function ShiftStatusBanner({ event: e }: { event: Event }) {
   if (shiftAtRisk(e)) {
     const cancelAt = autoCancelAt(e);
     return (
-      <div role="status" className="mt-6 flex items-start gap-3 border-2 border-warning bg-warning px-5 py-4 text-ink">
+      <div role="status" className="mt-6 flex items-start gap-3 border-2 border-warning bg-warning px-5 py-4 text-on-action">
         <ExclamationTriangleIcon className="mt-px size-5 shrink-0" strokeWidth={2} aria-hidden />
         <div>
           <div className="font-sans text-sm font-extrabold tracking-open">

@@ -40,7 +40,7 @@ export function NeedsYou() {
           <LinkRow
             key={p.id}
             href={`/proposals/${p.id}`}
-            image={<RowIcon><HandRaisedIcon className="size-5 text-flame" strokeWidth={2} aria-hidden /></RowIcon>}
+            image={<RowIcon><HandRaisedIcon className="size-5 text-flame-text" strokeWidth={2} aria-hidden /></RowIcon>}
             title={proposalTitle(p)}
             detail={`${byId[p.circleId]?.name ?? "A circle"} · answer by ${fmtDateTime(new Date(p.closesAt))}`}
           />
@@ -49,7 +49,7 @@ export function NeedsYou() {
           <LinkRow
             key={`inbox-${circleId}`}
             href={`/circles/${circleId}/inbox`}
-            image={<RowIcon><InboxStackIcon className="size-5 text-action" strokeWidth={2} aria-hidden /></RowIcon>}
+            image={<RowIcon><InboxStackIcon className="size-5 text-ink" strokeWidth={2} aria-hidden /></RowIcon>}
             title={count === 1 ? "1 new message" : `${count} new messages`}
             detail={`To ${byId[circleId]?.name ?? "your circle"}`}
           />

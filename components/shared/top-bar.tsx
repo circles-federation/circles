@@ -200,7 +200,7 @@ export function TopBar({ onReselect }: { onReselect: () => void }) {
         "app-chrome sticky top-0 z-50 pt-[env(safe-area-inset-top)] standalone:absolute standalone:inset-x-0",
         // with a tab row it's solid, the row's hairline its edge; otherwise it
         // fades from white behind the title to clear at its foot
-        tabs ? "bg-paper" : "bg-linear-to-b from-paper from-55% via-paper/80 via-80% to-transparent",
+        tabs ? "bg-page" : "bg-linear-to-b from-page from-55% via-page/80 via-80% to-transparent",
       )}
     >
       {/* the title on the left, the page's action on the right, and on desktop the

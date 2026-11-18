@@ -281,7 +281,7 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, endsRu
   } else if (underReview && !revealed) {
     content = (
       <div onClick={tapBubble} className={clsx(bubble, "border border-flame bg-paper", hasActions && "cursor-pointer")}>
-        <div className="font-sans text-label font-bold tracking-caps text-flame uppercase">Under review</div>
+        <div className="font-sans text-label font-bold tracking-caps text-flame-text uppercase">Under review</div>
         <p className="m-0 mt-0.5 font-serif text-sm leading-snug text-body">{circleName}&rsquo;s members are deciding whether to remove this message.</p>
         <div className="mt-1 flex items-center gap-3">
           <button type="button" className={LINK_BUTTON} onClick={() => setRevealed(true)}>
@@ -354,7 +354,7 @@ function ChatRow({ message: m, circleName, authorName, avatar, continued, endsRu
               </button>
             )}
             {canPropose && (
-              <button type="button" className={clsx(TRAY_BUTTON, "text-flame")} onClick={() => { onSelect(false); setProposingRemoval(true); }}>
+              <button type="button" className={clsx(TRAY_BUTTON, "text-flame-text")} onClick={() => { onSelect(false); setProposingRemoval(true); }}>
                 <HandRaisedIcon className="size-4" strokeWidth={2} aria-hidden />
                 Propose removal
               </button>
@@ -563,7 +563,7 @@ function Composer({ circleName, people, onSend, onHeight }: { circleName: string
     // of the page but under the top bar
     <div
       ref={bar}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-faint bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] standalone:static standalone:pr-0 standalone:pl-0"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-faint bg-page pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] standalone:static standalone:pr-0 standalone:pl-0"
     >
       <form onSubmit={submit} className={clsx("mx-auto max-w-220 px-6 pt-3", keyboard ? "pb-3" : "pb-[max(0.75rem,env(safe-area-inset-bottom))]")}>
         {listOpen &&

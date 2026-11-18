@@ -56,7 +56,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             its background is a translucent gradient, and its backdrop blur
             would pin a fixed child to it rather than the screen. So this strip,
             over just the status bar, does it, for every page. */}
-        <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-[max(env(safe-area-inset-top),6px)] bg-paper standalone:block" />
+        <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-[max(env(safe-area-inset-top),6px)] bg-page standalone:block" />
         <PressFeedback />
       </body>
     </html>

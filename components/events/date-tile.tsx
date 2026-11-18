@@ -5,11 +5,12 @@ export type DateTileAccent = "ink" | "soft" | "flame" | "leaf";
 
 // full literal class strings per key — Tailwind's static scan can't see
 // through a template-interpolated class name like `border-${accent}`
-const ACCENT: Record<DateTileAccent, { border: string; bg: string }> = {
-  ink: { border: "border-ink", bg: "bg-ink" },
-  soft: { border: "border-soft", bg: "bg-soft" },
-  flame: { border: "border-flame", bg: "bg-flame" },
-  leaf: { border: "border-leaf", bg: "bg-leaf" },
+const ACCENT: Record<DateTileAccent, { border: string; bg: string; text: string }> = {
+  ink: { border: "border-ink", bg: "bg-ink", text: "text-paper" },
+  soft: { border: "border-soft", bg: "bg-soft", text: "text-paper" },
+  // flame is light: black text on it
+  flame: { border: "border-flame", bg: "bg-flame", text: "text-on-action" },
+  leaf: { border: "border-leaf", bg: "bg-leaf", text: "text-paper" },
 };
 
 interface DateTileProps {
@@ -22,11 +23,11 @@ interface DateTileProps {
 export function DateTile({ iso, large, accent = "ink" }: DateTileProps) {
   const d = parseDay(iso);
   const valid = iso && !isNaN(d.getTime());
-  const { border, bg } = ACCENT[accent];
+  const { border, bg, text } = ACCENT[accent];
   const tileClass = clsx("shrink-0 border bg-paper text-center", large ? "w-21" : "w-14.5", border);
   // the small tile's month and weekday are the one place under the 11px
   // minimum: any larger and the tile grows too tall for a list on a phone
-  const badgeClass = clsx("font-sans font-bold text-paper uppercase tracking-[0.18em]", bg, large ? "py-1 text-label" : "py-1 text-[9px]");
+  const badgeClass = clsx("font-sans font-bold uppercase tracking-[0.18em]", text, bg, large ? "py-1 text-label" : "py-1 text-[9px]");
 
   if (!valid) {
     return (

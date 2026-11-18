@@ -12,7 +12,7 @@ const updated = new Date(`${BETA_AGREEMENT_VERSION}T00:00:00Z`).toLocaleDateStri
    neither sits under the signed-in app's top bar. */
 export function LegalShell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh justify-center bg-paper px-6 pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
+    <div className="flex min-h-dvh justify-center bg-page px-6 pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
       <div className="w-full max-w-md">
         <Link href="/" className="-ml-1 inline-flex items-center gap-1.5 font-sans text-xs font-bold tracking-caps text-ink uppercase no-underline">
           <ArrowLeftIcon className="size-4" strokeWidth={2.5} />

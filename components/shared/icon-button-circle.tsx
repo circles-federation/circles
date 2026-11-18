@@ -11,9 +11,9 @@ export const ICON_BUTTON_SLOT = "group -mr-0.5 flex size-11 shrink-0 items-cente
 // is the rest, in ink (Create Event, Manage circle, Edit event). A press
 // shrinks it a touch, and darkens the blue (ink has no darker to go).
 const ICON_BUTTON_FILL = {
-  primary: "bg-action text-paper group-active:brightness-90",
+  primary: "bg-action text-on-action group-active:brightness-90",
   // a Save that proposes, for its circle's consent: the governance orange
-  propose: "bg-flame text-paper group-active:brightness-90",
+  propose: "bg-flame text-on-action group-active:brightness-90",
   secondary: "bg-chrome text-on-chrome",
 };
 

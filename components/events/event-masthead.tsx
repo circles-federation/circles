@@ -27,7 +27,7 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
   const topBorderClass = past ? "border-t-soft" : gov ? "border-t-flame" : "border-t-ink";
 
   const link = meetingLink(e.location);
-  const govLabel = gov && <span className="text-flame">Proposed</span>;
+  const govLabel = gov && <span className="text-flame-text">Proposed</span>;
   const time = `${fmtTime(e.start)}–${fmtTime(e.end)}`;
   // how it repeats, unless its series ended before this date (it was
   // cancelled along with the rest)

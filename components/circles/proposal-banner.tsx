@@ -27,14 +27,14 @@ export function ProposalBanner({ proposal: p, memberId, circleName, className }:
       href={`/proposals/${p.id}`}
       className={clsx("flame-press flex items-center gap-3 border border-flame border-l-4 border-l-flame px-5 py-4 text-ink no-underline", className)}
     >
-      <HandRaisedIcon className="size-5 shrink-0 text-flame" strokeWidth={2} />
+      <HandRaisedIcon className="size-5 shrink-0 text-flame-text" strokeWidth={2} />
       <span className="min-w-0 flex-1">
-        <span className="font-sans text-sm font-extrabold text-flame">{waiting ? "Your answer is needed" : "Open proposal"}</span>
+        <span className="font-sans text-sm font-extrabold text-flame-text">{waiting ? "Your answer is needed" : "Open proposal"}</span>
         <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">
           {circleName && `${circleName} · `}{proposalTitle(p)} · open until {fmtDateTime(new Date(p.closesAt))}
         </span>
       </span>
-      <ChevronRightIcon className="size-4 shrink-0 text-flame" strokeWidth={2.5} />
+      <ChevronRightIcon className="size-4 shrink-0 text-flame-text" strokeWidth={2.5} />
     </Link>
   );
 }

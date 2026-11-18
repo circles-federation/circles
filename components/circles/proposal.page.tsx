@@ -40,7 +40,7 @@ interface ProposalPageProps {
 // (both consent); red, thumb down, objects
 const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon: ComponentType<SVGProps<SVGSVGElement>> }> = {
   like: { button: "btn-invert btn-leaf border-leaf bg-leaf text-paper", dot: "bg-leaf", icon: HandThumbUpIcon },
-  accept: { button: "btn-invert btn-accept border-accept bg-accept text-ink", dot: "bg-accept", icon: CheckIcon },
+  accept: { button: "btn-invert btn-accept border-accept bg-accept text-on-action", dot: "bg-accept", icon: CheckIcon },
   object: { button: "btn-invert btn-danger border-danger bg-danger text-paper", dot: "bg-danger", icon: HandThumbDownIcon },
 };
 

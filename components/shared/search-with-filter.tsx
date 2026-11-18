@@ -77,7 +77,7 @@ function FilterTrigger({ activeCount, onClick }: { activeCount: number; onClick:
     >
       <FunnelIcon className="size-4" strokeWidth={2.5} />
       {activeCount > 0 && (
-        <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-flame px-1 font-sans text-label leading-none font-extrabold text-paper">
+        <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-flame px-1 font-sans text-label leading-none font-extrabold text-on-action">
           {activeCount}
         </span>
       )}
@@ -120,7 +120,7 @@ function FilterGroup({ group: g, isLast }: { group: FilterGroupData; isLast: boo
         {isActive && (
           <button
             onClick={() => (g.multi ? g.onFilter([]) : g.onFilter(null))}
-            className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-caps text-flame uppercase"
+            className="hit cursor-pointer border-none bg-transparent p-0 font-sans text-label font-bold tracking-caps text-flame-text uppercase"
           >
             Clear
           </button>

@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-dvh bg-paper pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink standalone:relative standalone:flex standalone:h-(--app-height) standalone:min-h-0 standalone:flex-col">
+    <div className="min-h-dvh bg-page pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] font-serif text-ink standalone:relative standalone:flex standalone:h-(--app-height) standalone:min-h-0 standalone:flex-col">
       <TopBar onReselect={scrollToTop} />
 
       <main

@@ -21,7 +21,7 @@ export function SharedEventPage({ event: e, guest }: SharedEventPageProps) {
   const host = e.hostCircleName ?? e.hostName;
 
   return (
-    <div className="min-h-dvh bg-paper px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-20">
+    <div className="min-h-dvh bg-page px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-20">
       <div className="mx-auto w-full max-w-170">
         <p className="font-sans text-sm font-extrabold tracking-heading">Circles</p>
         <p className="mt-6 font-serif text-lg text-soft">{e.sharedBy} invited you to</p>

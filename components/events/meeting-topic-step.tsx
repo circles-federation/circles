@@ -84,7 +84,7 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
           />
         </div>
       </div>
-      {changedElsewhere && <p className="mt-2 font-sans text-xs font-bold text-flame">Someone else has changed these notes. Saving will replace their version.</p>}
+      {changedElsewhere && <p className="mt-2 font-sans text-xs font-bold text-flame-text">Someone else has changed these notes. Saving will replace their version.</p>}
       {!canWrite && <p className="mt-2 font-serif text-sm text-soft">Mark yourself present to take notes.</p>}
     </div>
   );

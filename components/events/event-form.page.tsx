@@ -28,7 +28,7 @@ const sameReminders = (a: ReminderHours[], b: ReminderHours[]) => a.length === b
 // through a template-interpolated class name like `border-t-${accent}`.
 const ACCENT: Record<"ink" | "flame", { border: string; ring: string; text: string }> = {
   ink: { border: "border-ink", ring: "shadow-[inset_0_0_0_1px_var(--color-ink)]", text: "text-ink" },
-  flame: { border: "border-flame", ring: "shadow-[inset_0_0_0_1px_var(--color-flame)]", text: "text-flame" },
+  flame: { border: "border-flame", ring: "shadow-[inset_0_0_0_1px_var(--color-flame)]", text: "text-flame-text" },
 };
 
 const KIND_HINT: Record<EventKindKey, string> = {
@@ -573,7 +573,7 @@ export function EventFormPage(props: EventFormPageProps) {
           })}
         </div>
       ) : (
-        proposing && <Eyebrow className="text-flame">Proposal</Eyebrow>
+        proposing && <Eyebrow className="text-flame-text">Proposal</Eyebrow>
       )}
 
       {/* a meeting is the circle's own, so which circle comes first, with what

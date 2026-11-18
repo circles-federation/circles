@@ -210,11 +210,12 @@ function MapsLink({ address }: { address: string }) {
 }
 
 const VISIT_TONE = {
-  ink: "border-ink bg-ink [--press-color:var(--color-ink)]",
-  action: "border-action bg-action [--press-color:var(--color-action)]",
-  leaf: "border-leaf bg-leaf [--press-color:var(--color-leaf)]",
-  phone: "border-phone bg-phone [--press-color:var(--color-phone)]",
-  email: "border-email bg-email [--press-color:var(--color-email)]",
+  ink: "border-ink bg-ink text-paper [--press-color:var(--color-ink)]",
+  // the action colour is light, so its icon is black
+  action: "border-action bg-action text-on-action [--press-color:var(--color-action)]",
+  leaf: "border-leaf bg-leaf text-paper [--press-color:var(--color-leaf)]",
+  phone: "border-phone bg-phone text-paper [--press-color:var(--color-phone)]",
+  email: "border-email bg-email text-paper [--press-color:var(--color-email)]",
 };
 
 /* A filled square with an icon, for one way to reach a circle (its website,
@@ -233,7 +234,7 @@ function VisitLink({ href, newTab, internal, icon: Icon, tone, label, value, nam
       title={plain ?? name}
       className="fill-press flex items-start gap-4 text-ink no-underline"
     >
-      <span className={clsx("fill-press-square flex size-16 shrink-0 items-center justify-center border-2 text-paper", VISIT_TONE[tone])}>
+      <span className={clsx("fill-press-square flex size-16 shrink-0 items-center justify-center border-2", VISIT_TONE[tone])}>
         <Icon className="size-8" strokeWidth={1.75} aria-hidden />
       </span>
       <div className="hidden min-w-0 min-[720px]:block" aria-hidden>

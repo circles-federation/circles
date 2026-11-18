@@ -12,7 +12,7 @@ import { CircleWiki } from "./circle-wiki";
    PublicWiki alone, so nothing about the circle's members reaches it. */
 export function PublicWikiPage({ wiki }: { wiki: PublicWiki }) {
   return (
-    <div className="min-h-dvh bg-paper px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-dvh bg-page px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <div className="mx-auto w-full max-w-220">
         <Link href="/" className="font-sans text-sm font-extrabold tracking-heading text-ink no-underline">
           Circles

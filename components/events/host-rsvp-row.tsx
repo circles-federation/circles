@@ -31,7 +31,7 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   const roleStatus = e.cancelled ? "Not running" : shiftAtRisk(e) ? "At risk" : shiftNeedsSlots(e) ? "Needs roles" : "Shift on";
   // a short slot is a heads-up, so yellow — as a highlight under ink, since
   // yellow text wouldn't read on white
-  const roleStatusClass = e.cancelled ? "text-soft" : shiftAtRisk(e) || shiftNeedsSlots(e) ? "bg-warning px-1.5 py-0.5 text-ink" : "text-leaf";
+  const roleStatusClass = e.cancelled ? "text-soft" : shiftAtRisk(e) || shiftNeedsSlots(e) ? "bg-warning px-1.5 py-0.5 text-on-action" : "text-leaf";
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-faint py-5">

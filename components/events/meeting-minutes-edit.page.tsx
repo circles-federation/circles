@@ -102,7 +102,7 @@ function MinutesForm({ eventId, session }: { eventId: string; session: MeetingSe
                   onChange={(text) => setEdits({ ...edits, [t.id]: text })}
                 />
               </div>
-              {elsewhere && <p className="mt-2 font-sans text-xs font-bold text-flame">Someone else has changed these notes. Saving will replace their version.</p>}
+              {elsewhere && <p className="mt-2 font-sans text-xs font-bold text-flame-text">Someone else has changed these notes. Saving will replace their version.</p>}
             </li>
           );
         })}

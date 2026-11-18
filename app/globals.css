@@ -25,18 +25,26 @@
    ============================================================ */
 @theme {
   --color-ink: #0a0a0a;
-  --color-paper: #ffffff;
+  --color-paper: #ffffff; /* a surface: cards, tables, fields' neighbours, dialogs */
+  --color-page: #f8f4f0; /* the page itself, behind every surface: a warm cream, so a white surface lifts off it */
   --color-body: #222222; /* running text: a touch softer than ink against white */
   --color-ghost: #9a9a9a; /* text deliberately faded: what only you see (your last name on Home) */
   --color-attention: #ff3b30; /* the attention dot: something unread or waiting */
   --color-soft: #6b6b6b;
-  --color-faint: #e4e4e4;
-  --color-wash: #f4f4f4; /* a light grey ground: a field that can't be changed, a box set apart from the page */
-  --color-flame: #e1530b; /* accent for governance events still being proposed */
+  --color-faint: #e6e0d8;
+  --color-wash: #f3eee8; /* a light grey ground: a field that can't be changed, a box set apart from the page */
+  --color-flame: #e1530b; /* accent for governance events still being proposed: a fill, with on-action text */
+  --color-flame-text: #b83e05; /* flame as text or an icon on the page or a surface (5.2:1): flame itself is too light for small text */
+  --color-tint-leaf: #bfe8c0; /* pale fills, with on-action text: done, in progress, overdue */
+  --color-tint-warn: #fbe9a6;
+  --color-tint-danger: #f2b8b8;
+  --color-glow-teal: #6fe0d2; /* the gradient behind a masthead */
+  --color-glow-warm: #ffd966;
+  --color-glow-coral: #ff9b86;
   --color-leaf: #2e7d32; /* accent for confirmed governance events */
   --color-teal: #0f7d77; /* the home neighborhood's chip color */
   --color-danger: #c0392b; /* destructive actions, error states */
-  --color-folder: #b8860b; /* circle resources: the folder icon (a collection) */
+  --color-folder: #85620a; /* circle resources: the folder icon (a collection) */
   --color-file: #1f5fbf; /* circle resources: the file icon (a single document) */
   --color-video: #6d3fb5; /* circle resources: the video icon (a recording) */
   --color-announcement: #c0392b; /* circle resources: the announcement icon (the same red as danger, for a different job) */
@@ -44,7 +52,8 @@
   --color-agenda: #008480; /* a meeting's agenda cards: a turquoise teal, as bright as it goes and still reads as text on white (4.5:1) */
   --color-phone: #c0392b; /* a circle's phone number: its red square (the same red as danger, for a different job) */
   --color-email: #3b8fd9; /* a circle's email address: its square, a sky blue lighter than the website's (action) beside it, still 3.4:1 against its white icon */
-  --color-action: #1f5fbf; /* a primary icon button, like the top bar's Save (the same blue as file, for a different job) */
+  --color-action: #3fcfc0; /* the one action colour, a bright teal: a primary icon button like the top bar's Save, the active tab in the floating nav. Carries on-action (black) text, never white, and is not for text on a surface */
+  --color-on-action: #0a0a0a; /* text and icons on action, flame and the pale tints: black in every theme */
   --color-accept: #f0b400; /* a proposal's yellow answer, "Accept this": between leaf ("Like this") and danger ("Object"), with ink text on it */
   /* three roles a theme can set apart from ink and paper, all equal to them in
      Sol: chrome, the app's own strong surface (the bottom nav, the top bar's
@@ -62,8 +71,8 @@
   /* elevation: two levels, for what sits above the page. Float hovers over
      the page (the top bar's filled circles, its menus, the welcome page's floating button); overlay is over everything (dialogs,
      toasts, the bottom nav). Anything on the page itself has none. */
-  --shadow-float: 0 4px 14px rgba(10, 10, 10, 0.18);
-  --shadow-overlay: 0 6px 20px rgba(10, 10, 10, 0.28);
+  --shadow-float: 0 4px 14px rgba(10, 60, 55, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-overlay: 0 10px 30px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.12);
 
   --font-sans: "Helvetica Neue", Arial, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
@@ -339,15 +348,15 @@ body {
 /* ink-press for something waiting on members' decision (an open proposal's
    banner): it fills with the governance orange rather than black */
 .flame-press { transition: background var(--motion-press), color var(--motion-press); }
-.flame-press[data-pressed] { background: var(--color-flame) !important; color: var(--color-paper) !important; border-color: var(--color-flame) !important; }
-.flame-press[data-pressed] * { color: var(--color-paper) !important; }
+.flame-press[data-pressed] { background: var(--color-flame) !important; color: var(--color-on-action) !important; border-color: var(--color-flame) !important; }
+.flame-press[data-pressed] * { color: var(--color-on-action) !important; }
 .btn-invert { transition: background var(--motion-press), color var(--motion-press); }
 .btn-ink[data-pressed] { background: var(--color-paper) !important; color: var(--color-ink) !important; }
 .btn-ink[data-pressed] * { color: var(--color-ink) !important; }
 .btn-teal[data-pressed] { background: var(--color-paper) !important; color: var(--color-teal) !important; }
 .btn-teal[data-pressed] * { color: var(--color-teal) !important; }
-.btn-flame[data-pressed] { background: var(--color-paper) !important; color: var(--color-flame) !important; }
-.btn-flame[data-pressed] * { color: var(--color-flame) !important; }
+.btn-flame[data-pressed] { background: var(--color-paper) !important; color: var(--color-flame-text) !important; }
+.btn-flame[data-pressed] * { color: var(--color-flame-text) !important; }
 .btn-leaf[data-pressed] { background: var(--color-paper) !important; color: var(--color-leaf) !important; }
 .btn-leaf[data-pressed] * { color: var(--color-leaf) !important; }
 .btn-danger[data-pressed] { background: var(--color-paper) !important; color: var(--color-danger) !important; }
@@ -392,7 +401,7 @@ body {
   /* an @name a chat message was addressed to */
   .chat-mention {
     font-weight: 700;
-    color: var(--color-action);
+    color: var(--color-ink);
   }
   /* a bubble of your own is teal with paper text, so what is ink elsewhere
      reads in its colour */
