@@ -87,7 +87,7 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
 
           {c.offers.length > 0 && (
             <section className="order-2">
-              <EyebrowGroup label="What they offer">
+              <EyebrowGroup label="What we offer">
                 {c.offers.map((s) => (
                   <Tag key={s}>{s}</Tag>
                 ))}
@@ -97,7 +97,7 @@ export function CircleWiki({ circle: c, parent, lastEdited, subCircles, writeHre
 
           {c.needs.length > 0 && (
             <section className="order-3">
-              <EyebrowGroup label="What they need">
+              <EyebrowGroup label="What we need">
                 {c.needs.map((s) => (
                   <Tag key={s}>{s}</Tag>
                 ))}
