@@ -545,311 +545,316 @@ export function EventFormPage(props: EventFormPageProps) {
   }
 
   return (
-    <PageContainer size="compact">
-      {/* a choice, not navigation: two options that each say what they are,
-          the chosen one outlined (orange once it's a proposal). The kind can't
-          change once an event exists, so only a new one asks. */}
-      {mode === "create" ? (
-        <div role="radiogroup" aria-label="What you're making" className="grid grid-cols-2 gap-3">
-          {types.map(([key, label]) => {
-            const on = key === type;
-            return (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => changeType(key)}
-                className={clsx(
-                  "ink-press relative flex cursor-pointer flex-col items-stretch justify-start border bg-paper px-4 py-4 text-left",
-                  on ? clsx(accent.border, accent.ring) : "border-faint",
-                )}
-              >
-                <span className={clsx("block font-sans text-base font-bold", on ? accent.text : "text-soft")}>{label}</span>
-                <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{KIND_HINT[key]}</span>
-                {on && <CheckIcon className={clsx("absolute top-3 right-3 size-4", accent.text)} strokeWidth={3} aria-hidden />}
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        proposing && <Eyebrow className="text-flame-text">Proposal</Eyebrow>
-      )}
-
-      {/* a meeting is the circle's own, so which circle comes first, with what
-          that means for it right under the choice (an event's is further down) */}
-      {gov && (
-        <div className="mt-5">
-          <Label htmlFor="circle">Which circle is meeting?</Label>
-          {circleSelect}
-          {circle && approverRole && (
-            <p className="mt-3 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-body">
-              As {circle.name}&apos;s <strong>{approverRole}</strong>, you schedule it directly, without asking for consent, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
-            </p>
-          )}
-          {circle && !approverRole && (
-            <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-body">
-              This is a proposal to {circle.name}. It&apos;s scheduled once its {circle.type === "neighborhood" ? "residents" : "members"} consent, or after 3 days if no one objects. Until then it&apos;s in no list. You and everyone who consents are marked as going.
-            </p>
-          )}
-          {mode === "edit" && <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">The circle can&apos;t be changed once a meeting exists.</p>}
-        </div>
-      )}
-
-      <div className="mt-6 flex flex-col gap-6">
-        <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
-          <Eyebrow>Details</Eyebrow>
-          <div>
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={gov ? "What is this meeting about?" : "What's happening?"} />
-          </div>
-          <div>
-            <Label htmlFor="location">Location</Label>
-            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" />
-          </div>
-          {!gov && (
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="What's it about, what to bring, who it's for…" />
-          </div>
-          )}
-        </section>
-
-        <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
-          <Eyebrow>When</Eyebrow>
-          <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">
-            <div>
-              <Label htmlFor="date">Date</Label>
-              {/* the day only moves one date at a time */}
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                // the date picker greys out days before today; the time is
-                // checked when the form is (validateEventDraft)
-                min={localDay()}
-                onChange={(e) => setDate(e.target.value)}
-                disabled={seriesLive && scope === "upcoming"}
-              />
+    <PageContainer size="wide">
+      {/* two columns from 960px: the choice, Details and When on the left; Who, the
+          Roles or Agenda and Reminders rows and any error on the right. On a phone one
+          run (`order` over `contents` columns) in the order the sections read */}
+      <div className="mx-auto max-w-170 min-[960px]:max-w-none">
+        <div className="flex flex-col gap-6 min-[960px]:grid min-[960px]:grid-cols-2 min-[960px]:items-start min-[960px]:gap-x-12">
+          <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-6">
+            <div className="order-1 empty:hidden">
+          {/* a choice, not navigation: two options that each say what they are,
+              the chosen one outlined (orange once it's a proposal). The kind can't
+              change once an event exists, so only a new one asks. */}
+          {mode === "create" ? (
+            <div role="radiogroup" aria-label="What you're making" className="grid grid-cols-2 gap-3">
+              {types.map(([key, label]) => {
+                const on = key === type;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => changeType(key)}
+                    className={clsx(
+                      "ink-press relative flex cursor-pointer flex-col items-stretch justify-start border bg-paper px-4 py-4 text-left",
+                      on ? clsx(accent.border, accent.ring) : "border-faint",
+                    )}
+                  >
+                    <span className={clsx("block font-sans text-base font-bold", on ? accent.text : "text-soft")}>{label}</span>
+                    <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{KIND_HINT[key]}</span>
+                    {on && <CheckIcon className={clsx("absolute top-3 right-3 size-4", accent.text)} strokeWidth={3} aria-hidden />}
+                  </button>
+                );
+              })}
             </div>
-            <div className="grid grid-cols-2 gap-4 min-[720px]:col-span-2">
+          ) : (
+            proposing && <Eyebrow className="text-flame-text">Proposal</Eyebrow>
+          )}
+            </div>
+            <section className="order-3 flex flex-col gap-5 border border-ink bg-paper p-5">
+              <Eyebrow>Details</Eyebrow>
               <div>
-                <Label htmlFor="start">Start</Label>
-                <Input
-                  id="start"
-                  type="time"
-                  value={start}
-                  onChange={(e) => {
-                    // the end moves with it, keeping the event's length
-                    setEnd(endAfterStartMoves(start, end, e.target.value));
-                    setStart(e.target.value);
-                  }}
-                />
+                <Label htmlFor="title">Title</Label>
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={gov ? "What is this meeting about?" : "What's happening?"} />
               </div>
               <div>
-                <Label htmlFor="end">End</Label>
-                <Input id="end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                <Label htmlFor="location">Location</Label>
+                <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where should people go?" />
               </div>
-            </div>
-          </div>
-
-          {gov && circleId && <MeetingAvailability circleId={circleId} date={date} start={start} end={end} eventId={event?.id} />}
-
-          {mode === "create" ? (!gov && (
-            <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">
-              <div className={repeat ? "min-[720px]:col-span-2" : "min-[720px]:col-span-3"}>
-                <Label htmlFor="repeat">Repeats</Label>
-                <Select id="repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as RepeatFrequency | "")}>
-                  <option value="">Doesn&apos;t repeat</option>
-                  {REPEAT_FREQUENCIES.map((f) => (
-                    <option key={f} value={f}>{repeatLabel(f, date)}</option>
-                  ))}
-                </Select>
+              {!gov && (
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <TextArea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="What's it about, what to bring, who it's for…" />
               </div>
-              {repeat && (
+              )}
+            </section>
+            <section className="order-4 flex flex-col gap-5 border border-ink bg-paper p-5">
+              <Eyebrow>When</Eyebrow>
+              <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">
                 <div>
-                  <Label htmlFor="until">Until (optional)</Label>
-                  <Input id="until" type="date" value={until} min={date || undefined} onChange={(e) => setUntil(e.target.value)} />
+                  <Label htmlFor="date">Date</Label>
+                  {/* the day only moves one date at a time */}
+                  <Input
+                    id="date"
+                    type="date"
+                    value={date}
+                    // the date picker greys out days before today; the time is
+                    // checked when the form is (validateEventDraft)
+                    min={localDay()}
+                    onChange={(e) => setDate(e.target.value)}
+                    disabled={seriesLive && scope === "upcoming"}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4 min-[720px]:col-span-2">
+                  <div>
+                    <Label htmlFor="start">Start</Label>
+                    <Input
+                      id="start"
+                      type="time"
+                      value={start}
+                      onChange={(e) => {
+                        // the end moves with it, keeping the event's length
+                        setEnd(endAfterStartMoves(start, end, e.target.value));
+                        setStart(e.target.value);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end">End</Label>
+                    <Input id="end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {gov && circleId && <MeetingAvailability circleId={circleId} date={date} start={start} end={end} eventId={event?.id} />}
+
+              {mode === "create" ? (!gov && (
+                <div className="grid grid-cols-1 gap-4 min-[720px]:grid-cols-3">
+                  <div className={repeat ? "min-[720px]:col-span-2" : "min-[720px]:col-span-3"}>
+                    <Label htmlFor="repeat">Repeats</Label>
+                    <Select id="repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as RepeatFrequency | "")}>
+                      <option value="">Doesn&apos;t repeat</option>
+                      {REPEAT_FREQUENCIES.map((f) => (
+                        <option key={f} value={f}>{repeatLabel(f, date)}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  {repeat && (
+                    <div>
+                      <Label htmlFor="until">Until (optional)</Label>
+                      <Input id="until" type="date" value={until} min={date || undefined} onChange={(e) => setUntil(e.target.value)} />
+                    </div>
+                  )}
+                  {repeat && (
+                    <p className="font-serif text-sm leading-[1.45] text-soft min-[720px]:col-span-3">
+                      Each date is its own event, with its own {hasRoles ? "roles" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
+                      {hostCircle
+                        ? `${hostCircle.name} decides once, on the first date: consenting to it schedules them all.`
+                        : "Members are told once, when it's created."}
+                    </p>
+                  )}
+                </div>
+              )) : series && (
+                <div>
+                  <Label htmlFor="scope">Repeats</Label>
+                  <p className="mb-3 font-serif text-base">{repeatSummary(series)}</p>
+                  {seriesLive ? (
+                    <>
+                      <Select id="scope" value={scope} onChange={(e) => { setScope(e.target.value as SeriesScope); setDate(initialValues.date); }}>
+                        <option value="one">Save changes to this date only</option>
+                        <option value="upcoming">Save changes to this and later dates</option>
+                      </Select>
+                      <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+                        {scope === "upcoming"
+                          ? `Changes apply to this date${laterDates.length > 1 ? `, the ${laterDates.length === 2 ? "one" : laterDates.length - 1} after it,` : ""} and every date still to come. The day itself can only be moved one date at a time.`
+                          : "Only this date changes; the others stay as they are."}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-serif text-sm leading-[1.45] text-soft">
+                      While it&apos;s waiting on its circle&apos;s consent, changes apply to the whole series.
+                    </p>
+                  )}
                 </div>
               )}
-              {repeat && (
-                <p className="font-serif text-sm leading-[1.45] text-soft min-[720px]:col-span-3">
-                  Each date is its own event, with its own {hasRoles ? "roles" : "RSVPs"}, and dates are added {REPEAT_HORIZON_LABEL[repeat]} ahead.{" "}
-                  {hostCircle
-                    ? `${hostCircle.name} decides once, on the first date: consenting to it schedules them all.`
-                    : "Members are told once, when it's created."}
-                </p>
-              )}
-            </div>
-          )) : series && (
-            <div>
-              <Label htmlFor="scope">Repeats</Label>
-              <p className="mb-3 font-serif text-base">{repeatSummary(series)}</p>
-              {seriesLive ? (
-                <>
-                  <Select id="scope" value={scope} onChange={(e) => { setScope(e.target.value as SeriesScope); setDate(initialValues.date); }}>
-                    <option value="one">Save changes to this date only</option>
-                    <option value="upcoming">Save changes to this and later dates</option>
-                  </Select>
-                  <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
-                    {scope === "upcoming"
-                      ? `Changes apply to this date${laterDates.length > 1 ? `, the ${laterDates.length === 2 ? "one" : laterDates.length - 1} after it,` : ""} and every date still to come. The day itself can only be moved one date at a time.`
-                      : "Only this date changes; the others stay as they are."}
-                  </p>
-                </>
-              ) : (
-                <p className="font-serif text-sm leading-[1.45] text-soft">
-                  While it&apos;s waiting on its circle&apos;s consent, changes apply to the whole series.
-                </p>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="flex flex-col gap-4">
-          {gov ? (
-            <MenuRow
-              onClick={() => openView("agenda")}
-              icon={ClipboardDocumentListIcon}
-              label="Agenda"
-              detail={topics.length > 0 ? `${topics.length} ${topics.length === 1 ? "topic" : "topics"}: ${topics.map((a) => a.title.trim()).join(", ")}` : "Add what you'll cover"}
-            />
-          ) : (
-            <>
-              <MenuRow
-                onClick={() => openView("slots")}
-                icon={HandRaisedIcon}
-                label="Roles"
-                detail={hasRoles ? `${roleNames.length} ${roleNames.length === 1 ? "role" : "roles"}: ${roleNames.join(", ")}` : "Add roles to sign up for."}
-              />
-            </>
-          )}
-          <MenuRow onClick={() => openView("reminders")} icon={BellAlertIcon} label="Reminders" detail={remindersSummary(chosen.filter((h) => available.includes(h)))} />
-        </section>
-
-        <section className="flex flex-col gap-5 border border-ink bg-paper p-5">
-          <Eyebrow>Who</Eyebrow>
-          {!gov && (
-          <div>
-            <Label htmlFor="circle">Shown to</Label>
-            {circleSelect}
-            {circle && (
-              <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
-                {isRootCircle(circle)
-                  ? `${proposing ? "Once approved, everyone" : "Everyone"} in the city can see this and RSVP.`
-                  : `${proposing ? "Once approved, only" : "Only"} ${audienceLabel(circle)} can see this, RSVP and be notified about it.`}
-                {mode === "edit" && " The circle can't be changed once an event exists."}
-              </p>
-            )}
+            </section>
           </div>
+          <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-6">
+          {/* a meeting is the circle's own, so which circle comes first, with what
+              that means for it right under the choice (an event's is further down) */}
+          {gov && (
+            <div className="order-2">
+              <Label htmlFor="circle">Which circle is meeting?</Label>
+              {circleSelect}
+              {circle && approverRole && (
+                <p className="mt-3 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-body">
+                  As {circle.name}&apos;s <strong>{approverRole}</strong>, you schedule it directly, without asking for consent, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
+                </p>
+              )}
+              {circle && !approverRole && (
+                <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-body">
+                  This is a proposal to {circle.name}. It&apos;s scheduled once its {circle.type === "neighborhood" ? "residents" : "members"} consent, or after 3 days if no one objects. Until then it&apos;s in no list. You and everyone who consents are marked as going.
+                </p>
+              )}
+              {mode === "edit" && <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">The circle can&apos;t be changed once a meeting exists.</p>}
+            </div>
           )}
+            <section className="order-5 flex flex-col gap-5 border border-ink bg-paper p-5">
+              <Eyebrow>Who</Eyebrow>
+              {!gov && (
+              <div>
+                <Label htmlFor="circle">Shown to</Label>
+                {circleSelect}
+                {circle && (
+                  <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+                    {isRootCircle(circle)
+                      ? `${proposing ? "Once approved, everyone" : "Everyone"} in the city can see this and RSVP.`
+                      : `${proposing ? "Once approved, only" : "Only"} ${audienceLabel(circle)} can see this, RSVP and be notified about it.`}
+                    {mode === "edit" && " The circle can't be changed once an event exists."}
+                  </p>
+                )}
+              </div>
+              )}
 
-          {gov ? (
-            <div>
-              <Label>{approverRole ? "Scheduled by" : "Proposed by"}</Label>
-              <div className="flex items-center gap-3 border border-ink bg-paper px-3 py-3">
-                <Avatar member={profile} size={26} />
-                <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
+              {gov ? (
+                <div>
+                  <Label>{approverRole ? "Scheduled by" : "Proposed by"}</Label>
+                  <div className="flex items-center gap-3 border border-ink bg-paper px-3 py-3">
+                    <Avatar member={profile} size={26} />
+                    <span className="font-sans text-sm font-bold">{profile.name} (you)</span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="host">Hosted by</Label>
+                  <FederationExplorerField id="host" circles={mode === "edit" ? circles : explorable} value={hostCircleId || null} onOpen={hostExplorer.open} placeholder={`${profile.name} (you)`} disabled={mode === "edit"} />
+                  {hostCircleId && mode !== "edit" && (
+                    <button type="button" onClick={() => setHostCircleId("")} className="hit relative mt-2 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-semibold text-soft underline underline-offset-2">
+                      Host it yourself instead
+                    </button>
+                  )}
+                  {hostCircle && circle && (
+                    <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
+                      {mode === "edit"
+                        ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
+                        : `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects; until then only they can see it, ${hasRoles ? "and its roles can be taken once it's scheduled" : "and you and everyone who consents are marked as going"}. Once it's scheduled it opens to ${circleIsPrivate(hostCircle) ? "the group" : audienceLabel(circle)}, and any member of ${hostCircle.name} can edit or cancel it.`}
+                    </p>
+                  )}
+                </div>
+              )}
+            </section>
+            <section className="order-6 flex flex-col gap-4">
+              {gov ? (
+                <MenuRow
+                  onClick={() => openView("agenda")}
+                  icon={ClipboardDocumentListIcon}
+                  label="Agenda"
+                  detail={topics.length > 0 ? `${topics.length} ${topics.length === 1 ? "topic" : "topics"}: ${topics.map((a) => a.title.trim()).join(", ")}` : "Add what you'll cover"}
+                />
+              ) : (
+                <>
+                  <MenuRow
+                    onClick={() => openView("slots")}
+                    icon={HandRaisedIcon}
+                    label="Roles"
+                    detail={hasRoles ? `${roleNames.length} ${roleNames.length === 1 ? "role" : "roles"}: ${roleNames.join(", ")}` : "Add roles to sign up for."}
+                  />
+                </>
+              )}
+              <MenuRow onClick={() => openView("reminders")} icon={BellAlertIcon} label="Reminders" detail={remindersSummary(chosen.filter((h) => available.includes(h)))} />
+            </section>
+          {error && (
+            <div ref={errorRef} role="alert" className="order-7 flex items-start gap-2 border border-ink bg-tint-danger px-4 py-3 font-sans text-sm font-semibold text-on-action">
+              <ExclamationTriangleIcon className="mt-0.5 size-4 shrink-0" strokeWidth={2.5} aria-hidden />
+              {error}
+            </div>
+          )}
+          </div>
+        </div>
+
+          {/* cancelling the event itself (not this form): on every screen size,
+              since it isn't one of the form's own buttons */}
+          {mode === "edit" && !isPastEvent(props.event) && (
+            <div className="mt-8 border-t border-ink pt-6">
+              <Eyebrow className="text-soft">Cancel {noun}</Eyebrow>
+              <p className="mt-2 mb-4 font-serif text-sm leading-normal text-soft">
+                {othersGoing > 0
+                  ? `Everyone going will be emailed, and it'll stay listed as cancelled.`
+                  : `No one else is going yet, so it'll be deleted.`}{" "}
+                {seriesLive && "Cancelling this and later dates also stops new ones being added. "}
+                This can&apos;t be undone.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="danger" onClick={() => setConfirmingCancel("one")} disabled={busy}>
+                  {cancelLabel("one")}
+                </Button>
+                {seriesLive && (
+                  <Button variant="danger" onClick={() => setConfirmingCancel("upcoming")} disabled={busy}>
+                    {cancelLabel("upcoming")}
+                  </Button>
+                )}
               </div>
             </div>
-          ) : (
-            <div>
-              <Label htmlFor="host">Hosted by</Label>
-              <FederationExplorerField id="host" circles={mode === "edit" ? circles : explorable} value={hostCircleId || null} onOpen={hostExplorer.open} placeholder={`${profile.name} (you)`} disabled={mode === "edit"} />
-              {hostCircleId && mode !== "edit" && (
-                <button type="button" onClick={() => setHostCircleId("")} className="hit relative mt-2 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-semibold text-soft underline underline-offset-2">
-                  Host it yourself instead
-                </button>
-              )}
-              {hostCircle && circle && (
-                <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">
-                  {mode === "edit"
-                    ? `Hosted by ${hostCircle.name}, so it can't be re-hosted once proposed.`
-                    : `This is a proposal to ${hostCircle.name}. It's scheduled once its members consent, or after 3 days if no one objects; until then only they can see it, ${hasRoles ? "and its roles can be taken once it's scheduled" : "and you and everyone who consents are marked as going"}. Once it's scheduled it opens to ${circleIsPrivate(hostCircle) ? "the group" : audienceLabel(circle)}, and any member of ${hostCircle.name} can edit or cancel it.`}
-                </p>
-              )}
-            </div>
           )}
-        </section>
+
+          {confirmingCancel && (
+            <ConfirmModal
+              title={confirmingCancel === "upcoming" ? "Cancel this and later dates?" : `Cancel this ${seriesLive ? "date" : noun}?`}
+              message={confirmingCancel === "upcoming"
+                ? `That's ${laterDates.length} date${laterDates.length === 1 ? "" : "s"} so far, and no more will be added. ${othersGoingLater > 0
+                    ? `${othersGoingLater} ${othersGoingLater === 1 ? "person is" : "people are"} going to at least one — they'll each get one email, and those dates stay listed as cancelled. Dates no one else is going to are deleted.`
+                    : "No one else is going to any of them, so they'll be deleted."} This can't be undone.`
+                : othersGoing > 0
+                  ? `${othersGoing} ${othersGoing === 1 ? "person is" : "people are"} going. They'll be emailed that it's cancelled, and it'll stay listed as cancelled. This can't be undone.`
+                  : `No one else is going, so it'll be deleted. This can't be undone.`}
+              confirmLabel={cancelLabel(confirmingCancel)}
+              cancelLabel="Keep it"
+              onConfirm={() => cancelTheEvent(confirmingCancel)}
+              onCancel={() => setConfirmingCancel(null)}
+            />
+          )}
+
+          {circleExplorer.dialog}
+          {hostExplorer.dialog}
+          {confirmingProposal && decidingCircle && (
+            <ConfirmModal
+              title={`Propose this ${noun}?`}
+              message={deciders === 0
+                ? `You're ${decidingCircle.name}'s only member, so it'll be scheduled straight away.`
+                : hostCircle
+                  ? `It's hosted by ${decidingCircle.name}, so it needs the consent of its members.`
+                  : `It's ${decidingCircle.name}'s meeting, so it needs the consent of its members.`}
+              confirmLabel={`Propose ${noun}`}
+              cancelLabel="Not yet"
+              tone="flame"
+              onConfirm={() => { setConfirmingProposal(false); void submit(); }}
+              onCancel={() => setConfirmingProposal(false)}
+            />
+          )}
+
+          {confirmingDiscard && (
+            <ConfirmModal
+              title="Discard changes?"
+              message={`You have unsaved changes to this ${gov ? "meeting" : "event"}. If you leave now, they'll be lost.`}
+              confirmLabel="Discard"
+              cancelLabel="Cancel"
+              onConfirm={onCancel}
+              onCancel={() => setConfirmingDiscard(false)}
+            />
+          )}
       </div>
-
-      {error && (
-        <div ref={errorRef} role="alert" className="mt-6 flex items-start gap-2 border border-ink bg-tint-danger px-4 py-3 font-sans text-sm font-semibold text-on-action">
-          <ExclamationTriangleIcon className="mt-0.5 size-4 shrink-0" strokeWidth={2.5} aria-hidden />
-          {error}
-        </div>
-      )}
-
-      {/* cancelling the event itself (not this form): on every screen size,
-          since it isn't one of the form's own buttons */}
-      {mode === "edit" && !isPastEvent(props.event) && (
-        <div className="mt-8 border-t border-ink pt-6">
-          <Eyebrow className="text-soft">Cancel {noun}</Eyebrow>
-          <p className="mt-2 mb-4 font-serif text-sm leading-normal text-soft">
-            {othersGoing > 0
-              ? `Everyone going will be emailed, and it'll stay listed as cancelled.`
-              : `No one else is going yet, so it'll be deleted.`}{" "}
-            {seriesLive && "Cancelling this and later dates also stops new ones being added. "}
-            This can&apos;t be undone.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="danger" onClick={() => setConfirmingCancel("one")} disabled={busy}>
-              {cancelLabel("one")}
-            </Button>
-            {seriesLive && (
-              <Button variant="danger" onClick={() => setConfirmingCancel("upcoming")} disabled={busy}>
-                {cancelLabel("upcoming")}
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {confirmingCancel && (
-        <ConfirmModal
-          title={confirmingCancel === "upcoming" ? "Cancel this and later dates?" : `Cancel this ${seriesLive ? "date" : noun}?`}
-          message={confirmingCancel === "upcoming"
-            ? `That's ${laterDates.length} date${laterDates.length === 1 ? "" : "s"} so far, and no more will be added. ${othersGoingLater > 0
-                ? `${othersGoingLater} ${othersGoingLater === 1 ? "person is" : "people are"} going to at least one — they'll each get one email, and those dates stay listed as cancelled. Dates no one else is going to are deleted.`
-                : "No one else is going to any of them, so they'll be deleted."} This can't be undone.`
-            : othersGoing > 0
-              ? `${othersGoing} ${othersGoing === 1 ? "person is" : "people are"} going. They'll be emailed that it's cancelled, and it'll stay listed as cancelled. This can't be undone.`
-              : `No one else is going, so it'll be deleted. This can't be undone.`}
-          confirmLabel={cancelLabel(confirmingCancel)}
-          cancelLabel="Keep it"
-          onConfirm={() => cancelTheEvent(confirmingCancel)}
-          onCancel={() => setConfirmingCancel(null)}
-        />
-      )}
-
-      {circleExplorer.dialog}
-      {hostExplorer.dialog}
-      {confirmingProposal && decidingCircle && (
-        <ConfirmModal
-          title={`Propose this ${noun}?`}
-          message={deciders === 0
-            ? `You're ${decidingCircle.name}'s only member, so it'll be scheduled straight away.`
-            : hostCircle
-              ? `It's hosted by ${decidingCircle.name}, so it needs the consent of its members.`
-              : `It's ${decidingCircle.name}'s meeting, so it needs the consent of its members.`}
-          confirmLabel={`Propose ${noun}`}
-          cancelLabel="Not yet"
-          tone="flame"
-          onConfirm={() => { setConfirmingProposal(false); void submit(); }}
-          onCancel={() => setConfirmingProposal(false)}
-        />
-      )}
-
-      {confirmingDiscard && (
-        <ConfirmModal
-          title="Discard changes?"
-          message={`You have unsaved changes to this ${gov ? "meeting" : "event"}. If you leave now, they'll be lost.`}
-          confirmLabel="Discard"
-          cancelLabel="Cancel"
-          onConfirm={onCancel}
-          onCancel={() => setConfirmingDiscard(false)}
-        />
-      )}
     </PageContainer>
   );
 }
