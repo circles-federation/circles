@@ -21,7 +21,7 @@ interface SimpleTabsProps {
 }
 
 /* A plain, left-aligned tab row for switching between content blocks the
-   caller renders itself — gray inactive labels, the active one a bold label
+   caller renders itself — ink inactive labels, the active one a bold label
    on a filled ink block, all sitting on a single hairline (the top bar's lower edge). Navigation only.
 
    On a phone too narrow for every tab (a member of a circle has five), the
@@ -63,7 +63,7 @@ export function SimpleTabs({ tabs, active, onChange, className }: SimpleTabsProp
                 // z-10: over the tab's content, which would otherwise cover the
                 // bottom of its tap area (hit)
                 "hit z-10 flex shrink-0 cursor-pointer items-center gap-2 border-0 px-3 py-1.5 font-sans text-base whitespace-nowrap",
-                on ? "bg-ink font-bold text-paper" : "bg-transparent font-normal text-soft hover:text-ink",
+                on ? "bg-ink font-bold text-paper" : "bg-transparent font-semibold text-ink",
               )}
             >
               {t.icon && <t.icon className="hidden size-4 shrink-0 min-[600px]:block" strokeWidth={on ? 2.5 : 2} aria-hidden />}

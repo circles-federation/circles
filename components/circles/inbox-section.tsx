@@ -36,7 +36,7 @@ export function InboxSection({ circle }: { circle: Circle }) {
             onClick={() => setList(key)}
             className={clsx(
               "hit cursor-pointer border-0 px-3 py-1.5 font-sans text-xs font-bold tracking-caps uppercase",
-              list === key ? "bg-ink text-paper" : "bg-transparent text-soft hover:text-ink",
+              list === key ? "bg-ink text-paper" : "bg-transparent text-ink",
             )}
           >
             {key === "open" ? `Open${open.length > 0 ? ` · ${open.length}` : ""}` : "Done"}
