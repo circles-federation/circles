@@ -78,16 +78,18 @@ export function digestCutoff(now: Date, hour = digestHour()): Date {
    if any device took it, or if there's no device left to try; only when every
    device failed for some other reason (the service down, say) does it throw,
    so a queued notification is retried. Returns how many devices took it. */
-export async function pushToMember(memberId: number, message: PushMessage): Promise<number> {
+export async function pushToMember(memberId: number, message: PushMessage, results?: (number | string)[]): Promise<number> {
   const subscriptions = await getSubscriptions(memberId);
   let delivered = 0;
   let lastError: unknown;
   for (const sub of subscriptions) {
     try {
-      await sendPush(sub, message);
+      const status = await sendPush(sub, message);
+      results?.push(status);
       await markSubscriptionUsed(sub.endpoint);
       delivered++;
     } catch (err) {
+      results?.push(err instanceof ExpiredSubscriptionError ? 410 : ((err as { statusCode?: number }).statusCode ?? "error"));
       if (err instanceof ExpiredSubscriptionError) await deleteDeadSubscription(sub.endpoint);
       else lastError = err;
     }
@@ -414,9 +416,13 @@ export async function tellCircleOfChat(id: number) {
   });
   if (!data) return;
   const message = chatPush(data);
+  const reading = data.recipientIds.filter((memberId) => chatHub.isViewing(memberId, data.circleId));
+  const results: (number | string)[] = [];
   await Promise.all(
     data.recipientIds
-      .filter((memberId) => !chatHub.isViewing(memberId, data.circleId))
-      .map((memberId) => pushToMember(memberId, message).catch((err) => console.error("Couldn't push a chat message:", err))),
+      .filter((memberId) => !reading.includes(memberId))
+      .map((memberId) => pushToMember(memberId, message, results).catch((err) => console.error("Couldn't push a chat message:", err))),
   );
+  // what the push services answered (201 is "taken"), to tell a message that was never sent from one that was sent and not shown
+  console.log(`Chat message ${id}: ${data.recipientIds.length} to tell, ${reading.length} already reading, ${results.length} device pushes: ${results.join(", ") || "none (no subscribed devices)"}`);
 }

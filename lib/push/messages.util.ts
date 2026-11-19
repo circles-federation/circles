@@ -21,8 +21,8 @@ const BODY_CHARS = 180;
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
 const line = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(" · ");
 
-function message(title: string, body: string, url: string, tag: string): PushMessage {
-  return { title: clip(title, TITLE_CHARS), body: clip(body, BODY_CHARS), url, tag };
+function message(title: string, body: string, url: string, tag?: string): PushMessage {
+  return { title: clip(title, TITLE_CHARS), body: clip(body, BODY_CHARS), url, ...(tag ? { tag } : {}) };
 }
 
 export type EventPushData = Omit<EventNotificationData, "url"> & { eventId: string };
@@ -158,9 +158,11 @@ export function circleMessagePush(d: { messageId: string; circleId: string; circ
 
 /* A new message in a circle's chat. Tagged, it says so; the text is as much
    as fits, unless it isn't plain text (`scheme` not 0: encrypted), when a
-   notification can't carry it and says only that there's one. Tagged by
-   circle, so a burst of messages is one notification on the device. */
+   notification can't carry it and says only that there's one. Not tagged: a
+   tag makes a notification replace an earlier one with the same tag, and
+   Safari doesn't alert again for the replacement, so a thread would go quiet
+   while its first notification sat unread. */
 export function chatPush(d: { circleId: string; circleName: string; authorName: string; body: string; scheme: number; tagged: boolean }): PushMessage {
   const text = d.scheme === 0 ? messageText(d.body).replace(/\s+/g, " ").trim() : "Open Circles to read it.";
-  return message(d.tagged ? `${d.authorName} tagged you in ${d.circleName}` : `${d.authorName} in ${d.circleName}`, text, `/circles/${d.circleId}/chat`, `chat-${d.circleId}`);
+  return message(d.tagged ? `${d.authorName} tagged you in ${d.circleName}` : `${d.authorName} in ${d.circleName}`, text, `/circles/${d.circleId}/chat`);
 }

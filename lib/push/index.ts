@@ -48,18 +48,20 @@ function configure(): boolean {
 // a day-old "new event" or reminder is worse than none
 const TTL_SECONDS = 24 * 60 * 60;
 
-export async function sendPush(subscription: PushSubscriptionKeys, message: PushMessage): Promise<void> {
+// the push service's HTTP status (201 when it took the message), or 0 where nothing is configured
+export async function sendPush(subscription: PushSubscriptionKeys, message: PushMessage): Promise<number> {
   if (!configure()) {
     if (process.env.NODE_ENV === "production") throw new Error("Push isn't configured: set NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT.");
     console.log(`[push not sent — VAPID keys unset]\nTo: ${subscription.endpoint}\n${message.title}\n${message.body}\n${message.url}`);
-    return;
+    return 0;
   }
   try {
-    await webpush.sendNotification(
+    const result = await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
       JSON.stringify(message),
       { TTL: TTL_SECONDS, timeout: 10_000 }
     );
+    return result.statusCode;
   } catch (err) {
     if (err instanceof WebPushError && (err.statusCode === 404 || err.statusCode === 410)) throw new ExpiredSubscriptionError(err.message);
     throw err;

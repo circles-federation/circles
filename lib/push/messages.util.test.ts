@@ -108,9 +108,9 @@ describe("other pushes", () => {
 describe("chat pushes", () => {
   const base = { circleId: "garden", circleName: "Garden", authorName: "Mira", scheme: 0, tagged: false };
 
-  it("show the text with its Markdown taken out, tagged by circle so a burst is one notification", () => {
+  it("show the text with its Markdown taken out, untagged so each message alerts", () => {
     const m = chatPush({ ...base, body: "**Bring** a [rake](https://x.org)" });
-    expect(m).toMatchObject({ title: "Mira in Garden", body: "Bring a rake (https://x.org)", url: "/circles/garden/chat", tag: "chat-garden" });
+    expect(m).toEqual({ title: "Mira in Garden", body: "Bring a rake (https://x.org)", url: "/circles/garden/chat" });
   });
 
   it("say when you were tagged", () => {
