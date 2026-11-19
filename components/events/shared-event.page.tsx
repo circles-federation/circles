@@ -1,9 +1,9 @@
 import { UserIcon, XCircleIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { DateTile } from "./date-tile";
 import { EventFacts } from "./event-facts";
+import { EventHeader } from "./event-header";
 import { GuestRsvp } from "./guest-rsvp";
-import { CappedChip, Eyebrow, EyebrowGroup, MastheadGlow } from "@/components/shared";
+import { Eyebrow, EyebrowGroup, MastheadGlow } from "@/components/shared";
 import type { SharedEvent } from "@/lib/types";
 
 interface SharedEventPageProps {
@@ -32,21 +32,16 @@ export function SharedEventPage({ event: e, guest }: SharedEventPageProps) {
         <p className="font-sans text-sm font-extrabold tracking-heading">Circles</p>
         <p className="mt-6 font-serif text-lg text-body">{e.sharedBy} invited you to</p>
 
-        <div className="mt-3 min-[960px]:grid min-[960px]:grid-cols-[1fr_auto] min-[960px]:items-end min-[960px]:gap-x-12">
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-start justify-between gap-3 min-[960px]:items-center min-[960px]:justify-start min-[960px]:gap-4">
-              <Eyebrow className="shrink-0 pt-1.5 min-[960px]:pt-0">{label}</Eyebrow>
-              {e.circleName && (
-                <CappedChip tone="plain" max="max-w-[60%]" title={`${e.circleName}: who this event is for`}>
-                  {e.circleName}
-                </CappedChip>
-              )}
-            </div>
-            <h1 className="mt-4 font-sans text-title leading-[0.95] font-extrabold tracking-display wrap-anywhere min-[960px]:text-[64px] min-[960px]:leading-[1.02]">{e.title}</h1>
-          </div>
-          <div className="hidden min-[960px]:block">
-            <DateTile iso={e.date} large accent={e.cancelled ? "soft" : "ink"} />
-          </div>
+        <div className="mt-3">
+          <EventHeader
+            label={label}
+            circleName={e.circleName}
+            chipTitle={`${e.circleName}: who this event is for`}
+            chipTone="plain"
+            title={e.title}
+            date={e.date}
+            dateAccent={e.cancelled ? "soft" : "ink"}
+          />
         </div>
 
         {(e.cancelled || e.ended) && (
