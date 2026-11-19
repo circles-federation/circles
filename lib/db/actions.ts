@@ -22,7 +22,7 @@ import * as resources from "./resources";
 import * as tasks from "./tasks";
 import { sendEmail } from "@/lib/email";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail, photoDecisionEmail, taskAssignedEmail } from "@/lib/email/templates.util";
-import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember, tellCircleOfChat, tellCircleOfMessage } from "@/lib/notify";
+import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember, pushToMemberWithStatuses, tellCircleOfChat, tellCircleOfMessage } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
 import { invitationPush, photoDecisionPush, taskAssignedPush } from "@/lib/push/messages.util";
 import { dueLabel, type TaskInput } from "@/lib/tasks.util";
@@ -519,18 +519,25 @@ export async function deletePushSubscriptionAction(endpoint: string) {
   return asMember((memberId) => push.deleteSubscription(memberId, endpoint));
 }
 
-// development only: a notification to every device the session member has
-// turned push on for, to check the whole path end to end
+// Settings → Notifications' test button: a notification to every device the
+// session member has turned push on for, to check the whole path end to end,
+// and what each device's push service answered. Untagged on purpose: a
+// tag would make a second test replace the first without alerting on Safari.
+// One every 10 seconds per member, since it's a real push.
+const TEST_PUSH_GAP_MS = 10_000;
+const lastTestPush = new Map<number, number>();
+
 export async function sendTestPushAction() {
-  if (process.env.NODE_ENV === "production") return { ok: false as const, error: "Not available." };
   return asMember(async (memberId) => {
-    const devices = await pushToMember(memberId, {
+    const wait = TEST_PUSH_GAP_MS - (Date.now() - (lastTestPush.get(memberId) ?? 0));
+    if (wait > 0) throw new UserFacingError(`Wait ${Math.ceil(wait / 1000)} seconds before sending another.`);
+    lastTestPush.set(memberId, Date.now());
+    const { delivered, statuses } = await pushToMemberWithStatuses(memberId, {
       title: "Circles test notification",
       body: "Push notifications are working on this device.",
       url: "/home",
-      tag: "test",
     });
-    if (devices === 0) throw new UserFacingError("No device has notifications turned on.");
-    return devices;
+    if (statuses.length === 0) throw new UserFacingError("No device has notifications turned on.");
+    return { devices: statuses.length, delivered, statuses };
   });
 }
