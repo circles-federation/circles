@@ -11,6 +11,9 @@ interface RsvpButtonProps {
 
 /* RSVPing, and nothing else: how many are going is said beside it, not
    inside it, where "RSVP 2" read as one label. */
+// the pale-green Going, a status on its own (a guest's "You're going") and inside the button
+export const GOING_LOOK = "bg-tint-leaf font-sans text-xs font-bold tracking-caps whitespace-nowrap text-on-action uppercase";
+
 export function RsvpButton({ going, onToggle, big, past }: RsvpButtonProps) {
   const sizeClasses = big ? "py-3 px-6" : "py-3 px-4";
 
@@ -38,7 +41,7 @@ export function RsvpButton({ going, onToggle, big, past }: RsvpButtonProps) {
         sizeClasses,
         "ink-press",
         // inside a pressed row (Up next) it keeps its own fill and text colour
-        going ? "status-pill-pale bg-tint-leaf text-on-action" : "ink-press-badge bg-paper text-ink",
+        going ? clsx("status-pill-pale", GOING_LOOK) : "ink-press-badge bg-paper text-ink",
       )}
     >
       <span className="inline-flex items-center gap-1">

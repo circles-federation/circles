@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Eyebrow } from "@/components/shared";
+import { Button, Eyebrow, MastheadGlow } from "@/components/shared";
 import { removeGuestRsvpAction, stopGuestEmailsAction } from "@/lib/guest-rsvp";
 
 interface StopEmailsPageProps {
@@ -33,11 +33,12 @@ export function StopEmailsPage({ id, title, token, stopped }: StopEmailsPageProp
   }
 
   return (
-    <div className="min-h-dvh bg-page px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-20">
+    <div className="relative isolate min-h-dvh overflow-x-clip bg-page px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-20 [--top-bar-height:0px]">
+      <MastheadGlow tall />
       <div className="mx-auto w-full max-w-110">
         <p className="font-sans text-sm font-extrabold tracking-heading">Circles</p>
-        <div className="mt-6 border-t-[3px] border-t-ink pt-5">
-          <Eyebrow className="text-soft">Emails about</Eyebrow>
+        <div className="mt-6">
+          <Eyebrow>Emails about</Eyebrow>
           <h1 className="mt-2 font-sans text-heading leading-[0.95] font-extrabold tracking-display">{title}</h1>
 
           {outcome === "removed" ? (

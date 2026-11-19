@@ -5,7 +5,8 @@ import { AttendeesSection } from "./attendees-section";
 import { CancelledBanner } from "./cancelled-banner";
 import { PageContainer } from "@/components/shared";
 import { EventDetailsSection } from "./event-details-section";
-import { EventFacts, EventMasthead } from "./event-masthead";
+import { EventFacts } from "./event-facts";
+import { EventMasthead } from "./event-masthead";
 import { HostRsvpRow } from "./host-rsvp-row";
 
 import { FinishedMeetingSection, MeetingSessionSection } from "./meeting-session-section";
@@ -107,7 +108,7 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
           {/* once, for every width: first in the right column from 960px, and on a
               phone, with no order, ahead of everything that has one */}
           <div className="mt-2 min-[960px]:mt-0">
-            <EventFacts event={e} />
+            <EventFacts event={e} closed={!!e.cancelled || ended} />
           </div>
           <div className="order-1">
             <HostRsvpRow
