@@ -14,6 +14,8 @@ test("a member creates an event and a neighbor RSVPs to it", async ({ browser })
   await fillField(page.getByLabel("Title"), "E2E seed swap");
   await fillField(page.getByLabel("Date"), tomorrow());
   await fillField(page.getByLabel("Location"), "The garden");
+  await page.getByRole("button", { name: "Review" }).click();
+  await expect(page.getByText("Ready to create")).toBeVisible();
   await page.getByRole("button", { name: "Create event" }).click();
   await expect(page).toHaveURL(/\/events\/[^/]+$/);
   await expect(page.getByText("E2E seed swap").first()).toBeVisible();
