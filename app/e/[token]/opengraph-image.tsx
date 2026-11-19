@@ -15,6 +15,8 @@ export const contentType = "image/png";
 export default async function Image({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const event = await getSharedEvent(token);
+  // satori can't read CSS variables, so these are the tokens' values by hand: keep them in
+  // step with --color-page and --color-glow-* in app/globals.css
   const INK = "#0a0a0a";
   const SOFT = "#444444";
   // the page's wash (MastheadGlow): the three glow colours, fading out

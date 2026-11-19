@@ -1,8 +1,7 @@
-"use client";
 import { UserIcon, XCircleIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { DateTile } from "./date-tile";
-import { EventFacts } from "./event-masthead";
+import { EventFacts } from "./event-facts";
 import { GuestRsvp } from "./guest-rsvp";
 import { CappedChip, Eyebrow, EyebrowGroup, MastheadGlow } from "@/components/shared";
 import type { SharedEvent } from "@/lib/types";
@@ -77,7 +76,7 @@ export function SharedEventPage({ event: e, guest }: SharedEventPageProps) {
           </div>
 
           <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-10">
-            <EventFacts event={e} />
+            <EventFacts event={e} closed={e.cancelled || e.ended} />
             {/* a role is taken by a member, so an event with roles has no guest RSVP */}
             {!e.cancelled && !e.ended && !e.hasRoles && (
               <div className="order-1">
