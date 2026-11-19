@@ -784,7 +784,7 @@ export function EventFormPage(props: EventFormPageProps) {
               ) : (
                 <div>
                   <Label htmlFor="host">Hosted by</Label>
-                  <FederationExplorerField id="host" circles={mode === "edit" ? circles : explorable} value={hostCircleId || null} onOpen={hostExplorer.open} placeholder={`${profile.name} (you)`} disabled={mode === "edit"} />
+                  <FederationExplorerField id="host" circles={mode === "edit" ? circles : explorable} value={hostCircleId || null} onOpen={hostExplorer.open} placeholder={`${profile.name} (you)`} member={profile} disabled={mode === "edit"} />
                   {hostCircleId && mode !== "edit" && (
                     <button type="button" onClick={() => setHostCircleId("")} className="hit relative mt-2 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-semibold text-soft underline underline-offset-2">
                       Host it yourself instead
