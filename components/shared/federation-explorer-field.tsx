@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { TopBarAction } from "@/components/providers/top-bar-action-provider";
 import { circleAncestors, indexCircles } from "@/lib/circles.util";
 import { isPhoneWidth } from "@/lib/viewport";
+import { Avatar } from "./avatar";
 import { CircleTypeIcon } from "./circle-type-icon";
 import { FederationExplorer, startingFolder, type ExplorerCircle, type ExplorerYou } from "./federation-explorer";
 import { ICON_BUTTON_SLOT, IconButtonCircle } from "./icon-button-circle";
@@ -143,13 +144,16 @@ interface FederationExplorerFieldProps {
   // opens the explorer (useFederationExplorer's open)
   onOpen: () => void;
   placeholder?: string;
+  // shown, with their photo, while no circle is chosen (the person themselves,
+  // as Hosted by's default), at the same height as a chosen circle
+  member?: Parameters<typeof Avatar>[0]["member"];
   disabled?: boolean;
 }
 
 /* A field for choosing a circle: shows the one chosen, its icon and name
    in an outlined tile with where it sits under it, and opens the Federation Explorer to change
    it (useFederationExplorer). */
-export function FederationExplorerField({ id, circles, value, onOpen, placeholder = "Choose a circle", disabled }: FederationExplorerFieldProps) {
+export function FederationExplorerField({ id, circles, value, onOpen, placeholder = "Choose a circle", member, disabled }: FederationExplorerFieldProps) {
   const byId = useMemo(() => indexCircles(circles), [circles]);
   const chosen = value ? byId[value] : undefined;
   const path = chosen ? (chosen.parentId === null ? "The whole city" : circleAncestors(chosen, byId).map((c) => c.name).join(" › ")) : null;
@@ -171,6 +175,14 @@ export function FederationExplorerField({ id, circles, value, onOpen, placeholde
           <span className="min-w-0 flex-1">
             <span className="block truncate font-sans text-base leading-tight font-extrabold tracking-snug">{chosen.name}</span>
             <span className="block truncate font-sans text-sm text-soft">{path}</span>
+          </span>
+        </>
+      ) : member ? (
+        <>
+          <Avatar member={member} size={36} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-sans text-base leading-tight font-extrabold tracking-snug">{placeholder}</span>
+            <span className="block truncate font-sans text-sm text-soft">Host it yourself</span>
           </span>
         </>
       ) : (
