@@ -12,7 +12,10 @@ interface EventMastheadProps {
   event: Event;
 }
 
-function whenOf(e: Event) {
+// what When and Where need, so a shared event (no signed-in viewer, no series) can use them too
+export type FactsEvent = Pick<Event, "date" | "start" | "end" | "location" | "repeat">;
+
+function whenOf(e: FactsEvent) {
   const past = isPastEvent(e);
   const link = meetingLink(e.location);
   const time = `${fmtTime(e.start)}–${fmtTime(e.end)}`;
@@ -27,7 +30,7 @@ function whenOf(e: Event) {
 /* When and Where as a boxed pair of facts, each its own label: the event page
    puts it first in its right-hand column from 960px, and under the header and
    any notices on a phone. */
-export function EventFacts({ event: e }: { event: Event }) {
+export function EventFacts({ event: e }: { event: FactsEvent }) {
   const { link, time, repeats, dateLabel } = whenOf(e);
   return (
     <div className="grid grid-cols-1 border border-ink bg-paper min-[480px]:grid-cols-2">

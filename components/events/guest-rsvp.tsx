@@ -84,11 +84,12 @@ export function GuestRsvp({ token, guest }: GuestRsvpProps) {
   return (
     <div>
       {guest ? (
-        /* a status, not a control: plain green text with a check, so nothing
-           about it looks pressable; taking the RSVP back is the button beside it */
+        /* a status, not a control: the event page's pale-green Going with its
+           check, in no outline so nothing about it looks pressable; taking the RSVP
+           back is the button beside it */
         <div className="flex flex-wrap items-center gap-4">
-          <span className="inline-flex items-center gap-2 font-sans text-base font-bold text-leaf">
-            <CheckIcon className="size-5" strokeWidth={3} aria-hidden />
+          <span className="inline-flex items-center gap-2 bg-tint-leaf px-4 py-3 font-sans text-xs font-bold tracking-caps whitespace-nowrap text-on-action uppercase">
+            <CheckIcon className="size-4" strokeWidth={3} aria-hidden />
             You&apos;re going
           </span>
           <Button variant="secondary" size="compact" onClick={() => setConfirmingCancel(true)} disabled={busy}>
@@ -97,6 +98,7 @@ export function GuestRsvp({ token, guest }: GuestRsvpProps) {
         </div>
       ) : (
         <Button
+          variant="secondary"
           onClick={() => {
             setStep("form");
             setError(null);
