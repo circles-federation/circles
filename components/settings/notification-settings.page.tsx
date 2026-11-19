@@ -91,9 +91,19 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
   useBackHandler(dirty && !saving ? () => setConfirmingDiscard(true) : null);
   useTopBarAction({ label: saving ? "Saving" : "Save changes", icon: CheckIcon, onAction: handleSave, disabled: !dirty || saving, variant: "primary" });
 
+  const [testing, setTesting] = useState(false);
   async function sendTest() {
-    const result = await sendTestPushAction();
-    if (!result.ok) showToast({ message: result.error, tone: "error" });
+    setTesting(true);
+    const result = await sendTestPushAction().catch(() => ({ ok: false as const, error: "Couldn't reach the server. Try again." }));
+    setTesting(false);
+    if (!result.ok) return showToast({ message: result.error, tone: "error" });
+    const { devices, statuses } = result.value;
+    const taken = statuses.filter((s) => typeof s === "number" && s >= 200 && s < 300).length;
+    if (taken === devices) {
+      showToast({ tone: "success", title: "Test sent", message: `Sent to ${devices === 1 ? "your device" : `${devices} devices`}. It should arrive in a few seconds.` });
+    } else {
+      showToast({ tone: "error", title: "Test not accepted", message: `${devices - taken} of ${devices} devices were refused by their push service (${statuses.join(", ")}).` });
+    }
   }
 
   return (
@@ -120,8 +130,8 @@ export function NotificationSettingsPage({ settings, hasEmail, onSave, onBack }:
             <SettingRows>
               <DeviceRow status={device.status} iPhoneTab={iPhoneTab} checked={deviceWanted ?? deviceOn} onChange={setDeviceWanted} />
             </SettingRows>
-            {dev && deviceOn && deviceWanted === null && (
-              <Button variant="secondary" onClick={sendTest} className="mt-4">
+            {deviceOn && deviceWanted === null && (
+              <Button variant="secondary" onClick={sendTest} disabled={testing} className="mt-4">
                 Send a test notification
               </Button>
             )}

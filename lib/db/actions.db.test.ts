@@ -13,6 +13,7 @@ vi.mock("@/lib/notify", () => ({
   deliverEventNotifications: vi.fn(),
   deliverProposalNotifications: vi.fn(),
   pushToMember: vi.fn(async () => 0),
+  pushToMemberWithStatuses: vi.fn(async () => ({ delivered: 0, statuses: [] as (number | string)[] })),
   tellCircleOfChat: vi.fn(),
   tellCircleOfMessage: vi.fn(),
 }));
@@ -164,11 +165,12 @@ describe("acting as the signed-in member", () => {
     expect((await actions.declinePhotoAction(3, 1, "")).ok).toBe(false);
   });
 
-  it("won't send a test push in production", async () => {
+  it("tells a member with no device that there's none to test, and sends at most one test every few seconds", async () => {
     session.memberId = 2;
-    vi.stubEnv("NODE_ENV", "production");
-    expect(await actions.sendTestPushAction()).toEqual({ ok: false, error: "Not available." });
-    vi.unstubAllEnvs();
+    expect(await actions.sendTestPushAction()).toEqual({ ok: false, error: "No device has notifications turned on." });
+    const again = await actions.sendTestPushAction();
+    expect(again.ok).toBe(false);
+    expect(again.ok === false && again.error).toMatch(/^Wait \d+ seconds before sending another\.$/);
   });
 });
 
