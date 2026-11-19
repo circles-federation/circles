@@ -78,24 +78,34 @@ export function digestCutoff(now: Date, hour = digestHour()): Date {
    if any device took it, or if there's no device left to try; only when every
    device failed for some other reason (the service down, say) does it throw,
    so a queued notification is retried. Returns how many devices took it. */
-export async function pushToMember(memberId: number, message: PushMessage, results?: (number | string)[]): Promise<number> {
+export async function pushToMember(memberId: number, message: PushMessage): Promise<number> {
+  return (await pushToMemberWithStatuses(memberId, message)).delivered;
+}
+
+// as pushToMember, and what each device's push service answered ("not configured" where
+// there are no VAPID keys, an HTTP status otherwise, "error" if it never answered)
+export async function pushToMemberWithStatuses(memberId: number, message: PushMessage): Promise<{ delivered: number; statuses: (number | string)[] }> {
   const subscriptions = await getSubscriptions(memberId);
+  const statuses: (number | string)[] = [];
   let delivered = 0;
   let lastError: unknown;
   for (const sub of subscriptions) {
     try {
-      const status = await sendPush(sub, message);
-      results?.push(status);
+      statuses.push((await sendPush(sub, message)) ?? "not configured");
       await markSubscriptionUsed(sub.endpoint);
       delivered++;
     } catch (err) {
-      results?.push(err instanceof ExpiredSubscriptionError ? 410 : ((err as { statusCode?: number }).statusCode ?? "error"));
-      if (err instanceof ExpiredSubscriptionError) await deleteDeadSubscription(sub.endpoint);
-      else lastError = err;
+      if (err instanceof ExpiredSubscriptionError) {
+        statuses.push(err.statusCode);
+        await deleteDeadSubscription(sub.endpoint);
+      } else {
+        statuses.push((err as { statusCode?: number }).statusCode ?? "error");
+        lastError = err;
+      }
     }
   }
   if (delivered === 0 && lastError !== undefined) throw lastError;
-  return delivered;
+  return { delivered, statuses };
 }
 
 let digesting = false;
@@ -417,12 +427,21 @@ export async function tellCircleOfChat(id: number) {
   if (!data) return;
   const message = chatPush(data);
   const reading = data.recipientIds.filter((memberId) => chatHub.isViewing(memberId, data.circleId));
-  const results: (number | string)[] = [];
-  await Promise.all(
-    data.recipientIds
-      .filter((memberId) => !reading.includes(memberId))
-      .map((memberId) => pushToMember(memberId, message, results).catch((err) => console.error("Couldn't push a chat message:", err))),
-  );
+  const results = (
+    await Promise.all(
+      data.recipientIds
+        .filter((memberId) => !reading.includes(memberId))
+        .map((memberId) =>
+          pushToMemberWithStatuses(memberId, message).then(
+            (r) => r.statuses,
+            (err) => {
+              console.error("Couldn't push a chat message:", err);
+              return ["error"];
+            },
+          ),
+        ),
+    )
+  ).flat();
   // what the push services answered (201 is "taken"), to tell a message that was never sent from one that was sent and not shown
   console.log(`Chat message ${id}: ${data.recipientIds.length} to tell, ${reading.length} already reading, ${results.length} device pushes: ${results.join(", ") || "none (no subscribed devices)"}`);
 }
