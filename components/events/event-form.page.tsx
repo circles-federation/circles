@@ -739,27 +739,25 @@ export function EventFormPage(props: EventFormPageProps) {
             </section>
           </div>
           <div className="contents min-[960px]:flex min-[960px]:flex-col min-[960px]:gap-6">
-          {/* a meeting is the circle's own, so which circle comes first, with what
-              that means for it right under the choice (an event's is further down) */}
-          {gov && (
-            <div className="order-2">
-              <Label htmlFor="circle">Which circle is meeting?</Label>
-              {circleSelect}
-              {circle && approverRole && (
-                <p className="mt-3 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-body">
-                  As {circle.name}&apos;s <strong>{approverRole}</strong>, you schedule it directly, without asking for consent, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
-                </p>
-              )}
-              {circle && !approverRole && (
-                <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-body">
-                  This is a proposal to {circle.name}. It&apos;s scheduled once its {circle.type === "neighborhood" ? "residents" : "members"} consent, or after 3 days if no one objects. Until then it&apos;s in no list. You and everyone who consents are marked as going.
-                </p>
-              )}
-              {mode === "edit" && <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">The circle can&apos;t be changed once a meeting exists.</p>}
-            </div>
-          )}
-            <section className="order-5 flex flex-col gap-5 border border-ink bg-paper p-5">
+            <section className="order-2 flex flex-col gap-5 border border-ink bg-paper p-5">
               <Eyebrow>Who</Eyebrow>
+              {gov && (
+                <div>
+                  <Label htmlFor="circle">Which circle is meeting?</Label>
+                  {circleSelect}
+                  {circle && approverRole && (
+                    <p className="mt-3 border-l-[3px] border-leaf pl-3 font-serif text-sm leading-normal text-body">
+                      As {circle.name}&apos;s <strong>{approverRole}</strong>, you schedule it directly, without asking for consent, and {circle.type === "neighborhood" ? "residents" : "members"} RSVP as they would to any event.
+                    </p>
+                  )}
+                  {circle && !approverRole && (
+                    <p className="mt-3 border-l-[3px] border-flame pl-3 font-serif text-sm leading-normal text-body">
+                      This is a proposal to {circle.name}. It&apos;s scheduled once its {circle.type === "neighborhood" ? "residents" : "members"} consent, or after 3 days if no one objects. Until then it&apos;s in no list. You and everyone who consents are marked as going.
+                    </p>
+                  )}
+                  {mode === "edit" && <p className="mt-1.5 font-serif text-sm leading-[1.45] text-soft">The circle can&apos;t be changed once a meeting exists.</p>}
+                </div>
+              )}
               {!gov && (
               <div>
                 <Label htmlFor="circle">Shown to</Label>
