@@ -17,7 +17,14 @@ export interface PushMessage {
 
 // the push service says this subscription is gone for good (the app was
 // uninstalled, or notifications turned off): delete it rather than retry
-export class ExpiredSubscriptionError extends Error {}
+export class ExpiredSubscriptionError extends Error {
+  constructor(
+    message: string,
+    readonly statusCode: number,
+  ) {
+    super(message);
+  }
+}
 
 /* The only file that imports "web-push" (the same wrapping rule as lib/email/
    and lib/db/) — everything else sends through sendPush(). It's the standard
@@ -48,20 +55,22 @@ function configure(): boolean {
 // a day-old "new event" or reminder is worse than none
 const TTL_SECONDS = 24 * 60 * 60;
 
-export async function sendPush(subscription: PushSubscriptionKeys, message: PushMessage): Promise<void> {
+// the push service's HTTP status (201 when it took the message), or null where nothing is configured
+export async function sendPush(subscription: PushSubscriptionKeys, message: PushMessage): Promise<number | null> {
   if (!configure()) {
     if (process.env.NODE_ENV === "production") throw new Error("Push isn't configured: set NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT.");
     console.log(`[push not sent — VAPID keys unset]\nTo: ${subscription.endpoint}\n${message.title}\n${message.body}\n${message.url}`);
-    return;
+    return null;
   }
   try {
-    await webpush.sendNotification(
+    const result = await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
       JSON.stringify(message),
       { TTL: TTL_SECONDS, timeout: 10_000 }
     );
+    return result.statusCode;
   } catch (err) {
-    if (err instanceof WebPushError && (err.statusCode === 404 || err.statusCode === 410)) throw new ExpiredSubscriptionError(err.message);
+    if (err instanceof WebPushError && (err.statusCode === 404 || err.statusCode === 410)) throw new ExpiredSubscriptionError(err.message, err.statusCode);
     throw err;
   }
 }
