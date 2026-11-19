@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BellAlertIcon, CheckIcon, ClipboardDocumentListIcon, ExclamationTriangleIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, BellAlertIcon, CheckIcon, ClipboardDocumentListIcon, ExclamationTriangleIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { AgendaEditor, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-editor";
+import { EventReview } from "./event-review";
 import { MeetingAvailability } from "./meeting-availability";
 import { BLANK_SLOT, SlotsEditor, type SlotDraft } from "./slots-editor";
 import { useBackHandler } from "@/components/providers/back-handler-provider";
@@ -169,7 +170,7 @@ export function EventFormPage(props: EventFormPageProps) {
   const chosen = remindersSet ? reminders : defaultReminders(available);
   // the form, or a part of it (slots, a meeting's agenda, the reminders) on a
   // view of its own: too much to fit among the other fields on a phone
-  const [view, setView] = useState<"form" | "slots" | "agenda" | "reminders">("form");
+  const [view, setView] = useState<"form" | "slots" | "agenda" | "reminders" | "review">("form");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -178,7 +179,6 @@ export function EventFormPage(props: EventFormPageProps) {
   const [viewStart, setViewStart] = useState<{ slots: SlotDraft[]; agenda: AgendaDraft[]; reminders: ReminderHours[]; remindersSet: boolean } | null>(null);
   const [confirmingViewDiscard, setConfirmingViewDiscard] = useState(false);
   // which dates cancelling applies to, while its confirmation is open
-  const [confirmingProposal, setConfirmingProposal] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState<SeriesScope | null>(null);
   // "" doesn't repeat; the last date is optional. Chosen only when creating.
   const [repeat, setRepeat] = useState<RepeatFrequency | "">("");
@@ -429,8 +429,15 @@ export function EventFormPage(props: EventFormPageProps) {
   // the agenda's Done waits until every topic in it has one: a new, blank one
   // is filled in or removed first (Back still leaves; the form then says what's missing)
   const agendaComplete = agenda.every((a) => a.title.trim());
+  // a new event is looked over before it's created: the form's action goes to
+  // the review, whose action is the real one (Create, or the orange Propose)
+  const reviewing = view === "review";
   useTopBarAction(
-    circleExplorer.topBarAction ?? hostExplorer.topBarAction ?? (view !== "form"
+    circleExplorer.topBarAction ?? hostExplorer.topBarAction ?? (reviewing
+      ? proposingNew
+        ? { label: busy ? "Saving" : submitLabel, icon: HandRaisedIcon, onAction: submit, disabled: !canSubmit, variant: "propose" }
+        : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" }
+      : view !== "form"
       ? {
           label: "Done",
           icon: CheckIcon,
@@ -440,14 +447,17 @@ export function EventFormPage(props: EventFormPageProps) {
           disabled: !viewDirty || (view === "agenda" && !agendaComplete),
           variant: "primary",
         }
-      : proposingNew
-        ? { label: busy ? "Saving" : submitLabel, icon: HandRaisedIcon, onAction: () => setConfirmingProposal(true), disabled: !canSubmit, variant: "propose" }
+      : mode === "create"
+        ? { label: "Review", icon: ArrowRightIcon, onAction: () => { setError(""); setView("review"); }, disabled: !canSubmit, variant: "primary" }
         : { label: busy ? "Saving" : submitLabel, icon: CheckIcon, onAction: submit, disabled: !canSubmit, variant: "primary" })
   );
-  // proposing sends it to the deciding circle's members at once, so it's
-  // asked first, saying who'll be asked and how it's decided
+  // proposing sends it to the deciding circle's members at once, so the
+  // review says who'll be asked and how it's decided
   const decidingCircle = hostCircle ?? meetingCircle;
   const deciders = decidingCircle?.members.filter((m) => m !== profile.id).length ?? 0;
+  useEffect(() => {
+    if (reviewing) document.querySelector("main")?.scrollTo({ top: 0 });
+  }, [reviewing]);
 
   // The error sits at the foot of the form, and on mobile the submit that
   // caused it is the top bar's check, so it's brought into view — on every
@@ -487,6 +497,43 @@ export function EventFormPage(props: EventFormPageProps) {
   );
 
   if (explorerView) return explorerView;
+
+  if (view === "review") {
+    const { details } = buildDraft();
+    const who = decidingCircle ? (decidingCircle.type === "neighborhood" ? "residents" : "members") : "members";
+    const consequence = proposing && decidingCircle
+      ? deciders === 0
+        ? `You're ${decidingCircle.name}'s only member, so it'll be scheduled straight away.`
+        : `Nothing is scheduled yet. This goes to ${decidingCircle.name}'s ${who} for their consent, because ${hostCircle ? `${decidingCircle.name} hosts it` : `it's ${decidingCircle.name}'s meeting`}, and they're asked as soon as you propose it. It's scheduled once they consent, or after 3 days if no one objects. Until then it's in no list and only they can see it. ${hasRoles ? "Roles can be taken once it's scheduled." : "You and everyone who consents are marked as going."}${repeat && hostCircle ? " Consenting schedules every date in the series." : ""}`
+      : approverRole && meetingCircle
+        ? `As ${meetingCircle.name}'s ${approverRole}, you schedule this directly, without asking for consent. ${meetingCircle.type === "neighborhood" ? "Residents" : "Members"} are told and can RSVP.`
+        : circle
+          ? `It's created right away. ${isRootCircle(circle) ? "Everyone in the city" : audienceLabel(circle).replace(/^./, (c) => c.toUpperCase())} can see it and RSVP.`
+          : "It's created right away.";
+    return (
+      <PageContainer size="compact">
+        <EventReview
+          kindLabel={gov ? "Meeting" : "Event"}
+          title={details.title}
+          date={date}
+          start={start}
+          end={end}
+          repeats={repeat ? repeatSummary({ frequency: repeat, startsOn: date, ...(until ? { until } : {}) }) : null}
+          location={details.location}
+          description={gov ? "" : details.description === "No description yet." ? "" : details.description}
+          agenda={details.agenda ?? []}
+          roles={roleNames}
+          reminders={remindersSummary(chosen.filter((h) => available.includes(h)))}
+          shownTo={circle ? circle.name : null}
+          host={hostCircle ?? profile}
+          hostedByLabel={gov ? (approverRole ? "Scheduled by" : "Proposed by") : "Hosted by"}
+          proposing={proposing}
+          consequence={consequence}
+          error={error}
+        />
+      </PageContainer>
+    );
+  }
 
   if (view === "slots") {
     return (
@@ -828,22 +875,6 @@ export function EventFormPage(props: EventFormPageProps) {
 
           {circleExplorer.dialog}
           {hostExplorer.dialog}
-          {confirmingProposal && decidingCircle && (
-            <ConfirmModal
-              title={`Propose this ${noun}?`}
-              message={deciders === 0
-                ? `You're ${decidingCircle.name}'s only member, so it'll be scheduled straight away.`
-                : hostCircle
-                  ? `It's hosted by ${decidingCircle.name}, so it needs the consent of its members.`
-                  : `It's ${decidingCircle.name}'s meeting, so it needs the consent of its members.`}
-              confirmLabel={`Propose ${noun}`}
-              cancelLabel="Not yet"
-              tone="flame"
-              onConfirm={() => { setConfirmingProposal(false); void submit(); }}
-              onCancel={() => setConfirmingProposal(false)}
-            />
-          )}
-
           {confirmingDiscard && (
             <ConfirmModal
               title="Discard changes?"
