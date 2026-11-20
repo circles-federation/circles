@@ -1,7 +1,7 @@
 import { EventHeader } from "./event-header";
 import { MastheadGlow } from "@/components/shared";
 import { isPastEvent } from "@/lib/format.util";
-import { awaitingConsent } from "@/lib/governance.util";
+import { awaitingConsent, isMeeting } from "@/lib/governance.util";
 import { useCirclesById } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
@@ -22,14 +22,16 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
   const gov = awaitingConsent(e);
   const past = isPastEvent(e);
   const govLabel = gov && <span className="text-flame-text">Proposed</span>;
+  const noun = isMeeting(e) ? "meeting" : "event";
+  const Noun = isMeeting(e) ? "Meeting" : "Event";
 
   return (
     <div className="relative isolate pb-6 min-[960px]:pt-4">
       <MastheadGlow />
       <EventHeader
-        label={govLabel || (past ? "Past event" : "Event")}
+        label={govLabel || (past ? `Past ${noun}` : Noun)}
         circleName={circle?.name}
-        chipTitle={circle ? `${circle.name}: who can see this event` : ""}
+        chipTitle={circle ? `${circle.name}: who can see this ${noun}` : ""}
         title={e.title}
         date={e.date}
         dateAccent={gov ? "flame" : "ink"}
