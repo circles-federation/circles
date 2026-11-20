@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { Avatar, Eyebrow } from "@/components/shared";
-import { useMemberById } from "@/lib/hooks";
+import { useEventEnded, useMemberById } from "@/lib/hooks";
 import { hasRoles } from "@/lib/roles.util";
 import type { Event, Member, Profile } from "@/lib/types";
 
@@ -18,6 +18,7 @@ interface AttendeesSectionProps {
 export function AttendeesSection({ event: e, profile, onOpenMember }: AttendeesSectionProps) {
   // called before the early return below — hooks can't be conditional
   const memberById = useMemberById();
+  const ended = useEventEnded(e);
   if (hasRoles(e)) return null;
   const attendees = e.rsvps.map(memberById).filter((m): m is Member => Boolean(m));
   // guests who RSVPed from a share link: a first name, nothing to open
@@ -27,7 +28,7 @@ export function AttendeesSection({ event: e, profile, onOpenMember }: AttendeesS
     <section className="pt-8">
       <div className="flex items-baseline justify-between">
         <div className="flex items-center gap-3">
-          <Eyebrow>Who’s going</Eyebrow>
+          <Eyebrow>{ended ? "Who went" : "Who’s going"}</Eyebrow>
           <span className="border border-ink bg-paper px-1.5 py-0.5 font-sans text-label leading-none font-bold tabular-nums">{attendees.length + guests.length}</span>
         </div>
       </div>
