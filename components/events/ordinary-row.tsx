@@ -7,6 +7,7 @@ import { ParticipationBadge } from "./participation-badge";
 import { hasEnded, fmtTime } from "@/lib/format.util";
 import { useAppState } from "@/components/providers/app-state-provider";
 import { isAttending } from "@/lib/events.util";
+import { isMeeting } from "@/lib/governance.util";
 import { useClock, useCirclesById, useMemberById } from "@/lib/hooks";
 import { REPEAT_SHORT_LABEL } from "@/lib/recurrence.util";
 import type { Event } from "@/lib/types";
@@ -24,7 +25,9 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
   const memberById = useMemberById();
   const { profile } = useAppState();
   const host = memberById(e.organizerId);
-  const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
+  // a meeting is held by the circle it's shown to, not a separate host circle
+  const hostCircleId = e.hostCircleId ?? (isMeeting(e) ? e.circleId : undefined);
+  const hostCircle = hostCircleId ? byId[hostCircleId] : undefined;
   const past = hasEnded(e, useClock());
   const attending = isAttending(e, profile.id);
 
@@ -35,9 +38,9 @@ export function OrdinaryRow({ e, onOpenEvent }: OrdinaryRowProps) {
       dateAccent={past ? "soft" : undefined}
       title={e.title}
       titleMuted={past || !!e.cancelled}
-      // just the host, so the row stays short on a phone — the event's own
-      // page has its circle and location
-      meta={hostCircle?.name ?? host?.name ?? ""}
+      // the hosting circle and the organizer, so the row stays short on a
+      // phone — the event's own page has its location
+      meta={[hostCircle?.name, host?.name].filter(Boolean).join(" · ")}
       metaMuted={past || !!e.cancelled}
       tags={
         <>
