@@ -1,6 +1,6 @@
 import { RsvpButton } from "./rsvp-button";
 import { Avatar, Eyebrow } from "@/components/shared";
-import { isMeeting, isProposal, isScheduledMeeting } from "@/lib/governance.util";
+import { hostingCircleId, isProposal, organizerCredit } from "@/lib/governance.util";
 import { useCirclesById, useMemberById, useEventEnded } from "@/lib/hooks";
 import { hasRoles, roleShort, shiftAtRisk, shiftNeedsSlots } from "@/lib/roles.util";
 import type { Circle, Event, Member } from "@/lib/types";
@@ -24,8 +24,7 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   const byId = useCirclesById();
   const memberById = useMemberById();
   const host = memberById(e.organizerId);
-  // a meeting is hosted by the circle it's for
-  const hostCircleId = e.hostCircleId ?? (isMeeting(e) ? e.circleId : undefined);
+  const hostCircleId = hostingCircleId(e);
   const hostCircle = hostCircleId ? byId[hostCircleId] : undefined;
   const proposal = isProposal(e);
   // over once it's ended, not just from the next day: nothing more to do on it
@@ -62,7 +61,7 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
               onClick={() => onOpenMember(host)}
               className="hit mt-0.5 block cursor-pointer border-none bg-transparent p-0 text-left font-serif text-sm text-soft underline underline-offset-2"
             >
-              {isScheduledMeeting(e) ? `scheduled by the ${e.approvedByRole}, ${host.name}` : e.approvedByRole ? `approved by the ${e.approvedByRole}, ${host.name}` : `${proposal ? "proposed" : "organized"} by ${host.name}`}
+              {organizerCredit(e, host.name)}
             </button>
           )}
         </div>
