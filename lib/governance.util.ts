@@ -72,6 +72,28 @@ export function isEventOrganizer(e: Event, member: Member | null | undefined): b
 export function canManageEvent(e: Event, member: Member | null | undefined, byId: CirclesById): boolean {
   if (!member) return false;
   if (e.organizerId === member.id) return true;
-  const circleId = e.hostCircleId ?? (isMeeting(e) ? e.circleId : undefined);
+  const circleId = hostingCircleId(e);
   return !!circleId && !!byId[circleId]?.members.includes(member.id);
+}
+
+// the circle that holds an event: the one hosting it, or for a meeting the
+// circle it's for (a meeting has no separate host circle)
+export function hostingCircleId(e: Event): string | undefined {
+  return e.hostCircleId ?? (isMeeting(e) ? e.circleId : undefined);
+}
+
+export function eventNoun(e: Event): "meeting" | "event" {
+  return isMeeting(e) ? "meeting" : "event";
+}
+
+// the line under a circle's name saying which person is behind the event
+export function organizerCredit(e: Event, name: string): string {
+  if (isScheduledMeeting(e)) return `scheduled by the ${e.approvedByRole}, ${name}`;
+  if (e.approvedByRole) return `approved by the ${e.approvedByRole}, ${name}`;
+  return `${isProposal(e) ? "proposed" : "organized"} by ${name}`;
+}
+
+// an event row's byline: the hosting circle and the organizer
+export function hostByline(circleName: string | undefined, organizerName: string | undefined): string {
+  return [circleName, organizerName].filter(Boolean).join(" · ");
 }

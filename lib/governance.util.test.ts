@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awaitingConsent, canManageEvent, isApproved, isCircleHosted, isEventOrganizer, isGoverned, isMeeting, isProposal, isScheduledMeeting, kindOf, majority } from "./governance.util";
+import { awaitingConsent, canManageEvent, eventNoun, hostByline, hostingCircleId, isApproved, isCircleHosted, isEventOrganizer, isGoverned, isMeeting, isProposal, isScheduledMeeting, kindOf, majority, organizerCredit } from "./governance.util";
 import { indexCircles } from "./circles.util";
 import { circle, event } from "./test/factories";
 import type { Member } from "./types";
@@ -79,5 +79,36 @@ describe("who manages an event", () => {
   it("no one, when signed out or the circle is unknown", () => {
     expect(canManageEvent(event({ hostCircleId: "host" }), null, byId)).toBe(false);
     expect(canManageEvent(event({ hostCircleId: "gone" }), member(2), byId)).toBe(false);
+  });
+});
+
+describe("which circle holds an event", () => {
+  it("its host circle", () => {
+    expect(hostingCircleId(event({ hostCircleId: "host", circleId: "shown" }))).toBe("host");
+  });
+  it("a meeting's own circle", () => {
+    expect(hostingCircleId(event({ kind: "meeting", circleId: "shown" }))).toBe("shown");
+  });
+  it("none for an event a person hosts", () => {
+    expect(hostingCircleId(event({ circleId: "shown" }))).toBeUndefined();
+  });
+});
+
+describe("event wording", () => {
+  it("calls a meeting a meeting", () => {
+    expect(eventNoun(event({ kind: "meeting" }))).toBe("meeting");
+    expect(eventNoun(event())).toBe("event");
+  });
+  it("credits whoever is behind it", () => {
+    expect(organizerCredit(event(), "Priya")).toBe("organized by Priya");
+    expect(organizerCredit(event({ hostCircleId: "host", proposed: true }), "Priya")).toBe("proposed by Priya");
+    expect(organizerCredit(event({ approvedByRole: "Secretary" }), "Priya")).toBe("approved by the Secretary, Priya");
+    expect(organizerCredit(event({ kind: "meeting", approvedByRole: "Facilitator" }), "Priya")).toBe("scheduled by the Facilitator, Priya");
+  });
+  it("lists the circle and the organizer in a row", () => {
+    expect(hostByline("Council", "Priya")).toBe("Council · Priya");
+    expect(hostByline(undefined, "Priya")).toBe("Priya");
+    expect(hostByline("Council", undefined)).toBe("Council");
+    expect(hostByline(undefined, undefined)).toBe("");
   });
 });

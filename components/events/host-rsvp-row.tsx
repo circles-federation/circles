@@ -1,6 +1,6 @@
 import { RsvpButton } from "./rsvp-button";
 import { Avatar, Eyebrow } from "@/components/shared";
-import { isProposal, isScheduledMeeting } from "@/lib/governance.util";
+import { hostingCircleId, isProposal, organizerCredit } from "@/lib/governance.util";
 import { useCirclesById, useMemberById, useEventEnded } from "@/lib/hooks";
 import { hasRoles, roleShort, shiftAtRisk, shiftNeedsSlots } from "@/lib/roles.util";
 import type { Circle, Event, Member } from "@/lib/types";
@@ -24,7 +24,8 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
   const byId = useCirclesById();
   const memberById = useMemberById();
   const host = memberById(e.organizerId);
-  const hostCircle = e.hostCircleId ? byId[e.hostCircleId] : undefined;
+  const hostCircleId = hostingCircleId(e);
+  const hostCircle = hostCircleId ? byId[hostCircleId] : undefined;
   const proposal = isProposal(e);
   // over once it's ended, not just from the next day: nothing more to do on it
   const past = useEventEnded(e);
@@ -44,7 +45,7 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
         )}
         <div className="min-w-0 text-left">
           <Eyebrow className="text-soft">
-            {isScheduledMeeting(e) ? `Scheduled by the ${e.approvedByRole}` : hostCircle ? "Hosted by" : proposal ? "Proposed by" : "Hosted by"}
+            {hostCircle || !proposal ? "Hosted by" : "Proposed by"}
           </Eyebrow>
           {hostCircle ? (
             <button onClick={() => onOpenCircle(hostCircle)} className="hit block cursor-pointer border-none bg-transparent p-0 text-left font-sans text-base font-bold">
@@ -60,7 +61,7 @@ export function HostRsvpRow({ event: e, going, attendeeCount, onOpenCircle, onOp
               onClick={() => onOpenMember(host)}
               className="hit mt-0.5 block cursor-pointer border-none bg-transparent p-0 text-left font-serif text-sm text-soft underline underline-offset-2"
             >
-              {e.approvedByRole ? `approved by the ${e.approvedByRole}, ${host.name}` : `${proposal ? "proposed" : "organized"} by ${host.name}`}
+              {organizerCredit(e, host.name)}
             </button>
           )}
         </div>

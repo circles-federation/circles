@@ -1,8 +1,7 @@
 import { EventHeader } from "./event-header";
 import { MastheadGlow } from "@/components/shared";
-import { isPastEvent } from "@/lib/format.util";
-import { awaitingConsent } from "@/lib/governance.util";
-import { useCirclesById } from "@/lib/hooks";
+import { awaitingConsent, eventNoun } from "@/lib/governance.util";
+import { useCirclesById, useEventEnded } from "@/lib/hooks";
 import type { Event } from "@/lib/types";
 
 interface EventMastheadProps {
@@ -20,16 +19,18 @@ export function EventMasthead({ event: e }: EventMastheadProps) {
   // a meeting or circle-hosted event still awaiting its circle's consent — a
   // decided one is settled and reads like any other event
   const gov = awaitingConsent(e);
-  const past = isPastEvent(e);
+  // the same moment the page stops taking RSVPs and says who went
+  const past = useEventEnded(e);
   const govLabel = gov && <span className="text-flame-text">Proposed</span>;
+  const noun = eventNoun(e);
 
   return (
     <div className="relative isolate pb-6 min-[960px]:pt-4">
       <MastheadGlow />
       <EventHeader
-        label={govLabel || (past ? "Past event" : "Event")}
+        label={govLabel || (past ? `Past ${noun}` : noun[0]!.toUpperCase() + noun.slice(1))}
         circleName={circle?.name}
-        chipTitle={circle ? `${circle.name}: who can see this event` : ""}
+        chipTitle={circle ? `${circle.name}: who can see this ${noun}` : ""}
         title={e.title}
         date={e.date}
         dateAccent={gov ? "flame" : "ink"}
