@@ -101,7 +101,7 @@ export function MeetingAttendanceStep({
           }}
         >
           <Eyebrow>Someone without an account</Eyebrow>
-          <p className="mt-2 font-serif text-base text-soft">Write them in by first name and email. We keep only the first name, and don’t check the address; it’s only used to show their photo if they join Circles with it later.</p>
+          <p className="mt-2 font-serif text-base text-soft">First name and email. The email only shows their photo if they join Circles later.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Input aria-label="Guest first name" placeholder="First name" value={name} onChange={(ev) => setName(ev.target.value)} autoComplete="off" />
             <Input aria-label="Guest email" type="email" placeholder="Email" value={email} onChange={(ev) => setEmail(ev.target.value)} autoComplete="off" />
