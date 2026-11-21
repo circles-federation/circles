@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, stepAt, stepLabel, validateNotes } from "./meeting-session.util";
+import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, stepAt, stepLabel, normalizeGuestEmail, validateGuestAttendee, validateNotes } from "./meeting-session.util";
 
 const meeting = { date: "2026-11-10", start: "10:00", end: "12:00" };
 const at = (h: number, m = 0, day = 10) => new Date(2026, 10, day, h, m);
@@ -76,5 +76,18 @@ describe("validateNotes", () => {
   it("caps the length", () => {
     expect(validateNotes("a".repeat(MEETING_NOTES_MAX))).toBeNull();
     expect(validateNotes("a".repeat(MEETING_NOTES_MAX + 1))).toMatch(/up to 20,000/);
+  });
+});
+
+describe("validateGuestAttendee", () => {
+  it("wants a name and an address shaped like one", () => {
+    expect(validateGuestAttendee({ name: "Ada", email: "ada@example.org" })).toBeNull();
+    expect(validateGuestAttendee({ name: "  ", email: "ada@example.org" })).toMatch(/name/i);
+    expect(validateGuestAttendee({ name: "Ada", email: "ada" })).toMatch(/email/i);
+    expect(validateGuestAttendee({ name: "Ada", email: "a b@example.org" })).toMatch(/email/i);
+  });
+
+  it("stores an address trimmed and lowercased", () => {
+    expect(normalizeGuestEmail("  Ada@Example.ORG ")).toBe("ada@example.org");
   });
 });

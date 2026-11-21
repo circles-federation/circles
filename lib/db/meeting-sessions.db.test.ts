@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { event } from "@/lib/test/factories";
 import { db } from "./client";
 import { insertEvent } from "./events";
-import { addMeetingTask, addTopic, finishLapsedMeetings, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingSession, memberHasMeeting, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
+import { addGuestAttendee, addMeetingTask, addTopic, finishLapsedMeetings, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingGuestPhoto, getMeetingSession, memberHasMeeting, removeGuestAttendee, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
 import { addCircle, addMember, giveRole, join, resetDb } from "./testing";
 
 /* A live meeting: who may start it and when, who drives, who's there, and
@@ -436,8 +436,54 @@ describe("a task is made with the meeting's change", () => {
   it("leaves no task behind when the change fails", async () => {
     await startMeeting(1, "m1", during);
     await db.execute(sql`alter table meeting_sessions add constraint fail_rev check (rev < 1)`);
-    await expect(addMeetingTask(1, "m1", { title: "x", description: "", status: "todo", priority: "none", dueDate: "", assigneeId: null })).rejects.toThrow();
+    try {
+      await expect(addMeetingTask(1, "m1", { title: "x", description: "", status: "todo", priority: "none", dueDate: "", assigneeId: null })).rejects.toThrow();
+    } finally {
+      await db.execute(sql`alter table meeting_sessions drop constraint fail_rev`);
+    }
     const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from circle_tasks`);
     expect(rows[0]?.n).toBe(0);
+  });
+});
+
+describe("guests without an account", () => {
+  const ada = { name: "Ada", email: "Ada@Example.test" };
+
+  it("are written in by the facilitator alone, once per address, and never show their email", async () => {
+    await startMeeting(1, "m1", during);
+    await expect(addGuestAttendee(2, "m1", ada)).rejects.toThrow(/facilitator/i);
+    const s = await addGuestAttendee(1, "m1", ada);
+    expect(s.guests).toEqual([{ id: expect.any(String), name: "Ada" }]);
+    expect(JSON.stringify(s)).not.toMatch(/example\.test/);
+    await expect(addGuestAttendee(1, "m1", { name: "Ada again", email: "ada@example.test" })).rejects.toThrow(/already/i);
+    await expect(addGuestAttendee(1, "m1", { name: "", email: "x@example.test" })).rejects.toThrow();
+  });
+
+  it("can be taken off again, and nothing changes once the meeting's finished", async () => {
+    await startMeeting(1, "m1", during);
+    const { guests } = await addGuestAttendee(1, "m1", ada);
+    expect((await removeGuestAttendee(1, "m1", guests[0]!.id)).guests).toEqual([]);
+    await finishMeeting(1, "m1", during);
+    await expect(addGuestAttendee(1, "m1", ada)).rejects.toThrow(/finished/i);
+  });
+
+  it("are not shown to anyone outside the circle", async () => {
+    await startMeeting(1, "m1", during);
+    await expect(addGuestAttendee(4, "m1", ada)).rejects.toThrow(/doesn't exist/i);
+  });
+
+  it("get the photo of the member who later joins with that email", async () => {
+    await startMeeting(1, "m1", during);
+    const { guests } = await addGuestAttendee(1, "m1", { name: "Ada", email: "m4@example.test" });
+    const id = guests[0]!.id;
+    expect(guests[0]).not.toHaveProperty("photoVersion");
+    expect(await getMeetingGuestPhoto(2, "m1", id)).toBeNull();
+    await db.execute(sql`insert into member_photos (member_id, data, content_type) values (4, 'abc'::bytea, 'image/jpeg')`);
+    const after = (await getMeetingSession(2, "m1"))!;
+    expect(after.guests[0]?.photoVersion).toEqual(expect.any(Number));
+    // member 4 shares no circle with member 2, yet the meeting's circle sees the photo
+    expect((await getMeetingGuestPhoto(2, "m1", id))?.contentType).toBe("image/jpeg");
+    // someone outside the circle doesn't
+    expect(await getMeetingGuestPhoto(4, "m1", id)).toBeNull();
   });
 });

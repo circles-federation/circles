@@ -457,6 +457,15 @@ export interface MeetingTopic {
   notes: string;
 }
 
+// someone who came to a meeting without an account, written in by its
+// facilitator. Never carries their email. photoVersion is set once the email
+// belongs to a member with a photo (served by /api/meetings/[id]/guests/[guestId]/photo)
+export interface MeetingGuest {
+  id: string;
+  name: string;
+  photoVersion?: number;
+}
+
 // a meeting being held, or held (lib/db/meeting-sessions.ts): seen and changed
 // by the meeting's circle's members alone
 export interface MeetingSession {
@@ -468,6 +477,8 @@ export interface MeetingSession {
   facilitatorId: number | null;
   // who's there: the event's RSVPs, which marking someone present writes
   attendees: number[];
+  // people there without an account
+  guests: MeetingGuest[];
   topics: MeetingTopic[];
   // the tasks made in this meeting, oldest first: they live on in the circle's
   // backlog, and are listed here so the minutes can say what came of it

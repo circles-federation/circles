@@ -14,7 +14,7 @@ import { Button, ConfirmModal, Eyebrow, PageContainer } from "@/components/share
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { useToast } from "@/components/shared/toast";
-import { addMeetingTaskAction, addMeetingTopicAction, finishMeetingAction, removeMeetingTopicAction, saveMeetingNotesAction, setMeetingPresentAction, setMeetingStepAction, startMeetingAction, takeOverMeetingAction } from "@/lib/db/actions";
+import { addMeetingGuestAction, addMeetingTaskAction, addMeetingTopicAction, finishMeetingAction, removeMeetingGuestAction, removeMeetingTopicAction, saveMeetingNotesAction, setMeetingPresentAction, setMeetingStepAction, startMeetingAction, takeOverMeetingAction } from "@/lib/db/actions";
 import { useGoBack } from "@/components/providers/back-handler-provider";
 import { useClock, useMemberById } from "@/lib/hooks";
 import { canRunMeeting, lastStep, stepAt } from "@/lib/meeting-session.util";
@@ -122,7 +122,14 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
       </p>
 
       <div className="mt-8">
-        {step?.kind === "attendance" && <MeetingAttendanceStep session={session} circle={circle} memberId={memberId} onSetPresent={(id, present) => void run(setMeetingPresentAction(e.id, id, present))} />}
+        {step?.kind === "attendance" && <MeetingAttendanceStep
+            session={session}
+            circle={circle}
+            memberId={memberId}
+            onSetPresent={(id, present) => void run(setMeetingPresentAction(e.id, id, present))}
+            onAddGuest={(input) => run(addMeetingGuestAction(e.id, input))}
+            onRemoveGuest={(guestId) => void run(removeMeetingGuestAction(e.id, guestId))}
+          />}
         {step?.kind === "agenda" && <MeetingAgendaStep session={session} canEdit={attending} onAdd={(item) => run(addMeetingTopicAction(e.id, item))} onRemove={(topicId) => void run(removeMeetingTopicAction(e.id, topicId))} />}
         {topic && <MeetingTopicStep key={topic.id} topic={topic} canWrite={attending} onSave={(notes) => run(saveMeetingNotesAction(e.id, topic.id, notes))} />}
         {step?.kind === "tasks" && (
