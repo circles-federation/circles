@@ -1,7 +1,9 @@
 "use client";
 
+import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { AgendaBadge } from "./agenda-section";
+import { ATTENDEE_CARD, ATTENDEE_GRID, AttendeeCardContent } from "./attendee-card";
 import { GuestAvatar } from "./guest-avatar";
 import { MeetingTaskTable } from "./meeting-task-table";
 import { Avatar, Badge, Eyebrow } from "@/components/shared";
@@ -14,11 +16,12 @@ const minutesText = (minutes: number) => (minutes < 60 ? `${minutes} min` : `${M
 
 const SECTION = "mt-10";
 
-/* The last step, under the stepper's "Finish": the meeting at a glance in an
-   ink card (how long, who was here, how many topics have notes, how many
-   tasks), then who was here, what was written on each topic (the ones nothing
-   was written on folded into one line rather than listed empty), and the tasks
-   in the circle's own table. The facilitator's Finish is the top bar's. */
+/* The last step, under the stepper's "Finish": a summary card with the
+   meeting at a glance (how long, who was here, how many topics have notes, how
+   many tasks), then who was here on the same cards as Attendance, what was
+   written on each topic (the ones nothing was written on folded into one line
+   rather than listed empty), and the tasks in the circle's own table. The
+   facilitator's Finish is the top bar's. */
 export function MeetingWrapupStep({ session, event: e, circle, facilitating }: { session: MeetingSession; event: Event; circle: Circle; facilitating: boolean }) {
   const router = useRouter();
   const memberById = useMemberById();
@@ -36,18 +39,18 @@ export function MeetingWrapupStep({ session, event: e, circle, facilitating }: {
 
   return (
     <div>
-      <section className="border border-ink bg-chrome p-5 text-on-chrome">
-        <Eyebrow className="text-on-chrome/70">Wrap-up</Eyebrow>
+      <section className="border border-ink bg-wash p-5">
+        <Eyebrow>Summary</Eyebrow>
         <h2 className="mt-2 font-sans text-xl leading-tight font-extrabold tracking-heading wrap-anywhere">{e.title}</h2>
-        <p className="mt-1 mb-0 font-serif text-sm text-on-chrome/70">
+        <p className="mt-1 mb-0 font-serif text-sm text-soft">
           Started {messageWhen(session.startedAt)}
           {elapsed !== null && ` · ${minutesText(elapsed)} so far`}
         </p>
         <ul className="m-0 mt-5 grid list-none grid-cols-3 gap-3 p-0">
           {stats.map((s) => (
-            <li key={s.label} className="border border-on-chrome/30 p-3">
+            <li key={s.label} className="border border-ink bg-paper p-3">
               <div className="font-sans text-title leading-none font-extrabold tracking-display tabular-nums">{s.value}</div>
-              <div className="mt-2 font-serif text-sm leading-snug text-on-chrome/70">{s.label}</div>
+              <div className="mt-2 font-serif text-sm leading-snug text-soft">{s.label}</div>
             </li>
           ))}
         </ul>
@@ -55,19 +58,15 @@ export function MeetingWrapupStep({ session, event: e, circle, facilitating }: {
 
       <section className={SECTION}>
         <Eyebrow>Who was here · {here}</Eyebrow>
-        <ul className="m-0 mt-3 flex list-none flex-wrap gap-2 p-0">
+        <ul className={clsx("mt-3", ATTENDEE_GRID)}>
           {people.map((m) => (
-            <li key={m.id} className="flex items-center gap-2 border border-ink bg-paper py-1 pr-3 pl-1">
-              <Avatar member={m} size={28} />
-              <span className="font-sans text-sm font-bold">{m.name.split(" ")[0]}</span>
-              {m.id === session.facilitatorId && <Badge variant="action">Facilitator</Badge>}
+            <li key={m.id} className={clsx(ATTENDEE_CARD, "bg-paper")}>
+              <AttendeeCardContent avatar={<Avatar member={m} size={44} />} name={m.name} badge={m.id === session.facilitatorId && <Badge variant="action">Facilitator</Badge>} caption={m.role} />
             </li>
           ))}
           {session.guests.map((g) => (
-            <li key={g.id} className="flex items-center gap-2 border border-ink bg-wash py-1 pr-3 pl-1">
-              <GuestAvatar eventId={session.eventId} guest={g} size={28} />
-              <span className="font-sans text-sm font-bold">{g.name}</span>
-              <span className="font-serif text-sm text-soft">Guest</span>
+            <li key={g.id} className={clsx(ATTENDEE_CARD, "bg-wash")}>
+              <AttendeeCardContent avatar={<GuestAvatar eventId={session.eventId} guest={g} />} name={g.name} caption="Guest" />
             </li>
           ))}
         </ul>
