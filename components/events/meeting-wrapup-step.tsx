@@ -10,7 +10,7 @@ import type { MeetingSession } from "@/lib/types";
    rather than listed empty. */
 export function MeetingWrapupStep({ session, facilitating }: { session: MeetingSession; facilitating: boolean }) {
   const memberById = useMemberById();
-  const here = session.attendees.map((id) => memberById(id)?.name).filter((n): n is string => !!n);
+  const here = [...session.attendees.map((id) => memberById(id)?.name).filter((n): n is string => !!n), ...session.guests.map((g) => g.name)];
   const withNotes = session.topics.filter((t) => t.notes.trim()).length;
   const stats: { value: number; label: string }[] = [
     { value: here.length, label: here.length === 1 ? "person here" : "people here" },

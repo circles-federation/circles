@@ -9,9 +9,14 @@ import { AGENDA_CATEGORY } from "@/lib/agenda.util";
 import type { MeetingTopic } from "@/lib/types";
 
 /* One topic and the notes taken on it (Markdown; a decision is written in
-   them). Saved when the field loses focus. Others may be writing too, last
+   them). Saved when the field loses focus and, since a toolbar's link field
+   takes focus from the editor before the link is applied (and formatting
+   leaves it focused), shortly after the last change too. Others may be writing too, last
    write wins: while this one's being typed in, what someone else saved isn't
    put over it, but it's said so, since saving will replace it. */
+// how long after the last change the notes save by themselves
+const SAVE_AFTER_MS = 1200;
+
 export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTopic; canWrite: boolean; onSave: (notes: string) => Promise<boolean> }) {
   const [draft, setDraft] = useState<{ text: string; base: string } | null>(null);
   // what was typed, from leaving the field until the save is answered, so the
@@ -33,6 +38,22 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
     },
     [],
   );
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const flush = async () => {
+    clearTimeout(timer.current);
+    const { draft: unsaved, notes, onSave: save } = pending.current;
+    if (!unsaved) return;
+    const text = unsaved.text;
+    setDraft(null);
+    if (text === notes) return setHeld(null);
+    setHeld(text);
+    setStatus("saving");
+    const ok = await save(text);
+    if (ok) setHeld(null);
+    // not "saved" while something newer is waiting to be
+    if (!pending.current.draft) setStatus(ok ? "saved" : "failed");
+  };
   const editing = draft !== null;
   const changedElsewhere = editing && topic.notes !== draft.base;
   const hint = AGENDA_CATEGORY[topic.category].hint;
@@ -50,7 +71,7 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
         <p className="mt-2 font-serif text-sm text-soft">{hint}</p>
       </div>
       <div className="mt-6">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex h-6 items-center justify-between gap-3">
           <Eyebrow>Notes</Eyebrow>
           <span aria-live="polite" className={status === "failed" ? "font-sans text-xs font-bold text-danger" : "inline-flex items-center gap-1 font-sans text-xs font-bold text-soft"}>
             {status === "saving" && "Saving…"}
@@ -74,18 +95,10 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
             onChange={(text) => {
               setStatus("idle");
               setDraft({ text, base: draft?.base ?? topic.notes });
+              clearTimeout(timer.current);
+              timer.current = setTimeout(() => void flush(), SAVE_AFTER_MS);
             }}
-            onBlur={async () => {
-              if (!draft) return;
-              const text = draft.text;
-              setDraft(null);
-              if (text === topic.notes) return setHeld(null);
-              setHeld(text);
-              setStatus("saving");
-              const ok = await onSave(text);
-              if (ok) setHeld(null);
-              setStatus(ok ? "saved" : "failed");
-            }}
+            onBlur={() => void flush()}
           />
         </div>
       </div>

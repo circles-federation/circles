@@ -633,6 +633,23 @@ export const meetingAttendance = pgTable(
   (t) => [primaryKey({ columns: [t.eventId, t.memberId] })]
 );
 
+/* People who came to a meeting without a Circles account, written in by its
+   facilitator: a name and an email, never verified. The email is kept so that
+   if its owner later becomes a member, their photo shows beside the name
+   (lib/db/meeting-sessions.ts matches on it when reading); it's lowercased and
+   never sent to a browser. Goes with the session. */
+export const meetingGuestAttendees = pgTable(
+  "meeting_guest_attendees",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    eventId: text("event_id").notNull().references(() => meetingSessions.eventId, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("meeting_guest_attendees_event_email").on(t.eventId, t.email)]
+);
+
 /* Messages written to a circle from its wiki (lib/db/messages.ts), read in
    its Inbox by its members alone. The sender agreed to be replied to by
    email, at reply_email: their address as it was when they wrote, so it's

@@ -1,21 +1,52 @@
 "use client";
 
+import { useState } from "react";
 import clsx from "clsx";
-import { CheckIcon } from "@heroicons/react/24/outline";
-import { Avatar, Badge, Eyebrow } from "@/components/shared";
+import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { GuestAvatar } from "./guest-avatar";
+import { Avatar, Badge, Button, Eyebrow, Input } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
+import { validateGuestAttendee } from "@/lib/meeting-session.util";
 import type { Circle, MeetingSession } from "@/lib/types";
 
-/* Who's there. Anyone marks themself; the facilitator marks the rest. */
-export function MeetingAttendanceStep({ session, circle, memberId, onSetPresent }: { session: MeetingSession; circle: Circle; memberId: number; onSetPresent: (targetId: number, present: boolean) => void }) {
+/* Who's there. Anyone marks themself; the facilitator marks the rest, and
+   writes in anyone without an account by name and email (not verified: if that
+   address ever joins, their photo shows in place of the placeholder). */
+export function MeetingAttendanceStep({
+  session,
+  circle,
+  memberId,
+  onSetPresent,
+  onAddGuest,
+  onRemoveGuest,
+}: {
+  session: MeetingSession;
+  circle: Circle;
+  memberId: number;
+  onSetPresent: (targetId: number, present: boolean) => void;
+  onAddGuest: (input: { name: string; email: string }) => Promise<boolean>;
+  onRemoveGuest: (guestId: string) => void;
+}) {
   const { members } = useAppState();
   const people = circle.members.map((id) => members.find((m) => m.id === id)).filter((m) => m !== undefined);
   const facilitating = session.facilitatorId === memberId;
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const addGuest = async () => {
+    setBusy(true);
+    const ok = await onAddGuest({ name, email });
+    setBusy(false);
+    if (ok) {
+      setName("");
+      setEmail("");
+    }
+  };
   return (
     <div>
-      <Eyebrow>Who’s here · {session.attendees.length}</Eyebrow>
+      <Eyebrow>Who’s here · {session.attendees.length + session.guests.length}</Eyebrow>
       <p className="mt-2 font-serif text-base text-soft">{facilitating ? "Tap a name to mark someone here or not." : "Tap your name to say you’re here. The facilitator marks everyone else."}</p>
-      <ul className="m-0 mt-4 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,200px),1fr))] gap-0 border-t border-l border-ink p-0">
+      <ul className="m-0 mt-4 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,248px),1fr))] gap-0 border-t border-l border-ink p-0">
         {people.map((m) => {
           const here = session.attendees.includes(m.id);
           const mine = m.id === memberId;
@@ -46,7 +77,42 @@ export function MeetingAttendanceStep({ session, circle, memberId, onSetPresent 
             </li>
           );
         })}
+        {session.guests.map((g) => (
+          <li key={g.id} className="flex items-center gap-3 border-r border-b border-ink bg-wash p-4">
+            <GuestAvatar eventId={session.eventId} guest={g} />
+            <span className="min-w-0 flex-1">
+              <span className="block font-sans text-sm font-bold">{g.name}</span>
+              <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">Guest</span>
+            </span>
+            {facilitating && session.status === "live" && (
+              <button type="button" aria-label={`Remove ${g.name}`} onClick={() => onRemoveGuest(g.id)} className="hit ink-press flex size-6 shrink-0 cursor-pointer items-center justify-center border border-ink bg-paper">
+                <XMarkIcon className="size-4" aria-hidden />
+              </button>
+            )}
+          </li>
+        ))}
       </ul>
+      {facilitating && (
+        <form
+          className="mt-8"
+          onSubmit={(ev) => {
+            ev.preventDefault();
+            void addGuest();
+          }}
+        >
+          <Eyebrow>Someone without an account</Eyebrow>
+          <p className="mt-2 font-serif text-base text-soft">First name and email. The email only shows their photo if they join Circles later.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Input aria-label="Guest first name" placeholder="First name" value={name} onChange={(ev) => setName(ev.target.value)} autoComplete="off" />
+            <Input aria-label="Guest email" type="email" placeholder="Email" value={email} onChange={(ev) => setEmail(ev.target.value)} autoComplete="off" />
+          </div>
+          <div className="mt-3">
+            <Button type="submit" size="compact" disabled={busy || validateGuestAttendee({ name, email }) !== null}>
+              Add guest
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

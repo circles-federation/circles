@@ -3,12 +3,12 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { MEETING_CHANNEL } from "./meeting-channel";
 import { createTask, getMeetingTasks, type TaskChange } from "./tasks";
-import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingAttendance, meetingSessions, meetingTopicNotes } from "./schema";
+import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingAttendance, meetingGuestAttendees, meetingSessions, meetingTopicNotes, memberPhotos, members } from "./schema";
 import { MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
 import { eventEndsAt } from "@/lib/events.util";
-import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, validateNotes } from "@/lib/meeting-session.util";
+import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, MAX_MEETING_GUESTS, guestFirstName, lastStep, normalizeGuestEmail, stepAfterTopicAdded, stepAfterTopicRemoved, validateGuestAttendee, validateNotes } from "@/lib/meeting-session.util";
 import type { TaskInput } from "@/lib/tasks.util";
-import type { AgendaItem, CircleTask, MeetingSession } from "@/lib/types";
+import type { AgendaItem, CircleTask, MeetingGuest, MeetingSession } from "@/lib/types";
 
 /* A meeting being held, its circle's members' alone: this file is where that's
    held to. Every call checks the meeting is an approved, uncancelled meeting of
@@ -41,6 +41,21 @@ async function loadMeeting(tx: Tx, memberId: number, eventId: string, lock = fal
   return row;
 }
 
+/* Guests, oldest first, each with the photo of the member whose email they
+   gave, if one has since joined and uploaded one. The email itself never
+   leaves this file. */
+async function readGuests(tx: Tx | typeof db, eventId: string): Promise<MeetingGuest[]> {
+  const rows = await tx
+    .select({ id: meetingGuestAttendees.id, name: meetingGuestAttendees.name, photoUpdatedAt: memberPhotos.updatedAt })
+    .from(meetingGuestAttendees)
+    .leftJoin(members, sql`lower(${members.email}) = ${meetingGuestAttendees.email}`)
+    .leftJoin(memberPhotos, eq(memberPhotos.memberId, members.id))
+    .where(eq(meetingGuestAttendees.eventId, eventId))
+    .orderBy(asc(meetingGuestAttendees.createdAt), asc(meetingGuestAttendees.id));
+  // first names only, even for a row written before that was the rule
+  return rows.map((r) => ({ id: r.id, name: guestFirstName(r.name), ...(r.photoUpdatedAt ? { photoVersion: r.photoUpdatedAt.getTime() } : {}) }));
+}
+
 async function readSession(tx: Tx | typeof db, eventId: string): Promise<MeetingSession | null> {
   const [s] = await tx.select().from(meetingSessions).where(eq(meetingSessions.eventId, eventId));
   if (!s) return null;
@@ -48,6 +63,7 @@ async function readSession(tx: Tx | typeof db, eventId: string): Promise<Meeting
   const attendees = await tx.select({ id: meetingAttendance.memberId }).from(meetingAttendance).where(eq(meetingAttendance.eventId, eventId));
   return {
     eventId,
+    guests: await readGuests(tx, eventId),
     status: s.status,
     step: s.step,
     facilitatorId: s.facilitatorId,
@@ -331,4 +347,54 @@ export async function finishLapsedMeetings(now: Date = new Date()): Promise<numb
     }
   }
   return finished;
+}
+
+/* Writes in someone who's there without an account: the facilitator, while the
+   meeting's live. Their email isn't verified (the facilitator is vouching for
+   who's in the room), and is kept only to put their photo beside the name
+   should they ever join with it. The same address twice is one person. */
+export async function addGuestAttendee(memberId: number, eventId: string, input: { name: string; email: string }): Promise<MeetingSession> {
+  const problem = validateGuestAttendee(input);
+  if (problem) throw new MeetingError(problem);
+  return change(memberId, eventId, async (tx, session) => {
+    assertLive(session);
+    assertFacilitator(session, memberId);
+    const [{ count } = { count: 0 }] = await tx.select({ count: sql<number>`count(*)::int` }).from(meetingGuestAttendees).where(eq(meetingGuestAttendees.eventId, eventId));
+    if (count >= MAX_MEETING_GUESTS) throw new MeetingError(`A meeting can have up to ${MAX_MEETING_GUESTS} guests.`);
+    const added = await tx
+      .insert(meetingGuestAttendees)
+      .values({ eventId, name: guestFirstName(input.name), email: normalizeGuestEmail(input.email) })
+      .onConflictDoNothing()
+      .returning({ id: meetingGuestAttendees.id });
+    if (added.length === 0) throw new MeetingError("That email address is already on the list.");
+    await bump(tx, eventId);
+  });
+}
+
+// takes a guest off the list again (a slip of the keyboard), while it's live
+export async function removeGuestAttendee(memberId: number, eventId: string, guestId: string): Promise<MeetingSession> {
+  return change(memberId, eventId, async (tx, session) => {
+    assertLive(session);
+    assertFacilitator(session, memberId);
+    const removed = await tx.delete(meetingGuestAttendees).where(and(eq(meetingGuestAttendees.eventId, eventId), eq(meetingGuestAttendees.id, guestId))).returning({ id: meetingGuestAttendees.id });
+    if (removed.length === 0) throw new MeetingError("They aren't on the list.");
+    await bump(tx, eventId);
+  });
+}
+
+/* The photo of the member a guest's email now belongs to, for a member of the
+   meeting's circle to see beside the name they were written in under. Served
+   by guest rather than by member id, so what it shows is only "this person's
+   face" and the browser never learns who they are, which the ordinary photo
+   route (shared circles only) wouldn't allow anyway. Null if there's none. */
+export async function getMeetingGuestPhoto(viewerId: number, eventId: string, guestId: string): Promise<{ data: Buffer; contentType: string } | null> {
+  const allowed = await memberHasMeeting(viewerId, eventId);
+  if (!allowed) return null;
+  const [row] = await db
+    .select({ data: memberPhotos.data, contentType: memberPhotos.contentType })
+    .from(meetingGuestAttendees)
+    .innerJoin(members, sql`lower(${members.email}) = ${meetingGuestAttendees.email}`)
+    .innerJoin(memberPhotos, eq(memberPhotos.memberId, members.id))
+    .where(and(eq(meetingGuestAttendees.eventId, eventId), eq(meetingGuestAttendees.id, guestId)));
+  return row ?? null;
 }
