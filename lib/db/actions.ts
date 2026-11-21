@@ -228,6 +228,14 @@ export async function setMeetingPresentAction(eventId: string, targetId: number,
   return asMember((memberId) => meetingSessions.setPresent(memberId, eventId, targetId, present));
 }
 
+export async function moveMeetingTopicAction(eventId: string, topicId: string, by: -1 | 1) {
+  return asMember((memberId) => meetingSessions.moveTopic(memberId, eventId, topicId, by));
+}
+
+export async function removeMeetingTaskAction(eventId: string, taskId: string) {
+  return asMember((memberId) => meetingSessions.removeMeetingTask(memberId, eventId, taskId));
+}
+
 export async function addMeetingGuestAction(eventId: string, input: { name: string; email: string }) {
   return asMember((memberId) => meetingSessions.addGuestAttendee(memberId, eventId, input));
 }

@@ -116,6 +116,8 @@ export interface AppStateValue {
   // a task a live meeting made (it checks and saves them itself): taken into
   // state so the circle's Tasks and Home show it without waiting for a refresh
   adoptTask(task: CircleTask): void;
+  // and one a live meeting deleted, so it doesn't linger until a refresh
+  dropTask(id: string): void;
   // a circle's Inbox: writing to it (the form shows a refusal itself), and a
   // member opening a message, handling it, or filing it as Done
   sendMessage(circleId: string, input: MessageInput): Promise<MutationResult>;
@@ -576,6 +578,10 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     setTasks((prev) => (prev.some((t) => t.id === task.id) ? prev : [...prev, task]));
   }
 
+  function dropTask(id: string) {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  }
+
   async function removeTask(id: string): Promise<MutationResult> {
     const result = await dbDeleteTask(id).catch(unreachable);
     if (!result.ok) {
@@ -830,6 +836,7 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         setTaskStatus: tracked(setTaskStatus),
         removeTask: tracked(removeTask),
         adoptTask: tracked(adoptTask),
+        dropTask: tracked(dropTask),
         sendMessage: tracked(sendMessage),
         markMessageRead: tracked(markMessageRead),
         assignMessage: tracked(assignMessage),

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { event } from "@/lib/test/factories";
 import { db } from "./client";
 import { insertEvent } from "./events";
-import { addGuestAttendee, addMeetingTask, addTopic, finishLapsedMeetings, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingGuestPhoto, getMeetingSession, memberHasMeeting, removeGuestAttendee, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
+import { addGuestAttendee, addMeetingTask, moveTopic, removeMeetingTask, addTopic, finishLapsedMeetings, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingGuestPhoto, getMeetingSession, memberHasMeeting, removeGuestAttendee, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
 import { addCircle, addMember, giveRole, join, resetDb } from "./testing";
 
 /* A live meeting: who may start it and when, who drives, who's there, and
@@ -492,5 +492,50 @@ describe("guests without an account", () => {
     expect((await getMeetingGuestPhoto(2, "m1", id))?.contentType).toBe("image/jpeg");
     // someone outside the circle doesn't
     expect(await getMeetingGuestPhoto(4, "m1", id)).toBeNull();
+  });
+});
+
+describe("reordering topics", () => {
+  const titles = async () => (await getMeetingSession(1, "m1"))!.topics.map((t) => t.title);
+
+  it("swaps a topic with its neighbour, notes going with it, and the wizard stays on its topic", async () => {
+    await startMeeting(1, "m1", during);
+    await saveTopicNotes(1, "m1", await tid(1), "budget notes");
+    await setStep(1, "m1", 3);
+    const s = await moveTopic(1, "m1", await tid(1), -1);
+    expect(await titles()).toEqual(["Budget", "Treasurer's report"]);
+    expect(s.topics[0]).toMatchObject({ title: "Budget", position: 0, notes: "budget notes" });
+    expect(s.step).toBe(2);
+  });
+
+  it("refuses going past either end, to someone not there, and once finished", async () => {
+    await startMeeting(1, "m1", during);
+    await expect(moveTopic(1, "m1", await tid(0), -1)).rejects.toThrow(/any further/);
+    await expect(moveTopic(1, "m1", await tid(1), 1)).rejects.toThrow(/any further/);
+    await expect(moveTopic(2, "m1", await tid(0), 1)).rejects.toThrow("Mark yourself present to change the agenda.");
+    await expect(moveTopic(1, "m1", "nope", 1)).rejects.toThrow("There's no such topic.");
+    await finishMeeting(1, "m1", during);
+    await expect(moveTopic(1, "m1", await tid(0), 1)).rejects.toThrow(/finished/);
+  });
+});
+
+describe("deleting a task the meeting made", () => {
+  const input = { title: "Book the room", description: "", status: "todo" as const, priority: "none" as const, dueDate: "", assigneeId: null };
+
+  it("takes it out of the meeting and the circle's backlog, and only for those there", async () => {
+    await startMeeting(1, "m1", during);
+    const { task } = await addMeetingTask(1, "m1", input);
+    await expect(removeMeetingTask(2, "m1", task.id)).rejects.toThrow("Mark yourself present to remove tasks.");
+    expect((await removeMeetingTask(1, "m1", task.id)).tasks).toEqual([]);
+    const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from circle_tasks`);
+    expect(rows[0]?.n).toBe(0);
+  });
+
+  it("never deletes a task the meeting didn't make", async () => {
+    await startMeeting(1, "m1", during);
+    await db.execute(sql`insert into circle_tasks (id, circle_id, title, created_by) values ('other', 'council', 'Not from the meeting', 1)`);
+    await expect(removeMeetingTask(1, "m1", "other")).rejects.toThrow(/isn't from this meeting/);
+    const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from circle_tasks`);
+    expect(rows[0]?.n).toBe(1);
   });
 });

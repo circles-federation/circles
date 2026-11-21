@@ -93,6 +93,8 @@ const CALLS: Record<string, unknown[]> = {
   addMeetingTaskAction: ["x", task],
   addMeetingTopicAction: ["x", { category: "explore", title: "More" }],
   removeMeetingTopicAction: ["x", 0],
+  moveMeetingTopicAction: ["x", "t", 1],
+  removeMeetingTaskAction: ["x", "t"],
   addMeetingGuestAction: ["x", { name: "Ada", email: "ada@example.test" }],
   removeMeetingGuestAction: ["x", "g"],
   setMeetingPresentAction: ["x", 1, true],

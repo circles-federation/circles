@@ -3,10 +3,10 @@ import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { MEETING_CHANNEL } from "./meeting-channel";
 import { createTask, getMeetingTasks, type TaskChange } from "./tasks";
-import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingAttendance, meetingGuestAttendees, meetingSessions, meetingTopicNotes, memberPhotos, members } from "./schema";
+import { circleMembers, circleRoles, circleTasks, eventAgendaItems, eventRsvps, events, meetingAttendance, meetingGuestAttendees, meetingSessions, meetingTopicNotes, memberPhotos, members } from "./schema";
 import { MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
 import { eventEndsAt } from "@/lib/events.util";
-import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, MAX_MEETING_GUESTS, guestFirstName, lastStep, normalizeGuestEmail, stepAfterTopicAdded, stepAfterTopicRemoved, validateGuestAttendee, validateNotes } from "@/lib/meeting-session.util";
+import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, MAX_MEETING_GUESTS, guestFirstName, lastStep, normalizeGuestEmail, stepAfterTopicAdded, stepAfterTopicMoved, stepAfterTopicRemoved, validateGuestAttendee, validateNotes } from "@/lib/meeting-session.util";
 import type { TaskInput } from "@/lib/tasks.util";
 import type { AgendaItem, CircleTask, MeetingGuest, MeetingSession } from "@/lib/types";
 
@@ -223,6 +223,42 @@ export async function removeTopic(memberId: number, eventId: string, topicId: st
     await tx.update(meetingTopicNotes).set({ position: sql`-${meetingTopicNotes.position} - 1` }).where(and(eq(meetingTopicNotes.eventId, eventId), sql`${meetingTopicNotes.position} < 0`));
     const count = await topicCount(tx, eventId);
     await bump(tx, eventId, { step: stepAfterTopicRemoved(session.step, count + 1, position) });
+  });
+}
+
+/* Swaps a topic with the one above or below it, for the people there to put
+   the agenda in the order it'll be run. Any attendee may; where the wizard is
+   stays on the topic it was on. */
+export async function moveTopic(memberId: number, eventId: string, topicId: string, by: -1 | 1): Promise<MeetingSession> {
+  if (by !== -1 && by !== 1) throw new MeetingError("A topic moves one place at a time.");
+  return change(memberId, eventId, async (tx, session) => {
+    assertLive(session);
+    if (!(await attends(tx, eventId, memberId))) throw new MeetingError("Mark yourself present to change the agenda.");
+    const [topic] = await tx.select({ position: meetingTopicNotes.position }).from(meetingTopicNotes).where(and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.id, topicId)));
+    if (!topic) throw new MeetingError("There's no such topic.");
+    const count = await topicCount(tx, eventId);
+    const from = topic.position;
+    const to = from + by;
+    if (to < 0 || to >= count) throw new MeetingError("It can't go any further that way.");
+    // the key is (event, position): the first goes through -1 so no two share one
+    const at = (position: number) => and(eq(meetingTopicNotes.eventId, eventId), eq(meetingTopicNotes.position, position));
+    await tx.update(meetingTopicNotes).set({ position: -1 }).where(at(from));
+    await tx.update(meetingTopicNotes).set({ position: from }).where(at(to));
+    await tx.update(meetingTopicNotes).set({ position: to }).where(at(-1));
+    await bump(tx, eventId, { step: stepAfterTopicMoved(session.step, count, from, to) });
+  });
+}
+
+/* Deletes a task this meeting made, for when those there change their minds:
+   any attendee, while it's live. Only a task of this meeting, so it can't be
+   used to delete the circle's others. */
+export async function removeMeetingTask(memberId: number, eventId: string, taskId: string): Promise<MeetingSession> {
+  return change(memberId, eventId, async (tx, session) => {
+    assertLive(session);
+    if (!(await attends(tx, eventId, memberId))) throw new MeetingError("Mark yourself present to remove tasks.");
+    const removed = await tx.delete(circleTasks).where(and(eq(circleTasks.id, taskId), eq(circleTasks.meetingEventId, eventId))).returning({ id: circleTasks.id });
+    if (removed.length === 0) throw new MeetingError("That task isn't from this meeting.");
+    await bump(tx, eventId);
   });
 }
 

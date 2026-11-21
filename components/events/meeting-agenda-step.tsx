@@ -1,17 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowDownIcon, ArrowUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { AgendaBadge } from "./agenda-section";
 import { AgendaCategoryChoice, BLANK_AGENDA_ITEM, type AgendaDraft } from "./agenda-editor";
 import { Button, ConfirmModal, Eyebrow, Input, TextArea } from "@/components/shared";
 import { AGENDA_CATEGORY, MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
 import type { AgendaItem, MeetingSession, MeetingTopic } from "@/lib/types";
 
+// three controls side by side, so each is a full tap area rather than a hit layer
+const CONTROL = "inline-flex size-11 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-soft hover:text-ink disabled:cursor-default disabled:opacity-30";
+
 /* The agenda as the meeting will run it, for those there to read through and
-   change before discussion starts: anyone present can add a topic or take one
-   off. It's this meeting's copy; the event's own agenda is left as it was. */
-export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { session: MeetingSession; canEdit: boolean; onAdd: (item: AgendaItem) => Promise<boolean>; onRemove: (topicId: string) => void }) {
+   change before discussion starts: anyone present can add a topic, take one
+   off or move it up or down, since it's run top to bottom. It's this meeting's
+   copy; the event's own agenda is left as it was. */
+export function MeetingAgendaStep({
+  session,
+  canEdit,
+  onAdd,
+  onRemove,
+  onMove,
+}: {
+  session: MeetingSession;
+  canEdit: boolean;
+  onAdd: (item: AgendaItem) => Promise<boolean>;
+  onRemove: (topicId: string) => void;
+  onMove: (topicId: string, by: -1 | 1) => void;
+}) {
   const [draft, setDraft] = useState<AgendaDraft>(BLANK_AGENDA_ITEM);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<MeetingTopic | null>(null);
@@ -31,13 +47,13 @@ export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { sessi
   return (
     <div>
       <Eyebrow>Agenda · {session.topics.length}</Eyebrow>
-      <p className="mt-2 font-serif text-base text-soft">Read it through. Add anything that’s missing, or take off what won’t be discussed.</p>
+      <p className="mt-2 font-serif text-base text-soft">Read it through. Add what’s missing, take off what won’t be discussed, and put it in order.</p>
 
       {session.topics.length === 0 ? (
         <p className="mt-6 font-serif text-lg text-soft">No topics yet.</p>
       ) : (
         <ol className="m-0 mt-6 flex list-none flex-col gap-4 p-0">
-          {session.topics.map((t) => (
+          {session.topics.map((t, i) => (
             <li key={t.id} className="flex gap-3 border border-t-[3px] border-ink border-t-agenda bg-paper p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -49,15 +65,17 @@ export function MeetingAgendaStep({ session, canEdit, onAdd, onRemove }: { sessi
                 {t.details && <p className="mt-2 font-serif text-sm leading-normal whitespace-pre-line text-body">{t.details}</p>}
               </div>
               {canEdit && (
-                <button
-                  type="button"
-                  title="Take off the agenda"
-                  aria-label={`Take “${t.title}” off the agenda`}
-                  onClick={() => (t.notes.trim() ? setRemoving(t) : onRemove(t.id))}
-                  className="hit -mt-1 -mr-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center self-start border-none bg-transparent p-0 text-soft hover:text-ink"
-                >
-                  <XMarkIcon className="size-4" strokeWidth={2.5} />
-                </button>
+                <div className="-mt-1 -mr-1 flex shrink-0 items-start self-start">
+                  <button type="button" title="Move up" aria-label={`Move “${t.title}” up`} disabled={i === 0} onClick={() => onMove(t.id, -1)} className={CONTROL}>
+                    <ArrowUpIcon className="size-4" strokeWidth={2} />
+                  </button>
+                  <button type="button" title="Move down" aria-label={`Move “${t.title}” down`} disabled={i === session.topics.length - 1} onClick={() => onMove(t.id, 1)} className={CONTROL}>
+                    <ArrowDownIcon className="size-4" strokeWidth={2} />
+                  </button>
+                  <button type="button" title="Take off the agenda" aria-label={`Take “${t.title}” off the agenda`} onClick={() => (t.notes.trim() ? setRemoving(t) : onRemove(t.id))} className={CONTROL}>
+                    <XMarkIcon className="size-4" strokeWidth={2.5} />
+                  </button>
+                </div>
               )}
             </li>
           ))}

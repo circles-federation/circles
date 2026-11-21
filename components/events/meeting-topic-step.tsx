@@ -2,11 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AgendaBadge } from "./agenda-section";
-import { CheckIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { MeetingTaskForm } from "./meeting-task-form";
 import { MessageEditor } from "@/components/circles/message-editor";
-import { Eyebrow } from "@/components/shared";
+import { Button, Eyebrow } from "@/components/shared";
+import { Modal } from "@/components/shared/modal";
+import { useToast } from "@/components/shared/toast";
+import { circleHasTasks } from "@/lib/circles.util";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
-import type { MeetingTopic } from "@/lib/types";
+import type { TaskInput } from "@/lib/tasks.util";
+import type { Circle, MeetingSession, MeetingTopic } from "@/lib/types";
 
 /* One topic and the notes taken on it (Markdown; a decision is written in
    them). Saved when the field loses focus and, since a toolbar's link field
@@ -17,7 +22,26 @@ import type { MeetingTopic } from "@/lib/types";
 // how long after the last change the notes save by themselves
 const SAVE_AFTER_MS = 1200;
 
-export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTopic; canWrite: boolean; onSave: (notes: string) => Promise<boolean> }) {
+export function MeetingTopicStep({
+  topic,
+  canWrite,
+  onSave,
+  session,
+  circle,
+  memberId,
+  onAddTask,
+}: {
+  topic: MeetingTopic;
+  canWrite: boolean;
+  onSave: (notes: string) => Promise<boolean>;
+  session: MeetingSession;
+  circle: Circle;
+  memberId: number;
+  onAddTask: (input: TaskInput) => Promise<boolean>;
+}) {
+  const { showToast } = useToast();
+  // tasks come up while a topic is discussed, so one can be made from here
+  const [taskOpen, setTaskOpen] = useState(false);
   const [draft, setDraft] = useState<{ text: string; base: string } | null>(null);
   // what was typed, from leaving the field until the save is answered, so the
   // old notes don't show in between; kept if the save is refused, so nothing
@@ -91,7 +115,7 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
             label={`Notes on ${topic.title}`}
             value={draft?.text ?? held ?? topic.notes}
             readOnly={!canWrite}
-            placeholder={topic.category === "decide" ? "What was decided, and by whom… Select text to format it." : "What was said… Select text to format it."}
+            placeholder={AGENDA_CATEGORY[topic.category].notesPlaceholder}
             onChange={(text) => {
               setStatus("idle");
               setDraft({ text, base: draft?.base ?? topic.notes });
@@ -102,6 +126,32 @@ export function MeetingTopicStep({ topic, canWrite, onSave }: { topic: MeetingTo
           />
         </div>
       </div>
+      {canWrite && circleHasTasks(circle) && (
+        <div className="mt-4">
+          <Button variant="secondary" size="compact" onClick={() => setTaskOpen(true)}>
+            <PlusIcon className="size-4" aria-hidden />
+            New task
+          </Button>
+        </div>
+      )}
+      {taskOpen && (
+        <Modal title="New task" onClose={() => setTaskOpen(false)} className="max-w-lg">
+          <div className="p-5">
+            <MeetingTaskForm
+              session={session}
+              circle={circle}
+              memberId={memberId}
+              onAdd={onAddTask}
+              stateKey="meeting-topic-task-draft"
+              idPrefix="topic-task"
+              onAdded={() => {
+                setTaskOpen(false);
+                showToast({ message: "Task added.", tone: "success" });
+              }}
+            />
+          </div>
+        </Modal>
+      )}
       {changedElsewhere && <p className="mt-2 font-sans text-xs font-bold text-flame-text">Someone else has changed these notes. Saving will replace their version.</p>}
       {!canWrite && <p className="mt-2 font-serif text-sm text-soft">Mark yourself present to take notes.</p>}
     </div>
