@@ -85,7 +85,7 @@ export function MeetingAttendanceStep({
               <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">Guest</span>
             </span>
             {facilitating && session.status === "live" && (
-              <button type="button" aria-label={`Remove ${g.name}`} onClick={() => onRemoveGuest(g.id)} className="hit ink-press flex size-8 shrink-0 cursor-pointer items-center justify-center border border-ink bg-paper">
+              <button type="button" aria-label={`Remove ${g.name}`} onClick={() => onRemoveGuest(g.id)} className="hit ink-press flex size-6 shrink-0 cursor-pointer items-center justify-center border border-ink bg-paper">
                 <XMarkIcon className="size-4" aria-hidden />
               </button>
             )}
