@@ -81,10 +81,12 @@ export function MeetingWrapupStep({ session, event: e, circle, facilitating }: {
                 <div className="flex items-center gap-2">
                   <AgendaBadge category={t.category} />
                   <Eyebrow className="min-w-0 flex-1 truncate text-agenda">{AGENDA_CATEGORY[t.category].label}</Eyebrow>
-                  <span className="font-sans text-eyebrow font-bold text-soft tabular-nums">{t.position + 1}</span>
                 </div>
                 <h3 className="mt-3 mb-0 font-sans text-base leading-tight font-bold wrap-anywhere">{t.title}</h3>
                 <div className="message-text mt-2 font-serif text-base leading-normal text-body" dangerouslySetInnerHTML={{ __html: messageHtml(t.notes) }} />
+                <div className="mt-3 text-right font-sans text-eyebrow font-bold text-soft tabular-nums" aria-label={`Topic ${t.position + 1}`}>
+                  {t.position + 1}
+                </div>
               </li>
             ))}
           </ol>

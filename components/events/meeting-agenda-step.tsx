@@ -55,15 +55,11 @@ export function MeetingAgendaStep({
         <ol className="m-0 mt-6 flex list-none flex-col gap-4 p-0">
           {session.topics.map((t, i) => (
             <li key={t.id} className="border border-t-[3px] border-ink border-t-agenda bg-paper p-4">
+              {/* the badge, the type and the controls share one row, centred on it
+                  (the controls' 44px tap areas reach past it, hence the negative margins) */}
               <div className="flex items-center gap-2">
                 <AgendaBadge category={t.category} />
                 <Eyebrow className="min-w-0 flex-1 truncate text-agenda">{AGENDA_CATEGORY[t.category].label}</Eyebrow>
-                <span className="font-sans text-eyebrow font-bold text-soft tabular-nums" aria-label={`Topic ${t.position + 1}`}>{t.position + 1}</span>
-              </div>
-              {/* the controls share the title's row, centred on its first line (their
-                  44px tap areas reach past it, hence the negative margins) */}
-              <div className="mt-3 flex items-start gap-2">
-                <div className="min-w-0 flex-1 font-sans text-base leading-tight font-bold wrap-anywhere">{t.title}</div>
                 {canEdit && (
                   <div className="-my-3 -mr-3 flex shrink-0 items-center">
                     <button type="button" title="Move up" aria-label={`Move “${t.title}” up`} disabled={i === 0} onClick={() => onMove(t.id, -1)} className={CONTROL}>
@@ -78,7 +74,11 @@ export function MeetingAgendaStep({
                   </div>
                 )}
               </div>
+              <div className="mt-3 font-sans text-base leading-tight font-bold wrap-anywhere">{t.title}</div>
               {t.details && <p className="mt-2 mb-0 font-serif text-sm leading-normal whitespace-pre-line text-body">{t.details}</p>}
+              <div className="mt-3 text-right font-sans text-eyebrow font-bold text-soft tabular-nums" aria-label={`Topic ${t.position + 1}`}>
+                {t.position + 1}
+              </div>
             </li>
           ))}
         </ol>
