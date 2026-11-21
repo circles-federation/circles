@@ -6,7 +6,7 @@ import { createTask, getMeetingTasks, type TaskChange } from "./tasks";
 import { circleMembers, circleRoles, eventAgendaItems, eventRsvps, events, meetingAttendance, meetingGuestAttendees, meetingSessions, meetingTopicNotes, memberPhotos, members } from "./schema";
 import { MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
 import { eventEndsAt } from "@/lib/events.util";
-import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, MAX_MEETING_GUESTS, lastStep, normalizeGuestEmail, stepAfterTopicAdded, stepAfterTopicRemoved, validateGuestAttendee, validateNotes } from "@/lib/meeting-session.util";
+import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, MAX_MEETING_GUESTS, guestFirstName, lastStep, normalizeGuestEmail, stepAfterTopicAdded, stepAfterTopicRemoved, validateGuestAttendee, validateNotes } from "@/lib/meeting-session.util";
 import type { TaskInput } from "@/lib/tasks.util";
 import type { AgendaItem, CircleTask, MeetingGuest, MeetingSession } from "@/lib/types";
 
@@ -52,7 +52,8 @@ async function readGuests(tx: Tx | typeof db, eventId: string): Promise<MeetingG
     .leftJoin(memberPhotos, eq(memberPhotos.memberId, members.id))
     .where(eq(meetingGuestAttendees.eventId, eventId))
     .orderBy(asc(meetingGuestAttendees.createdAt), asc(meetingGuestAttendees.id));
-  return rows.map((r) => ({ id: r.id, name: r.name, ...(r.photoUpdatedAt ? { photoVersion: r.photoUpdatedAt.getTime() } : {}) }));
+  // first names only, even for a row written before that was the rule
+  return rows.map((r) => ({ id: r.id, name: guestFirstName(r.name), ...(r.photoUpdatedAt ? { photoVersion: r.photoUpdatedAt.getTime() } : {}) }));
 }
 
 async function readSession(tx: Tx | typeof db, eventId: string): Promise<MeetingSession | null> {
@@ -362,7 +363,7 @@ export async function addGuestAttendee(memberId: number, eventId: string, input:
     if (count >= MAX_MEETING_GUESTS) throw new MeetingError(`A meeting can have up to ${MAX_MEETING_GUESTS} guests.`);
     const added = await tx
       .insert(meetingGuestAttendees)
-      .values({ eventId, name: input.name.trim(), email: normalizeGuestEmail(input.email) })
+      .values({ eventId, name: guestFirstName(input.name), email: normalizeGuestEmail(input.email) })
       .onConflictDoNothing()
       .returning({ id: meetingGuestAttendees.id });
     if (added.length === 0) throw new MeetingError("That email address is already on the list.");

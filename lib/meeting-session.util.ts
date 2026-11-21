@@ -61,12 +61,16 @@ export const GUEST_EMAIL_MAX = 254;
 // the one stored form of a guest's email: matched against members' by it
 export const normalizeGuestEmail = (email: string): string => email.trim().toLowerCase();
 
+/* Only a first name is kept: a guest may later join with that email, and a
+   last name would then be tied to a member who never agreed to share it. */
+export const guestFirstName = (name: string): string => name.trim().split(/\s+/)[0] ?? "";
+
 // a name and an email, as the form and the server check them; the address is
 // never verified, only shaped like one
 export function validateGuestAttendee(input: { name: string; email: string }): string | null {
-  const name = input.name.trim();
+  const name = guestFirstName(input.name);
   const email = normalizeGuestEmail(input.email);
-  if (!name) return "Enter their name.";
+  if (!name) return "Enter their first name.";
   if (name.length > GUEST_NAME_MAX) return `Names can be up to ${GUEST_NAME_MAX} characters.`;
   if (email.length > GUEST_EMAIL_MAX || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Enter a valid email address.";
   return null;

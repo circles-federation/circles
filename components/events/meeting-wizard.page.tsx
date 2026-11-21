@@ -39,10 +39,10 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
   const [confirmTakeOver, setConfirmTakeOver] = useState(false);
 
   // whatever an action returns is adopted at once; a refusal is a toast
-  const run = async (action: Promise<Result>): Promise<boolean> => {
+  const run = async (action: Promise<Result>, errorTitle?: string): Promise<boolean> => {
     const result = await action;
     if (result.ok) adopt(result.value);
-    else showToast({ message: result.error, tone: "error" });
+    else showToast({ ...(errorTitle ? { title: errorTitle } : {}), message: result.error, tone: "error" });
     return result.ok;
   };
 
@@ -127,8 +127,8 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
             circle={circle}
             memberId={memberId}
             onSetPresent={(id, present) => void run(setMeetingPresentAction(e.id, id, present))}
-            onAddGuest={(input) => run(addMeetingGuestAction(e.id, input))}
-            onRemoveGuest={(guestId) => void run(removeMeetingGuestAction(e.id, guestId))}
+            onAddGuest={(input) => run(addMeetingGuestAction(e.id, input), "Couldn’t add guest")}
+            onRemoveGuest={(guestId) => void run(removeMeetingGuestAction(e.id, guestId), "Couldn’t remove guest")}
           />}
         {step?.kind === "agenda" && <MeetingAgendaStep session={session} canEdit={attending} onAdd={(item) => run(addMeetingTopicAction(e.id, item))} onRemove={(topicId) => void run(removeMeetingTopicAction(e.id, topicId))} />}
         {topic && <MeetingTopicStep key={topic.id} topic={topic} canWrite={attending} onSave={(notes) => run(saveMeetingNotesAction(e.id, topic.id, notes))} />}

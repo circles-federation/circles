@@ -459,6 +459,13 @@ describe("guests without an account", () => {
     await expect(addGuestAttendee(1, "m1", { name: "", email: "x@example.test" })).rejects.toThrow();
   });
 
+  it("keep a first name only, even if a full name was typed or written before that was the rule", async () => {
+    await startMeeting(1, "m1", during);
+    expect((await addGuestAttendee(1, "m1", { name: "  Evan   Lemoine ", email: "evan@example.test" })).guests[0]?.name).toBe("Evan");
+    await db.execute(sql`insert into meeting_guest_attendees (event_id, name, email) values ('m1', 'Old Timer', 'old@example.test')`);
+    expect((await getMeetingSession(1, "m1"))?.guests.map((g) => g.name).sort()).toEqual(["Evan", "Old"]);
+  });
+
   it("can be taken off again, and nothing changes once the meeting's finished", async () => {
     await startMeeting(1, "m1", during);
     const { guests } = await addGuestAttendee(1, "m1", ada);
