@@ -20,8 +20,8 @@ const errorText = (id: string, text?: string) =>
    (anything more is the task's own page). Used by the Tasks step and by a
    topic's New task, which differ only in where the half-written draft is kept
    (`stateKey`, on the history entry, so it survives opening a task and Back)
-   and what happens after an add (`onAdded`). After an add the title is focused
-   again, for the next one. */
+   and what happens after an add (`onAdded`, which then replaces focusing the
+   title again for the next one). */
 export function MeetingTaskForm({
   session,
   circle,
@@ -78,10 +78,12 @@ export function MeetingTaskForm({
     const ok = await onAdd(input);
     setAdding(false);
     if (!ok) return;
-    setAnnounce(`Added: ${input.title.trim()}`);
     setDraft(BLANK);
+    // with `onAdded` the form is usually going away, so there's nothing to
+    // keep focused or announce here; the caller does both
+    if (onAdded) return onAdded();
+    setAnnounce(`Added: ${input.title.trim()}`);
     titleRef.current?.focus();
-    onAdded?.();
   };
 
   return (

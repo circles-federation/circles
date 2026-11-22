@@ -38,6 +38,7 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
   const router = useRouter();
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [confirmTakeOver, setConfirmTakeOver] = useState(false);
+  const [deletingTask, setDeletingTask] = useState<{ id: string; title: string } | null>(null);
 
   // whatever an action returns is adopted at once; a refusal is a toast
   const run = async (action: Promise<Result>, errorTitle?: string): Promise<boolean> => {
@@ -153,16 +154,29 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
             canAdd={attending}
             memberId={memberId}
             onAdd={addTask}
-            onDelete={(t) => {
-              // gone from the circle's tasks as well, not just this list
-              void run(removeMeetingTaskAction(e.id, t.id), "Couldn’t delete task").then((ok) => {
-                if (ok) dropTask(t.id);
-              });
-            }}
+            onDelete={(t) => setDeletingTask({ id: t.id, title: t.title })}
           />
         )}
         {step?.kind === "wrapup" && <MeetingWrapupStep session={session} event={e} circle={circle} facilitating={facilitating} />}
       </div>
+
+      {deletingTask && (
+        <ConfirmModal
+          title="Delete this task?"
+          message={`“${deletingTask.title}” will be removed from the circle’s tasks too.`}
+          confirmLabel="Delete"
+          cancelLabel="Keep it"
+          onCancel={() => setDeletingTask(null)}
+          onConfirm={() => {
+            const { id } = deletingTask;
+            setDeletingTask(null);
+            // gone from the circle's tasks as well, not just this list
+            void run(removeMeetingTaskAction(e.id, id), "Couldn’t delete task").then((ok) => {
+              if (ok) dropTask(id);
+            });
+          }}
+        />
+      )}
 
       {confirmTakeOver && (
         <ConfirmModal

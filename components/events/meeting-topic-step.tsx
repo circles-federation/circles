@@ -42,6 +42,7 @@ export function MeetingTopicStep({
   const { showToast } = useToast();
   // tasks come up while a topic is discussed, so one can be made from here
   const [taskOpen, setTaskOpen] = useState(false);
+  const newTaskButton = useRef<HTMLButtonElement>(null);
   const [draft, setDraft] = useState<{ text: string; base: string } | null>(null);
   // what was typed, from leaving the field until the save is answered, so the
   // old notes don't show in between; kept if the save is refused, so nothing
@@ -128,7 +129,7 @@ export function MeetingTopicStep({
       </div>
       {canWrite && circleHasTasks(circle) && (
         <div className="mt-4">
-          <Button variant="secondary" size="compact" onClick={() => setTaskOpen(true)}>
+          <Button ref={newTaskButton} variant="secondary" size="compact" onClick={() => setTaskOpen(true)}>
             <PlusIcon className="size-4" aria-hidden />
             New task
           </Button>
@@ -142,11 +143,13 @@ export function MeetingTopicStep({
               circle={circle}
               memberId={memberId}
               onAdd={onAddTask}
-              stateKey="meeting-topic-task-draft"
+              stateKey={`meeting-topic-task-draft-${topic.id}`}
               idPrefix="topic-task"
               onAdded={() => {
                 setTaskOpen(false);
                 showToast({ message: "Task added.", tone: "success" });
+                // the dialog is gone, so focus goes back to what opened it
+                setTimeout(() => newTaskButton.current?.focus(), 0);
               }}
             />
           </div>

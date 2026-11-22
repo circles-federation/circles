@@ -83,6 +83,7 @@ export function MeetingWrapupStep({ session, event: e, circle, facilitating }: {
                   <Eyebrow className="min-w-0 flex-1 truncate text-agenda">{AGENDA_CATEGORY[t.category].label}</Eyebrow>
                 </div>
                 <h3 className="mt-3 mb-0 font-sans text-base leading-tight font-bold wrap-anywhere">{t.title}</h3>
+                {t.details && <p className="mt-1 mb-0 font-serif text-sm leading-normal whitespace-pre-line text-soft">{t.details}</p>}
                 <div className="message-text mt-2 font-serif text-base leading-normal text-body" dangerouslySetInnerHTML={{ __html: messageHtml(t.notes) }} />
                 <div className="mt-3 text-right font-sans text-eyebrow font-bold text-soft tabular-nums" aria-label={`Topic ${t.position + 1}`}>
                   {t.position + 1}

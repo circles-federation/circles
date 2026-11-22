@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ComponentPropsWithRef } from "react";
 
 type ButtonAccent = "ink" | "flame" | "teal";
 type ButtonVariant = "primary" | "secondary" | "danger";
@@ -33,7 +33,7 @@ interface ButtonStyle {
   size?: ButtonSize;
 }
 
-interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonStyle {}
+interface ButtonProps extends ComponentPropsWithRef<"button">, ButtonStyle {}
 
 function buttonClass({ variant = "primary", accent = "ink", size = "default" }: ButtonStyle, disabled: boolean, className?: string): string {
   const variantClass = variant === "primary" ? PRIMARY_ACCENTS[accent] : NON_PRIMARY_VARIANTS[variant];
