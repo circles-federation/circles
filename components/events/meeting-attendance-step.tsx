@@ -3,6 +3,7 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ATTENDEE_CARD, ATTENDEE_GRID, AttendeeCardContent } from "./attendee-card";
 import { GuestAvatar } from "./guest-avatar";
 import { Avatar, Badge, Button, Eyebrow, Input } from "@/components/shared";
 import { useAppState } from "@/components/providers/app-state-provider";
@@ -46,7 +47,7 @@ export function MeetingAttendanceStep({
     <div>
       <Eyebrow>Who’s here · {session.attendees.length + session.guests.length}</Eyebrow>
       <p className="mt-2 font-serif text-base text-soft">{facilitating ? "Tap a name to mark someone here or not." : "Tap your name to say you’re here. The facilitator marks everyone else."}</p>
-      <ul className="m-0 mt-4 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,248px),1fr))] gap-0 border-t border-l border-ink p-0">
+      <ul className={clsx("mt-4", ATTENDEE_GRID)}>
         {people.map((m) => {
           const here = session.attendees.includes(m.id);
           const mine = m.id === memberId;
@@ -57,17 +58,14 @@ export function MeetingAttendanceStep({
                 disabled={!mine && !facilitating}
                 aria-pressed={here}
                 onClick={() => onSetPresent(m.id, !here)}
-                className={clsx("flex items-center gap-3 border-0 border-r border-b border-ink p-4 text-left", here ? "bg-wash" : "bg-paper", mine || facilitating ? "ink-press cursor-pointer" : "cursor-default")}
+                className={clsx(ATTENDEE_CARD, here ? "bg-wash" : "bg-paper", mine || facilitating ? "ink-press cursor-pointer" : "cursor-default")}
               >
-                <Avatar member={m} size={44} />
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2 font-sans text-sm font-bold">
-                    {m.name}
-                    {mine ? " (you)" : ""}
-                    {m.id === session.facilitatorId && <Badge variant="action">Facilitator</Badge>}
-                  </span>
-                  <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">{here ? "Here" : "Not here"}</span>
-                </span>
+                <AttendeeCardContent
+                  avatar={<Avatar member={m} size={44} />}
+                  name={`${m.name}${mine ? " (you)" : ""}`}
+                  badge={m.id === session.facilitatorId && <Badge variant="action">Facilitator</Badge>}
+                  caption={here ? "Here" : "Not here"}
+                />
                 {here && (
                   <span className="flex size-6 shrink-0 items-center justify-center border border-ink bg-tint-leaf text-on-action">
                     <CheckIcon className="size-4" strokeWidth={2.5} aria-hidden />
@@ -78,12 +76,8 @@ export function MeetingAttendanceStep({
           );
         })}
         {session.guests.map((g) => (
-          <li key={g.id} className="flex items-center gap-3 border-r border-b border-ink bg-wash p-4">
-            <GuestAvatar eventId={session.eventId} guest={g} />
-            <span className="min-w-0 flex-1">
-              <span className="block font-sans text-sm font-bold">{g.name}</span>
-              <span className="mt-0.5 block font-serif text-sm leading-snug text-soft">Guest</span>
-            </span>
+          <li key={g.id} className={clsx(ATTENDEE_CARD, "bg-wash")}>
+            <AttendeeCardContent avatar={<GuestAvatar eventId={session.eventId} guest={g} />} name={g.name} caption="Guest" />
             {facilitating && session.status === "live" && (
               <button type="button" aria-label={`Remove ${g.name}`} onClick={() => onRemoveGuest(g.id)} className="hit ink-press flex size-6 shrink-0 cursor-pointer items-center justify-center border border-ink bg-paper">
                 <XMarkIcon className="size-4" aria-hidden />

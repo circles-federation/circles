@@ -45,6 +45,14 @@ export function stepAfterTopicRemoved(step: number, topicCount: number, position
   return step >= 2 && position < step - 2 ? step - 1 : step;
 }
 
+/* A topic swapped with its neighbour (from -> to, one place): where the wizard
+   is stays on the same topic, whichever of the two it was on. */
+export function stepAfterTopicMoved(step: number, topicCount: number, from: number, to: number): number {
+  if (step < 2 || step > topicCount + 1) return step;
+  const on = step - 2;
+  return on === from ? to + 2 : on === to ? from + 2 : step;
+}
+
 // the circle's Facilitator if they're still a member, otherwise whoever started it
 export function defaultFacilitator(holder: number | null, starter: number, memberIds: number[]): number {
   return holder !== null && memberIds.includes(holder) ? holder : starter;

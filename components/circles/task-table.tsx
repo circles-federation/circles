@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, TrashIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Avatar } from "@/components/shared";
 import { useMemberById, useTaskTick } from "@/lib/hooks";
@@ -18,6 +18,12 @@ interface TaskTableProps {
   onOpen: (task: CircleTask) => void;
   // the table's name for screen readers
   label: string;
+  // where a row can be deleted outright, a last column with a trash button
+  // (the meeting wizard's Tasks step, for what was just added there)
+  onDelete?: (task: CircleTask) => void;
+  // columns to leave out where the table is narrow (the meeting wizard's): a
+  // hidden status is said under the title instead, as on a phone
+  hide?: ("status" | "priority")[];
 }
 
 /* Tasks as one table, whatever their status (what's live, then the back
@@ -30,7 +36,9 @@ interface TaskTableProps {
    each part, the soonest due comes first, undated last, then the most
    pressing, then by name. A row opens its task; it doesn't invert when
    pressed, being a row, but its round button does. */
-export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
+export function TaskTable({ tasks, onOpen, label, onDelete, hide = [] }: TaskTableProps) {
+  const showStatus = !hide.includes("status");
+  const showPriority = !hide.includes("priority");
   // ticking one done, and again to put it back as it was
   const { toggle: toggleDone } = useTaskTick();
   const memberById = useMemberById();
@@ -56,13 +64,20 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
             <span className="sr-only">Done</span>
           </th>
           <th scope="col" className={heading}>Task</th>
-          <th scope="col" className={clsx(heading, "w-28", WIDE)}>Status</th>
+          {showStatus && <th scope="col" className={clsx(heading, "w-28", WIDE)}>Status</th>}
           {/* no label: each row's mark says what this column is */}
-          <th scope="col" className={clsx(heading, "w-12 min-[720px]:w-16")}>
-            <span className="sr-only">Priority</span>
-          </th>
+          {showPriority && (
+            <th scope="col" className={clsx(heading, "w-12 min-[720px]:w-16")}>
+              <span className="sr-only">Priority</span>
+            </th>
+          )}
           <th scope="col" className={clsx(heading, "w-20 min-[720px]:w-28")}>Due</th>
           <th scope="col" className={clsx(heading, "w-40", WIDE)}>Assigned to</th>
+          {onDelete && (
+            <th scope="col" className="w-11 py-3 pr-3 align-middle">
+              <span className="sr-only">Delete</span>
+            </th>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -102,8 +117,9 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                 </button>
                 {/* a phone has no Status column: In progress here instead (Done
                     shows in the round button and the struck title) */}
-                {t.status === "doing" && <span className="mt-0.5 block font-serif text-sm text-soft min-[720px]:hidden">In progress</span>}
+                {t.status === "doing" && <span className={clsx("mt-0.5 block font-serif text-sm text-soft", showStatus && "min-[720px]:hidden")}>In progress</span>}
               </td>
+              {showStatus && (
               <td className={clsx(CELL, "py-3", WIDE)}>
                 <span
                   className={clsx(
@@ -114,12 +130,15 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                   {TASK_STATUSES.find((s) => s.key === t.status)?.label}
                 </span>
               </td>
+              )}
+              {showPriority && (
               <td className={clsx(CELL, "py-3")}>
                 <span title={priority.label} className="text-lg leading-none">
                   {priority.mark}
                   <span className="sr-only">{priority.label}</span>
                 </span>
               </td>
+              )}
               <td className={clsx(CELL, "py-3 whitespace-nowrap")}>
                 {due ? (
                   <span className={clsx("inline-block border px-2 py-0.5 font-sans text-xs font-bold", due.overdue ? "border-tint-danger bg-tint-danger text-on-action" : "border-ink text-ink")}>
@@ -138,7 +157,7 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                   <span className="text-soft">–</span>
                 )}
               </td>
-              <td className={clsx(CELL, "py-3 pr-3", WIDE)}>
+              <td className={clsx(CELL, "py-3", onDelete ? "" : "pr-3", WIDE)}>
                 {assignee ? (
                   <span className="flex items-center gap-2 font-serif text-sm text-body">
                     <Avatar member={assignee} size={24} />
@@ -148,6 +167,22 @@ export function TaskTable({ tasks, onOpen, label }: TaskTableProps) {
                   <span className="font-serif text-sm text-soft">No one yet</span>
                 )}
               </td>
+              {onDelete && (
+                <td className="py-3 pr-3 text-right">
+                  <button
+                    type="button"
+                    title="Delete task"
+                    aria-label={`Delete “${t.title}”`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(t);
+                    }}
+                    className="hit danger-press inline-flex size-6 cursor-pointer items-center justify-center border border-danger bg-paper text-danger"
+                  >
+                    <TrashIcon className="size-4" aria-hidden />
+                  </button>
+                </td>
+              )}
             </tr>
           );
         })}

@@ -9,10 +9,10 @@ import type { AgendaCategory, AgendaItem } from "./types";
 
 export const AGENDA_CATEGORIES: AgendaCategory[] = ["report", "explore", "decide"];
 
-export const AGENDA_CATEGORY: Record<AgendaCategory, { letter: string; label: string; hint: string }> = {
-  report: { letter: "R", label: "Report", hint: "Sharing information. Questions to clarify, but no discussion." },
-  explore: { letter: "E", label: "Explore", hint: "Discussing and gathering ideas. No decision yet." },
-  decide: { letter: "D", label: "Decide", hint: "Making a decision together, by consent." },
+export const AGENDA_CATEGORY: Record<AgendaCategory, { letter: string; label: string; hint: string; notesPlaceholder: string }> = {
+  report: { letter: "R", label: "Report", hint: "Sharing information. Questions to clarify, but no discussion.", notesPlaceholder: "Key points shared, and any questions asked." },
+  explore: { letter: "E", label: "Explore", hint: "Discussing and gathering ideas. No decision yet.", notesPlaceholder: "Ideas raised, concerns, and where people leaned." },
+  decide: { letter: "D", label: "Decide", hint: "Making a decision together, by consent.", notesPlaceholder: "The proposal, any objections, and what was decided." },
 };
 
 export const AGENDA_TITLE_MAX = 120;

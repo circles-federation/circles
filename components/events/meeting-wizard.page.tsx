@@ -14,10 +14,11 @@ import { Button, ConfirmModal, Eyebrow, PageContainer } from "@/components/share
 import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { useToast } from "@/components/shared/toast";
-import { addMeetingGuestAction, addMeetingTaskAction, addMeetingTopicAction, finishMeetingAction, removeMeetingGuestAction, removeMeetingTopicAction, saveMeetingNotesAction, setMeetingPresentAction, setMeetingStepAction, startMeetingAction, takeOverMeetingAction } from "@/lib/db/actions";
+import { addMeetingGuestAction, addMeetingTaskAction, moveMeetingTopicAction, removeMeetingTaskAction, addMeetingTopicAction, finishMeetingAction, removeMeetingGuestAction, removeMeetingTopicAction, saveMeetingNotesAction, setMeetingPresentAction, setMeetingStepAction, startMeetingAction, takeOverMeetingAction } from "@/lib/db/actions";
 import { useGoBack } from "@/components/providers/back-handler-provider";
 import { useClock, useMemberById } from "@/lib/hooks";
 import { canRunMeeting, lastStep, stepAt } from "@/lib/meeting-session.util";
+import type { TaskInput } from "@/lib/tasks.util";
 import { useMeetingSession } from "@/lib/use-meeting-session";
 import type { Circle, Event, MeetingSession } from "@/lib/types";
 
@@ -33,10 +34,11 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
   const memberById = useMemberById();
   const now = useClock();
   const goBack = useGoBack();
-  const { adoptTask } = useAppState();
+  const { adoptTask, dropTask } = useAppState();
   const router = useRouter();
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [confirmTakeOver, setConfirmTakeOver] = useState(false);
+  const [deletingTask, setDeletingTask] = useState<{ id: string; title: string } | null>(null);
 
   // whatever an action returns is adopted at once; a refusal is a toast
   const run = async (action: Promise<Result>, errorTitle?: string): Promise<boolean> => {
@@ -44,6 +46,19 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
     if (result.ok) adopt(result.value);
     else showToast({ ...(errorTitle ? { title: errorTitle } : {}), message: result.error, tone: "error" });
     return result.ok;
+  };
+
+  // a task made here, from the Tasks step or from a topic: adopted into app
+  // state so the circle's Tasks and Home show it without waiting for a refresh
+  const addTask = async (input: TaskInput): Promise<boolean> => {
+    const result = await addMeetingTaskAction(e.id, input);
+    if (!result.ok) {
+      showToast({ title: "Couldn’t add task", message: result.error, tone: "error" });
+      return false;
+    }
+    adopt(result.value.session);
+    adoptTask(result.value.task);
+    return true;
   };
 
   const live = session?.status === "live";
@@ -130,28 +145,38 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
             onAddGuest={(input) => run(addMeetingGuestAction(e.id, input), "Couldn’t add guest")}
             onRemoveGuest={(guestId) => void run(removeMeetingGuestAction(e.id, guestId), "Couldn’t remove guest")}
           />}
-        {step?.kind === "agenda" && <MeetingAgendaStep session={session} canEdit={attending} onAdd={(item) => run(addMeetingTopicAction(e.id, item))} onRemove={(topicId) => void run(removeMeetingTopicAction(e.id, topicId))} />}
-        {topic && <MeetingTopicStep key={topic.id} topic={topic} canWrite={attending} onSave={(notes) => run(saveMeetingNotesAction(e.id, topic.id, notes))} />}
+        {step?.kind === "agenda" && <MeetingAgendaStep session={session} canEdit={attending} onAdd={(item) => run(addMeetingTopicAction(e.id, item))} onRemove={(topicId) => void run(removeMeetingTopicAction(e.id, topicId))} onMove={(topicId, by) => void run(moveMeetingTopicAction(e.id, topicId, by), "Couldn’t move topic")} />}
+        {topic && <MeetingTopicStep key={topic.id} topic={topic} canWrite={attending} onSave={(notes) => run(saveMeetingNotesAction(e.id, topic.id, notes))} session={session} circle={circle} memberId={memberId} onAddTask={addTask} />}
         {step?.kind === "tasks" && (
           <MeetingTasksStep
             session={session}
             circle={circle}
             canAdd={attending}
             memberId={memberId}
-            onAdd={async (input) => {
-              const result = await addMeetingTaskAction(e.id, input);
-              if (!result.ok) {
-                showToast({ message: result.error, tone: "error" });
-                return false;
-              }
-              adopt(result.value.session);
-              adoptTask(result.value.task);
-              return true;
-            }}
+            onAdd={addTask}
+            onDelete={(t) => setDeletingTask({ id: t.id, title: t.title })}
           />
         )}
-        {step?.kind === "wrapup" && <MeetingWrapupStep session={session} facilitating={facilitating} />}
+        {step?.kind === "wrapup" && <MeetingWrapupStep session={session} event={e} circle={circle} facilitating={facilitating} />}
       </div>
+
+      {deletingTask && (
+        <ConfirmModal
+          title="Delete this task?"
+          message={`“${deletingTask.title}” will be removed from the circle’s tasks too.`}
+          confirmLabel="Delete"
+          cancelLabel="Keep it"
+          onCancel={() => setDeletingTask(null)}
+          onConfirm={() => {
+            const { id } = deletingTask;
+            setDeletingTask(null);
+            // gone from the circle's tasks as well, not just this list
+            void run(removeMeetingTaskAction(e.id, id), "Couldn’t delete task").then((ok) => {
+              if (ok) dropTask(id);
+            });
+          }}
+        />
+      )}
 
       {confirmTakeOver && (
         <ConfirmModal

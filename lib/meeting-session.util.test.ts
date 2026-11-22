@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicRemoved, stepAt, stepLabel, normalizeGuestEmail, validateGuestAttendee, validateNotes } from "./meeting-session.util";
+import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicMoved, stepAfterTopicRemoved, stepAt, stepLabel, normalizeGuestEmail, validateGuestAttendee, validateNotes } from "./meeting-session.util";
 
 const meeting = { date: "2026-11-10", start: "10:00", end: "12:00" };
 const at = (h: number, m = 0, day = 10) => new Date(2026, 10, day, h, m);
@@ -89,5 +89,18 @@ describe("validateGuestAttendee", () => {
 
   it("stores an address trimmed and lowercased", () => {
     expect(normalizeGuestEmail("  Ada@Example.ORG ")).toBe("ada@example.org");
+  });
+});
+
+describe("stepAfterTopicMoved", () => {
+  it("keeps the wizard on the same topic when it, or the one it swapped with, moves", () => {
+    // three topics: steps 2-4 are topics 0-2, then tasks (5) and the wrap-up (6)
+    expect(stepAfterTopicMoved(2, 3, 0, 1)).toBe(3);
+    expect(stepAfterTopicMoved(3, 3, 0, 1)).toBe(2);
+    expect(stepAfterTopicMoved(4, 3, 0, 1)).toBe(4);
+  });
+
+  it("leaves attendance, the agenda, tasks and the wrap-up where they are", () => {
+    expect([0, 1, 5, 6].map((s) => stepAfterTopicMoved(s, 3, 0, 1))).toEqual([0, 1, 5, 6]);
   });
 });
