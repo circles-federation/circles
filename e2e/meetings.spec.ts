@@ -56,7 +56,7 @@ test("a circle holds a meeting together, live, and corrects its minutes", async 
   // Priya adds a task out of the meeting; Mira sees it
   await p.getByLabel("Title").fill("Book the hall");
   await p.getByRole("button", { name: "Add task" }).click();
-  await expect(m.getByRole("link", { name: "Book the hall" })).toBeVisible();
+  await expect(m.getByRole("button", { name: "Book the hall", exact: true })).toBeVisible();
 
   // Mira finishes it; Priya sees it's finished
   await m.getByRole("list", { name: "Steps" }).getByRole("button", { name: "Finish" }).click();
