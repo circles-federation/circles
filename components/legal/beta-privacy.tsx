@@ -22,6 +22,7 @@ export function BetaPrivacy() {
         <li>What you write in a circle&apos;s chat. Deleting a message erases its text and leaves a gap in the thread.</li>
         <li>When a circle you belong to holds a meeting in Circles: who was there, the notes taken on each topic of its agenda, the tasks that came out of it and who last edited the minutes, and when. If you attended without an account, the name and email the facilitator wrote in for you (we don&apos;t check the address).</li>
         <li>If you RSVP to an event someone shared with you, without an account: your name and email address, and which member shared the link with you. To limit abuse, a scrambled (hashed) form of your IP address is kept for a day, only to count how many codes one connection asks for.</li>
+        <li>If you use Google to sign in or apply: Google tells Circles your name and email address (nothing else, and we don&apos;t keep your Google photo), and that you&apos;ve signed in. Circles never sees your Google password.</li>
         <li>Your sign-ins, including your IP address and browser type, to keep your account secure.</li>
         <li>When Circles breaks, an error report: what failed, which page (never its query or the secret in a shared link), which version of Circles and your browser type. It&apos;s sent to the error tracker the people running Circles use, and leaves out your name, email address and anything you wrote.</li>
       </LegalList>
@@ -50,7 +51,7 @@ export function BetaPrivacy() {
 
       <LegalHeading>Who else handles it</LegalHeading>
       <LegalParagraph>
-        Railway hosts Circles and its database, and Resend delivers its emails. A member who hasn&apos;t uploaded a photo is shown with a placeholder image from pravatar.cc, which sees the viewer&apos;s IP address.
+        Railway hosts Circles and its database, and Resend delivers its emails. If you choose to sign in or apply with Google, Google handles that sign-in under its own privacy policy and learns that you use Circles. A member who hasn&apos;t uploaded a photo is shown with a placeholder image from pravatar.cc, which sees the viewer&apos;s IP address.
       </LegalParagraph>
 
       <LegalHeading>Your choices</LegalHeading>

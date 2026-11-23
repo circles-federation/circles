@@ -52,7 +52,8 @@ export async function getNeighborhoodsForApplying(): Promise<CirclePlace[]> {
    them. The address must be the one they RSVPed with. */
 export interface VerifiedGuest {
   email: string;
-  eventId: string;
+  // null for someone whose address Google confirmed, who came by no event
+  eventId: string | null;
   invitedBy: number | null;
 }
 

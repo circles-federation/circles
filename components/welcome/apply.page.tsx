@@ -6,6 +6,7 @@ import { ArrowLeftIcon, CameraIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, FederationExplorerField, Input, Label, useFederationExplorer, useToast } from "@/components/shared";
 import { toSquareJpeg } from "@/components/profile/photo-picker";
 import { confirmApplicationCode, resendApplicationCode, submitApplication } from "@/lib/apply";
+import { GoogleButton, OrDivider } from "./google-button";
 import { BetaPrivacy } from "@/components/legal/beta-privacy";
 import { BetaTerms } from "@/components/legal/beta-terms";
 import type { CirclePlace } from "@/lib/types";
@@ -21,6 +22,11 @@ interface ApplyPageProps {
   // someone who RSVPed to an event from its share link: their address is
   // already proved, so there's no code to enter
   guest?: { id: string; firstName: string; lastName: string; email: string };
+  // Apply with Google is offered, and how it went: someone Google has vouched
+  // for arrives like a guest, with the address it confirmed
+  googleEnabled?: boolean;
+  googleFailed?: boolean;
+  google?: { firstName: string; lastName: string; email: string };
 }
 
 /* Applying to join — there's no sign-up: every application is read by a
@@ -29,10 +35,11 @@ interface ApplyPageProps {
    address is theirs and sends the application for review; and a "thanks,
    we'll email you". Outside the signed-in app, so it's laid out like the
    welcome page rather than under a top bar. */
-export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPageProps) {
+export function ApplyPage({ neighborhoods, neighborhoodId = "", guest, googleEnabled = false, googleFailed = false, google }: ApplyPageProps) {
   const { showToast } = useToast();
   const [step, setStep] = useState<Step>("form");
-  const [input, setInput] = useState<ApplicationInput>({ firstName: guest?.firstName ?? "", lastName: guest?.lastName ?? "", email: guest?.email ?? "", neighborhoodId });
+  const known = guest ?? google;
+  const [input, setInput] = useState<ApplicationInput>({ firstName: known?.firstName ?? "", lastName: known?.lastName ?? "", email: known?.email ?? "", neighborhoodId });
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [errors, setErrors] = useState<ApplicationErrors>({});
   const [applicationId, setApplicationId] = useState("");
@@ -56,6 +63,13 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
     window.scrollTo(0, 0);
   }, [step]);
 
+  useEffect(() => {
+    if (googleFailed) window.history.replaceState(null, "", neighborhoodId ? `/join?neighborhood=${encodeURIComponent(neighborhoodId)}` : "/join");
+    if (googleFailed) showToast({ tone: "error", title: "Couldn't apply with Google", message: "Try again, or fill in the form with your email." });
+    // once, for the page as it opened
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleContinue(e: FormEvent) {
     e.preventDefault();
     const found = validateApplication(input, !!photo);
@@ -70,6 +84,7 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
     form.set("photo", photo, "photo.jpg");
     form.set("agreementVersion", BETA_AGREEMENT_VERSION);
     if (guest) form.set("guestId", guest.id);
+    else if (google) form.set("google", "1");
     setBusy(true);
     const result = await submitApplication(form);
     setBusy(false);
@@ -130,6 +145,21 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
 
         {step === "form" && (
           <form onSubmit={handleContinue} noValidate className="flex flex-col gap-6">
+            {googleEnabled && !known && (
+              <div>
+                <GoogleButton
+                  onClick={() => {
+                    // a full navigation: it's a route handler that sends them on to Google, not a page
+                    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                    window.location.href = `/api/google/apply${input.neighborhoodId ? `?neighborhood=${encodeURIComponent(input.neighborhoodId)}` : ""}`;
+                  }}
+                  className="w-full"
+                >
+                  Apply with Google
+                </GoogleButton>
+                <OrDivider />
+              </div>
+            )}
             <PhotoField photo={photo} onChange={setPhoto} error={errors.photo} />
 
             <div className="grid grid-cols-1 gap-6 min-[480px]:grid-cols-2 min-[480px]:gap-3">
@@ -147,10 +177,10 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest }: ApplyPa
 
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={input.email} onChange={(e) => set({ email: e.target.value })} placeholder="you@example.com" autoComplete="email" disabled={!!guest} />
+              <Input id="email" type="email" value={input.email} onChange={(e) => set({ email: e.target.value })} placeholder="you@example.com" autoComplete="email" disabled={!!known} />
               <FieldError
                 message={errors.email}
-                hint={guest ? "You confirmed this address when you RSVPed. You'll sign in with it." : "We'll send a code here to confirm it's yours, and you'll sign in with it."}
+                hint={guest ? "You confirmed this address when you RSVPed. You'll sign in with it." : google ? "Google confirmed this address. You'll sign in with it, or with Google." : "We'll send a code here to confirm it's yours, and you'll sign in with it."}
               />
             </div>
 
