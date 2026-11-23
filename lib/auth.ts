@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/better-auth";
 import { getMemberByEmail } from "@/lib/db/members";
+import { googleEnabled } from "@/lib/google";
 import { sendEmail } from "@/lib/email";
 import { loginCodeEmail } from "@/lib/email/templates.util";
 
@@ -75,6 +76,23 @@ export async function verifyLoginCode(email: string, code: string): Promise<Auth
     return { ok: false, error: "That code doesn't match, or has expired — request a new one." };
   }
   return { ok: true };
+}
+
+/* "Sign in with Google": where to send the browser. Google brings them back to
+   Better Auth's callback, which signs them in if the Google address belongs to
+   a member, and otherwise returns to the welcome page with ?error=. */
+export async function startGoogleSignIn(): Promise<AuthResult & { url?: string }> {
+  if (!googleEnabled()) return { ok: false, error: "Sign in with Google isn't available." };
+  try {
+    const { url } = await auth.api.signInSocial({
+      body: { provider: "google", callbackURL: "/home", errorCallbackURL: "/", disableRedirect: true },
+      headers: await headers(),
+    });
+    return url ? { ok: true, url } : { ok: false, error: "Couldn't reach Google — try again in a moment." };
+  } catch (err) {
+    console.error("Couldn't start Google sign-in:", err);
+    return { ok: false, error: "Couldn't reach Google — try again in a moment." };
+  }
 }
 
 export async function logout(): Promise<AuthResult> {

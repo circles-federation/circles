@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UsersIcon } from "@heroicons/react/24/outline";
 import { Button, Eyebrow, FloatingActionButton, Input, Label, Modal, OfflineBanner, useToast, MastheadGlow } from "@/components/shared";
-import { requestLoginCode, verifyLoginCode } from "@/lib/auth";
+import { requestLoginCode, startGoogleSignIn, verifyLoginCode } from "@/lib/auth";
+import { GoogleButton, OrDivider } from "./google-button";
 import { InstallPrompt } from "./install-prompt";
 import { EMAIL_SHAPE } from "@/lib/applications.util";
 import type { Member } from "@/lib/types";
@@ -17,6 +18,10 @@ interface WelcomePageProps {
   // AppStateProvider, so it can't read the roster from app state); empty in
   // production, which hides the demo-accounts button
   demoMembers: Member[];
+  // Google's keys are set, so "Sign in with Google" is offered
+  googleEnabled?: boolean;
+  // where a Google sign-in came back to, with what went wrong (Better Auth's code)
+  error?: string;
 }
 
 /* The unauthenticated welcome page — passwordless email + one-time-code
@@ -30,7 +35,7 @@ interface WelcomePageProps {
    product feature — it exists so someone showing the app off knows which
    emails are actually signed-in-able, since there's no real account list to
    check against yet. */
-export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) {
+export function WelcomePage({ demoMembers: demoMembersProp, googleEnabled = false, error }: WelcomePageProps) {
   const router = useRouter();
   const { showToast } = useToast();
   // only members with an email can actually be signed in as — see lib/db/members.ts's getMemberByEmail
@@ -42,6 +47,30 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
   const [devCode, setDevCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({
+      tone: "error",
+      title: "Couldn't sign in with Google",
+      message: error === "signup_disabled" ? "We don't recognize that Google account's email yet. Join first, or sign in with the email you joined with." : "Something went wrong — try again, or use your email.",
+    });
+    // once, for the page as it opened
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleGoogle() {
+    if (busy) return;
+    setBusy(true);
+    const result = await startGoogleSignIn();
+    if (!result.ok || !result.url) {
+      setBusy(false);
+      showToast({ tone: "error", title: "Couldn't sign in with Google", message: result.error ?? "Try again in a moment." });
+      return;
+    }
+    // leaves the page; stays busy so it can't be pressed twice
+    window.location.assign(result.url);
+  }
 
   async function handleSendCode(e: FormEvent) {
     e.preventDefault();
@@ -118,6 +147,14 @@ export function WelcomePage({ demoMembers: demoMembersProp }: WelcomePageProps) 
             <Button type="submit" disabled={busy || !emailValid} className="mt-4 w-full">
               {busy ? "Sending…" : "Send code"}
             </Button>
+            {googleEnabled && (
+              <>
+                <OrDivider />
+                <GoogleButton onClick={handleGoogle} disabled={busy} className="w-full">
+                  Sign in with Google
+                </GoogleButton>
+              </>
+            )}
           </form>
         ) : (
           <form onSubmit={handleVerify} className="border border-ink bg-paper p-5">

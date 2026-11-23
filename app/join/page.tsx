@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { ApplyPage } from "@/components/welcome/apply.page";
 import { getNeighborhoodsForApplying } from "@/lib/db/applications";
 import { getVerifiedGuest } from "@/lib/db/guest-rsvps";
+import { GOOGLE_APPLICANT_COOKIE, googleEnabled, readApplicant } from "@/lib/google";
 import { GUEST_COOKIE, guestIdsFrom } from "@/lib/guest-rsvp.util";
 
 // the neighborhoods are read per request, so a new one is offered at once
@@ -12,18 +13,23 @@ export const dynamic = "force-dynamic";
    started for them: their name and the email they proved are filled in, and the
    email can't be changed, since it's what the RSVP was confirmed for. The RSVP
    only counts if this browser holds it (its cookie), so a link passed on gets
-   nothing. From a neighborhood's poster (?neighborhood=<id>), that
+   nothing. After Apply with Google (?google=failed if it didn't work), the name and address Google confirmed are filled in the same way, from a signed cookie. From a neighborhood's poster (?neighborhood=<id>), that
    neighborhood starts chosen, and can still be changed. */
-export default async function Page({ searchParams }: { searchParams: Promise<{ guest?: string; neighborhood?: string }> }) {
-  const { guest: guestId, neighborhood } = await searchParams;
+export default async function Page({ searchParams }: { searchParams: Promise<{ guest?: string; neighborhood?: string; google?: string }> }) {
+  const { guest: guestId, neighborhood, google: googleResult } = await searchParams;
   const neighborhoods = await getNeighborhoodsForApplying();
   const chosen = neighborhoods.find((n) => n.id === neighborhood && n.type === "neighborhood");
   const guest = guestId ? await getVerifiedGuest(guestIdsFrom((await cookies()).get(GUEST_COOKIE)?.value), guestId) : null;
+  // or Google vouched for the address (Apply with Google, lib/google.ts)
+  const googleApplicant = guest ? null : readApplicant((await cookies()).get(GOOGLE_APPLICANT_COOKIE)?.value);
   const [firstName = "", ...rest] = guest ? guest.name.trim().split(/\s+/) : [];
   return (
     <ApplyPage
       neighborhoods={neighborhoods}
       {...(chosen ? { neighborhoodId: chosen.id } : {})}
+      googleEnabled={googleEnabled()}
+      {...(googleResult === "failed" ? { googleFailed: true } : {})}
+      {...(googleApplicant ? { google: googleApplicant } : {})}
       {...(guest ? { guest: { id: guest.id, firstName, lastName: rest.join(" "), email: guest.email } } : {})}
     />
   );

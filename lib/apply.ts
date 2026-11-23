@@ -5,6 +5,7 @@ import { getVerifiedGuest } from "@/lib/db/guest-rsvps";
 import { GUEST_COOKIE, guestIdsFrom } from "@/lib/guest-rsvp.util";
 import { takeAllowance } from "@/lib/code-allowance";
 import { UserFacingError } from "@/lib/db/errors";
+import { GOOGLE_APPLICANT_COOKIE, readApplicant } from "@/lib/google";
 import { validateApplication } from "@/lib/applications.util";
 import { CONFIRM_CODE_MINUTES, confirmApplication, renewConfirmationCode, startApplication, unconfirmedApplicationEmail } from "@/lib/db/applications";
 import { sendEmail } from "@/lib/email";
@@ -53,7 +54,11 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
   const guestId = field("guestId");
   const guest = guestId ? await getVerifiedGuest(guestIdsFrom((await cookies()).get(GUEST_COOKIE)?.value), guestId) : null;
   if (guestId && !guest) return { ok: false, error: "That RSVP isn't from this browser — join without it, or RSVP again." };
-  const wait = guest ? null : cooldownError(email);
+  // or someone Google has vouched for (lib/google.ts): same, with no event behind it
+  const google = !guest && field("google") ? readApplicant((await cookies()).get(GOOGLE_APPLICANT_COOKIE)?.value) : null;
+  if (field("google") && !guest && !google) return { ok: false, error: "Your Google sign-in has expired — apply with Google again, or use your email." };
+  const verified = guest ? { email: guest.email, eventId: guest.eventId, invitedBy: guest.invitedBy } : google ? { email: google.email, eventId: null, invitedBy: null } : undefined;
+  const wait = verified ? null : cooldownError(email);
   if (wait) return { ok: false, error: wait };
   try {
     // an application stores a photo and emails a code to whatever address was
@@ -61,14 +66,17 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
     // refused first and doesn't spend it)
     const details = { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId") };
     const complete = !Object.values(validateApplication(details, photo instanceof Blob && photo.size > 0))[0];
-    if (!guest && complete) await takeAllowance();
+    if (!verified && complete) await takeAllowance();
     const { id, code } = await startApplication(
       { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId") },
       photo instanceof Blob ? photo : new Blob(),
       field("agreementVersion"),
-      guest ? { email: guest.email, eventId: guest.eventId, invitedBy: guest.invitedBy } : undefined
+      verified
     );
-    if (code === null) return { ok: true, id, confirmed: true };
+    if (code === null) {
+      if (google) (await cookies()).delete(GOOGLE_APPLICANT_COOKIE);
+      return { ok: true, id, confirmed: true };
+    }
     const failed = await sendCode(email, code);
     if (failed) return { ok: false, error: failed };
     return { ok: true, id, ...devCode(code) };

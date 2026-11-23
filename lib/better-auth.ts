@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins/email-otp";
-import { nextCookies } from "better-auth/next-js";
+import { nextCookies, toNextJsHandler } from "better-auth/next-js";
 import { db } from "./db/client";
 import * as schema from "./db/schema";
 import { LOGIN_CODE_MINUTES } from "./email/templates.util";
@@ -29,6 +29,12 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
   emailAndPassword: { enabled: false },
+  // "Sign in with Google" — only for an address that already belongs to a
+  // member: disableSignUp makes any other Google account a refusal
+  // (signup_disabled), never a new user. Left out until the keys are set.
+  socialProviders: process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ? { google: { clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET, disableSignUp: true } }
+    : {},
   plugins: [
     emailOTP({
       otpLength: 6,
@@ -43,3 +49,8 @@ export const auth = betterAuth({
     nextCookies(),
   ],
 });
+
+// the one route Better Auth gets over HTTP: where Google sends someone back
+// from signing in (app/api/auth/callback/google). The rest of its API stays
+// unmounted, since lib/auth.ts calls it directly.
+export const googleSignInCallback = (request: Request) => toNextJsHandler(auth).GET(request);
