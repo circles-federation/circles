@@ -18,7 +18,8 @@ export const googleEnabled = () => !!(process.env.GOOGLE_CLIENT_ID && process.en
 export const GOOGLE_FLOW_COOKIE = "google_apply_flow";
 export const GOOGLE_APPLICANT_COOKIE = "google_applicant";
 export const GOOGLE_FLOW_MS = 10 * 60_000;
-export const GOOGLE_APPLICANT_MS = 30 * 60_000;
+// short, so the next person at a shared computer finds nothing of the last
+export const GOOGLE_APPLICANT_MS = 15 * 60_000;
 
 export interface GoogleApplicant {
   email: string;
@@ -29,9 +30,15 @@ export interface GoogleApplicant {
 const secret = () => process.env.BETTER_AUTH_SECRET ?? "";
 export const googleApplyRedirectUri = () => `${(process.env.BETTER_AUTH_URL ?? "").replace(/\/$/, "")}/api/google/apply`;
 
-export const readApplicant = (cookie: string | undefined) => readToken<GoogleApplicant>(cookie, secret());
+// each token says what it's for, so one signed for another purpose (the flow's
+// cookie is signed the same way) is never taken for the other
+export function readApplicant(cookie: string | undefined): GoogleApplicant | null {
+  const t = readToken<GoogleApplicant & { purpose?: string }>(cookie, secret());
+  if (!t || t.purpose !== "applicant" || typeof t.email !== "string" || !t.email || typeof t.firstName !== "string" || typeof t.lastName !== "string") return null;
+  return { email: t.email, firstName: t.firstName, lastName: t.lastName };
+}
 
-export const applicantToken = (applicant: GoogleApplicant) => signToken(applicant, secret(), GOOGLE_APPLICANT_MS);
+export const applicantToken = (applicant: GoogleApplicant) => signToken({ ...applicant, purpose: "applicant" }, secret(), GOOGLE_APPLICANT_MS);
 
 // where to send the browser, and the flow cookie that lets the callback check
 // it's the same browser coming back
@@ -50,11 +57,12 @@ export function startApplyFlow(neighborhood: string): { url: string; cookie: str
   });
   return {
     url: `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
-    cookie: signToken({ state, verifier, neighborhood }, secret(), GOOGLE_FLOW_MS),
+    cookie: signToken({ state, verifier, neighborhood, purpose: "flow" }, secret(), GOOGLE_FLOW_MS),
   };
 }
 
 interface Flow {
+  purpose?: string;
   state: string;
   verifier: string;
   neighborhood: string;
@@ -63,7 +71,7 @@ interface Flow {
 // the callback: null if anything doesn't check out
 export async function finishApplyFlow(code: string, state: string, flowCookie: string | undefined): Promise<{ applicant: GoogleApplicant; neighborhood: string } | null> {
   const flow = readToken<Flow>(flowCookie, secret());
-  if (!flow || flow.state !== state) return null;
+  if (!flow || flow.purpose !== "flow" || flow.state !== state) return null;
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },

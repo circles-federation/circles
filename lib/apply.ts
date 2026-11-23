@@ -66,7 +66,8 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
     // refused first and doesn't spend it)
     const details = { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId") };
     const complete = !Object.values(validateApplication(details, photo instanceof Blob && photo.size > 0))[0];
-    if (!verified && complete) await takeAllowance();
+    // a guest's is tied to an RSVP, but a Google applicant could resubmit a photo for the cookie's lifetime
+    if (!guest && complete) await takeAllowance();
     const { id, code } = await startApplication(
       { firstName: field("firstName"), lastName: field("lastName"), email, neighborhoodId: field("neighborhoodId") },
       photo instanceof Blob ? photo : new Blob(),
@@ -81,7 +82,11 @@ export async function submitApplication(form: FormData): Promise<Result<{ id: st
     if (failed) return { ok: false, error: failed };
     return { ok: true, id, ...devCode(code) };
   } catch (err) {
-    if (err instanceof UserFacingError) return { ok: false, error: err.message };
+    if (err instanceof UserFacingError) {
+      // a definite refusal ends their Google sign-in, so it isn't left for whoever uses the browser next
+      if (google) (await cookies()).delete(GOOGLE_APPLICANT_COOKIE);
+      return { ok: false, error: err.message };
+    }
     console.error("Couldn't start an application:", err);
     return { ok: false, error: "Something went wrong — try again in a moment." };
   }

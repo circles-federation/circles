@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getMemberByEmail } from "@/lib/db/members";
 import { GOOGLE_APPLICANT_COOKIE, GOOGLE_APPLICANT_MS, GOOGLE_FLOW_COOKIE, GOOGLE_FLOW_MS, applicantToken, finishApplyFlow, googleEnabled, startApplyFlow } from "@/lib/google";
 
 /* "Apply with Google" (see lib/google.ts). With no `code` it starts the flow and
@@ -27,6 +28,13 @@ export async function GET(request: NextRequest) {
     result = await finishApplyFlow(code, state, request.cookies.get(GOOGLE_FLOW_COOKIE)?.value);
   } catch (err) {
     console.error("Couldn't finish Apply with Google:", err);
+  }
+  // a member who pressed Apply instead of Sign in is sent to sign in, not
+  // through a form that could only end in a refusal
+  if (result && (await getMemberByEmail(result.applicant.email))) {
+    const res = NextResponse.redirect(new URL("/?error=already_member", process.env.BETTER_AUTH_URL ?? base));
+    res.cookies.delete(GOOGLE_FLOW_COOKIE);
+    return res;
   }
   const res = result ? back(result.neighborhood ? `?neighborhood=${encodeURIComponent(result.neighborhood)}` : "") : back("?google=failed");
   res.cookies.delete(GOOGLE_FLOW_COOKIE);

@@ -64,6 +64,7 @@ export function ApplyPage({ neighborhoods, neighborhoodId = "", guest, googleEna
   }, [step]);
 
   useEffect(() => {
+    if (googleFailed) window.history.replaceState(null, "", neighborhoodId ? `/join?neighborhood=${encodeURIComponent(neighborhoodId)}` : "/join");
     if (googleFailed) showToast({ tone: "error", title: "Couldn't apply with Google", message: "Try again, or fill in the form with your email." });
     // once, for the page as it opened
     // eslint-disable-next-line react-hooks/exhaustive-deps

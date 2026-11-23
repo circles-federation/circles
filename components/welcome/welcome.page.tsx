@@ -50,6 +50,12 @@ export function WelcomePage({ demoMembers: demoMembersProp, googleEnabled = fals
 
   useEffect(() => {
     if (!error) return;
+    // so a reload doesn't say it again
+    window.history.replaceState(null, "", "/");
+    if (error === "already_member") {
+      showToast({ tone: "info", title: "You're already a member", message: "Use Sign in with Google instead." });
+      return;
+    }
     showToast({
       tone: "error",
       title: "Couldn't sign in with Google",
