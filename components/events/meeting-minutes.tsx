@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { AgendaBadge } from "./agenda-section";
 import { Eyebrow } from "@/components/shared";
 import { AGENDA_CATEGORY } from "@/lib/agenda.util";
@@ -13,6 +14,7 @@ import type { MeetingSession } from "@/lib/types";
    written about it, and who last edited them and when. */
 export function MeetingMinutes({ session }: { session: MeetingSession }) {
   const memberById = useMemberById();
+  const sender = session.minutesSentBy !== undefined ? memberById(session.minutesSentBy) : undefined;
   const editor = session.minutesEditedBy !== undefined ? memberById(session.minutesEditedBy) : undefined;
   return (
     <div>
@@ -56,6 +58,11 @@ export function MeetingMinutes({ session }: { session: MeetingSession }) {
       {session.minutesEditedAt && (
         <p className="mt-6 font-sans text-xs font-bold tracking-open text-soft">
           Last edited{editor ? ` by ${editor.name}` : ""} {messageWhen(session.minutesEditedAt)}
+        </p>
+      )}
+      {session.minutesSentAt && (
+        <p className={clsx("font-sans text-xs font-bold tracking-open text-soft", session.minutesEditedAt ? "mt-2" : "mt-6")}>
+          Emailed{sender ? ` by ${sender.name}` : ""} {messageWhen(session.minutesSentAt)}
         </p>
       )}
     </div>

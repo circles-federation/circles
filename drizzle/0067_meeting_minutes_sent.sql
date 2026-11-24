@@ -1,0 +1,3 @@
+ALTER TABLE "meeting_sessions" ADD COLUMN "minutes_sent_by" integer;--> statement-breakpoint
+ALTER TABLE "meeting_sessions" ADD COLUMN "minutes_sent_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "meeting_sessions" ADD CONSTRAINT "meeting_sessions_minutes_sent_by_members_id_fk" FOREIGN KEY ("minutes_sent_by") REFERENCES "public"."members"("id") ON DELETE set null ON UPDATE no action;

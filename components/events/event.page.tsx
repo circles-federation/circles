@@ -3,7 +3,11 @@
 import { AgendaSection } from "./agenda-section";
 import { AttendeesSection } from "./attendees-section";
 import { CancelledBanner } from "./cancelled-banner";
-import { PageContainer } from "@/components/shared";
+import { useState } from "react";
+import { ConfirmModal, PageContainer } from "@/components/shared";
+import { useToast } from "@/components/shared/toast";
+import { sendMinutesAction } from "@/lib/db/actions";
+import { canSendMinutes } from "@/lib/meeting-session.util";
 import { EventDetailsSection } from "./event-details-section";
 import { EventFacts } from "./event-facts";
 import { EventMasthead } from "./event-masthead";
@@ -13,7 +17,7 @@ import { FinishedMeetingSection, MeetingSessionSection } from "./meeting-session
 import { RoleSlotsSection } from "./role-slots-section";
 import { useEventSharing } from "./event-sharing";
 import { ShiftStatusBanner } from "./shift-status-banner";
-import { ArrowUpTrayIcon, CalendarDaysIcon, DocumentTextIcon, LinkSlashIcon, PencilIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, CalendarDaysIcon, DocumentTextIcon, EnvelopeIcon, LinkSlashIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import type { TopBarMenuItem } from "@/components/shared";
 import { indexCircles } from "@/lib/circles.util";
@@ -60,7 +64,11 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
   // it could have begun, so the page of one still to come holds no connection
   const now = useClock();
   const meetingOpen = isMeeting(e) && !e.cancelled && !awaitingConsent(e) && now !== null && now >= eventStartsAt(e).getTime();
-  const { session } = useMeetingSession(e.id, meetingOpen);
+  const { session, adopt } = useMeetingSession(e.id, meetingOpen);
+  const { showToast } = useToast();
+  const [confirmSend, setConfirmSend] = useState(false);
+  const circle = circles.find((c) => c.id === e.circleId);
+  const canSend = session?.status === "finished" && !!circle && canSendMinutes(circle.roles ?? [], circle.members, session.facilitatorId, profile.id);
   const live = !e.cancelled && !ended && !awaitingConsent(e);
   const canEdit = canManageEvent(e, profile, indexCircles(circles)) && !e.cancelled && !isPastEvent(e) && !awaitingConsent(e);
   const sharing = useEventSharing(e.id, e.title, live && !isMeeting(e));
@@ -72,6 +80,9 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
   }
   // once it's finished, its circle's members can correct the minutes
   if (session?.status === "finished") menu.push({ label: "Edit minutes", href: `/events/${e.id}/minutes`, icon: DocumentTextIcon });
+  // the Secretary emails them to the circle and those who were there, once
+  // they're done, and again if they correct them
+  if (canSend) menu.push({ label: session.minutesSentAt ? "Send minutes again" : "Send minutes", icon: EnvelopeIcon, onSelect: () => setConfirmSend(true) });
   // shown before you're going, but only to be chosen once you are
   if (live) menu.push({ label: "Add to calendar", href: `/api/events/${e.id}/calendar`, file: true, icon: CalendarDaysIcon, disabled: !(isAttending(e, profile.id) || rsvpState[e.id]) });
   useTopBarMenu(menu);
@@ -127,6 +138,26 @@ export function EventPage({ event: e, profile, rsvpState, toggleRsvp, onOpenMemb
       </div>
 
       {sharing.dialogs}
+
+      {confirmSend && session && (
+        <ConfirmModal
+          title={session.minutesSentAt ? "Email the minutes again?" : "Email the minutes?"}
+          message="They go to the circle’s members and everyone who was here, as they stand now."
+          confirmLabel="Send"
+          cancelLabel="Not yet"
+          tone="ink"
+          onCancel={() => setConfirmSend(false)}
+          onConfirm={() => {
+            setConfirmSend(false);
+            void sendMinutesAction(e.id).then((result) => {
+              if (result.ok) {
+                adopt(result.value);
+                showToast({ message: "Minutes sent.", tone: "success" });
+              } else showToast({ title: "Couldn’t send the minutes", message: result.error, tone: "error" });
+            });
+          }}
+        />
+      )}
     </PageContainer>
   );
 }

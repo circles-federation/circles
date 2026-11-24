@@ -603,6 +603,9 @@ export const meetingSessions = pgTable(
     // who last changed the minutes, and when
     minutesEditedBy: integer("minutes_edited_by").references(() => members.id, { onDelete: "set null" }),
     minutesEditedAt: timestamp("minutes_edited_at", { withTimezone: true }),
+    // when the minutes were last emailed to the circle and who sent them
+    minutesSentBy: integer("minutes_sent_by").references(() => members.id, { onDelete: "set null" }),
+    minutesSentAt: timestamp("minutes_sent_at", { withTimezone: true }),
   },
   (t) => [check("meeting_sessions_status", sql`${t.status} in ('live', 'finished')`)]
 );

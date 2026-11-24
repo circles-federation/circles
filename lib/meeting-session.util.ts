@@ -11,6 +11,14 @@ export function canRunMeeting(e: Pick<Event, "date" | "start" | "end">, now: Dat
   return now >= eventStartsAt(e) && now.getTime() < eventEndsAt(e).getTime() + MEETING_RUN_GRACE_MS;
 }
 
+/* Who may email a finished meeting's minutes: the circle's Secretary, whose
+   job they are, or, while no member holds that role, the facilitator. (Whoever
+   finishes the meeting can send them as they do, from its dialog.) */
+export function canSendMinutes(roles: { label: string; memberId: number | null }[], members: number[], facilitatorId: number | null, memberId: number): boolean {
+  const secretary = roles.find((r) => r.label === "Secretary")?.memberId ?? null;
+  return secretary !== null && members.includes(secretary) ? secretary === memberId : facilitatorId === memberId;
+}
+
 export type MeetingStep = { kind: "attendance" } | { kind: "agenda" } | { kind: "topic"; index: number } | { kind: "tasks" } | { kind: "wrapup" };
 
 // attendance, the agenda's review, a step per topic, tasks, then the wrap-up

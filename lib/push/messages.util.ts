@@ -103,6 +103,11 @@ export function announcementPush(a: { resourceId: string; circleId: string; circ
   return message(`${a.circleName}: ${a.title}`, a.posterName ? `${a.posterName}: ${text}` : text, `/circles/${a.circleId}`, `announcement-${a.resourceId}`);
 }
 
+// a finished meeting's minutes, sent to its circle and those who were there
+export function minutesPush(d: { eventId: string; title: string; circleName: string; senderName: string }): PushMessage {
+  return message(`Minutes: ${d.title}`, `${d.senderName} sent the minutes of ${d.circleName}'s meeting.`, `/events/${d.eventId}`, `minutes-${d.eventId}`);
+}
+
 // a proposal to change a circle: open for an answer, or how it ended
 export function proposalPush(d: {
   proposalId: string;

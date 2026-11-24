@@ -22,7 +22,7 @@ import * as resources from "./resources";
 import * as tasks from "./tasks";
 import { sendEmail } from "@/lib/email";
 import { applicationApprovedEmail, applicationDeclinedEmail, invitationEmail, photoDecisionEmail, taskAssignedEmail } from "@/lib/email/templates.util";
-import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember, pushToMemberWithStatuses, tellCircleOfChat, tellCircleOfMessage } from "@/lib/notify";
+import { deliverAnnouncementNotifications, deliverEventNotifications, deliverProposalNotifications, pushToMember, pushToMemberWithStatuses, tellCircleOfChat, tellCircleOfMessage, tellCircleOfMinutes } from "@/lib/notify";
 import type { PushSubscriptionKeys } from "@/lib/push";
 import { invitationPush, photoDecisionPush, taskAssignedPush } from "@/lib/push/messages.util";
 import { dueLabel, type TaskInput } from "@/lib/tasks.util";
@@ -252,8 +252,24 @@ export async function saveMeetingMinutesAction(eventId: string, edits: { topicId
   return asMember((memberId) => meetingSessions.saveMinutes(memberId, eventId, edits));
 }
 
-export async function finishMeetingAction(eventId: string) {
-  return asMember((memberId) => meetingSessions.finishMeeting(memberId, eventId));
+// finishing may email the minutes to the circle and those who were there, as
+// they stand (the dialog's checkbox)
+export async function finishMeetingAction(eventId: string, sendMinutes = false) {
+  const result = await asMember((memberId) => meetingSessions.finishMeeting(memberId, eventId, new Date(), { sendMinutes }).then((session) => ({ session, memberId })));
+  if (!result.ok) return result;
+  const { session, memberId } = result.value;
+  if (sendMinutes) after(() => tellCircleOfMinutes(eventId, memberId));
+  return { ok: true as const, value: session };
+}
+
+// the Secretary (or the facilitator, where there's none) emails a finished
+// meeting's minutes, again if they've been corrected since
+export async function sendMinutesAction(eventId: string) {
+  const result = await asMember((memberId) => meetingSessions.sendMinutes(memberId, eventId).then((session) => ({ session, memberId })));
+  if (!result.ok) return result;
+  const { session, memberId } = result.value;
+  after(() => tellCircleOfMinutes(eventId, memberId));
+  return { ok: true as const, value: session };
 }
 
 async function asMember<T>(run: (memberId: number) => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; error: string }> {

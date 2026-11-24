@@ -489,6 +489,9 @@ export interface MeetingSession {
   rev: number;
   minutesEditedBy?: number;
   minutesEditedAt?: string;
+  // when the minutes were last emailed to the circle and the attendees, and by whom
+  minutesSentBy?: number;
+  minutesSentAt?: string;
 }
 
 /* A post on a neighborhood's bulletin, by one of the Circles in it, seen only

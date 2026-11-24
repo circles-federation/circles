@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { event } from "@/lib/test/factories";
 import { db } from "./client";
 import { insertEvent } from "./events";
-import { addGuestAttendee, addMeetingTask, moveTopic, removeMeetingTask, addTopic, finishLapsedMeetings, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingGuestPhoto, getMeetingSession, memberHasMeeting, removeGuestAttendee, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
-import { addCircle, addMember, giveRole, join, resetDb } from "./testing";
+import { addGuestAttendee, addMeetingTask, getMinutesNotice, sendMinutes, moveTopic, removeMeetingTask, addTopic, finishLapsedMeetings, finishMeeting, saveMinutes, getMeetingForFanout, getMeetingGuestPhoto, getMeetingSession, memberHasMeeting, removeGuestAttendee, removeTopic, saveTopicNotes, setPresent, setStep, startMeeting, takeOverFacilitator } from "./meeting-sessions";
+import { addCircle, addMember, giveRole, join, resetDb, setMemberEmail, setNotify } from "./testing";
 
 /* A live meeting: who may start it and when, who drives, who's there, and
    who writes the notes and minutes. */
@@ -537,5 +537,77 @@ describe("deleting a task the meeting made", () => {
     await expect(removeMeetingTask(1, "m1", "other")).rejects.toThrow(/isn't from this meeting/);
     const { rows } = await db.execute<{ n: number }>(sql`select count(*)::int as n from circle_tasks`);
     expect(rows[0]?.n).toBe(1);
+  });
+});
+
+describe("emailing the minutes", () => {
+  const GUEST = { name: "Ada Lovelace", email: "ada@example.test" };
+
+  beforeEach(async () => {
+    await startMeeting(1, "m1", during);
+    await setPresent(1, "m1", 2, true);
+  });
+
+  it("is for a finished meeting, by the Secretary, or by the facilitator while there isn't one", async () => {
+    await expect(sendMinutes(1, "m1")).rejects.toThrow("Finish the meeting before sending its minutes.");
+    await finishMeeting(1, "m1", during);
+    await giveRole("council", "Secretary", 2);
+    await expect(sendMinutes(1, "m1")).rejects.toThrow(/Only the Secretary/);
+    await expect(sendMinutes(3, "m1")).rejects.toThrow(/Only the Secretary/);
+    const sent = await sendMinutes(2, "m1", new Date(2026, 10, 10, 13, 0));
+    expect(sent).toMatchObject({ minutesSentBy: 2, minutesSentAt: expect.any(String) });
+    // and again after a correction
+    expect((await sendMinutes(2, "m1")).minutesSentBy).toBe(2);
+  });
+
+  it("falls back to the facilitator when no one holds Secretary", async () => {
+    await finishMeeting(1, "m1", during);
+    await expect(sendMinutes(2, "m1")).rejects.toThrow(/Only the Secretary/);
+    expect((await sendMinutes(1, "m1")).minutesSentBy).toBe(1);
+  });
+
+  it("is marked sent by finishing with it, whoever the Secretary is", async () => {
+    await giveRole("council", "Secretary", 2);
+    const s = await finishMeeting(1, "m1", during, { sendMinutes: true });
+    expect(s.minutesSentBy).toBe(1);
+  });
+
+  it("isn't marked sent by finishing without it", async () => {
+    expect((await finishMeeting(1, "m1", during)).minutesSentAt).toBeUndefined();
+  });
+
+  it("goes to the circle and those there but the sender, and to guests once, never as members' addresses twice", async () => {
+    await setMemberEmail(1, "m1@example.test");
+    await setMemberEmail(2, "m2@example.test");
+    await setMemberEmail(3, "m3@example.test");
+    // 4 isn't in the circle but was marked present; 3 is in it and wasn't
+    await setPresent(1, "m1", 1, true);
+    await db.execute(sql`insert into meeting_attendance (event_id, member_id) values ('m1', 4) on conflict do nothing`);
+    await setMemberEmail(4, "m4@example.test");
+    await addGuestAttendee(1, "m1", GUEST);
+    // a guest whose email is a member's is that member's copy alone
+    await addGuestAttendee(1, "m1", { name: "Mem Three", email: "M3@example.test" });
+    await saveTopicNotes(1, "m1", await tid(0), "Balance is **healthy**.");
+    await finishMeeting(1, "m1", during);
+    const notice = await getMinutesNotice("m1", 1);
+    expect(notice?.recipients.map((r) => r.memberId).sort()).toEqual([2, 3, 4]);
+    expect(notice?.recipients.find((r) => r.memberId === 2)?.data).toMatchObject({ name: "Member 2", circleName: expect.any(String), senderName: "Member 1", url: expect.stringContaining("/events/m1") });
+    expect(notice?.guests.map((g) => g.email)).toEqual(["ada@example.test"]);
+    expect(notice?.guests[0]?.data).toMatchObject({ name: "Ada" });
+    expect(notice?.guests[0]?.data.url).toBeUndefined();
+    expect(notice?.guests[0]?.data.topics[0]?.notes).toBe("Balance is **healthy**.");
+  });
+
+  it("leaves a member who's turned email off without an address, but still counts them for push", async () => {
+    await setMemberEmail(2, "m2@example.test");
+    await setNotify(2, { email: false });
+    await finishMeeting(1, "m1", during);
+    const r = (await getMinutesNotice("m1", 1))?.recipients.find((x) => x.memberId === 2);
+    expect(r).toBeDefined();
+    expect(r?.email).toBeUndefined();
+  });
+
+  it("has nothing to send before it's finished", async () => {
+    expect(await getMinutesNotice("m1", 1)).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEETING_NOTES_MAX, canRunMeeting, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicMoved, stepAfterTopicRemoved, stepAt, stepLabel, normalizeGuestEmail, validateGuestAttendee, validateNotes } from "./meeting-session.util";
+import { MEETING_NOTES_MAX, canRunMeeting, canSendMinutes, defaultFacilitator, lastStep, stepAfterTopicAdded, stepAfterTopicMoved, stepAfterTopicRemoved, stepAt, stepLabel, normalizeGuestEmail, validateGuestAttendee, validateNotes } from "./meeting-session.util";
 
 const meeting = { date: "2026-11-10", start: "10:00", end: "12:00" };
 const at = (h: number, m = 0, day = 10) => new Date(2026, 10, day, h, m);
@@ -102,5 +102,25 @@ describe("stepAfterTopicMoved", () => {
 
   it("leaves attendance, the agenda, tasks and the wrap-up where they are", () => {
     expect([0, 1, 5, 6].map((s) => stepAfterTopicMoved(s, 3, 0, 1))).toEqual([0, 1, 5, 6]);
+  });
+});
+
+describe("canSendMinutes", () => {
+  const roles = (secretary: number | null) => [
+    { label: "Leader", memberId: 9 },
+    { label: "Secretary", memberId: secretary },
+  ];
+
+  it("is the Secretary's alone while a member holds the role", () => {
+    expect(canSendMinutes(roles(2), [1, 2, 3], 1, 2)).toBe(true);
+    expect(canSendMinutes(roles(2), [1, 2, 3], 1, 1)).toBe(false);
+  });
+
+  it("falls to the facilitator when the role is empty, held by someone who's left, or the circle has no roles", () => {
+    expect(canSendMinutes(roles(null), [1, 2], 1, 1)).toBe(true);
+    expect(canSendMinutes(roles(null), [1, 2], 1, 2)).toBe(false);
+    expect(canSendMinutes(roles(7), [1, 2], 1, 1)).toBe(true);
+    expect(canSendMinutes([], [1, 2], 1, 1)).toBe(true);
+    expect(canSendMinutes([], [1, 2], null, 1)).toBe(false);
   });
 });
