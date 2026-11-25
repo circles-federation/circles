@@ -1,13 +1,15 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
 import { MEETING_CHANNEL } from "./meeting-channel";
 import { createTask, getMeetingTasks, type TaskChange } from "./tasks";
-import { circleMembers, circleRoles, circleTasks, eventAgendaItems, eventRsvps, events, meetingAttendance, meetingGuestAttendees, meetingSessions, meetingTopicNotes, memberPhotos, members } from "./schema";
+import { circleMembers, circleRoles, circles, circleTasks, eventAgendaItems, eventRsvps, events, meetingAttendance, meetingGuestAttendees, meetingSessions, meetingTopicNotes, memberPhotos, members } from "./schema";
 import { MAX_AGENDA_ITEMS, validateAgendaItem } from "@/lib/agenda.util";
 import { eventEndsAt } from "@/lib/events.util";
-import { MEETING_RUN_GRACE_MS, canRunMeeting, defaultFacilitator, MAX_MEETING_GUESTS, guestFirstName, lastStep, normalizeGuestEmail, stepAfterTopicAdded, stepAfterTopicMoved, stepAfterTopicRemoved, validateGuestAttendee, validateNotes } from "@/lib/meeting-session.util";
-import type { TaskInput } from "@/lib/tasks.util";
+import { MEETING_RUN_GRACE_MS, canRunMeeting, canSendMinutes, defaultFacilitator, MAX_MEETING_GUESTS, guestFirstName, lastStep, normalizeGuestEmail, stepAfterTopicAdded, stepAfterTopicMoved, stepAfterTopicRemoved, validateGuestAttendee, validateNotes } from "@/lib/meeting-session.util";
+import { localDay } from "@/lib/recurrence.util";
+import { dueCell, type TaskInput } from "@/lib/tasks.util";
+import type { MinutesEmailData } from "@/lib/email/templates.util";
 import type { AgendaItem, CircleTask, MeetingGuest, MeetingSession } from "@/lib/types";
 
 /* A meeting being held, its circle's members' alone: this file is where that's
@@ -75,6 +77,8 @@ async function readSession(tx: Tx | typeof db, eventId: string): Promise<Meeting
     rev: s.rev,
     ...(s.minutesEditedBy !== null ? { minutesEditedBy: s.minutesEditedBy } : {}),
     ...(s.minutesEditedAt ? { minutesEditedAt: s.minutesEditedAt.toISOString() } : {}),
+    ...(s.minutesSentBy !== null ? { minutesSentBy: s.minutesSentBy } : {}),
+    ...(s.minutesSentAt ? { minutesSentAt: s.minutesSentAt.toISOString() } : {}),
   };
 }
 
@@ -348,13 +352,75 @@ export async function saveMinutes(memberId: number, eventId: string, edits: { to
   });
 }
 
-// the facilitator closes the meeting; its minutes stay editable
-export async function finishMeeting(memberId: number, eventId: string, now: Date = new Date()): Promise<MeetingSession> {
+/* The facilitator closes the meeting; its minutes stay editable. With
+   `sendMinutes` they're marked sent as it closes (the caller then emails them:
+   see getMinutesNotice), so whoever finishes it may, Secretary or not. */
+export async function finishMeeting(memberId: number, eventId: string, now: Date = new Date(), options: { sendMinutes?: boolean } = {}): Promise<MeetingSession> {
   return change(memberId, eventId, async (tx, session) => {
     assertLive(session);
     assertFacilitator(session, memberId);
-    await bump(tx, eventId, { status: "finished", finishedAt: now });
+    await bump(tx, eventId, { status: "finished", finishedAt: now, ...(options.sendMinutes ? { minutesSentBy: memberId, minutesSentAt: now } : {}) });
   });
+}
+
+/* Marks a finished meeting's minutes as sent, by the circle's Secretary (or,
+   while no member holds that role, its facilitator). They can be sent again
+   after a correction; each send says when and by whom. The caller then emails
+   them (getMinutesNotice). */
+export async function sendMinutes(memberId: number, eventId: string, now: Date = new Date()): Promise<MeetingSession> {
+  return change(memberId, eventId, async (tx, session, event) => {
+    if (session.status !== "finished") throw new MeetingError("Finish the meeting before sending its minutes.");
+    const roles = await tx.select({ label: circleRoles.label, memberId: circleRoles.memberId }).from(circleRoles).where(eq(circleRoles.circleId, event.circleId));
+    const people = (await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, event.circleId))).map((r) => r.id);
+    if (!canSendMinutes(roles, people, session.facilitatorId, memberId)) throw new MeetingError("Only the Secretary can send the minutes, or the facilitator where there isn’t one.");
+    await bump(tx, eventId, { minutesSentBy: memberId, minutesSentAt: now });
+  });
+}
+
+/* What emailing a meeting's minutes needs, read when they go out: the minutes
+   as they stand, and everyone they go to but whoever sent them: the circle's
+   members and whoever was marked present (a member who's since left, say),
+   each by the email they've left on, and the guests written in, by the email
+   the facilitator gave (the one place it leaves this file). A guest who's a
+   member too gets one copy, as a member. */
+export async function getMinutesNotice(eventId: string, senderId: number): Promise<{ recipients: { memberId: number; email?: string; data: MinutesEmailData }[]; guests: { email: string; data: MinutesEmailData }[]; push: { eventId: string; title: string; circleName: string; senderName: string } } | null> {
+  const [row] = await db.select().from(events).where(eq(events.id, eventId));
+  const session = row ? await readSession(db, eventId) : null;
+  if (!row || !session || session.status !== "finished") return null;
+  const [circle] = await db.select({ name: circles.name }).from(circles).where(eq(circles.id, row.circleId));
+  const circleName = circle?.name ?? "";
+  const roster = (await db.select({ id: circleMembers.memberId }).from(circleMembers).where(eq(circleMembers.circleId, row.circleId))).map((r) => r.id);
+  const ids = [...new Set([...roster, ...session.attendees])].filter((id) => id !== senderId);
+  const wanted = [...new Set([...ids, senderId, ...session.tasks.flatMap((t) => (t.assigneeId !== undefined ? [t.assigneeId] : []))])];
+  const people = await db.select({ id: members.id, name: members.name, email: members.email, notifyEmail: members.notifyEmail }).from(members).where(inArray(members.id, wanted));
+  const nameOf = new Map(people.map((p) => [p.id, p.name]));
+  const sender = nameOf.get(senderId) ?? "Someone";
+  const today = localDay();
+  const base = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const shared: Omit<MinutesEmailData, "name" | "url"> = {
+    circleName,
+    title: row.title,
+    date: row.date,
+    start: row.start.slice(0, 5),
+    end: row.end.slice(0, 5),
+    senderName: sender,
+    topics: session.topics.map((t) => ({ category: t.category, title: t.title, ...(t.details ? { details: t.details } : {}), notes: t.notes })),
+    tasks: session.tasks.map((t) => {
+      const due = dueCell(t, today);
+      return { title: t.title, ...(t.assigneeId !== undefined && nameOf.get(t.assigneeId) ? { assignee: nameOf.get(t.assigneeId) as string } : {}), ...(due ? { due: due.text } : {}) };
+    }),
+    attendees: [...session.attendees.map((id) => nameOf.get(id)).filter((n): n is string => !!n), ...session.guests.map((g) => g.name)],
+  };
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const recipients = ids.flatMap((id) => {
+    const p = byId.get(id);
+    return p ? [{ memberId: id, ...(p.email && p.notifyEmail ? { email: p.email } : {}), data: { ...shared, name: p.name, url: `${base}/events/${eventId}` } }] : [];
+  });
+  // everyone with an account is told as a member, and the sender needs no copy
+  const known = new Set(people.filter((p) => p.email && (ids.includes(p.id) || p.id === senderId)).map((p) => (p.email as string).toLowerCase()));
+  const guestRows = await db.select({ name: meetingGuestAttendees.name, email: meetingGuestAttendees.email }).from(meetingGuestAttendees).where(eq(meetingGuestAttendees.eventId, eventId));
+  const guests = guestRows.filter((g) => !known.has(g.email)).map((g) => ({ email: g.email, data: { ...shared, name: guestFirstName(g.name) } }));
+  return { recipients, guests, push: { eventId, title: row.title, circleName, senderName: sender } };
 }
 
 /* A meeting no one finished is finished for them once its run window has

@@ -16,19 +16,22 @@ interface ConfirmModalProps {
   // something to a circle's members to decide
   // (ink for a change that loses nothing and sends nothing: taking a role over)
   tone?: "danger" | "flame" | "ink";
+  // an option to choose along with it (a checkbox), under the message
+  children?: ReactNode;
 }
 
 /* Generic "are you sure" dialog — currently only used to guard discarding
    unsaved changes, but kept content-agnostic (title/message/labels as
    props) rather than named after that one use, since any future form with
    a dirty check will want the same confirmation. */
-export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, onCancel, tone = "danger" }: ConfirmModalProps) {
+export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, onCancel, tone = "danger", children }: ConfirmModalProps) {
   const { pressed, act } = useActAfterPress<"cancel" | "confirm">();
   return (
     <Modal onClose={onCancel} className="max-w-105" centered>
       <div className="p-6">
         <h2 className="font-sans text-lg font-extrabold tracking-tight m-0">{title}</h2>
         <p className="mt-3 font-serif text-sm leading-relaxed text-soft">{message}</p>
+        {children}
       </div>
       <div className="flex border-t border-ink">
         <button

@@ -38,6 +38,7 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
   const router = useRouter();
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [confirmTakeOver, setConfirmTakeOver] = useState(false);
+  const [sendMinutesOnFinish, setSendMinutesOnFinish] = useState(false);
   const [deletingTask, setDeletingTask] = useState<{ id: string; title: string } | null>(null);
 
   // whatever an action returns is adopted at once; a refusal is a toast
@@ -202,10 +203,19 @@ export function MeetingWizardPage({ event: e, circle, memberId }: { event: Event
           tone="ink"
           onCancel={() => setConfirmFinish(false)}
           onConfirm={() => {
+            const send = sendMinutesOnFinish;
             setConfirmFinish(false);
-            void run(finishMeetingAction(e.id));
+            setSendMinutesOnFinish(false);
+            void run(finishMeetingAction(e.id, send), "Couldn’t finish the meeting").then((ok) => {
+              if (ok && send) showToast({ message: "Minutes sent.", tone: "success" });
+            });
           }}
-        />
+        >
+          <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 font-serif text-sm text-body">
+            <input type="checkbox" checked={sendMinutesOnFinish} onChange={(ev) => setSendMinutesOnFinish(ev.target.checked)} className="size-5 shrink-0 cursor-pointer accent-ink" />
+            Email the minutes to the circle and everyone here
+          </label>
+        </ConfirmModal>
       )}
     </PageContainer>
   );

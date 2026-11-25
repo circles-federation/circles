@@ -61,8 +61,10 @@ test("a circle holds a meeting together, live, and corrects its minutes", async 
   // Mira finishes it; Priya sees it's finished
   await m.getByRole("list", { name: "Steps" }).getByRole("button", { name: "Finish" }).click();
   await m.getByRole("button", { name: "Finish meeting" }).click();
+  await m.getByRole("dialog").getByLabel("Email the minutes to the circle and everyone here").check();
   await m.getByRole("dialog").getByRole("button", { name: "Finish", exact: true }).click();
   await expect(p.getByText("This meeting has finished.")).toBeVisible();
+  await expect(m.getByText("Minutes sent.")).toBeVisible();
 
   // the minutes are on the event's page, and any member can correct them
   await p.goto(MEETING);
@@ -78,6 +80,20 @@ test("a circle holds a meeting together, live, and corrects its minutes", async 
   await expect(p).toHaveURL(/\/events\/e2e-live-meeting$/);
   await expect(p.getByText("Consented, no objections.")).toBeVisible();
   await expect(p.getByText(/Last edited by Priya/)).toBeVisible();
+
+  // finishing emailed them (Priya, the Secretary, among the circle), and the
+  // Secretary can send them again now they're corrected
+  await expect(p.getByText(/Emailed by Mira/)).toBeVisible();
+  await expect
+    .poll(async () => {
+      const res = await fetch(`${process.env.MAILPIT_URL ?? "http://localhost:8025"}/api/v1/search?query=${encodeURIComponent(`to:${PRIYA} subject:Minutes`)}&limit=1`);
+      return ((await res.json()) as { messages: unknown[] }).messages.length;
+    })
+    .toBeGreaterThan(0);
+  await p.getByRole("button", { name: "More" }).click();
+  await p.getByRole("menuitem", { name: "Send minutes again" }).click();
+  await p.getByRole("dialog").getByRole("button", { name: "Send", exact: true }).click();
+  await expect(p.getByText(/Emailed by Priya/)).toBeVisible();
 
   await mira.context.close();
   await priya.context.close();

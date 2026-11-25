@@ -100,6 +100,7 @@ const CALLS: Record<string, unknown[]> = {
   setMeetingPresentAction: ["x", 1, true],
   saveMeetingNotesAction: ["x", 0, "notes"],
   finishMeetingAction: ["x"],
+  sendMinutesAction: ["x"],
   saveMeetingMinutesAction: ["x", [{ position: 0, notes: "n" }]],
 };
 

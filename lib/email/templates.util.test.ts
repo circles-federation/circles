@@ -13,6 +13,7 @@ import {
   guestRsvpCodeEmail,
   invitationEmail,
   loginCodeEmail,
+  minutesEmail,
   photoDecisionEmail,
   proposalEmail,
   proposalWords,
@@ -48,6 +49,32 @@ describe("escaping member-typed text in HTML", () => {
   it("announcementEmail signs with the date alone when the poster is unknown", () => {
     const mail = announcementEmail({ circleName: "C", title: "T", message: "M", createdAt: new Date(2026, 10, 10, 12), url: "https://x.org" });
     expect(mail.text).toContain("— 11/10/2026");
+  });
+  it("minutesEmail", () => {
+    const mail = minutesEmail({
+      name: EVIL,
+      circleName: EVIL,
+      title: EVIL,
+      date: "2026-11-10",
+      start: "10:00",
+      end: "12:00",
+      senderName: EVIL,
+      topics: [{ category: "decide", title: EVIL, notes: `${EVIL}\n\n**bold**` }],
+      tasks: [{ title: EVIL, assignee: EVIL, due: "Fri, Nov 13" }],
+      attendees: [EVIL, "Ada"],
+      url: `https://x.org/"onclick="x`,
+    });
+    expect(mail.html).not.toMatch(raw);
+    expect(mail.html).not.toContain('"onclick="x');
+    expect(mail.html).toContain("<strong>bold</strong>");
+    expect(mail.text).toContain("bold");
+    expect(mail.text).not.toContain("**");
+  });
+  it("minutesEmail for a guest has no link into the app, and says nothing of tasks when there are none", () => {
+    const mail = minutesEmail({ name: "Ada", circleName: "Council", title: "Budget", date: "2026-11-10", start: "10:00", end: "12:00", senderName: "Priya", topics: [{ category: "report", title: "Report", notes: "" }], tasks: [], attendees: [] });
+    expect(mail.html).not.toContain("Read them in Circles");
+    expect(mail.text).not.toContain("Tasks");
+    expect(mail.text).toContain("No notes on \"Report\"");
   });
   it("invitationEmail", () => {
     const mail = invitationEmail({ name: EVIL, inviterName: EVIL, circleName: EVIL, tagline: EVIL, url: `https://x.org/"onclick="x` });

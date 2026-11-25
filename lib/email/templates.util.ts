@@ -771,6 +771,74 @@ export function announcementEmail(a: AnnouncementEmailData): Body {
 // "a", "a and b", "a, b and c"
 const listOf = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : (items[0] ?? ""));
 
+export interface MinutesEmailData {
+  name: string;
+  circleName: string;
+  title: string;
+  date: string;
+  start: string;
+  end: string;
+  senderName: string;
+  topics: { category: AgendaItem["category"]; title: string; details?: string; notes: string }[];
+  tasks: { title: string; assignee?: string; due?: string }[];
+  attendees: string[];
+  // where a member reads it in the app; a guest has no account, so none
+  url?: string;
+}
+
+/* A finished meeting's minutes, sent by its Secretary: what was said on each
+   topic, the tasks that came of it and who was there. Each topic's notes are
+   Markdown, made safe by messageHtml like an Inbox letter's. */
+export function minutesEmail(d: MinutesEmailData): Body {
+  const when = fmtEventWhen(d);
+  const why = d.url ? `You're getting this because you're a member of ${d.circleName} or were at the meeting.` : `You're getting this because you were at the meeting of ${d.circleName}.`;
+  const written = d.topics.filter((t) => t.notes.trim());
+  const unwritten = d.topics.filter((t) => !t.notes.trim());
+  const text = [
+    `${d.name},`,
+    `${d.senderName} sent the minutes of ${d.title}, ${d.circleName}'s meeting on ${when}.`,
+    d.attendees.length > 0 ? `There: ${listOf(d.attendees)}.` : "",
+    ...written.map((t) => `${AGENDA_CATEGORY[t.category].label}: ${t.title}\n${messageText(t.notes)}`),
+    unwritten.length > 0 ? `No notes on ${listOf(unwritten.map((t) => `"${t.title}"`))}.` : "",
+    d.tasks.length > 0 ? `Tasks\n${d.tasks.map((t) => `- ${t.title}${t.assignee ? ` · ${t.assignee}` : ""}${t.due ? ` · ${t.due}` : ""}`).join("\n")}` : "",
+    d.url ? `Read them in Circles: ${d.url}` : "",
+    why,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const topicRows = written
+    .map(
+      (t) =>
+        `<tr><td style="padding-bottom:12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${INK};border-top:3px solid ${AGENDA}"><tr><td style="padding:12px 14px">` +
+        eyebrow(esc(AGENDA_CATEGORY[t.category].label), AGENDA) +
+        `<div style="margin-top:8px;font-family:${SANS};font-size:16px;font-weight:700;line-height:1.25;color:${INK}">${esc(t.title)}</div>` +
+        `<div style="margin-top:8px;font-family:${SERIF};font-size:16px;line-height:1.55;color:#222222">${messageHtml(t.notes)}</div>` +
+        `</td></tr></table></td></tr>`,
+    )
+    .join("");
+  const taskRows = d.tasks
+    .map((t) => `<li style="margin-bottom:4px"><span style="font-family:${SANS};font-weight:700">${esc(t.title)}</span>${t.assignee || t.due ? `<span style="color:${SOFT}"> · ${[t.assignee, t.due].filter(Boolean).map((x) => esc(x as string)).join(" · ")}</span>` : ""}</li>`)
+    .join("");
+  return {
+    subject: `Minutes: ${d.title} (${d.circleName})`,
+    text,
+    html: shell(
+      `<tr><td style="border-top:3px solid ${INK};padding-top:18px">` +
+        eyebrow(`Minutes · ${esc(d.circleName)}`) +
+        `<div style="margin-top:10px;font-family:${SANS};font-size:32px;font-weight:800;letter-spacing:-0.035em;line-height:1.05;color:${INK}">${esc(d.title)}</div>` +
+        `<div style="margin-top:8px;font-family:${SERIF};font-size:16px;color:${SOFT}">${esc(when)}</div>` +
+        `</td></tr>` +
+        (d.attendees.length > 0 ? `<tr><td style="padding-top:16px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222"><span style="font-family:${SANS};font-weight:700">There:</span> ${esc(listOf(d.attendees))}.</td></tr>` : "") +
+        `<tr><td style="padding-top:20px"></td></tr>` +
+        topicRows +
+        (unwritten.length > 0 ? `<tr><td style="padding-bottom:16px;font-family:${SERIF};font-size:15px;color:${SOFT}">No notes on ${esc(listOf(unwritten.map((t) => `“${t.title}”`)))}.</td></tr>` : "") +
+        (d.tasks.length > 0 ? `<tr><td style="padding:8px 0 20px"><div style="border-top:3px solid ${INK};padding-top:12px">${eyebrow("Tasks")}<ul style="margin:10px 0 0;padding-left:20px;font-family:${SERIF};font-size:16px;line-height:1.5;color:#222222">${taskRows}</ul></div></td></tr>` : "") +
+        (d.url ? `<tr><td style="padding-bottom:28px"><a href="${esc(d.url)}" style="display:inline-block;background:${INK};color:#ffffff;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:14px 22px">Read them in Circles</a></td></tr>` : "") +
+        footnote(esc(why)),
+    ),
+  };
+}
+
 // the masthead every application email opens with: the welcome page's rule,
 // eyebrow and wordmark
 const applicationMasthead = (label: string) =>

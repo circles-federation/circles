@@ -21,13 +21,13 @@ import { chatHub } from "@/lib/db/chat-stream";
 import { getMessageNoticeData } from "@/lib/db/messages";
 import { claimGuestNotifications, markGuestFailed, markGuestSent } from "@/lib/db/guest-notifications";
 import { checkUnfilledSlots } from "@/lib/db/events";
-import { finishLapsedMeetings } from "@/lib/db/meeting-sessions";
+import { finishLapsedMeetings, getMinutesNotice } from "@/lib/db/meeting-sessions";
 import { closeDueProposals, withdrawLapsedEventProposals } from "@/lib/db/proposals";
 import { deleteDeadSubscription, getSubscriptions, markSubscriptionUsed } from "@/lib/db/push";
 import { sendEmail } from "@/lib/email";
 import { ExpiredSubscriptionError, sendPush, type PushMessage } from "@/lib/push";
-import { announcementPush, chatPush, circleMessagePush, digestPush, eventNotificationPush, proposalPush } from "@/lib/push/messages.util";
-import { announcementEmail, circleMessageEmail, digestEmail, eventChanges, eventNotificationEmail, guestEmail, proposalEmail } from "@/lib/email/templates.util";
+import { announcementPush, chatPush, circleMessagePush, digestPush, eventNotificationPush, minutesPush, proposalPush } from "@/lib/push/messages.util";
+import { announcementEmail, circleMessageEmail, digestEmail, eventChanges, eventNotificationEmail, guestEmail, minutesEmail, proposalEmail } from "@/lib/email/templates.util";
 import { eventStartsAt, isReminder } from "@/lib/events.util";
 import { isPastEvent } from "@/lib/format.util";
 import { localDay } from "@/lib/recurrence.util";
@@ -412,6 +412,25 @@ export async function tellCircleOfMessage(id: string) {
       pushToMember(r.memberId, circleMessagePush({ ...data, messageId: id })).catch((err) => console.error("Couldn't push a circle a message:", err)),
     ]),
   );
+}
+
+/* A finished meeting's minutes, sent to its circle's members and whoever was
+   there (members by email and push, guests by the email they were written in
+   with), right after the response that sent them, all but whoever sent them;
+   a failed send isn't retried, since the minutes are on the event's page. */
+export async function tellCircleOfMinutes(eventId: string, senderId: number) {
+  const notice = await getMinutesNotice(eventId, senderId).catch((err) => {
+    console.error("Couldn't read minutes to send:", err);
+    return null;
+  });
+  if (!notice) return;
+  await Promise.all([
+    ...notice.recipients.flatMap((r) => [
+      r.email && sendEmail({ to: r.email, ...minutesEmail(r.data) }).catch((err) => console.error("Couldn't email minutes:", err)),
+      pushToMember(r.memberId, minutesPush(notice.push)).catch((err) => console.error("Couldn't push minutes:", err)),
+    ]),
+    ...notice.guests.map((g) => sendEmail({ to: g.email, ...minutesEmail(g.data) }).catch((err) => console.error("Couldn't email minutes to a guest:", err))),
+  ]);
 }
 
 /* A new message in a circle's chat: told by push only (an email per message
