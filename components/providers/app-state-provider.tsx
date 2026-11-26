@@ -13,6 +13,9 @@ import {
   toggleRoleSlotAction as dbToggleRoleSlot,
   createProposalAction as dbCreateProposal,
   respondToProposalAction as dbRespondToProposal,
+  proposeFederationAction as dbProposeFederation,
+  nominateDelegateAction as dbNominateDelegate,
+  objectToDelegateAction as dbObjectToDelegate,
   withdrawProposalAction as dbWithdrawProposal,
   proposeMessageRemovalAction as dbProposeMessageRemoval,
   updateCircleAction as dbUpdateCircle,
@@ -41,6 +44,7 @@ import {
 import type { AppStateData } from "@/lib/db/app-state";
 import { audienceLabel, indexCircles } from "@/lib/circles.util";
 import type { CircleRoleDraft } from "@/lib/circle-roles.util";
+import type { NewFederationInput } from "@/lib/federation.util";
 import type { NewCircleInput } from "@/lib/circles.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { repeatSummary } from "@/lib/recurrence.util";
@@ -89,6 +93,10 @@ export interface AppStateValue {
   // was decided at once (a circle of one)
   proposeCircleChanges(circleId: string, changes: ProposalChanges): Promise<{ ok: true; proposal: CircleProposal; passed: boolean } | { ok: false; error: string }>;
   respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult>;
+  proposeFederation(input: NewFederationInput): Promise<{ ok: true; proposal: CircleProposal } | { ok: false; error: string }>;
+  // a federation proposal's delegates, for a circle that's being asked
+  nominateDelegate(proposalId: string, circleId: string, memberId: number): Promise<MutationResult>;
+  objectToDelegate(proposalId: string, circleId: string, reason: string): Promise<MutationResult>;
   // its proposer takes back a change to a circle or a new Circle
   withdrawProposal(id: string): Promise<MutationResult>;
   // asks a chat message's circle to remove it; the proposal's id, to go to
@@ -512,6 +520,29 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
     return { ok: true, proposalId: result.value.id };
   }
 
+  // await-then-update, adopting everything: the server can refuse, and one
+  // whose circles are the proposer alone forms the federation at once
+  async function proposeFederation(input: NewFederationInput): Promise<{ ok: true; proposal: CircleProposal } | { ok: false; error: string }> {
+    const result = await dbProposeFederation(input).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    adopt(result.value.state);
+    return { ok: true, proposal: result.value.proposal };
+  }
+
+  async function nominateDelegate(proposalId: string, circleId: string, memberId: number): Promise<MutationResult> {
+    const result = await dbNominateDelegate(proposalId, circleId, memberId).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    adopt(result.value);
+    return { ok: true };
+  }
+
+  async function objectToDelegate(proposalId: string, circleId: string, reason: string): Promise<MutationResult> {
+    const result = await dbObjectToDelegate(proposalId, circleId, reason).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
+    if (!result.ok) return result;
+    adopt(result.value);
+    return { ok: true };
+  }
+
   async function respondToProposal(id: string, response: ConsentResponse, reason?: string): Promise<MutationResult> {
     const result = await dbRespondToProposal(id, response, reason).catch(() => ({ ok: false as const, error: "Couldn't reach the server — try again." }));
     if (!result.ok) return result;
@@ -820,6 +851,9 @@ export function AppStateProvider({ children, currentUserId, initialEvents, initi
         saveCircle: tracked(saveCircle),
         proposeCircleChanges: tracked(proposeCircleChanges),
         respondToProposal: tracked(respondToProposal),
+        proposeFederation: tracked(proposeFederation),
+        nominateDelegate: tracked(nominateDelegate),
+        objectToDelegate: tracked(objectToDelegate),
         withdrawProposal: tracked(withdrawProposal),
         proposeMessageRemoval: tracked(proposeMessageRemoval),
         saveProfile: tracked(saveProfile),

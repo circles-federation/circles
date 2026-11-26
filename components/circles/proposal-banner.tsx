@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import clsx from "clsx";
 import { ChevronRightIcon, HandRaisedIcon } from "@heroicons/react/24/outline";
 import { fmtDateTime } from "@/lib/format.util";
+import { useCirclesById } from "@/lib/hooks";
 import { awaitingResponse, proposalTitle } from "@/lib/proposals.util";
 import type { CircleProposal } from "@/lib/types";
 
@@ -21,7 +24,8 @@ interface ProposalBannerProps {
    members' decision. Opens the proposal. On its
    circle's page, and on Home for each one waiting on you. */
 export function ProposalBanner({ proposal: p, memberId, circleName, className }: ProposalBannerProps) {
-  const waiting = awaitingResponse(p, memberId);
+  const byId = useCirclesById();
+  const waiting = awaitingResponse(p, memberId, byId);
   return (
     <Link
       href={`/proposals/${p.id}`}

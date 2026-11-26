@@ -9,7 +9,7 @@ export default function Page() {
   const { id } = useParams<{ id: string }>();
   const nav = useAppNav();
   const router = useRouter();
-  const { proposals, circles, events, profile, respondToProposal, withdrawProposal, cancelEvent, removeNeighborhoodPost } = useAppState();
+  const { proposals, circles, events, profile, respondToProposal, nominateDelegate, objectToDelegate, withdrawProposal, cancelEvent, removeNeighborhoodPost } = useAppState();
 
   // only those with a say in it (and its proposer) are ever sent a proposal
   // (getProposalsForMember), so to anyone else it doesn't exist
@@ -32,7 +32,9 @@ export default function Page() {
         ? [...new Set([proposal.proposerId, ...circle.members])]
         : circle.members;
   const explainer =
-    proposal.kind === "remove_message"
+    proposal.kind === "coordinating_circle"
+      ? `${circle.name} consents first. Then each other circle is asked, and chooses its delegate.`
+      : proposal.kind === "remove_message"
       ? "Until this is decided the message is collapsed in the chat as under review. If it passes it's removed for everyone; otherwise it stays as it was."
       : proposal.kind === "post"
       ? "Once its members consent, it goes on the neighborhood's bulletin for everyone who lives there."
@@ -51,11 +53,13 @@ export default function Page() {
       deciders={deciders}
       {...(explainer ? { explainer } : {})}
       {...(proposal.kind === "remove_message" ? { onOpenChat: () => router.push(`/circles/${circle.id}/chat`) } : {})}
-      {...(proposal.kind === "new_circle" && proposal.status === "passed" && subject ? { onOpenStarted: () => nav.openCircle(subject) } : {})}
+      {...((proposal.kind === "new_circle" || proposal.kind === "coordinating_circle") && proposal.status === "passed" && subject ? { onOpenStarted: () => nav.openCircle(subject) } : {})}
       memberId={profile.id}
       onOpenCircle={() => nav.openCircle(circle)}
       onOpenMember={(m) => nav.openMember(m)}
       onRespond={(response, reason) => respondToProposal(proposal.id, response, reason)}
+      onNominate={(circleId, memberId) => nominateDelegate(proposal.id, circleId, memberId)}
+      onObjectToNominee={(circleId, reason) => objectToDelegate(proposal.id, circleId, reason)}
       {...(event ? { onOpenEvent: () => nav.openEvent(event) } : {})}
       consentIsRsvp={!!event && !event.roles?.length}
       {...(event && open
@@ -63,7 +67,7 @@ export default function Page() {
         : proposal.kind === "post" && proposal.postId && open
           ? { onWithdraw: () => removeNeighborhoodPost(proposal.postId!) }
           : // a change or a new Circle: its proposer's to take back
-            (proposal.kind === "change" || proposal.kind === "new_circle" || proposal.kind === "remove_message") && open && proposal.proposerId === profile.id
+            (proposal.kind === "change" || proposal.kind === "new_circle" || proposal.kind === "remove_message" || proposal.kind === "coordinating_circle") && open && proposal.proposerId === profile.id
             ? { onWithdraw: () => withdrawProposal(proposal.id) }
             : {})}
     />

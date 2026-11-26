@@ -275,7 +275,9 @@ export interface ProposalLine {
 
 // what a member is told about a proposal: it's open for their response, or
 // how it ended
-export type ProposalNoticeKind = "opened" | "objected" | "passed";
+// the last three are a federation's: a delegate put forward by the reader's
+// circle, or objected to there, and a federation that couldn't go ahead
+export type ProposalNoticeKind = "opened" | "objected" | "passed" | "nominated" | "nominee_objected" | "lapsed";
 
 // what a proposal is for: a change to a circle (its own, or, decided by its
 // neighborhood, one inside it: see subjectCircleId), holding an event the

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
 import {
@@ -15,6 +15,8 @@ import {
   events,
   neighborhoodNotifications,
   neighborhoodPosts,
+  proposalDeciders,
+  proposalNominees,
   proposalNotifications,
   proposalResponses,
   pushSubscriptions,
@@ -748,6 +750,17 @@ export async function markAnnouncementFailed(n: AnnouncementKey, error: string):
    their answer, that someone objected, or that it passed. Always on its own,
    straight away — a proposal has a deadline, so a digest line a day later
    would eat into it. Runs in the transaction that earns it. */
+/* The same, first clearing these members' earlier notices of the kinds named,
+   sent or not, so only the newest is told, and told again (a federation's
+   delegate). `clear` may name more members than are told. */
+export async function replaceProposalNotifications(tx: Tx, proposalId: string, kind: ProposalNoticeKind, replaces: ProposalNoticeKind[], clear: number[], memberIds: number[]): Promise<void> {
+  if (clear.length === 0) return;
+  await tx
+    .delete(proposalNotifications)
+    .where(and(eq(proposalNotifications.proposalId, proposalId), inArray(proposalNotifications.memberId, clear), inArray(proposalNotifications.kind, replaces)));
+  await enqueueProposalNotifications(tx, proposalId, kind, memberIds);
+}
+
 export async function enqueueProposalNotifications(tx: Tx, proposalId: string, kind: ProposalNoticeKind, memberIds: number[]): Promise<number> {
   if (memberIds.length === 0) return 0;
   const recipients = await channelsFor(tx, inArray(members.id, memberIds));
@@ -821,13 +834,51 @@ export async function claimProposalNotifications(limit: number, channel: Notific
       .leftJoin(proposalResponses, and(eq(proposalResponses.proposalId, circleProposals.id), eq(proposalResponses.response, "object")))
       .leftJoin(objector, eq(objector.id, proposalResponses.memberId))
       .where(isDue);
-    return rows.map(({ objectorName, reason, subjectCircleName, ...r }) => ({
-      ...r,
-      ...(subjectCircleName ? { subjectCircleName } : {}),
-      ...(objectorName ? { objectorName } : {}),
-      ...(reason ? { reason } : {}),
-    }));
+    const notices: PendingProposalNotification[] = [];
+    // one at a time: a transaction has a single connection
+    for (const { objectorName, reason, subjectCircleName, ...r } of rows) {
+      notices.push({
+        ...r,
+        ...(subjectCircleName ? { subjectCircleName } : {}),
+        ...(objectorName ? { objectorName } : {}),
+        ...(reason ? { reason } : {}),
+        ...(r.kind === "coordinating_circle" ? await federationNotice(tx, r.proposalId, r.memberId, r.notice) : {}),
+      });
+    }
+    return notices;
   });
+}
+
+/* A federation is decided by several circles, so its notice speaks of the
+   reader's own: the one still to consent, if there is one. A notice about a
+   delegate names who that circle last put forward, or objected to. */
+async function federationNotice(tx: Tx, proposalId: string, memberId: number, notice: ProposalNoticeKind) {
+  const [own] = await tx
+    .select({ circleId: circles.id, circleName: circles.name })
+    .from(proposalDeciders)
+    .innerJoin(circles, eq(circles.id, proposalDeciders.circleId))
+    .innerJoin(circleMembers, and(eq(circleMembers.circleId, proposalDeciders.circleId), eq(circleMembers.memberId, memberId)))
+    .where(and(eq(proposalDeciders.proposalId, proposalId), isNotNull(proposalDeciders.releasedAt)))
+    .orderBy(sql`${proposalDeciders.passedAt} is not null`, desc(proposalDeciders.stage), asc(circles.id))
+    .limit(1);
+  if (!own) return {};
+  if (notice !== "nominated" && notice !== "nominee_objected") return { circleName: own.circleName };
+  const nominee = alias(members, "nominee");
+  const objector = alias(members, "nominee_objector");
+  const [put] = await tx
+    .select({ nomineeName: nominee.name, objectorName: objector.name, reason: proposalNominees.objectionReason })
+    .from(proposalNominees)
+    .innerJoin(nominee, eq(nominee.id, proposalNominees.memberId))
+    .leftJoin(objector, eq(objector.id, proposalNominees.objectedBy))
+    .where(and(eq(proposalNominees.proposalId, proposalId), eq(proposalNominees.circleId, own.circleId), eq(proposalNominees.status, notice === "nominated" ? "open" : "objected")))
+    .orderBy(desc(proposalNominees.id))
+    .limit(1);
+  return {
+    circleName: own.circleName,
+    ...(put ? { nomineeName: put.nomineeName } : {}),
+    ...(put?.objectorName ? { objectorName: put.objectorName } : {}),
+    ...(put?.reason ? { reason: put.reason } : {}),
+  };
 }
 
 const isProposalRow = (n: ProposalKey) =>

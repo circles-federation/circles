@@ -1,5 +1,5 @@
 import { CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, indexCircles, isCircleMember, parentCircleOptions, type CirclesById } from "./circles.util";
-import type { Circle, CircleType, ConsentResponse, DeciderStage, NomineeStatus, ProposalLine } from "./types";
+import type { Circle, CircleProposal, CircleType, ConsentResponse, DeciderStage, NomineeStatus, ProposalDecider, ProposalLine } from "./types";
 
 /* Collectives and co-ops can federate: their members propose a new coordinating
    circle, a Federation, which becomes the parent of all of them. It sits where
@@ -172,4 +172,20 @@ export function federationStep(state: FederationState, atDeadline: boolean): Fed
     if (atDeadline || d.memberIds.every((m) => consented(m, d.nominee!.createdAt))) passed.push(d.circleId);
   }
   return { passed, release: false, lapse: null, done: rest.every((d) => passed.includes(d.circleId)) };
+}
+
+type Rosters = Record<string, Pick<Circle, "members">>;
+
+// the circles a member can still answer for: ones they're in that have been
+// asked and haven't consented
+export function pendingFederationCircles(p: Pick<CircleProposal, "deciders">, memberId: number, byId: Rosters): ProposalDecider[] {
+  return (p.deciders ?? []).filter((d) => d.releasedAt && !d.passedAt && byId[d.circleId]?.members.includes(memberId));
+}
+
+// whether a delegate was named after they answered, so their answer doesn't
+// yet count as consent to that delegate
+export function answerIsStale(p: Pick<CircleProposal, "deciders" | "responses">, memberId: number, byId: Rosters): boolean {
+  const mine = p.responses.find((r) => r.memberId === memberId);
+  if (!mine) return false;
+  return pendingFederationCircles(p, memberId, byId).some((d) => d.stage === 2 && d.nominees.some((n) => n.status === "open" && mine.respondedAt < n.createdAt));
 }

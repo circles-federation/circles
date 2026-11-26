@@ -1,9 +1,9 @@
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db, type Tx } from "./client";
 import { setDelegate } from "./circle-roles";
 import { insertFederation } from "./circles";
 import { UserFacingError } from "./errors";
-import { enqueueProposalNotifications } from "./notifications";
+import { enqueueProposalNotifications, replaceProposalNotifications } from "./notifications";
 import { circleMembers, circleProposals, circles, proposalDeciders, proposalNominees, proposalResponses } from "./schema";
 import { groupBy } from "./util";
 import { NOMINEE_REASON_MAX, NOMINEE_WINDOW_MS, federationRefusal, federationStep, type FederationState } from "@/lib/federation.util";
@@ -77,6 +77,36 @@ async function membersOf(tx: Tx, circleIds: string[]): Promise<Map<string, numbe
   if (circleIds.length === 0) return new Map();
   const rows = await tx.select({ circleId: circleMembers.circleId, memberId: circleMembers.memberId }).from(circleMembers).where(inArray(circleMembers.circleId, circleIds));
   return groupBy(rows, (r) => r.circleId, (r) => r.memberId);
+}
+
+// whether they're in a circle that has been asked and hasn't yet consented,
+// so still has an answer to give
+export async function hasPendingCircle(tx: Tx, proposalId: string, memberId: number): Promise<boolean> {
+  const [row] = await tx
+    .select({ circleId: proposalDeciders.circleId })
+    .from(proposalDeciders)
+    .innerJoin(circleMembers, eq(circleMembers.circleId, proposalDeciders.circleId))
+    .where(and(eq(proposalDeciders.proposalId, proposalId), eq(circleMembers.memberId, memberId), isNotNull(proposalDeciders.releasedAt), isNull(proposalDeciders.passedAt)))
+    .limit(1);
+  return !!row;
+}
+
+/* Tell a circle its delegate has been put forward, or objected to, all but
+   whoever did it, if it's still to consent: silence counts as consent to a
+   delegate, so they have to have heard of them. Each replaces what they were
+   told of the delegate before, so a second nominee is news again. */
+async function tellOfDelegate(tx: Tx, proposalId: string, circleId: string, actorId: number, kind: "nominated" | "nominee_objected"): Promise<void> {
+  const all = (await membersOf(tx, [circleId])).get(circleId) ?? [];
+  await replaceProposalNotifications(tx, proposalId, kind, ["nominated", "nominee_objected"], all, all.filter((m) => m !== actorId));
+}
+
+export async function tellOfNominee(tx: Tx, proposalId: string, circleId: string, actorId: number): Promise<void> {
+  const [decider] = await tx
+    .select({ passedAt: proposalDeciders.passedAt, status: circleProposals.status })
+    .from(proposalDeciders)
+    .innerJoin(circleProposals, eq(circleProposals.id, proposalDeciders.proposalId))
+    .where(and(eq(proposalDeciders.proposalId, proposalId), eq(proposalDeciders.circleId, circleId)));
+  if (decider && decider.status === "open" && !decider.passedAt) await tellOfDelegate(tx, proposalId, circleId, actorId, "nominated");
 }
 
 /* Record who decides a proposal just made, and its first delegate: the
@@ -233,6 +263,7 @@ export async function objectToNominee(tx: Tx, row: ProposalRow, memberId: number
     .returning({ id: proposalNominees.id });
   if (!dropped) throw new FederationError("No one is waiting on your answer there.");
   await giveTimeToAnswer(tx, row, now);
+  await tellOfDelegate(tx, row.id, circleId, memberId, "nominee_objected");
 }
 
 /* It passed: make the federation, move every circle into it, and seat each

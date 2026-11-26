@@ -361,10 +361,10 @@ describe("responses", () => {
   });
   it("awaitingResponse: open, not the proposer's, not yet answered", () => {
     const open = proposal({ proposerId: 1, responses: [answer(2, "like")] });
-    expect(awaitingResponse(open, 1)).toBe(false);
-    expect(awaitingResponse(open, 2)).toBe(false);
-    expect(awaitingResponse(open, 3)).toBe(true);
-    expect(awaitingResponse({ ...open, status: "passed" }, 3)).toBe(false);
+    expect(awaitingResponse(open, 1, {})).toBe(false);
+    expect(awaitingResponse(open, 2, {})).toBe(false);
+    expect(awaitingResponse(open, 3, {})).toBe(true);
+    expect(awaitingResponse({ ...open, status: "passed" }, 3, {})).toBe(false);
   });
 });
 

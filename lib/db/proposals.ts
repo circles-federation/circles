@@ -7,7 +7,7 @@ import { syncDelegate } from "./memberships";
 import { UserFacingError } from "./errors";
 import { chatMembersOf, touchChatMessage, tombstone } from "./chat";
 import { approveHostedEvent, discardEvent, getEvent } from "./events";
-import { FederationError, advanceFederation, circlesInOpenFederation, decidersByProposal, federationProblem, lockCircles, nominateDelegate, objectToNominee, openFederation, releasedMemberIds, startFederation } from "./federations";
+import { FederationError, advanceFederation, circlesInOpenFederation, decidersByProposal, federationProblem, lockCircles, nominateDelegate, objectToNominee, openFederation, releasedMemberIds, startFederation, hasPendingCircle, tellOfNominee } from "./federations";
 import { discardPost, publishPost } from "./neighborhood-posts";
 import { enqueueNeighborhoodNotifications, enqueueProposalNotifications, wallClock } from "./notifications";
 import { circleChatMessages, circleMembers, circleProposals, circles, eventRsvps, eventVotes, events, members, proposalDeciders, proposalNotifications, proposalResponses, roles as eventRoles } from "./schema";
@@ -216,6 +216,8 @@ async function settleFederation(tx: Tx, proposal: ProposalRow, actorId: number |
     // withdrawn, as a proposal that can't go on is: its page says it lapsed
     await tx.update(circleProposals).set({ status: "withdrawn", lapsed: true, decidedAt: new Date() }).where(eq(circleProposals.id, proposal.id));
     await dropUnsentNotices(tx, proposal.id);
+    // several circles may have consented by now, so those asked are told
+    await enqueueProposalNotifications(tx, proposal.id, "lapsed", (await releasedMemberIds(tx, proposal.id)).filter((m) => m !== actorId));
   }
   return outcome === "passed";
 }
@@ -537,6 +539,7 @@ export async function nominateFederationDelegate(memberId: number, proposalId: s
     const row = await openFederationRow(tx, proposalId);
     await nominateDelegate(tx, row, memberId, circleId, nomineeId, new Date());
     await settleFederation(tx, row, memberId, false);
+    await tellOfNominee(tx, proposalId, circleId, memberId);
   });
   const [proposal] = await withResponses(await db.select().from(circleProposals).where(eq(circleProposals.id, proposalId)));
   return proposal!;
@@ -695,6 +698,8 @@ export async function respondToProposal(
     if (!row || !memberIds.includes(memberId)) throw new ProposalError("That proposal doesn't exist.");
     if (row.status !== "open" || row.closesAt <= new Date()) throw new ProposalError("This proposal has already been decided.");
     if (row.proposerId === memberId) throw new ProposalError("You proposed this, so you've already consented.");
+    // a circle's consent to a federation, once given, isn't taken back
+    if (row.kind === "coordinating_circle" && !(await hasPendingCircle(tx, id, memberId))) throw new ProposalError("Your circle has already consented.");
     await tx
       .insert(proposalResponses)
       .values({ proposalId: id, memberId, response, reason: response === "object" ? why : null })

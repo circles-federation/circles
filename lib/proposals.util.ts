@@ -1,5 +1,5 @@
 import { isBuiltinRole, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
-import { circleFederation } from "./federation.util";
+import { answerIsStale, circleFederation, pendingFederationCircles } from "./federation.util";
 import { CIRCLE_AIM_MAX, CIRCLE_FEATURES, circleHasPage, cleanFeatures, featuresOf, isGroup, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, circleCanHaveCircles, circleCanHaveInbox, indexCircles, startedInside, circleNeighborhood, parentCircleOptions, type CirclesById, type NewCircleInput } from "./circles.util";
 import { AGENDA_CATEGORY } from "./agenda.util";
 import { fmtEventWhen } from "./format.util";
@@ -331,16 +331,21 @@ export function everyoneConsented(p: Pick<CircleProposal, "responses">, memberId
 }
 
 /* A circle's open proposals, its Decisions section and that tab's count:
-   what it's deciding itself (a change, its events and posts), and a change
-   to it that its neighborhood decides with it, soonest to close first. */
+   what it's deciding itself (a change, its events and posts), a change to it
+   that its neighborhood decides with it, and a federation it has been asked
+   to join, soonest to close first. */
 export function openProposalsFor(proposals: CircleProposal[], circleId: string): CircleProposal[] {
   return proposals
-    .filter((p) => p.status === "open" && (p.circleId === circleId || p.subjectCircleId === circleId))
+    .filter((p) => p.status === "open" && (p.circleId === circleId || p.subjectCircleId === circleId || p.deciders?.some((d) => d.releasedAt && d.circleId === circleId)))
     .sort((a, b) => a.closesAt.localeCompare(b.closesAt));
 }
 
-// open and still waiting on this member's answer (not its proposer's, who
-// consented by proposing it)
-export function awaitingResponse(p: CircleProposal, memberId: number): boolean {
-  return p.status === "open" && p.proposerId !== memberId && !responseOf(p, memberId);
+/* open and still waiting on this member's answer (not its proposer's, who
+   consented by proposing it). A federation's waits only on circles that
+   haven't consented, and again once a delegate is named after they answered. */
+export function awaitingResponse(p: CircleProposal, memberId: number, byId: Record<string, Pick<Circle, "members">>): boolean {
+  if (p.status !== "open" || p.proposerId === memberId) return false;
+  if (p.kind !== "coordinating_circle") return !responseOf(p, memberId);
+  if (pendingFederationCircles(p, memberId, byId).length === 0) return false;
+  return !responseOf(p, memberId) || answerIsStale(p, memberId, byId);
 }

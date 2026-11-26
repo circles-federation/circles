@@ -54,7 +54,7 @@ export function NeedsYou() {
             href={`/proposals/${p.id}`}
             image={<RowIcon tone="flame"><HandRaisedIcon className="size-5" strokeWidth={2} aria-hidden /></RowIcon>}
             title={proposalTitle(p)}
-            detail={`${byId[p.circleId]?.name ?? "A circle"} · answer by ${fmtDateTime(new Date(p.closesAt))}`}
+            detail={`${p.kind === "coordinating_circle" ? "Federation" : (byId[p.circleId]?.name ?? "A circle")} · answer by ${fmtDateTime(new Date(p.closesAt))}`}
           />
         ))}
         {unreadMessages.map(({ circleId, count }) => (
@@ -84,7 +84,7 @@ export function NeedsYou() {
             href={`/proposals/${p.id}`}
             image={<RowIcon tone="quiet"><HandRaisedIcon className="size-5" strokeWidth={2} aria-hidden /></RowIcon>}
             title={<span className="font-semibold">{proposalTitle(p)}</span>}
-            detail={`Waiting on ${byId[p.circleId]?.name ?? "its circle"} · yours`}
+            detail={`Waiting on ${p.kind === "coordinating_circle" ? "its circles" : (byId[p.circleId]?.name ?? "its circle")} · yours`}
           />
         ))}
       </div>

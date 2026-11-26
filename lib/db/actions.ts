@@ -29,6 +29,7 @@ import { dueLabel, type TaskInput } from "@/lib/tasks.util";
 import { localDay } from "@/lib/recurrence.util";
 import { getCurrentUserId } from "@/lib/session";
 import type { NewCircleInput } from "@/lib/circles.util";
+import type { NewFederationInput } from "@/lib/federation.util";
 import type { EventDetails, EventDraft, SeriesScope } from "@/lib/events.util";
 import { newCircleDecider } from "@/lib/proposals.util";
 import { indexCircles } from "@/lib/circles.util";
@@ -118,6 +119,36 @@ export async function withdrawProposalAction(id: string) {
 // asked, and it's collapsed for them all until it's decided
 export async function proposeMessageRemovalAction(messageId: number) {
   const result = await asMember((memberId) => proposals.proposeChatRemoval(memberId, messageId));
+  if (result.ok) after(() => deliverProposalNotifications());
+  return result;
+}
+
+/* A federation (lib/db/proposals.ts checks who may do what). Several circles
+   decide it, and passing it moves them, so each hands back the whole app
+   state. */
+export async function proposeFederationAction(input: NewFederationInput) {
+  const result = await asMember(async (memberId) => {
+    const proposal = await proposals.proposeFederation(memberId, input);
+    return { proposal, state: await stateFor(memberId) };
+  });
+  if (result.ok) after(() => deliverProposalNotifications());
+  return result;
+}
+
+export async function nominateDelegateAction(proposalId: string, circleId: string, nomineeId: number) {
+  const result = await asMember(async (memberId) => {
+    await proposals.nominateFederationDelegate(memberId, proposalId, circleId, nomineeId);
+    return stateFor(memberId);
+  });
+  if (result.ok) after(() => deliverProposalNotifications());
+  return result;
+}
+
+export async function objectToDelegateAction(proposalId: string, circleId: string, reason: string) {
+  const result = await asMember(async (memberId) => {
+    await proposals.objectToFederationDelegate(memberId, proposalId, circleId, reason);
+    return stateFor(memberId);
+  });
   if (result.ok) after(() => deliverProposalNotifications());
   return result;
 }

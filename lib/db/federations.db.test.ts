@@ -3,6 +3,7 @@ import { PROPOSAL_WINDOW_MS } from "@/lib/proposals.util";
 import { NOMINEE_WINDOW_MS, type NewFederationInput } from "@/lib/federation.util";
 import { getCircleById, getCirclesForMember, leaveCircle } from "./circles";
 import { createInvitation } from "./invitations";
+import { claimProposalNotifications } from "./notifications";
 import {
   closeDueProposals,
   createProposal,
@@ -284,7 +285,7 @@ describe("delegates", () => {
 });
 
 describe("a federation that can't go ahead", () => {
-  it("lapses, telling no one, when a circle is archived before it's released", async () => {
+  it("lapses when a circle is archived before it's released, telling those asked so far", async () => {
     const { id } = await proposeFederation(1, input());
     await archiveCircle("grocery");
     await respondToProposal(2, id, "like");
@@ -294,6 +295,17 @@ describe("a federation that can't go ahead", () => {
     expect(await seenBy(3)).toEqual([]);
     // no one is asked to answer what's closed, so its unsent notices go
     expect(await proposalNotices(id, "opened")).toEqual([]);
+    // but whoever's answer ended it, who sees it there and then
+    expect(await proposalNotices(id, "lapsed")).toEqual([1]);
+  });
+
+  it("tells every circle asked when it lapses at its deadline, in their own circle's name", async () => {
+    const id = await released();
+    later(PROPOSAL_WINDOW_MS + 1000);
+    await closeDueProposals(new Date());
+    expect(await proposalNotices(id, "lapsed")).toEqual([1, 2, 3, 4]);
+    const claimed = await claimProposalNotifications(50, "email");
+    expect(claimed.find((n) => n.notice === "lapsed" && n.memberId === 3)).toMatchObject({ circleName: "Grocery" });
   });
 
   it("lapses when a circle has joined another federation by the time it would pass", async () => {
@@ -413,5 +425,37 @@ describe("inside a federation", () => {
   it("can't be turned into another kind of circle, itself", async () => {
     const fedId = await formed();
     await expect(createProposal(2, fedId, { type: "circle" })).rejects.toThrow(/can't become another kind of circle/);
+  });
+});
+
+describe("telling a circle about its delegate", () => {
+  it("tells its other members when one is put forward, in their own circle's name", async () => {
+    const id = await released();
+    await nominateFederationDelegate(3, id, "grocery", 4);
+    expect(await proposalNotices(id, "nominated")).toEqual([4]);
+    const claimed = await claimProposalNotifications(50, "email");
+    const notice = claimed.find((n) => n.notice === "nominated");
+    expect(notice).toMatchObject({ memberId: 4, circleName: "Grocery", nomineeName: "Member 4" });
+    expect(claimed.find((n) => n.notice === "opened" && n.memberId === 3)).toMatchObject({ circleName: "Grocery" });
+  });
+
+  it("tells them who objected and why, in place of the nomination, and again for the next", async () => {
+    const id = await released();
+    await nominateFederationDelegate(3, id, "grocery", 4);
+    await objectToFederationDelegate(4, id, "grocery", "Too busy");
+    expect(await proposalNotices(id, "nominated")).toEqual([]);
+    expect(await proposalNotices(id, "nominee_objected")).toEqual([3]);
+    const claimed = await claimProposalNotifications(50, "email");
+    expect(claimed.find((n) => n.notice === "nominee_objected")).toMatchObject({ circleName: "Grocery", nomineeName: "Member 4", objectorName: "Member 4", reason: "Too busy" });
+    await nominateFederationDelegate(4, id, "grocery", 3);
+    expect(await proposalNotices(id, "nominated")).toEqual([3]);
+    expect(await proposalNotices(id, "nominee_objected")).toEqual([]);
+  });
+});
+
+describe("once a circle has consented", () => {
+  it("takes no more answers from its members", async () => {
+    const id = await released();
+    await expect(respondToProposal(2, id, "object", "Changed my mind")).rejects.toThrow(/already consented/);
   });
 });
