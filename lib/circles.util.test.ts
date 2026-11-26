@@ -11,6 +11,7 @@ import {
   circleDescendantIds,
   circleHasChat,
   circleHasInbox,
+  circleCanInvite,
   circleHasPage,
   circleHasTasks,
   circleHasPublicWiki,
@@ -387,5 +388,15 @@ describe("memberCirclesWithPaths", () => {
     expect(ids(4)).toEqual(["city"]);
     expect(ids(1)).not.toContain("club");
     expect(ids(3)).toContain("club");
+  });
+});
+
+describe("circleCanInvite", () => {
+  it("is any circle with a page but a federation", () => {
+    expect(circleCanInvite(t.council)).toBe(true);
+    expect(circleCanInvite(t.club)).toBe(true);
+    expect(circleCanInvite(t.the903)).toBe(false);
+    expect(circleCanInvite(t.city)).toBe(false);
+    expect(circleCanInvite(circle({ id: "f", type: "federation", parentId: "city" }))).toBe(false);
   });
 });

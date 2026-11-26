@@ -6,6 +6,7 @@ import { useBackHandler } from "@/components/providers/back-handler-provider";
 import { useTopBarAction } from "@/components/providers/top-bar-action-provider";
 import { ConfirmModal, Input, Label, PageContainer, Select, SettingRow, SettingRows } from "@/components/shared";
 import { CIRCLE_TYPE_LABEL, circleTypeNoun, indexCircles, isGroup, startedInside } from "@/lib/circles.util";
+import { circleFederation } from "@/lib/federation.util";
 import { changedFields, checkChanges, checkCircleBasics, hasChanges, neighborhoodConsentFor } from "@/lib/proposals.util";
 import type { Circle, CircleProposal, CircleType, ProposalChanges } from "@/lib/types";
 import { CircleBasicsFields } from "./circle-basics-fields";
@@ -19,7 +20,7 @@ import { ParentCircleSelect, useParentCircleExplorer } from "./parent-circle-sel
 // Other is only kept, never chosen: a circle should say what it is, so it's
 // offered only to one that's Other already (see typeOptions below)
 const CIRCLE_TYPE_OPTIONS = (Object.entries(CIRCLE_TYPE_LABEL) as [CircleType, string][]).filter(
-  ([value]) => value !== "neighborhood" && value !== "group" && value !== "other"
+  ([value]) => value !== "neighborhood" && value !== "group" && value !== "other" && value !== "federation"
 );
 
 interface CircleDetailsPageProps {
@@ -53,6 +54,9 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
   const isCircleType = type === "circle";
   // started inside a circle: it stays there, and stays a Circle, sending its delegate up
   const inside = startedInside(o, indexCircles(circles));
+  // in a federation it stays in it, as the kind it is; a federation stays one
+  const federation = circleFederation(o, indexCircles(circles));
+  const fixedType = !!federation || o.type === "federation";
   const { consentError, setConsentError, clearError, fieldError } = useConsentError();
   const locked = !!openProposal;
   const [saving, setSaving] = useState(false);
@@ -118,7 +122,12 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
     <PageContainer size="normal">
       <ConsentNotice circle={o} openProposal={openProposal} memberId={memberId} error={consentError?.field === null ? consentError.message : null} />
       <div className="flex flex-col gap-6">
-        {inside ? (
+        {federation ? (
+          <div>
+            <Label>Parent Circle</Label>
+            <p className="font-serif text-base text-body">Part of {federation.name}, which it joined. It stays there, as it is.</p>
+          </div>
+        ) : inside ? (
           <div>
             <Label>Parent Circle</Label>
             <p className="font-serif text-base text-body">
@@ -137,7 +146,7 @@ export function CircleDetailsPage({ circle: o, circles, memberId, openProposal, 
           </div>
         )}
 
-        {!inside && o.type !== "neighborhood" && o.type !== "group" && (
+        {!inside && !fixedType && o.type !== "neighborhood" && o.type !== "group" && (
           <div id="field-type">
             <Label htmlFor="circle-type">Type</Label>
             <Select

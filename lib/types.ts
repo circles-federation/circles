@@ -6,8 +6,10 @@
    neighborhoods, collectives, co-ops and plain circles (a council, a working
    group) are circles inside it, and circles nest. `neighborhood` is the one
    type with behavior (a member's home
-   circle, at most one per member); the rest are display/filter labels. */
-export type CircleType = "neighborhood" | "circle" | "collective" | "cooperative" | "other" | "group";
+   circle, at most one per member); the rest are display/filter labels. A
+   federation is what collectives and co-ops form to coordinate: its members
+   are the delegates of the circles inside it (lib/federation.util.ts). */
+export type CircleType = "neighborhood" | "circle" | "collective" | "cooperative" | "other" | "group" | "federation";
 
 // a language a member speaks (a BCP 47 code) and how well, 1 (beginner) to 5
 // (native) — see lib/languages.util.ts
@@ -273,13 +275,23 @@ export interface ProposalLine {
 
 // what a member is told about a proposal: it's open for their response, or
 // how it ended
-export type ProposalNoticeKind = "opened" | "objected" | "passed";
+// the last three are a federation's: a delegate put forward by the reader's
+// circle, or objected to there, and a federation that couldn't go ahead
+export type ProposalNoticeKind = "opened" | "objected" | "passed" | "nominated" | "nominee_objected" | "lapsed";
 
 // what a proposal is for: a change to a circle (its own, or, decided by its
 // neighborhood, one inside it: see subjectCircleId), holding an event the
 // circle hosts, posting to its neighborhood's bulletin, or starting a new
 // Circle in a neighborhood, or removing a message from a circle's chat
-export type ProposalKind = "change" | "event" | "post" | "new_circle" | "remove_message";
+export type ProposalKind = "change" | "event" | "post" | "new_circle" | "remove_message" | "coordinating_circle";
+
+// where a circle stands in a coordinating-circle proposal: 1 is the proposer's
+// circle, which decides first, 2 the others, who see it only once it has passed
+export type DeciderStage = 1 | 2;
+
+// the delegate a circle has put forward to a coordinating circle: open while
+// its members can object to them, objected if one did, chosen once it passes
+export type NomineeStatus = "open" | "objected" | "chosen";
 
 export interface ProposalResponse {
   memberId: number;
@@ -287,6 +299,29 @@ export interface ProposalResponse {
   // why they object, required with an objection
   reason?: string;
   respondedAt: string;
+}
+
+// the delegate a circle has put forward to a coordinating circle
+export interface ProposalNominee {
+  id: number;
+  memberId: number;
+  nominatedBy: number;
+  status: NomineeStatus;
+  objectedBy?: number;
+  objectionReason?: string;
+  createdAt: string;
+}
+
+// a circle deciding a coordinating-circle proposal, and how far it has got;
+// `releasedAt` is unset until its members can see the proposal at all
+export interface ProposalDecider {
+  circleId: string;
+  stage: DeciderStage;
+  releasedAt?: string;
+  closesAt?: string;
+  passedAt?: string;
+  // everyone put forward as its delegate, oldest first; the last may be current
+  nominees: ProposalNominee[];
 }
 
 export interface CircleProposal {
@@ -316,6 +351,8 @@ export interface CircleProposal {
   // withdrawn because its event began before it was decided, not by anyone
   lapsed?: boolean;
   responses: ProposalResponse[];
+  // for a coordinating circle: each circle deciding it, in stage order
+  deciders?: ProposalDecider[];
 }
 
 // an invitation for a member to join a circle, from one of its members; seen

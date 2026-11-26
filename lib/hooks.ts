@@ -47,9 +47,10 @@ export function useCirclesById(): CirclesById {
    open proposals. Proposals soonest to close first. */
 export function useNeedsYou() {
   const { pendingReviews, invitations, proposals, profile, messages } = useAppState();
+  const byId = useCirclesById();
   const byClosing = (a: CircleProposal, b: CircleProposal) => a.closesAt.localeCompare(b.closesAt);
   const reviews = pendingReviews ?? 0;
-  const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id)).sort(byClosing);
+  const awaitingMe = proposals.filter((p) => awaitingResponse(p, profile.id, byId)).sort(byClosing);
   const myInvitations = invitations.filter((i) => i.memberId === profile.id);
   const mineOpen = proposals.filter((p) => p.status === "open" && p.proposerId === profile.id).sort(byClosing);
   // each circle with open messages they haven't read, and how many

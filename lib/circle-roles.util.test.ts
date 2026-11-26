@@ -126,3 +126,26 @@ describe("reading who holds what", () => {
     expect(isDelegateOf({}, 1)).toBe(false);
   });
 });
+
+describe("a circle in a federation", () => {
+  it("is accountable whatever its type, so it has a Delegate", () => {
+    expect(circleIsAccountable({ type: "cooperative" }, true)).toBe(true);
+    expect(builtinRolesFor("collective", true)).toEqual(["Secretary", "Leader", "Facilitator", "Delegate"]);
+    expect(isBuiltinRole("delegate", "cooperative", true)).toBe(true);
+    expect(isBuiltinRole("delegate", "cooperative")).toBe(false);
+  });
+  it("keeps its Delegate's holder when its roles are assembled", () => {
+    const roles = assembleCircleRoles([{ label: "Delegate", memberId: 2 }], [1, 2], "cooperative", true);
+    expect(roles.find((r) => r.label === "Delegate")).toEqual({ label: "Delegate", builtin: true, memberId: 2 });
+    expect(assembleCircleRoles([{ label: "Delegate", memberId: 2 }], [1, 2], "cooperative").some((r) => r.label === "Delegate")).toBe(false);
+  });
+  it("must name a delegate, who is one of its members", () => {
+    expect(validateCircleRoles([{ label: "Delegate", memberId: 2 }], [1, 2], "cooperative", true)).toBeNull();
+    expect(validateCircleRoles([{ label: "Delegate", memberId: null }], [1, 2], "cooperative", true)).toMatch(/Choose a delegate/);
+    expect(validateCircleRoles([{ label: "Secretary", memberId: 1 }], [1, 2], "cooperative", true)).toMatch(/Choose a delegate/);
+    expect(validateCircleRoles([{ label: "Delegate", memberId: 9 }], [1, 2], "cooperative", true)).toMatch(/Only members/);
+  });
+  it("needs none anywhere else", () => {
+    expect(validateCircleRoles([], [1, 2], "cooperative")).toBeNull();
+  });
+});

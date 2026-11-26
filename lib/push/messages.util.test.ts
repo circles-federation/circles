@@ -74,7 +74,9 @@ describe("other pushes", () => {
     expect(opened.url).toBe("/proposals/p1");
     expect(proposalPush({ ...base, notice: "objected", objectorName: "Tomas", reason: "Too costly" }).body).toBe("Tomas: Too costly");
     expect(proposalPush({ ...base, notice: "passed" }).title).toMatch(/^Passed: /);
-    for (const notice of ["opened", "objected", "passed"] as const) fits(proposalPush({ ...base, notice, reason: "r".repeat(500) }));
+    for (const notice of ["opened", "objected", "passed", "nominated", "nominee_objected", "lapsed"] as const) fits(proposalPush({ ...base, notice, reason: "r".repeat(500) }));
+    expect(proposalPush({ ...base, notice: "nominated", nomineeName: "Ona" }).title).toBe("Delegate: Ona");
+    expect(proposalPush({ ...base, notice: "lapsed" }).title).toMatch(/^Not formed: /);
   });
 
   it("says who invited you, falling back to a member, and opens the invitation", () => {

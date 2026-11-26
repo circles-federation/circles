@@ -121,12 +121,16 @@ export function proposalPush(d: {
   proposerName: string;
   objectorName?: string;
   reason?: string;
+  nomineeName?: string;
 }): PushMessage {
   const title = proposalTitle(d);
   const event = isEventProposal(d);
   const url = `/proposals/${d.proposalId}`;
   const tag = `proposal-${d.proposalId}`;
   if (d.notice === "opened") return message(`Proposal: ${title}`, `${d.circleName} · from ${d.proposerName}. Respond by ${fmtDateTime(d.closesAt)}.`, url, tag);
+  if (d.notice === "nominated") return message(`Delegate: ${d.nomineeName ?? "a member"}`, `Put forward by ${d.circleName} for ${d.changes.name ?? "a federation"}. Respond by ${fmtDateTime(d.closesAt)}.`, url, tag);
+  if (d.notice === "nominee_objected") return message(`Another delegate needed`, `${d.objectorName ?? "A member"} objected to ${d.nomineeName ?? "the delegate"} for ${d.circleName}.`, url, tag);
+  if (d.notice === "lapsed") return message(`Not formed: ${title}`, "A circle had no delegate or could no longer join. It can be proposed again.", url, tag);
   if (d.notice === "objected") return message(`Objected: ${title}`, `${d.objectorName ?? "A member"}${event ? ", so it won't be held" : ""}: ${d.reason ?? "objected"}`, url, tag);
   return message(`Passed: ${title}`, `No one objected, so ${proposalWords(d).passed}.`, url, tag);
 }

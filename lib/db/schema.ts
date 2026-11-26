@@ -26,6 +26,7 @@ import type {
   AgendaCategory,
   CircleFeature,
   ConsentResponse,
+  DeciderStage,
   EventChange,
   EventKindKey,
   GuestNoticeKind,
@@ -33,6 +34,7 @@ import type {
   ReminderHours,
   AvailabilityWindow,
   NotificationChannel,
+  NomineeStatus,
   NotificationKind,
   ProposalChanges,
   ProposalKind,
@@ -142,7 +144,7 @@ export const pushSubscriptions = pgTable(
 );
 
 /* Everything that scopes something is a circle — see lib/types.ts. */
-export const circleType = pgEnum("circle_type", ["neighborhood", "circle", "collective", "cooperative", "other", "group"]);
+export const circleType = pgEnum("circle_type", ["neighborhood", "circle", "collective", "cooperative", "other", "group", "federation"]);
 
 export const circles = pgTable(
   "circles",
@@ -938,6 +940,51 @@ export const proposalResponses = pgTable(
     respondedAt: timestamp("responded_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.proposalId, t.memberId] })]
+);
+
+/* The circles that decide a coordinating-circle proposal (lib/federation.util.ts),
+   in stages: the proposer's circle first, the rest only once it has passed, so
+   a circle never sees a proposal its proposer's own circle turned down.
+   `released_at` is when its members could first see it, `closes_at` when its
+   own window ends and `passed_at` when it consented. */
+export const proposalDeciders = pgTable(
+  "circle_proposal_deciders",
+  {
+    proposalId: text("proposal_id").notNull().references(() => circleProposals.id, { onDelete: "cascade" }),
+    circleId: text("circle_id").notNull().references(() => circles.id, { onDelete: "cascade" }),
+    stage: integer("stage").$type<DeciderStage>().notNull(),
+    releasedAt: timestamp("released_at", { withTimezone: true }),
+    closesAt: timestamp("closes_at", { withTimezone: true }),
+    passedAt: timestamp("passed_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.proposalId, t.circleId] }),
+    index("circle_proposal_deciders_circle_idx").on(t.circleId),
+    check("circle_proposal_deciders_stage", sql`${t.stage} in (1, 2)`),
+  ]
+);
+
+/* The delegate each deciding circle puts forward to the coordinating circle.
+   Its members can object to the nominee without ending the proposal, which
+   only drops them and asks for another; silence is consent, as everywhere. */
+export const proposalNominees = pgTable(
+  "circle_proposal_nominees",
+  {
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    proposalId: text("proposal_id").notNull(),
+    circleId: text("circle_id").notNull(),
+    memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    nominatedBy: integer("nominated_by").notNull().references(() => members.id, { onDelete: "cascade" }),
+    status: text("status").$type<NomineeStatus>().notNull().default("open"),
+    objectedBy: integer("objected_by").references(() => members.id, { onDelete: "set null" }),
+    objectionReason: text("objection_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({ name: "circle_proposal_nominees_decider_fk", columns: [t.proposalId, t.circleId], foreignColumns: [proposalDeciders.proposalId, proposalDeciders.circleId] }).onDelete("cascade"),
+    // one nominee at a time per circle, whether still open or chosen
+    uniqueIndex("circle_proposal_nominees_current").on(t.proposalId, t.circleId).where(sql`${t.status} in ('open', 'chosen')`),
+  ]
 );
 
 /* The queue behind telling a circle's members about a proposal: that one's

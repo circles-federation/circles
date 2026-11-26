@@ -650,6 +650,8 @@ export interface ProposalEmailData {
   // an "objected" notice's: who objected, and why
   objectorName?: string;
   reason?: string;
+  // a federation's delegate notices: who was put forward, or objected to
+  nomineeName?: string;
   url: string;
 }
 
@@ -673,7 +675,31 @@ export function proposalEmail(d: ProposalEmailData): Body {
           `${d.proposerName} proposes ${ask}. Say whether you like it, accept it, or object, by ${deadline}. If no one objects, it's ${made} then.`,
           "Respond",
         ]
-      : d.notice === "objected"
+      : d.notice === "nominated"
+        ? [
+            `Delegate for ${d.circleName}: ${d.nomineeName ?? "a member"}`,
+            `Delegate · ${d.circleName}`,
+            INK,
+            `${d.nomineeName ?? "A member"} has been put forward as ${d.circleName}'s delegate to ${d.changes.name ?? "the federation"}. Answer by ${deadline}, or object to them if you disagree. If no one does, that's consent.`,
+            "Respond",
+          ]
+        : d.notice === "nominee_objected"
+          ? [
+              `Another delegate needed: ${d.circleName}`,
+              `Delegate · ${d.circleName}`,
+              DANGER,
+              `${d.objectorName ?? "A member"} objected to ${d.nomineeName ?? "the delegate"} as ${d.circleName}'s delegate to ${d.changes.name ?? "the federation"}.${d.reason ? ` Their reason: “${d.reason}”.` : ""} Put someone else forward by ${deadline}, or the federation can't be formed.`,
+              "Respond",
+            ]
+          : d.notice === "lapsed"
+            ? [
+                `Not formed: ${title}`,
+                `Withdrawn · ${d.circleName}`,
+                INK,
+                `${d.proposerName}'s proposal was withdrawn automatically: a circle had no delegate or could no longer join, so ${d.changes.name ?? "the federation"} won't be formed. It can be proposed again.`,
+                "View proposal",
+              ]
+            : d.notice === "objected"
         ? [
             `Objection: ${title}`,
             `Objected · ${d.circleName}`,
@@ -726,6 +752,10 @@ export function proposalWords(d: Pick<ProposalEmailData, "kind" | "circleName" |
     const inside = d.changes.delegateId !== undefined;
     const ask = inside ? `starting ${name}, one of ${d.circleName}'s circles, which needs its members' consent` : `starting ${name}, a Circle in ${d.circleName}, which needs the consent of everyone who lives there`;
     return { made: "started", ask, passed: `${name} has been started` };
+  }
+  if (d.kind === "coordinating_circle") {
+    const name = d.changes.name ?? "a federation";
+    return { made: "formed", ask: `forming ${name}, a federation of circles including ${d.circleName}, which needs each circle's members' consent`, passed: `${name} has been formed` };
   }
   if (d.subjectCircleName) {
     return { made: "made", ask: `a change to ${d.subjectCircleName}, which needs the consent of its members and of everyone in ${d.circleName}`, passed: `the change has been made to ${d.subjectCircleName}` };

@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import { BuildingOffice2Icon, BuildingStorefrontIcon, LockClosedIcon, MapPinIcon, Squares2X2Icon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { BuildingOffice2Icon, BuildingStorefrontIcon, LinkIcon, LockClosedIcon, MapPinIcon, Squares2X2Icon, UserGroupIcon } from "@heroicons/react/24/outline";
 import type { Circle, CircleType } from "@/lib/types";
 import { RingIcon } from "./ring-icon";
 
@@ -13,6 +13,7 @@ export const CIRCLE_TYPE_ICON: Record<CircleType, Icon> = {
   collective: UserGroupIcon,
   cooperative: BuildingStorefrontIcon,
   group: LockClosedIcon,
+  federation: LinkIcon,
   other: Squares2X2Icon,
 };
 

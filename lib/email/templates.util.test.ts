@@ -219,8 +219,16 @@ describe("proposalEmail", () => {
     expect(mail.html).not.toMatch(raw);
   });
 
+  it("speaks of a federation's delegates, and of one that couldn't go ahead", () => {
+    const federation = { ...base, kind: "coordinating_circle" as const, changes: { name: "Alliance" }, nomineeName: "Ona" };
+    expect(proposalEmail({ ...federation, notice: "nominated" }).text).toContain("Ona has been put forward");
+    expect(proposalEmail({ ...federation, notice: "nominee_objected", objectorName: "Tomas", reason: "Too busy" }).text).toMatch(/Tomas objected to Ona.*Too busy/);
+    expect(proposalEmail({ ...federation, notice: "lapsed" }).subject).toBe("Not formed: Form Alliance");
+    expect(proposalEmail({ ...federation, notice: "nominated", nomineeName: EVIL }).html).not.toMatch(raw);
+  });
+
   it("has words for each kind of proposal", () => {
-    for (const kind of ["change", "event", "post", "new_circle", "remove_message"] as const) {
+    for (const kind of ["change", "event", "post", "new_circle", "remove_message", "coordinating_circle"] as const) {
       const w = proposalWords({ kind, circleName: "Garden", changes: {} });
       expect(w.made && w.ask && w.passed).toBeTruthy();
     }

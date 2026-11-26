@@ -221,3 +221,16 @@ export async function circleEditor(id: string): Promise<{ by: number | null; at:
 export async function ageChatMessage(id: number, minutes: number): Promise<void> {
   await db.execute(sql`update circle_chat_messages set created_at = now() - make_interval(mins => ${minutes}) where id = ${id}`);
 }
+
+export async function archiveCircle(id: string): Promise<void> {
+  await db.execute(sql`update circles set archived_at = now() where id = ${id}`);
+}
+
+export async function moveCircle(id: string, parentId: string): Promise<void> {
+  await db.execute(sql`update circles set parent_id = ${parentId} where id = ${id}`);
+}
+
+// a member goes from a circle without any of leaveCircle's clean-up
+export async function leave(circleId: string, memberId: number): Promise<void> {
+  await db.execute(sql`delete from circle_members where circle_id = ${circleId} and member_id = ${memberId}`);
+}

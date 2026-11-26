@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { AdjustmentsHorizontalIcon, ArrowRightStartOnRectangleIcon, BookOpenIcon, IdentificationIcon, InboxIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { AdjustmentsHorizontalIcon, ArrowRightStartOnRectangleIcon, BookOpenIcon, IdentificationIcon, InboxIcon, LinkIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { Button, ConfirmModal, MenuRow, PageContainer, RingIcon, Section, SectionGroup } from "@/components/shared";
 import { circleHasRoles } from "@/lib/circle-roles.util";
-import { CIRCLE_FEATURES, circleCanHaveCircles, circleCanHaveInbox, circleHasPage, circleHasPublicWiki, circleHasWiki, featuresOf } from "@/lib/circles.util";
+import { circleIsInFederation, federationRefusal } from "@/lib/federation.util";
+import { CIRCLE_FEATURES, circleCanHaveCircles, circleCanHaveInbox, circleHasPage, circleHasPublicWiki, circleHasWiki, featuresOf, indexCircles } from "@/lib/circles.util";
 import type { Circle, CircleProposal } from "@/lib/types";
 import { ProposalBanner } from "./proposal-banner";
 
@@ -13,13 +14,18 @@ interface ManageCirclePageProps {
   memberId: number;
   // a change open for consent, which holds Details and Roles until it's decided
   openProposal?: CircleProposal;
+  // whether it can propose a federation: its circles, to tell if it's in one,
+  // and a federation already proposed that it's part of
+  circles: Circle[];
+  openFederation?: CircleProposal;
   // leave the circle (the route goes on from it once it's done)
   onLeave: () => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 // what Details covers, under its row
-function detailsSummary(c: Circle): string {
-  const parts = ["Name", "tagline", ...(c.type !== "neighborhood" && c.type !== "group" ? ["type"] : []), ...(c.parentId !== null ? ["parent"] : []), ...(c.type === "group" ? ["visibility"] : [])];
+function detailsSummary(c: Circle, inFederation: boolean): string {
+  const fixed = inFederation || c.type === "federation";
+  const parts = ["Name", "tagline", ...(c.type !== "neighborhood" && c.type !== "group" && !fixed ? ["type"] : []), ...(c.parentId !== null && !inFederation ? ["parent"] : []), ...(c.type === "group" ? ["visibility"] : [])];
   const list = `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
   return c.type === "circle" ? `${parts.join(", ")}, domain and aims` : list;
 }
@@ -45,7 +51,7 @@ function rolesSummary(c: Circle): string {
    that its members decide by consent), Roles and Inbox (also by consent),
    Wiki (what its page's Wiki tab shows, edited freely) and New circle (one
    inside it, also by consent) — with leaving the circle at the foot. */
-export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }: ManageCirclePageProps) {
+export function ManageCirclePage({ circle: o, circles, memberId, openProposal, openFederation, onLeave }: ManageCirclePageProps) {
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
@@ -57,6 +63,8 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
   // a Circle, a collective or a co-op may have an Inbox
   const showInbox = circleCanHaveInbox(o);
   const showNewCircle = circleCanHaveCircles(o);
+  // a collective or co-op not yet in one
+  const showFederate = !federationRefusal(o, indexCircles(circles));
   const base = `/circles/${o.id}/manage`;
 
   // what leaving means for them: what they lose, the roles they'd leave
@@ -80,12 +88,20 @@ export function ManageCirclePage({ circle: o, memberId, openProposal, onLeave }:
           {openProposal && <ProposalBanner proposal={openProposal} memberId={memberId} className="mb-5" />}
           <div className="flex flex-col gap-3">
             {showFeatures && <MenuRow href={`${base}/features`} icon={AdjustmentsHorizontalIcon} label="Features" detail={openProposal ? LOCKED : featuresSummary(o)} />}
-            <MenuRow href={`${base}/details`} icon={IdentificationIcon} label="Details" detail={openProposal ? LOCKED : detailsSummary(o)} />
+            <MenuRow href={`${base}/details`} icon={IdentificationIcon} label="Details" detail={openProposal ? LOCKED : detailsSummary(o, circleIsInFederation(o, indexCircles(circles)))} />
             {showRoles && <MenuRow href={`${base}/roles`} icon={UserGroupIcon} label="Roles" detail={openProposal ? LOCKED : rolesSummary(o)} />}
             {showInbox && <MenuRow href={`${base}/inbox`} icon={InboxIcon} label="Inbox" detail={openProposal ? LOCKED : o.inbox ? "On: anyone can write to it" : "Off"} />}
             {showWiki && <MenuRow href={`${base}/wiki`} icon={BookOpenIcon} label="Wiki" detail={circleHasPublicWiki(o) ? "A public page about this circle" : "A page about this group, for its members"} />}
             {/* seldom done, like starting a new team, so here rather than in the circle's menu */}
             {showNewCircle && <MenuRow href={`/circles/new?parent=${o.id}`} icon={RingIcon} label="New circle" detail="Start a circle inside this one" />}
+            {showFederate && (
+              <MenuRow
+                href={openFederation ? `/proposals/${openFederation.id}` : `${base}/federate`}
+                icon={LinkIcon}
+                label="Federate"
+                detail={openFederation ? "A federation is proposed" : "Join other circles under a new one"}
+              />
+            )}
           </div>
           <p className="mt-4 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
             Changes to its details{showRoles && ", roles"}{showInbox && " and Inbox"}{showFeatures && " and features"} are proposed to its members, who decide them by consent.

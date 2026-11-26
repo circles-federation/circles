@@ -6,7 +6,9 @@ import clsx from "clsx";
 import type { MutationResult } from "@/components/providers/app-state-provider";
 import { Button, ConfirmModal, Eyebrow, EyebrowGroup, CappedChip, PageContainer, TextArea, useToast, BOXED_LIST } from "@/components/shared";
 import { fmtDateTime } from "@/lib/format.util";
-import { useMemberById } from "@/lib/hooks";
+import { useCirclesById, useMemberById } from "@/lib/hooks";
+import { answerIsStale, pendingFederationCircles } from "@/lib/federation.util";
+import { FederationDeciderName, FederationDeciderStatus } from "./federation-deciders";
 import { OBJECTION_REASON_MAX, RESPONSE_LABEL, isEventProposal, proposalTitle, responseOf } from "@/lib/proposals.util";
 import type { Circle, CircleProposal, ConsentResponse, Member } from "@/lib/types";
 
@@ -34,6 +36,9 @@ interface ProposalPageProps {
   // an event proposal where consenting is also an RSVP (one without signup roles)
   consentIsRsvp?: boolean;
   onWithdraw?: () => Promise<MutationResult>;
+  // a federation proposal's delegates
+  onNominate?: (circleId: string, memberId: number) => Promise<MutationResult>;
+  onObjectToNominee?: (circleId: string, reason: string) => Promise<MutationResult>;
 }
 
 // each answer's look: green, thumb up, likes it; yellow, a check, accepts it
@@ -51,9 +56,9 @@ const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon:
    everyone's answer. Reached from its email or push, the circle's banner,
    and Home. */
 // what each kind is about, as its section heads it
-const ABOUT: Record<CircleProposal["kind"], string> = { change: "What it changes", event: "The event", post: "The post", new_circle: "The circle", remove_message: "The message" };
+const ABOUT: Record<CircleProposal["kind"], string> = { change: "What it changes", event: "The event", post: "The post", new_circle: "The circle", remove_message: "The message", coordinating_circle: "The federation" };
 
-export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenStarted, onOpenChat, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw }: ProposalPageProps) {
+export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenStarted, onOpenChat, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw, onNominate, onObjectToNominee }: ProposalPageProps) {
   // it proposes holding an event, not changing the circle
   const event = isEventProposal(p);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -65,7 +70,12 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
   const proposer = memberById(p.proposerId);
   const mine = responseOf(p, memberId);
   const open = p.status === "open";
-  const canAnswer = open && p.proposerId !== memberId;
+  const byId = useCirclesById();
+  // a federation is answered by circle: once yours has consented, you're done,
+  // and a delegate named after you answered asks you again
+  const federation = p.kind === "coordinating_circle";
+  const canAnswer = open && p.proposerId !== memberId && (!federation || pendingFederationCircles(p, memberId, byId).length > 0);
+  const stale = federation && canAnswer && answerIsStale(p, memberId, byId);
   // the answer being weighed, before it's confirmed: every answer is asked to be
   // confirmed, an objection with its reason
   const [choice, setChoice] = useState<ConsentResponse | null>(null);
@@ -84,6 +94,32 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
     setChoice(null);
     showToast({ tone: "success", message: response === "object" ? "Your objection is in. Everyone's been told." : "Your answer is in." });
   }
+
+  // each of these members and where they stand
+  const answers = (ids: number[]) => (
+    <div className={BOXED_LIST}>
+      {ids
+        .map((id) => memberById(id))
+        .filter((m): m is Member => !!m)
+        .map((m) => {
+          const r = responseOf(p, m.id);
+          return (
+            <div key={m.id} className="border-b border-ink py-3 last:border-b-0">
+              <div className="flex items-center justify-between gap-3">
+                <button type="button" onClick={() => onOpenMember(m)} className="hit cursor-pointer border-0 bg-transparent p-0 text-left font-sans text-base font-bold text-ink">
+                  {m.name}
+                </button>
+                <span className="flex shrink-0 items-center gap-2 font-sans text-sm text-soft">
+                  <span aria-hidden className={clsx("size-2.5 rounded-full", r ? ANSWER_STYLE[r.response].dot : "border border-soft")} />
+                  {r ? RESPONSE_LABEL[r.response] : open ? "No answer yet" : "Didn't answer"}
+                </span>
+              </div>
+              {r?.reason && <p className="mt-1.5 font-serif text-sm leading-snug italic text-body">&ldquo;{r.reason}&rdquo;</p>}
+            </div>
+          );
+        })}
+    </div>
+  );
 
   return (
     <PageContainer size="wide">
@@ -145,28 +181,21 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
 
         <section className="order-3">
           <EyebrowGroup label="Answers">
-            <div className={BOXED_LIST}>
-              {deciders
-                .map((id) => memberById(id))
-                .filter((m): m is Member => !!m)
-                .map((m) => {
-                  const r = responseOf(p, m.id);
-                  return (
-                    <div key={m.id} className="border-b border-ink py-3 last:border-b-0">
-                      <div className="flex items-center justify-between gap-3">
-                        <button type="button" onClick={() => onOpenMember(m)} className="hit cursor-pointer border-0 bg-transparent p-0 text-left font-sans text-base font-bold text-ink">
-                          {m.name}
-                        </button>
-                        <span className="flex shrink-0 items-center gap-2 font-sans text-sm text-soft">
-                          <span aria-hidden className={clsx("size-2.5 rounded-full", r ? ANSWER_STYLE[r.response].dot : "border border-soft")} />
-                          {r ? RESPONSE_LABEL[r.response] : open ? "No answer yet" : "Didn't answer"}
-                        </span>
-                      </div>
-                      {r?.reason && <p className="mt-1.5 font-serif text-sm leading-snug italic text-body">&ldquo;{r.reason}&rdquo;</p>}
+            {federation ? (
+              <div className="flex flex-col gap-8">
+                {(p.deciders ?? []).map((d) => (
+                  <div key={d.circleId}>
+                    <FederationDeciderName circleId={d.circleId} />
+                    <div className="mt-1">
+                      <FederationDeciderStatus proposal={p} decider={d} memberId={memberId} onNominate={onNominate!} onObjectToNominee={onObjectToNominee!} />
                     </div>
-                  );
-                })}
-            </div>
+                    {d.releasedAt && <div className="mt-3">{answers(byId[d.circleId]?.members ?? [])}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              answers(deciders)
+            )}
           </EyebrowGroup>
         </section>
         {onWithdraw && (
@@ -184,9 +213,15 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
           <section className="order-2">
             <EyebrowGroup label="Your answer">
               {!canAnswer ? (
+                p.proposerId !== memberId ? (
+                  <p className="font-serif text-base text-soft">Your circle has consented.</p>
+                ) : (
                 <p className="font-serif text-base text-soft">You proposed this, so you&rsquo;ve consented{consentIsRsvp && <>, and you&rsquo;re down as going</>}.</p>
+                )
               ) : (
                 <>
+                  {stale && <p className="mb-3 font-serif text-base text-flame-text">A delegate was named since you answered. Answer again to include them.</p>}
+                  {federation && <p className="mb-3 font-serif text-sm leading-snug text-soft">Objecting here ends the whole proposal.</p>}
                   {mine && <p className="mb-3 font-serif text-base">You answered: <strong className="font-sans">{RESPONSE_LABEL[mine.response]}</strong>. You can change it until it closes.</p>}
                   {consentIsRsvp && <p className="mb-3 font-serif text-sm leading-snug text-soft">Liking or accepting it also marks you as going.</p>}
                   <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3" role="group" aria-label="Your answer">
@@ -204,7 +239,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                           onClick={() => {
                             setError(null);
                             // your own answer needs no confirming: choosing it again clears the choice
-                            setChoice((c) => (c === r || r === mine?.response ? null : r));
+                            setChoice((c) => (c === r || (r === mine?.response && !stale) ? null : r));
                           }}
                           aria-pressed={selected}
                           className={clsx(
@@ -246,7 +281,7 @@ export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenS
                           {choice === "like" ? "You consent, and you’re glad of it." : "You consent, though it isn’t your first choice."} You can change your answer until it closes.
                         </p>
                         <div className="mt-3 flex gap-3">
-                          <Button disabled={busy || mine?.response === choice} onClick={() => answer(choice)}>
+                          <Button disabled={busy || (mine?.response === choice && !stale)} onClick={() => answer(choice)}>
                             Confirm
                           </Button>
                           <Button variant="secondary" disabled={busy} onClick={() => setChoice(null)}>
@@ -292,6 +327,7 @@ const WITHDRAWN: Record<CircleProposal["kind"], string> = {
   post: "it won’t be posted",
   new_circle: "the circle won’t be started",
   remove_message: "the message won’t be removed",
+  coordinating_circle: "the federation won’t be formed",
 };
 
 // what becomes of each kind: "it's {made}", "{done}", "it won't be {notDone}"
@@ -301,19 +337,23 @@ const WORDS: Record<CircleProposal["kind"], { made: string; done: string; notDon
   post: { made: "posted", done: "it was posted to the neighborhood's bulletin", notDone: "posted" },
   new_circle: { made: "started", done: "the circle was started", notDone: "started" },
   remove_message: { made: "removed", done: "the message was removed", notDone: "removed" },
+  coordinating_circle: { made: "formed", done: "the federation was formed", notDone: "formed" },
 };
 
 // until when it's open and what happens then, or how it ended — for an event,
 // whether it's scheduled
 function Outcome({ proposal: p, objectorName }: { proposal: CircleProposal; objectorName?: string }) {
   const { made, done, notDone } = WORDS[p.kind];
+  const federation = p.kind === "coordinating_circle";
   const [Icon, tone, heading, text] =
     p.status === "open"
-      ? [HandRaisedIcon, "bg-flame text-on-action", `Open until ${fmtDateTime(new Date(p.closesAt))}`, `If no one objects by then, it's ${made}. It's ${made} sooner if everyone consents.`]
+      ? [HandRaisedIcon, "bg-flame text-on-action", `Open until ${fmtDateTime(new Date(p.closesAt))}`, federation ? "Each circle consents in turn, and it's formed once they all have. Silence by then is consent." : `If no one objects by then, it's ${made}. It's ${made} sooner if everyone consents.`]
       : p.status === "passed"
         ? [CheckCircleIcon, "bg-tint-leaf text-on-action", "Passed", `No one objected, so ${done}${p.decidedAt ? ` on ${fmtDateTime(new Date(p.decidedAt))}` : ""}.`]
         : p.status === "withdrawn"
-          ? p.lapsed
+          ? p.lapsed && federation
+            ? [XCircleIcon, "bg-wash text-soft", "Withdrawn automatically", "A circle had no delegate or could no longer join, so the federation won't be formed. It can be proposed again."]
+            : p.lapsed
             ? [XCircleIcon, "bg-wash text-soft", "Withdrawn automatically", "Its start time came before the circle had decided, so it was withdrawn and the event won't be held. It can be proposed again for another time."]
             : [XCircleIcon, "bg-wash text-soft", "Withdrawn", `It was withdrawn before it was decided, so it won't be ${notDone}. It can be proposed again.`]
           : [XCircleIcon, "bg-tint-danger text-on-action", "Objected", `${objectorName ?? "A member"} objected, so it won't be ${notDone}. It can be proposed again, changed to meet the objection.`];

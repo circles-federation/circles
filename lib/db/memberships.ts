@@ -5,7 +5,7 @@ import { unassignMessagesFromCircle } from "./messages";
 import { circleInvitations, circleMembers, circleRoles, circles } from "./schema";
 import { unassignFromCircle } from "./tasks";
 import { DELEGATE } from "@/lib/circle-roles.util";
-import { circleCanHaveCircles } from "@/lib/circles.util";
+import { circleSeatsDelegates } from "@/lib/circles.util";
 
 const children = alias(circles, "children");
 
@@ -32,8 +32,8 @@ export async function dropMembership(tx: Tx, memberId: number, circleId: string)
 }
 
 /* A circle started inside another (lib/circles.util.ts's
-   circleCanHaveCircles) sends its delegate up, as a full member of that
-   circle, so it decides alongside its members. Their membership there is
+   circleCanHaveCircles), or inside a federation, sends its delegate up, as a
+   full member of that circle, so it decides alongside its members. Their membership there is
    kept in step with the Delegate roles here alone: a delegate who isn't a
    member already is made one, marked as there for a circle they speak for
    (`delegate_for`), and goes again (dropMembership) once they speak for none
@@ -55,7 +55,7 @@ async function settleDelegates(tx: Tx, parentId: string): Promise<void> {
   const [parent] = await tx.select().from(circles).where(eq(circles.id, parentId)).for("update");
   if (!parent) return;
   const delegates = new Map<number, string[]>();
-  if (circleCanHaveCircles(parent) && !parent.archivedAt) {
+  if (circleSeatsDelegates(parent) && !parent.archivedAt) {
     const held = await tx
       .select({ memberId: circleRoles.memberId, childId: children.id })
       .from(circleRoles)

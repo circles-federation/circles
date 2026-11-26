@@ -8,19 +8,22 @@ import { useManagedCircle } from "@/lib/hooks";
 
 export default function Page() {
   const router = useRouter();
-  const { profile, leaveCircle } = useAppState();
+  const { profile, circles, proposals, leaveCircle } = useAppState();
   // set while leaving: they stop being a member before this page has gone,
   // and that moment shouldn't read as a 404
   const [leaving, setLeaving] = useState(false);
   const managed = useManagedCircle({ allowGone: leaving });
   if (!managed) return null;
   const { circle, openProposal } = managed;
+  const openFederation = proposals.find((p) => p.kind === "coordinating_circle" && p.status === "open" && p.deciders?.some((d) => d.releasedAt && d.circleId === circle.id));
 
   return (
     <ManageCirclePage
       circle={circle}
       memberId={profile.id}
       {...(openProposal ? { openProposal } : {})}
+      circles={circles}
+      {...(openFederation ? { openFederation } : {})}
       // replace, not push: this page is gone for them once they've left. Back
       // to the circle's page, now as a non-member, or to the Circles browser
       // if they were its last member and it's archived

@@ -477,6 +477,13 @@
       "when": 1795487704297,
       "tag": "0067_meeting_minutes_sent",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795576147768,
+      "tag": "0068_coordinating_circles",
+      "breakpoints": true
     }
   ]
 }

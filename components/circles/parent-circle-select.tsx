@@ -37,19 +37,22 @@ interface ParentCircleSelectProps {
   // opens useParentCircleExplorer
   onOpen: () => void;
   disabled?: boolean;
+  // for another kind of circle's place (a federation's)
+  label?: string;
+  help?: string;
 }
 
 // The Parent Circle field, on Create circle and Manage circle: where a circle sits
-export function ParentCircleSelect({ circles, value, onOpen, disabled }: ParentCircleSelectProps) {
+export function ParentCircleSelect({ circles, value, onOpen, disabled, label = "Parent Circle", help }: ParentCircleSelectProps) {
   const root = circles.find((c) => c.parentId === null);
   return (
     <div>
-      <Label htmlFor="circle-parent">Parent Circle</Label>
+      <Label htmlFor="circle-parent">{label}</Label>
       <div className="min-[720px]:max-w-90">
         <FederationExplorerField id="circle-parent" circles={circles} value={value || null} onOpen={onOpen} disabled={disabled} />
       </div>
       <p className="mt-2 max-w-[42em] font-serif text-sm leading-relaxed text-soft">
-        Choosing a neighborhood places this circle inside it. Choosing {root?.name ?? "the city"} makes it citywide.
+        {help ?? `Choosing a neighborhood places this circle inside it. Choosing ${root?.name ?? "the city"} makes it citywide.`}
       </p>
     </div>
   );
