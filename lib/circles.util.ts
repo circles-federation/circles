@@ -15,6 +15,7 @@ export const CIRCLE_TYPE_LABEL: Record<CircleType, string> = {
   cooperative: "Cooperative",
   other: "Other",
   group: "Group",
+  federation: "Federation",
 };
 
 /* The types a member can create a circle as (Create circle), in the order
@@ -95,6 +96,13 @@ export interface NewCircleInput {
    is always a Circle, since only a Circle has a Delegate. */
 export function circleCanHaveCircles(circle: Pick<Circle, "type" | "parentId" | "public">): boolean {
   return circleHasPage(circle) && (circle.type === "circle" || circle.type === "collective" || circle.type === "cooperative" || (isGroup(circle) && !!circle.public));
+}
+
+/* Whether a circle's circles send their delegates up to it, as members: any
+   that can have circles, and a federation, which is made of its circles'
+   delegates alone (lib/federation.util.ts). */
+export function circleSeatsDelegates(circle: Pick<Circle, "type" | "parentId" | "public">): boolean {
+  return circle.type === "federation" || circleCanHaveCircles(circle);
 }
 
 // the circle this one was started inside, if it was (one that can have
@@ -358,6 +366,12 @@ export function isCircleMember(circle: Circle | undefined, memberId: number): bo
    neighborhood's and the city's members are the people who live there. */
 export function circleHasPage(circle: Pick<Circle, "type" | "parentId">): boolean {
   return circle.type !== "neighborhood" && circle.parentId !== null;
+}
+
+/* Who can be invited into a circle: any with a page but a federation, whose
+   members are only its circles' delegates, seated by the Delegate role. */
+export function circleCanInvite(circle: Pick<Circle, "type" | "parentId">): boolean {
+  return circleHasPage(circle) && circle.type !== "federation";
 }
 
 export function isRootCircle(circle: Circle): boolean {

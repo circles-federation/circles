@@ -413,3 +413,53 @@ describe("describe* helpers", () => {
     ]);
   });
 });
+
+describe("a circle in a federation", () => {
+  const federation = circle({ id: "alliance", type: "federation", parentId: "city", name: "Alliance" });
+  const coop = defined({ id: "coop", type: "cooperative", parentId: "alliance", name: "Bikes", domain: undefined, aims: undefined, roles: [{ label: "Delegate", builtin: true, memberId: 1 }] });
+  const circles = [...world(coop), federation];
+  const check = (changes: Parameters<typeof checkChanges>[1], target = coop) => checkChanges(target, changes, circles);
+
+  it("can still be renamed", () => expect(check({ name: "Bike Co-op" })).toBeNull());
+  it("stays where it is, as the kind of circle it is", () => {
+    expect(check({ parentId: "the903" })).toMatchObject({ field: "parentId" });
+    expect(check({ type: "collective" })).toMatchObject({ field: "type" });
+  });
+  it("must keep a delegate when its roles change", () => {
+    expect(check({ roles: [{ label: "Delegate", memberId: 2 }, { label: "Leader", memberId: 1 }] })).toBeNull();
+    expect(check({ roles: [{ label: "Delegate", memberId: null }] })).toMatchObject({ field: "roles", message: expect.stringMatching(/Choose a delegate/) });
+    expect(check({ roles: [{ label: "Leader", memberId: 1 }] })).toMatchObject({ field: "roles" });
+  });
+  it("keeps Roles switched on, to choose its delegate", () => {
+    expect(check({ features: ["wiki", "tasks", "meetings"] })).toMatchObject({ field: "features" });
+    expect(check({ features: ["wiki", "roles"] })).toBeNull();
+  });
+  it("doesn't read its Delegate as a removed role", () => {
+    const lines = describeChanges(coop, { roles: [{ label: "Leader", memberId: 1 }] }, circles, (id) => `M${id}`);
+    expect(lines.some((l) => l.label.startsWith("Removed role"))).toBe(false);
+  });
+  it("is unaffected by one that isn't in a federation", () => {
+    expect(check({ roles: [{ label: "Leader", memberId: 1 }] }, defined({ type: "cooperative" }))).toBeNull();
+  });
+});
+
+describe("a federation", () => {
+  const federation = circle({ id: "alliance", type: "federation", parentId: "city", name: "Alliance", members: [1, 2], features: ["roles"] });
+  const circles = world(federation);
+
+  it("can be renamed and have roles, but never becomes another kind of circle", () => {
+    expect(checkChanges(federation, { name: "Alliance 2" }, circles)).toBeNull();
+    expect(checkChanges(federation, { roles: [{ label: "Secretary", memberId: 1 }] }, circles)).toBeNull();
+    expect(checkChanges(federation, { type: "circle" }, circles)).toMatchObject({ field: "type" });
+    expect(checkChanges(federation, { type: "collective" }, circles)).toMatchObject({ field: "type" });
+  });
+  it("has no Delegate of its own, since the city has none", () => {
+    expect(checkChanges(federation, { roles: [{ label: "Delegate", memberId: 1 }] }, circles)).toMatchObject({ field: "roles" });
+  });
+  it("a circle can't become one", () => {
+    expect(checkChanges(defined({ type: "cooperative" }), { type: "federation" }, world(defined({ type: "cooperative" })))).toMatchObject({ field: "type" });
+  });
+  it("is titled by its name", () => {
+    expect(proposalTitle({ kind: "coordinating_circle", changes: { name: "Alliance" }, lines: [] })).toBe("Form Alliance");
+  });
+});

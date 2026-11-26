@@ -727,6 +727,10 @@ export function proposalWords(d: Pick<ProposalEmailData, "kind" | "circleName" |
     const ask = inside ? `starting ${name}, one of ${d.circleName}'s circles, which needs its members' consent` : `starting ${name}, a Circle in ${d.circleName}, which needs the consent of everyone who lives there`;
     return { made: "started", ask, passed: `${name} has been started` };
   }
+  if (d.kind === "coordinating_circle") {
+    const name = d.changes.name ?? "a federation";
+    return { made: "formed", ask: `forming ${name}, a federation of circles including ${d.circleName}, which needs each circle's members' consent`, passed: `${name} has been formed` };
+  }
   if (d.subjectCircleName) {
     return { made: "made", ask: `a change to ${d.subjectCircleName}, which needs the consent of its members and of everyone in ${d.circleName}`, passed: `the change has been made to ${d.subjectCircleName}` };
   }

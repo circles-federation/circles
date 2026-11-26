@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, like, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, like, ne, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, type Tx } from "./client";
 import { UserFacingError } from "./errors";
@@ -16,7 +16,7 @@ type CircleRow = typeof circles.$inferSelect;
 
 export class CircleError extends UserFacingError {}
 
-function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDraft[]): Circle {
+function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDraft[], inFederation: boolean): Circle {
   return {
     id: row.id,
     type: row.type,
@@ -32,7 +32,7 @@ function toCircle(row: CircleRow, memberIds: number[], savedRoles: CircleRoleDra
     ...(row.features ? { features: row.features } : {}),
     aims: row.aims,
     members: memberIds,
-    ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds, row.type) } : {}),
+    ...(circleHasRoles(row) ? { roles: assembleCircleRoles(savedRoles, memberIds, row.type, inFederation) } : {}),
     lastEditedBy: row.lastEditedBy ?? undefined,
     lastEditedAt: row.lastEditedAt ? row.lastEditedAt.toISOString() : undefined,
     facts: row.facts,
@@ -52,7 +52,17 @@ async function attachMembers(rows: CircleRow[]): Promise<Circle[]> {
   ]);
   const membersByCircle = groupBy(memberRows, (r) => r.circleId, (r) => r.memberId);
   const rolesByCircle = groupBy(roleRows, (r) => r.circleId, (r): CircleRoleDraft => ({ label: r.label, memberId: r.memberId }));
-  return rows.map((row) => toCircle(row, membersByCircle.get(row.id) || [], rolesByCircle.get(row.id) || []));
+  const federations = await federationIds(rows);
+  return rows.map((row) => toCircle(row, membersByCircle.get(row.id) || [], rolesByCircle.get(row.id) || [], row.parentId !== null && federations.has(row.parentId)));
+}
+
+// which of these circles' parents are federations, whose circles all have a
+// Delegate (they may not be among `rows`, when one circle is read alone)
+async function federationIds(rows: CircleRow[]): Promise<Set<string>> {
+  const types = new Map(rows.map((r) => [r.id, r.type]));
+  const missing = [...new Set(rows.flatMap((r) => (r.parentId !== null && !types.has(r.parentId) ? [r.parentId] : [])))];
+  if (missing.length > 0) for (const p of await db.select({ id: circles.id, type: circles.type }).from(circles).where(inArray(circles.id, missing))) types.set(p.id, p.type);
+  return new Set([...types].filter(([, type]) => type === "federation").map(([id]) => id));
 }
 
 /* Every circle this member may know of: all of them, except a private group
@@ -205,12 +215,7 @@ export async function createCircle(memberId: number, input: NewCircleInput): Pro
 // the circle itself, already checked, with `memberId` as its first member and
 // last editor; returns its id
 export async function insertCircle(tx: Tx, memberId: number, input: NewCircleInput): Promise<string> {
-  const base = slugify(input.name);
-  const taken = new Set(
-    (await tx.select({ id: circles.id }).from(circles).where(or(eq(circles.id, base), like(circles.id, `${base}-%`)))).map((r) => r.id)
-  );
-  let id = base;
-  for (let n = 2; taken.has(id) || RESERVED_IDS.has(id); n++) id = `${base}-${n}`;
+  const id = await freeCircleId(tx, input.name);
   await tx.insert(circles).values({
     id,
     type: input.type,
@@ -223,6 +228,36 @@ export async function insertCircle(tx: Tx, memberId: number, input: NewCircleInp
     lastEditedAt: new Date(),
   });
   await tx.insert(circleMembers).values({ circleId: id, circleType: input.type, memberId });
+  return id;
+}
+
+// the name's slug, with -2, -3… added if it's taken or reserved
+async function freeCircleId(tx: Tx, name: string): Promise<string> {
+  const base = slugify(name);
+  const taken = new Set(
+    (await tx.select({ id: circles.id }).from(circles).where(or(eq(circles.id, base), like(circles.id, `${base}-%`)))).map((r) => r.id)
+  );
+  let id = base;
+  for (let n = 2; taken.has(id) || RESERVED_IDS.has(id); n++) id = `${base}-${n}`;
+  return id;
+}
+
+/* A federation (lib/federation.util.ts), made when its proposal passes. Unlike
+   any other circle it starts with no members: its circles' delegates are its
+   members, seated as each one's Delegate role is written (syncDelegate).
+   Returns its id. */
+export async function insertFederation(tx: Tx, editorId: number, input: { name: string; tagline: string; parentId: string }): Promise<string> {
+  const id = await freeCircleId(tx, input.name);
+  await tx.insert(circles).values({
+    id,
+    type: "federation",
+    name: input.name.trim(),
+    parentId: input.parentId,
+    tagline: input.tagline.trim(),
+    about: "",
+    lastEditedBy: editorId,
+    lastEditedAt: new Date(),
+  });
   return id;
 }
 
@@ -251,6 +286,14 @@ export async function leaveCircle(memberId: number, circleId: string): Promise<{
       .from(circleMembers)
       .where(and(eq(circleMembers.circleId, circleId), eq(circleMembers.memberId, memberId)));
     if (!member) throw new CircleError(`You're not a member of ${circle.name}.`);
+    // a circle in a federation always has a delegate, so theirs can't just go,
+    // unless they're all it has left
+    const [federation] = circle.parentId ? await tx.select({ name: circles.name }).from(circles).where(and(eq(circles.id, circle.parentId), eq(circles.type, "federation"))) : [];
+    if (federation) {
+      const [holds] = await tx.select({ id: circleRoles.id }).from(circleRoles).where(and(eq(circleRoles.circleId, circleId), eq(circleRoles.builtin, true), eq(circleRoles.label, DELEGATE), eq(circleRoles.memberId, memberId)));
+      const [other] = await tx.select({ id: circleMembers.memberId }).from(circleMembers).where(and(eq(circleMembers.circleId, circleId), ne(circleMembers.memberId, memberId))).limit(1);
+      if (holds && other) throw new CircleError(`You're ${circle.name}'s delegate to ${federation.name}. Choose another delegate before you leave.`);
+    }
     return dropMembership(tx, memberId, circleId);
   });
 }

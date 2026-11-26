@@ -13,7 +13,7 @@ import { useAppState } from "@/components/providers/app-state-provider";
 import { useTopBarMenu } from "@/components/providers/top-bar-action-provider";
 import { fmtEditDate, parseDay } from "@/lib/format.util";
 import { isDelegateOf, rolesHeldBy } from "@/lib/circle-roles.util";
-import { circleCanHoldMeetings, circleChildren, circleHasInbox, circleHasPublicWiki, circleHasTasks, circleHasWiki, isCircleAudience, type CircleSection } from "@/lib/circles.util";
+import { circleCanHoldMeetings, circleCanInvite, circleChildren, circleHasInbox, circleHasPublicWiki, circleHasTasks, circleHasWiki, isCircleAudience, type CircleSection } from "@/lib/circles.util";
 import { useCirclesById, useMemberById } from "@/lib/hooks";
 import type { Circle, CircleInvitation, CircleResource, CircleTask, Event, Member } from "@/lib/types";
 import { isPhoneWidth } from "@/lib/viewport";
@@ -107,7 +107,7 @@ export function CirclePage({ circle: c, section, isMember, lastEditor, lastEdite
           { label: "Manage circle", href: `/circles/${c.id}/manage`, icon: Cog6ToothIcon },
           { label: "Post on bulletin", icon: PlusIcon, onSelect: startAdding },
           ...(hasTasks ? [{ label: "New task", icon: CheckCircleIcon, onSelect: startAddingTask }] : []),
-          { label: "Invite", icon: UserPlusIcon, onSelect: startInviting },
+          ...(circleCanInvite(c) ? [{ label: "Invite", icon: UserPlusIcon, onSelect: startInviting }] : []),
           { label: "New event", icon: CalendarIcon, onSelect: onNewEvent },
           // a meeting of this circle, where it can hold one (a group once it switches them on)
           ...(circleCanHoldMeetings(c) ? [{ label: "New meeting", href: `/events/new?kind=meeting&circle=${c.id}`, icon: UserGroupIcon }] : []),

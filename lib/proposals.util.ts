@@ -1,4 +1,5 @@
 import { isBuiltinRole, validateCircleRoles, circleHasRoles } from "./circle-roles.util";
+import { circleFederation } from "./federation.util";
 import { CIRCLE_AIM_MAX, CIRCLE_FEATURES, circleHasPage, cleanFeatures, featuresOf, isGroup, CIRCLE_DOMAIN_MAX, CIRCLE_NAME_MAX, CIRCLE_TAGLINE_MAX, CIRCLE_TYPE_LABEL, MAX_CIRCLE_AIMS, circleCanHaveCircles, circleCanHaveInbox, indexCircles, startedInside, circleNeighborhood, parentCircleOptions, type CirclesById, type NewCircleInput } from "./circles.util";
 import { AGENDA_CATEGORY } from "./agenda.util";
 import { fmtEventWhen } from "./format.util";
@@ -86,8 +87,15 @@ export function checkChanges(circle: Circle, changes: ProposalChanges, circles: 
     if (changes.name.length > CIRCLE_NAME_MAX) return problem("name", `Keep the name to ${CIRCLE_NAME_MAX} characters.`);
   }
   if (changes.tagline !== undefined && changes.tagline.length > CIRCLE_TAGLINE_MAX) return problem("tagline", `Keep the tagline to ${CIRCLE_TAGLINE_MAX} characters.`);
+  const byId = indexCircles(circles);
+  // one in a federation stays there, as the kind of circle it joined as, since
+  // each sends a delegate; a federation itself is only ever made by consent of its circles
+  const federation = circleFederation(circle, byId);
+  if (federation && changes.type !== undefined && changes.type !== circle.type) return problem("type", `It's in ${federation.name}, so it stays the kind of circle it is.`);
+  if (federation && changes.parentId !== undefined && changes.parentId !== circle.parentId) return problem("parentId", `It's in ${federation.name}, so it stays there.`);
+  if (circle.type === "federation" && changes.type !== undefined && changes.type !== "federation") return problem("type", "A federation can't become another kind of circle.");
   // one started inside a circle stays a Circle there, sending its delegate up
-  const inside = startedInside(circle, indexCircles(circles));
+  const inside = startedInside(circle, byId);
   if (inside && changes.type !== undefined && changes.type !== "circle") return problem("type", `A circle inside ${inside.name} stays a Circle, so it can send a delegate.`);
   if (inside && changes.parentId !== undefined && changes.parentId !== circle.parentId) return problem("parentId", `It was started inside ${inside.name}, so it stays there.`);
   if (changes.type !== undefined) {
@@ -112,11 +120,11 @@ export function checkChanges(circle: Circle, changes: ProposalChanges, circles: 
   if (changes.features !== undefined) {
     if (!circleHasPage(circle)) return problem("features", "This circle doesn't have features to switch.");
     // its delegate sits in the circle above, chosen on its Roles page
-    if (!changes.features.includes("roles") && startedInside(circle, indexCircles(circles))) return problem("features", "It was started inside another circle, so it keeps Roles to choose its delegate.");
+    if (!changes.features.includes("roles") && (startedInside(circle, byId) || federation)) return problem("features", `It's inside ${(startedInside(circle, byId) ?? federation)!.name}, so it keeps Roles to choose its delegate.`);
   }
   if (changes.roles !== undefined) {
     if (!circleHasRoles(circle)) return problem("roles", "This circle doesn't have roles.");
-    const message = validateCircleRoles(changes.roles, circle.members, changes.type ?? circle.type);
+    const message = validateCircleRoles(changes.roles, circle.members, changes.type ?? circle.type, federation !== null);
     if (message) return problem("roles", message);
   }
   return null;
@@ -179,7 +187,7 @@ export function describeChanges(circle: Circle, changes: ProposalChanges, circle
     }
     // a built-in role left out is only left empty, never removed
     for (const b of before) {
-      if (isBuiltinRole(b.label, circle.type) || changes.roles.some((r) => r.label.toLowerCase() === b.label.toLowerCase())) continue;
+      if (isBuiltinRole(b.label, circle.type, circleFederation(circle, indexCircles(circles)) !== null) || changes.roles.some((r) => r.label.toLowerCase() === b.label.toLowerCase())) continue;
       lines.push({ label: `Removed role: ${b.label}`, before: holder(b.memberId), after: "" });
     }
   }
@@ -297,6 +305,7 @@ export function proposalTitle(p: Pick<CircleProposal, "kind" | "changes" | "line
   if (p.kind === "remove_message") return `Remove a message by ${p.lines[1]?.after ?? "a member"}`;
   if (p.kind === "post") return `Post “${p.lines[0]?.after ?? ""}”`;
   if (p.kind === "new_circle") return `Start ${p.changes.name ?? "a Circle"}`;
+  if (p.kind === "coordinating_circle") return `Form ${p.changes.name ?? "a federation"}`;
   const c = p.changes;
   if (Object.keys(c).length === 1 && c.inbox !== undefined) return c.inbox ? "Turn on the Inbox" : "Turn off the Inbox";
   if (Object.keys(c).length === 1 && c.public !== undefined) return c.public ? "Make the group public" : "Make the group private";

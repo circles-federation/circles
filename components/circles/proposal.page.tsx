@@ -51,7 +51,7 @@ const ANSWER_STYLE: Record<ConsentResponse, { button: string; dot: string; icon:
    everyone's answer. Reached from its email or push, the circle's banner,
    and Home. */
 // what each kind is about, as its section heads it
-const ABOUT: Record<CircleProposal["kind"], string> = { change: "What it changes", event: "The event", post: "The post", new_circle: "The circle", remove_message: "The message" };
+const ABOUT: Record<CircleProposal["kind"], string> = { change: "What it changes", event: "The event", post: "The post", new_circle: "The circle", remove_message: "The message", coordinating_circle: "The federation" };
 
 export function ProposalPage({ proposal: p, circle, deciders, explainer, onOpenStarted, onOpenChat, memberId, onOpenCircle, onOpenMember, onRespond, onOpenEvent, consentIsRsvp = false, onWithdraw }: ProposalPageProps) {
   // it proposes holding an event, not changing the circle
@@ -292,6 +292,7 @@ const WITHDRAWN: Record<CircleProposal["kind"], string> = {
   post: "it won’t be posted",
   new_circle: "the circle won’t be started",
   remove_message: "the message won’t be removed",
+  coordinating_circle: "the federation won’t be formed",
 };
 
 // what becomes of each kind: "it's {made}", "{done}", "it won't be {notDone}"
@@ -301,6 +302,7 @@ const WORDS: Record<CircleProposal["kind"], { made: string; done: string; notDon
   post: { made: "posted", done: "it was posted to the neighborhood's bulletin", notDone: "posted" },
   new_circle: { made: "started", done: "the circle was started", notDone: "started" },
   remove_message: { made: "removed", done: "the message was removed", notDone: "removed" },
+  coordinating_circle: { made: "formed", done: "the federation was formed", notDone: "formed" },
 };
 
 // until when it's open and what happens then, or how it ended — for an event,
