@@ -42,10 +42,9 @@ function toNominee(r: NomineeRow): ProposalNominee {
 // each proposal's deciding circles in stage order, with who they've put forward
 export async function decidersByProposal(tx: Tx | typeof db, proposalIds: string[]): Promise<Map<string, ProposalDecider[]>> {
   if (proposalIds.length === 0) return new Map();
-  const [rows, nominees] = await Promise.all([
-    tx.select().from(proposalDeciders).where(inArray(proposalDeciders.proposalId, proposalIds)).orderBy(asc(proposalDeciders.stage), asc(proposalDeciders.circleId)),
-    tx.select().from(proposalNominees).where(inArray(proposalNominees.proposalId, proposalIds)).orderBy(asc(proposalNominees.id)),
-  ]);
+  // one query at a time throughout: a transaction has a single connection
+  const rows = await tx.select().from(proposalDeciders).where(inArray(proposalDeciders.proposalId, proposalIds)).orderBy(asc(proposalDeciders.stage), asc(proposalDeciders.circleId));
+  const nominees = await tx.select().from(proposalNominees).where(inArray(proposalNominees.proposalId, proposalIds)).orderBy(asc(proposalNominees.id));
   const byCircle = groupBy(nominees, (n) => `${n.proposalId}/${n.circleId}`, toNominee);
   return groupBy(
     rows,
@@ -145,10 +144,8 @@ export async function federationProblem(tx: Tx, row: ProposalRow, withDelegates:
   if (!parent || parent.archivedAt || (parent.type !== "neighborhood" && parent.parentId !== null)) return "Where the federation would sit is no longer available.";
 
   if (withDelegates) {
-    const [nominees, members] = await Promise.all([
-      tx.select().from(proposalNominees).where(and(eq(proposalNominees.proposalId, row.id), eq(proposalNominees.status, "chosen"))),
-      membersOf(tx, deciders.map((d) => d.circleId)),
-    ]);
+    const nominees = await tx.select().from(proposalNominees).where(and(eq(proposalNominees.proposalId, row.id), eq(proposalNominees.status, "chosen")));
+    const members = await membersOf(tx, deciders.map((d) => d.circleId));
     for (const d of deciders) {
       const nominee = nominees.find((n) => n.circleId === d.circleId);
       if (!nominee || !(members.get(d.circleId) ?? []).includes(nominee.memberId)) return `${place.get(d.circleId)!.name} has no delegate to send.`;
@@ -158,11 +155,9 @@ export async function federationProblem(tx: Tx, row: ProposalRow, withDelegates:
 }
 
 async function loadState(tx: Tx, row: ProposalRow): Promise<FederationState> {
-  const [deciders, nominees, responses] = await Promise.all([
-    tx.select().from(proposalDeciders).where(eq(proposalDeciders.proposalId, row.id)),
-    tx.select().from(proposalNominees).where(and(eq(proposalNominees.proposalId, row.id), eq(proposalNominees.status, "open"))),
-    tx.select().from(proposalResponses).where(eq(proposalResponses.proposalId, row.id)),
-  ]);
+  const deciders = await tx.select().from(proposalDeciders).where(eq(proposalDeciders.proposalId, row.id));
+  const nominees = await tx.select().from(proposalNominees).where(and(eq(proposalNominees.proposalId, row.id), eq(proposalNominees.status, "open")));
+  const responses = await tx.select().from(proposalResponses).where(eq(proposalResponses.proposalId, row.id));
   const members = await membersOf(tx, deciders.map((d) => d.circleId));
   return {
     proposerId: row.proposerId,
@@ -273,10 +268,8 @@ export async function objectToNominee(tx: Tx, row: ProposalRow, memberId: number
 export async function startFederation(tx: Tx, row: ProposalRow): Promise<string> {
   const { name, tagline, parentId } = row.changes;
   if (!name || !parentId) throw new FederationError("That federation can't be formed.");
-  const [deciders, chosen] = await Promise.all([
-    tx.select({ circleId: proposalDeciders.circleId }).from(proposalDeciders).where(eq(proposalDeciders.proposalId, row.id)),
-    tx.select().from(proposalNominees).where(and(eq(proposalNominees.proposalId, row.id), eq(proposalNominees.status, "chosen"))),
-  ]);
+  const deciders = await tx.select({ circleId: proposalDeciders.circleId }).from(proposalDeciders).where(eq(proposalDeciders.proposalId, row.id));
+  const chosen = await tx.select().from(proposalNominees).where(and(eq(proposalNominees.proposalId, row.id), eq(proposalNominees.status, "chosen")));
   const id = await insertFederation(tx, row.proposerId, { name, tagline: tagline ?? "", parentId });
   await tx
     .update(circles)
